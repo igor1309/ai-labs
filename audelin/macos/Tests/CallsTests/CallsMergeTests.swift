@@ -63,6 +63,102 @@ struct CallsMergeTests {
             #expect(calls.first?.duration == nil)
         }
     }
+
+    @Test func S1_S2_aMergedCallTakesItsPartsPlaceAndKeepsThemWhole() throws {
+        try withRoot { root in
+            try call(root, "2026.10.24-1010", seconds: 60, transcript: "b")
+            try call(root, "2026.10.24-1000 Sync", seconds: 60, transcript: "a")
+            let before = try files(root)
+            let sut = sut(root, lengths: ["2026.10.24-1000 Sync": 60, "2026.10.24-1010": 60])
+            let id = try sut.merge(ids: ["2026.10.24-1010", "2026.10.24-1000"]) { folder in
+                try Data("joined".utf8).write(to: folder.appendingPathComponent("transcript.md"))
+            }
+            #expect(id == "2026.10.24-1000")
+            let calls = try sut.list()
+            #expect(calls.map(\.id) == ["2026.10.24-1000"])
+            #expect(calls.map(\.title) == ["Sync"])
+            #expect(try names(root) == ["2026.10.24-1000 Sync"])
+            let merged = root.appendingPathComponent("2026.10.24-1000 Sync")
+            #expect(try names(merged) == ["2026.10.24-1000 Sync", "2026.10.24-1010", "transcript.md"])
+            for (path, data) in before {
+                #expect(try Data(contentsOf: merged.appendingPathComponent(path)) == data)
+            }
+        }
+    }
+
+    @Test func S3_aMergedCallReadsAsOne() throws {
+        try withRoot { root in
+            try call(root, "2026.10.24-1000", seconds: 60, transcript: "a only")
+            try call(root, "2026.10.24-1010", seconds: 60, transcript: "b only")
+            let sut = Calls(folder: root, timeZone: utc, duration: { _ in 60 },
+                            transcript: { [Calls.Text.Line(start: 0, words: $0)] }, disk: .system)
+            try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { folder in
+                try Data("joined".utf8).write(to: folder.appendingPathComponent("transcript.md"))
+            }
+            #expect(try sut.text(id: "2026.10.24-1000").transcript.map(\.words) == ["joined"])
+        }
+    }
+
+    @Test func S5_theFolderBeingPreparedIsNotListed() throws {
+        try withRoot { root in
+            try call(root, "2026.10.24-1000", seconds: 60)
+            try call(root, "2026.10.24-1010", seconds: 60)
+            let sut = sut(root, lengths: ["2026.10.24-1000": 60, "2026.10.24-1010": 60])
+            var seen: [String] = []
+            try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { folder in
+                #expect(folder.deletingLastPathComponent().standardizedFileURL == root.standardizedFileURL)
+                seen = try sut.list().map(\.id)
+                try Data("joined".utf8).write(to: folder.appendingPathComponent("transcript.md"))
+            }
+            #expect(seen == ["2026.10.24-1010", "2026.10.24-1000"])
+        }
+    }
+
+    @Test func S8_aMergedCallIsDeletedWithItsParts() throws {
+        try withRoot { root in
+            try call(root, "2026.10.24-1000", seconds: 60)
+            try call(root, "2026.10.24-1010", seconds: 60)
+            let trash = root.appendingPathComponent("Trash", isDirectory: false).deletingLastPathComponent()
+                .appendingPathComponent(root.lastPathComponent + "-Trash")
+            defer { try? FileManager.default.removeItem(at: trash) }
+            var disk = CallsDisk.system
+            disk.trash = { url in
+                try FileManager.default.createDirectory(at: trash, withIntermediateDirectories: true)
+                try FileManager.default.moveItem(at: url, to: trash.appendingPathComponent(url.lastPathComponent))
+            }
+            let sut = Calls(folder: root, timeZone: utc, duration: { _ in 60 }, transcript: { _ in [] }, disk: disk)
+            try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { _ in }
+            try sut.delete(id: "2026.10.24-1000")
+            #expect(try sut.list().isEmpty)
+            #expect(try names(trash.appendingPathComponent("2026.10.24-1000")) == ["2026.10.24-1000", "2026.10.24-1010"])
+        }
+    }
+
+    @Test func S9_aMergedCallMovesWithItsParts() throws {
+        try withRoot { root in
+            try withRoot { target in
+                try call(root, "2026.10.24-1000", seconds: 60)
+                try call(root, "2026.10.24-1010", seconds: 60)
+                let calls = sut(root, lengths: ["2026.10.24-1000": 60, "2026.10.24-1010": 60])
+                try calls.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { _ in }
+                try calls.move(id: "2026.10.24-1000", to: target)
+                let moved = try sut(target, lengths: ["2026.10.24-1000": 60, "2026.10.24-1010": 60]).list()
+                #expect(moved.map(\.id) == ["2026.10.24-1000"])
+                #expect(moved.first?.duration == TimeInterval(11 * 60))
+                #expect(try names(target.appendingPathComponent("2026.10.24-1000")) == ["2026.10.24-1000", "2026.10.24-1010"])
+            }
+        }
+    }
+
+    @Test func S11_eachPartsTranscriptIsReadAsWritten() throws {
+        try withRoot { root in
+            try call(root, "2026.10.24-1000", seconds: 60, transcript: "# Transcript\r\n\r\nwords")
+            try call(root, "2026.10.24-1010", seconds: 60)
+            let sut = sut(root, lengths: [:])
+            #expect(try sut.savedTranscript(id: "2026.10.24-1000") == Data("# Transcript\r\n\r\nwords".utf8))
+            #expect(throws: (any Error).self) { try sut.savedTranscript(id: "2026.10.24-1010") }
+        }
+    }
 }
 
 private let utc = TimeZone(identifier: "UTC")!
@@ -81,9 +177,24 @@ private func folder(_ parent: URL, _ name: String) throws -> URL {
 }
 
 /// A call folder with both tracks; their length comes from the fake reader.
-private func call(_ parent: URL, _ name: String, seconds: TimeInterval) throws {
+private func call(_ parent: URL, _ name: String, seconds: TimeInterval, transcript: String? = nil) throws {
     let url = try folder(parent, name)
-    for track in ["microphone.caf", "call.caf"] { try Data().write(to: url.appendingPathComponent(track)) }
+    for track in ["microphone.caf", "call.caf"] { try Data(name.utf8).write(to: url.appendingPathComponent(track)) }
+    if let transcript { try Data(transcript.utf8).write(to: url.appendingPathComponent("transcript.md")) }
+}
+
+private func names(_ url: URL) throws -> [String] { try FileManager.default.contentsOfDirectory(atPath: url.path).sorted() }
+
+/// Every file under `root`, by its path from `root`, with its bytes.
+private func files(_ root: URL) throws -> [String: Data] {
+    var result: [String: Data] = [:]
+    let base = root.resolvingSymlinksInPath().path + "/"
+    for case let url as URL in FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil)! {
+        let resolved = url.resolvingSymlinksInPath()
+        guard (try resolved.resourceValues(forKeys: [.isDirectoryKey])).isDirectory == false else { continue }
+        result[String(resolved.path.dropFirst(base.count))] = try Data(contentsOf: resolved)
+    }
+    return result
 }
 
 private func withRoot(_ body: (URL) throws -> Void) throws {

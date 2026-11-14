@@ -131,6 +131,29 @@ public struct Calls: Sendable {
         return Text(notes: notes.flatMap { $0.isEmpty ? nil : $0 }, transcript: transcript(try string("transcript.md") ?? ""))
     }
 
+    /// A call's saved `transcript.md` as written, for a merge to read back.
+    public func savedTranscript(id: String) throws -> Data {
+        let url = try location(id: id).appendingPathComponent("transcript.md")
+        guard let data = try disk.read(url) else { throw CocoaError(.fileReadNoSuchFile) }
+        return data
+    }
+
+    /// Merges calls into one call folder named as the earliest part, holding each part's
+    /// folder whole and the joined transcript `write` puts in the folder it is given.
+    /// The folder is prepared under a name no listing shows, then renamed into place.
+    /// Returns the merged call's id, the earliest part's.
+    @discardableResult
+    public func merge(ids: [String], write: (URL) throws -> Void) throws -> String {
+        let parts = try ids.map { try location(id: $0) }
+        guard parts.count > 1, let earliest = zip(ids, parts).min(by: { $0.0 < $1.0 }) else { throw POSIXError(.EINVAL) }
+        let prepared = folder.appendingPathComponent(".audelin-merge-" + UUID().uuidString, isDirectory: true)
+        try disk.makeFolder(prepared)
+        try write(prepared)
+        for part in parts { try rename(part, prepared.appendingPathComponent(part.lastPathComponent, isDirectory: true)) }
+        try rename(prepared, folder.appendingPathComponent(earliest.1.lastPathComponent, isDirectory: true))
+        return earliest.0
+    }
+
     public func bytes(id: String) throws -> Int64 { try size(location(id: id)) }
 
     /// The callback durably records ownership before a destructive disk step.
@@ -361,6 +384,8 @@ public struct CallsDisk: Sendable {
     /// Moves a folder to the Trash of its volume, whole or not at all.
     public var trash: @Sendable (URL) throws -> Void
     var remove: @Sendable (URL) throws -> Void
+    /// Creates an empty folder, failing when anything has its name.
+    var makeFolder: @Sendable (URL) throws -> Void = { try FileManager.default.createDirectory(at: $0, withIntermediateDirectories: false) }
     /// A file's bytes, or nil when it does not exist.
     var read: @Sendable (URL) throws -> Data? = { url in
         do { return try Data(contentsOf: url) }
