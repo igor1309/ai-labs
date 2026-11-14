@@ -1,3 +1,4 @@
+import Synchronization
 import Testing
 @testable import LiveText
 
@@ -76,6 +77,35 @@ struct RecognitionStreamTests {
         await #expect(throws: RecognitionStream.Failure.notPrepared) { try await stream.hear(audio(0)) }
     }
 
+    @Test func theRecognizerLoadsOnceForEveryPrepare() async throws {
+
+        let source = GatedSource(ScriptRecognizer([]))
+        source.release()
+        let stream = RecognitionStream(recognizerSource: { try await source.load() })
+
+        try await stream.prepare()
+        _ = try await stream.finish()
+        try await stream.prepare()
+
+        #expect(source.loads == 1)
+    }
+
+    @Test func aCancelledPrepareLeavesTheLoadForTheNext() async throws {
+
+        let source = GatedSource(ScriptRecognizer([.init(words: [first])]))
+        let stream = RecognitionStream(recognizerSource: { try await source.load() })
+        let waiting = Task { try await stream.prepare() }
+        await source.started()
+
+        waiting.cancel()
+        await #expect(throws: CancellationError.self) { try await waiting.value }
+        source.release()
+        try await stream.prepare()
+
+        #expect(try await stream.hear(audio(0)).tail.map(\.words) == [[first]])
+        #expect(source.loads == 1)
+    }
+
     @Test func shutdownEndsTheSessionWithoutAnotherUpdate() async throws {
 
         let recognizer = ScriptRecognizer([.init(words: [first])])
@@ -150,4 +180,30 @@ actor ScriptRecognizer: Recognizer {
         finishes += 1
         return finishing
     }
+}
+
+/// Hands out its recogniser once released, ignoring cancellation as a slow
+/// model load does.
+private final class GatedSource: Sendable {
+
+    private let recognizer: any Recognizer
+    private let gate = AsyncStream<Void>.makeStream()
+    private let calls = AsyncStream<Void>.makeStream()
+    private let count = Mutex(0)
+
+    init(_ recognizer: any Recognizer) { self.recognizer = recognizer }
+
+    var loads: Int { count.withLock { $0 } }
+
+    func load() async throws -> any Recognizer {
+
+        count.withLock { $0 += 1 }
+        calls.continuation.yield()
+        for await _ in gate.stream { break }
+        return recognizer
+    }
+
+    func started() async { for await _ in calls.stream { break } }
+
+    func release() { gate.continuation.yield(); gate.continuation.finish() }
 }

@@ -131,7 +131,42 @@ public actor RecognitionStream {
         }
     }
 
+    /// One load of the recogniser, which every prepare waiting for it shares.
+    private actor Load {
+
+        private var result: Result<any Recognizer, any Error>?
+        private var waiting: [Int: AsyncStream<Result<any Recognizer, any Error>>.Continuation] = [:]
+        private var nextID = 0
+
+        func complete(_ result: Result<any Recognizer, any Error>) {
+
+            self.result = result
+            for continuation in waiting.values {
+                continuation.yield(result)
+                continuation.finish()
+            }
+            waiting.removeAll()
+        }
+
+        func recognizer() async throws -> any Recognizer {
+
+            try Task.checkCancellation()
+            if let result { return try result.get() }
+            let id = nextID
+            nextID += 1
+            let reply = AsyncStream<Result<any Recognizer, any Error>>.makeStream()
+            waiting[id] = reply.continuation
+            defer { waiting[id] = nil }
+            var iterator = reply.stream.makeAsyncIterator()
+            let result = await iterator.next()
+            try Task.checkCancellation()
+            guard let result else { throw CancellationError() }
+            return try result.get()
+        }
+    }
+
     private let recognizerSource: @Sendable () async throws -> any Recognizer
+    private var loading: (load: Load, task: Task<Void, Never>)?
     private var listening: Listening?
     private var finalText: [Segment] = []
     private var tail: [Segment] = []
@@ -142,12 +177,22 @@ public actor RecognitionStream {
         self.recognizerSource = recognizerSource
     }
 
-    /// Loads the recogniser and starts a session with no text.
+    /// Loads the recogniser once and starts a session with no text. A
+    /// cancelled prepare ends only its own wait: a later one uses the same
+    /// load, even when the source does not honour cancellation.
     public func prepare() async throws {
 
         try Task.checkCancellation()
         guard listening == nil else { return }
-        let recognizer = try await recognizerSource()
+        if loading == nil {
+            let load = Load(), source = recognizerSource
+            let task = Task { @concurrent in
+                do { await load.complete(.success(try await source())) }
+                catch { await load.complete(.failure(error)) }
+            }
+            loading = (load, task)
+        }
+        let recognizer = try await loading!.load.recognizer()
         try Task.checkCancellation()
         guard listening == nil else { return }
         finalText = []
@@ -248,6 +293,7 @@ public actor RecognitionStream {
 
     deinit {
 
+        loading?.task.cancel()
         listening?.stop()
     }
 
