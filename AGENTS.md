@@ -158,6 +158,25 @@ modules are machines; an app composes them.
   reads another machine through a closure, no wait or join that only syncs
   two machines, and no doer, wrapper or adapter that remembers work outside
   the state.
+- Split by responsibility: each machine has one responsibility and one
+  reason to change. These bans are about cutting one responsibility into
+  pieces, not about machines meeting. Machines with their own
+  responsibilities are connected, not stacked. The app subscribes one
+  machine's output and sends it to another's event endpoint. The receiver
+  takes only the value it needs, never the sender's inner details, and
+  never drives the sender's work.
+- A screen can be a composition of such machines. In the iOS payment
+  screen, product selection and a card or phone input each have their own
+  machine, however complex: expanded or collapsed options, editing,
+  validation. The payment machine does not care about any of that. It gets
+  an optional valid value through its event endpoint, by a subscription
+  set up outside both machines.
+- Before adding a machine, name its responsibility and its reason to
+  change. If it is a stage of work another machine already runs, so that
+  the two change for the same reason, make it that machine's stage. If a
+  machine has to start, cancel, retry or wait on another's work, or read
+  its internals to do its own, they share one responsibility: merge them,
+  do not connect them.
 - **Async** (`ObservableModel`): `event(_:)` returns before the event is
   reduced. Use it unless a caller needs the sync order below.
 - **Sync** (`SyncModel`): `event(_:)` reduces before it returns, so a read

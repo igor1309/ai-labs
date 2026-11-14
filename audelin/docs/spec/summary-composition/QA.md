@@ -35,19 +35,19 @@ Automated boundary: `cd audelin/macos/App && swift test --filter SummaryStorageT
 
 ## S-8 Update during asynchronous dispatch
 
-`cd audelin/macos/App && swift test --filter 'SummaryCoordinatorTests|SummaryProtectionTests'` holds the dispatch acknowledgment and terminal save separately. The coordinator stays busy until acknowledgment; the job stays busy until saving completes. A withdrawn approval leaves pending work and starts no request.
+`cd audelin/macos && swift test --filter 'SummariesBusyTests|SummariesShutdownTests'` checks which stages hold an update: every stage from reading the transcript through the last save, a retry, a discard and a job another instance runs. A waiting, pending or settled call lets the update go ahead. Stopping dispatch sends an unanswered start back to pending, which starts no request.
 
 ## S-9 Another instance retries an interrupted call
 
-`cd audelin/macos/App && swift test --filter SummaryArbitrationTests` loads the same interrupted call through recovery or a competing submission in two compositions, holds the owner's retry request, and refreshes the observer with and without a refused retry first. The observer reports active work until terminal saving. Held successful and failed refresh reads cannot overwrite a locally retried job.
+`cd audelin/macos/App && swift test --filter SummariesSharedFilesTests` runs two compositions over the same calls folder. One loads the interrupted call and retries it while the request is held; the other, with or without a refused retry first, follows the retry on refresh, reports work in progress until the last save, then shows the notes. Only one request is made. The reducer tests check that a reload cannot replace a call this instance retried meanwhile.
 
 ## S-10 Completion cannot be established
 
-The observer cases cover running and lost-dispatch states against a read error, absence, a corrupt snapshot and an unknown phase. Every unresolved read keeps protection; a terminal reread releases it. A confirmed pending observer allows updates and continues watching for another owner's dispatch.
+A refresh that cannot read the call, or reads an unknown phase or a corrupt record, leaves it as another instance's work, so the update stays held; a reread that finds the job ended releases it. A call whose record is gone is dropped. A pending job another instance stored lets the update go ahead and is read again on the next refresh.
 
 ## S-11 Retry after an earlier error
 
-`cd audelin/macos/App && swift test --filter SummaryCoordinatorTests` starts retry with failures for the requested call and another call. Both successful and failed results clear the requested call's old error at retry start, preserving the unrelated error.
+`cd audelin/macos && swift test --filter SummariesRetryTests` retries a failed or interrupted call whose earlier retry failed. The retry clears that mark when it starts; a retry that fails again restores the call's stage and marks it. Each call keeps its own mark, so a retry of one call leaves another's as it was.
 
 ## S-12 Make on request with automatic notes off
 

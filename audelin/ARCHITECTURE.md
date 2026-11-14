@@ -55,36 +55,31 @@ resources, then allows termination. Root storage integration coordinates
 publication with call rename, deletion, merging and calls-folder moves.
 
 SummaryFiles is also the one reader of published notes: it gives a call's
-notes text, none, or why they cannot be read. The calls list holds the
-selected call; that call's Call notes machine (below) holds its notes, and
-the summary view draws them, Markdown included, beside the list. The app owns the calls window, its
-split and, for a narrow window, the call's own window.
+notes text and made date, none, or why they cannot be read. CallDetail is the
+state machine for what the calls window shows beside the list. Its state
+holds the selected call's display fields and summary status, the notes read
+for it and the rendered detail. Its pure reducer decides between notes,
+unreadable notes, a pending or failed summary and no summary. A selection,
+summary update or notes change asks its effect handler to read notes;
+superseded answers cannot replace the current detail. The previous detail
+stays visible until the selected call's read answers, and no selection
+clears it.
+
+The composer connects the list's visible selection and the Summaries
+machine's badge, status text and retry availability to CallDetail, without
+passing either machine's internal state. Its notes scan still fills the
+list's notes marks and gists and tells CallDetail when notes may have
+changed. The summary view draws the rendered detail, Markdown included.
+The app owns the calls window, its split and, for a narrow window, the
+call's own window; it opens that window after the selected detail is read.
 
 ### Making a call's notes on request
 
-The user can make notes for a call that has none, from the calls window,
-and cancel them while they are being made.
-
-Call notes is a state machine for what the calls window shows of one call's
-notes: none, being made, made (the text and when), or failed (why). The
-user's make, cancel and retry and the outcome its collaborator reports are
-its events. It owns one port, a collaborator that makes a call's notes or
-stops making them, and reports made or failed. It keeps no clock: how long
-making may take, and failing when it takes too long, belong to the
-collaborator.
-
-The root answers that port. Transcript format, the format's one writer, is
-also its one reader: it reads a saved transcript back into labelled entries,
-so the root can submit them to SummaryJobs as a closed call's entries are
-submitted. A cancel by the user stops the job and SummaryFiles drops its
-record, leaving the transcript and any earlier notes. SummaryFiles records
-when notes were published, for the date shown under them.
-
-The root holds one Call notes machine per call, so making goes on while
-another call is selected. It starts each machine from what SummaryFiles
-reads: made with the published notes and their date, none, or failed; and
-in being made when notes are submitted after a call ends. The calls list draws the selected
-call's state and sends make, cancel and retry; it decides nothing. Calls
+The user can make notes for a call that has none, cancel them while they
+are being made and retry a failed summary. The composer sends these
+actions to Summaries, whose work continues when another call is selected.
+CallDetail only decides what the selected call shows; its effect handler
+reads notes and never starts, cancels or retries their generation. Calls
 lists folders and reads transcripts through Transcript format.
 
 ## Merging calls
