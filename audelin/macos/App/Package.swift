@@ -102,6 +102,7 @@ let package = Package(
 
                 .product(name: "IMRxObservation", package: "swift-imrx"),
                 .product(name: "Calls", package: "macos"),
+                .product(name: "CallsStorage", package: "macos"),
                 .product(name: "CallsSearch", package: "macos"),
                 .product(name: "Recordings", package: "macos"),
                 .product(name: "CallsListUI", package: "macos"),

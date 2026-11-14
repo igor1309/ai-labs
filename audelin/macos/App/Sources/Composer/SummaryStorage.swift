@@ -1,4 +1,5 @@
 import Calls
+import CallsStorage
 import Recordings
 import Foundation
 import Preferences
@@ -9,22 +10,7 @@ import TranscriptFormat
 
 /// One transaction boundary for call mutations and note publication.
 final class SummaryStorage: SummaryFiles.Locations, Sendable {
-    struct Journal: Codable, Sendable {
-        var moves: [String: Calls.Move] = [:]
-        var retainedRoots: [URL] = []
-        var owners: [String: URL] = [:]
-
-        init(moves: [String: Calls.Move] = [:], retainedRoots: [URL] = [], owners: [String: URL] = [:]) {
-            self.moves = moves; self.retainedRoots = retainedRoots; self.owners = owners
-        }
-        private enum CodingKeys: CodingKey { case moves, retainedRoots, owners }
-        init(from decoder: any Decoder) throws {
-            let saved = try decoder.container(keyedBy: CodingKeys.self)
-            moves = try saved.decode([String: Calls.Move].self, forKey: .moves)
-            retainedRoots = try saved.decodeIfPresent([URL].self, forKey: .retainedRoots) ?? []
-            owners = try saved.decodeIfPresent([String: URL].self, forKey: .owners) ?? [:]
-        }
-    }
+    typealias Journal = CallsJournal
     private struct State {
         var recordingFolder: URL
         var journal = Journal()
@@ -69,38 +55,8 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
             do { data = try Data(contentsOf: journal) }
             catch let error as CocoaError where error.code == .fileReadNoSuchFile { return }
             do {
-                let saved: Journal
-                if let roots = try? JSONDecoder().decode([URL].self, from: data) {
-                    guard !roots.isEmpty, roots.allSatisfy(\.isFileURL),
-                          Set(roots.map(Self.directory)).count == roots.count else { throw CocoaError(.fileReadCorruptFile) }
-                    var migrated = Journal(retainedRoots: roots.map(Self.directory))
-                    // Read every retained root before replacing the legacy journal.
-                    // An unavailable volume must not lose its ownership information.
-                    for root in migrated.retainedRoots {
-                        for call in try makeCalls(root).list() {
-                            guard migrated.owners[call.id] == nil else { throw CocoaError(.fileReadCorruptFile) }
-                            migrated.owners[call.id] = root
-                        }
-                    }
-                    try save(migrated)
-                    saved = migrated
-                } else {
-                    saved = try JSONDecoder().decode(Journal.self, from: data)
-                }
-                guard saved.retainedRoots.allSatisfy(\.isFileURL), saved.owners.values.allSatisfy(\.isFileURL) else {
-                    throw CocoaError(.fileReadCorruptFile)
-                }
-                guard saved.moves.allSatisfy({ id, move in
-                    let source = move.source.resolvingSymlinksInPath().standardizedFileURL.path
-                    let target = move.target.resolvingSymlinksInPath().standardizedFileURL.path
-                    return !target.hasPrefix(source + "/") && !source.hasPrefix(target + "/") &&
-                    move.source.isFileURL && move.target.isFileURL && move.temporary.isFileURL &&
-                    Calls.id(in: move.source.lastPathComponent, timeZone: .gmt) == id &&
-                    Calls.id(in: move.target.lastPathComponent, timeZone: .gmt) == id &&
-                    !Self.sameRoot(move.source, move.target) && move.temporary != move.target &&
-                    Self.sameRoot(move.temporary.deletingLastPathComponent(), move.target.deletingLastPathComponent()) &&
-                    move.temporary.lastPathComponent.hasPrefix(".audelin-move-")
-                }) else { throw CocoaError(.fileReadCorruptFile) }
+                let (saved, migrated) = try CallsJournal.read(data) { [makeCalls] root in try makeCalls(root).list().map(\.id) }
+                if migrated { try save(saved) }
                 state.withLock { state in
                     state.journal = saved
                     recover(&state)
