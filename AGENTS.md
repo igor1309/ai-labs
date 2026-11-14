@@ -85,8 +85,10 @@
 - For the `pr-merge` workflow, use `scripts/watch-pr.sh` to monitor CI and
   `scripts/finish-merged-pr.sh` to complete local cleanup.
 - `watch-pr.sh` exits 0 when checks pass, which is not the merge: auto-merge
-  lands moments later. Wait until `gh pr view` says `MERGED` before running
-  cleanup or closing the issue. Run `finish-merged-pr.sh` from the feature
+  lands moments later. Run `scripts/wait-pr-merged.sh` until it reports the
+  PR merged before running cleanup or closing the issue. Either script exits
+  5 when the PR conflicts with its base: GitHub runs no CI for a conflicting
+  PR, so merge the base in, resolve and push. Run `finish-merged-pr.sh` from the feature
   branch's own worktree.
 - A PR branch need not include the latest trunk. Do not merge trunk solely
   for freshness; resolve merge conflicts and test those changes when needed.
