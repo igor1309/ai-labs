@@ -41,6 +41,7 @@ public final class AudelinCalls {
     /// Each call's gist, read with its notes.
     private var gists: [String: String] = [:]
     private var notesScan: Task<Void, Never>?
+    private var mergeFollow: Task<Void, Never>?
 
     private let retryableSummaries: () -> Set<String>
     private let retrySummary: (String) async throws -> Void
@@ -203,6 +204,7 @@ public final class AudelinCalls {
         inputs.send(.refresh)
         present()
         scanNotes()
+        followMerges()
     }
 
     /// The calls window became narrow or wide: below the width for the call beside the list,
@@ -215,6 +217,24 @@ public final class AudelinCalls {
     public func windowClosed() {
         notesScan?.cancel()
         notesScan = nil
+        mergeFollow?.cancel()
+        mergeFollow = nil
+    }
+
+    /// Selects the call a merge made, so the detail reads it as any selected call.
+    private func followMerges() {
+        mergeFollow?.cancel()
+        mergeFollow = Task {
+            var seen = inputs.state().mergedCallID
+            for await merged in Observations({ self.inputs.state().mergedCallID }) {
+                defer { seen = merged }
+                guard let id = merged, id != seen else { continue }
+                commitRename()
+                selectedID = id
+                selectDetail()
+                detailModel.event(.notesChanged(id: id))
+            }
+        }
     }
 
     /// Finds which listed calls have notes, and each one's gist, as the listing or summary status changes

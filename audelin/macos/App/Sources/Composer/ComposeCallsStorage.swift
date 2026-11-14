@@ -2,6 +2,7 @@ import Calls
 import CallsStorage
 import Foundation
 import Recordings
+import SummaryJobs
 import TrackFile
 import TranscriptFile
 import TranscriptFormat
@@ -24,6 +25,8 @@ func transcriptLines(_ markdown: String) -> [Calls.Text.Line] {
 struct SummaryCalls: RecordingsCalls {
     let storage: CallsStorage
     let deleted: @Sendable (String) async -> Void
+    /// Hands the notes side the merged call, its parts and the joined transcript's entries.
+    var merged: @Sendable (String, [String], [Job.Entry]) async -> Void = { _, _, _ in }
     /// Writes a merged call's joined transcript.
     var binding: any TranscriptFileBinding = DiskTranscriptBinding()
     func list() async throws -> [RecordedCall] {
@@ -38,7 +41,7 @@ struct SummaryCalls: RecordingsCalls {
     func move(id: String, to destination: URL) async throws -> Int64 { try await storage.move(id: id, to: destination) }
     func merge(ids: [String]) async throws -> String {
         let merged = try await mergeCalls(ids: ids, storage: storage, binding: binding)
-        for id in ids { await deleted(id) }
-        return merged
+        await self.merged(merged.id, ids, merged.entries)
+        return merged.id
     }
 }

@@ -1,6 +1,7 @@
 import Calls
 import CallsStorage
 import Foundation
+import SummaryJobs
 import TranscriptFile
 import TranscriptFormat
 import TranscriptJoin
@@ -24,8 +25,9 @@ extension TranscriptFormat.Speaker: JoinSpeaker {
 /// Answers Recordings' merge port: Calls reads each part's saved transcript,
 /// Transcript format reads it back, Transcript join joins the parts, Transcript format
 /// renders the joined call, Transcript file writes it into the folder Calls prepares,
-/// and Calls arranges the folders. Returns the merged call's id.
-func mergeCalls(ids: [String], storage: CallsStorage, binding: any TranscriptFileBinding) async throws -> String {
+/// and Calls arranges the folders. Returns the merged call's id and the joined
+/// transcript's entries for its notes.
+func mergeCalls(ids: [String], storage: CallsStorage, binding: any TranscriptFileBinding) async throws -> (id: String, entries: [Job.Entry]) {
     let listed = Dictionary(try await storage.list().map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     var parts: [TranscriptJoin.Part<TranscriptFormat.Segment, TranscriptFormat.Speaker>] = []
     for id in ids {
@@ -42,7 +44,8 @@ func mergeCalls(ids: [String], storage: CallsStorage, binding: any TranscriptFil
     }
     var format = TranscriptFormat()
     let chunks = try format.render(segments, speakers: joined.speakers).chunks
-    return try await storage.merge(ids: ids) { folder in
+    let entries = summaryEntries(segments, speakerIDs: joined.speakers.map(\.id))
+    let id = try await storage.merge(ids: ids) { folder in
         let url = folder.appendingPathComponent("transcript.md")
         let file = try binding.create(at: url)
         do {
@@ -53,4 +56,5 @@ func mergeCalls(ids: [String], storage: CallsStorage, binding: any TranscriptFil
             throw error
         }
     }
+    return (id, entries)
 }

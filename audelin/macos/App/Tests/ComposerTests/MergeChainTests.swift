@@ -2,6 +2,7 @@ import Calls
 import CallsStorage
 import Foundation
 import Synchronization
+import SummaryJobs
 import Testing
 import TranscriptFile
 import TranscriptFormat
@@ -13,14 +14,14 @@ import TranscriptFormat
 struct MergeChainTests {
     private let first = "1970.01.01-1000", second = "1970.01.01-1001"
 
-    @Test func joinsThePartsTranscriptsIntoTheEarliestCallAndForgetsThePartsNotes() async throws {
+    @Test func joinsThePartsTranscriptsIntoTheEarliestCallAndHandsItToNotes() async throws {
         try await withComposeFolder { root in
             try call(first, in: root, [.init(side: .mine, start: 1, settled: "hello", pending: "")])
             try call(second, in: root, [.init(side: .theirs, start: 2, settled: "hi", pending: "", speaker: "s1")],
                      speakers: [.init(id: "s1", name: "Ann", state: "named")])
-            let forgotten = Mutex<[String]>([])
-            let sut = SummaryCalls(storage: storage(root),
-                                   deleted: { id in forgotten.withLock { $0.append(id) } })
+            let handed = Mutex<[(String, [String], [Job.Entry])]>([])
+            let sut = SummaryCalls(storage: storage(root), deleted: { _ in },
+                                   merged: { call, parts, entries in handed.withLock { $0.append((call, parts, entries)) } })
 
             #expect(try await sut.merge(ids: [second, first]) == first)
 
@@ -30,7 +31,9 @@ struct MergeChainTests {
                                         .gap(at: 10, length: 50),
                                         .init(side: .theirs, start: 62, settled: "hi", pending: "", speaker: "2.s1")])
             #expect(joined.speakers == [.init(id: "2.s1", name: "Ann", state: "named")])
-            #expect(forgotten.withLock { $0 } == [second, first])
+            let notes = try #require(handed.withLock { $0 }.first)
+            #expect(notes.0 == first && notes.1 == [second, first])
+            #expect(notes.2 == [.init(label: "Me", time: "1.0", text: "hello"), .init(label: "Them", time: "62.0", text: "hi")])
         }
     }
 
@@ -38,9 +41,9 @@ struct MergeChainTests {
         try await withComposeFolder { root in
             try call(first, in: root, [.init(side: .mine, start: 1, settled: "hello", pending: "")])
             try call(second, in: root, [.init(side: .mine, start: 1, settled: "again", pending: "")])
-            let forgotten = Mutex<[String]>([])
-            let sut = SummaryCalls(storage: storage(root),
-                                   deleted: { id in forgotten.withLock { $0.append(id) } }, binding: FailingBinding())
+            let handed = Mutex(0)
+            let sut = SummaryCalls(storage: storage(root), deleted: { _ in },
+                                   merged: { _, _, _ in handed.withLock { $0 += 1 } }, binding: FailingBinding())
 
             let failure = await #expect(throws: CallsFailure.self) { _ = try await sut.merge(ids: [first, second]) }
             guard case .mergeFailed(step: .writingTranscript, _) = failure else {
@@ -48,7 +51,7 @@ struct MergeChainTests {
             }
 
             #expect(try await sut.list().map(\.id) == [second, first])
-            #expect(forgotten.withLock { $0 }.isEmpty)
+            #expect(handed.withLock { $0 } == 0)
         }
     }
 

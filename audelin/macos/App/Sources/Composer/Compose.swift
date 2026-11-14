@@ -84,7 +84,11 @@ public func compose(
     menu.installFolderPicker(chooseCallsFolder)
     menu.installSettings(AudelinSettings(preferences: SummaryPreferences(storage: preferences),
                                         availability: SummaryAvailability(runtime: runtime), text: { language.language.settings }), present: presentSettings)
-    let disk = SummaryCalls(storage: storage, deleted: { await summaries.forget(call: $0) })
+    let disk = SummaryCalls(storage: storage, deleted: { await summaries.forget(call: $0) },
+                            merged: { call, parts, entries in
+                                await summaries.merged(call: call, parts: parts, entries: entries,
+                                                       notesOn: preferences.read().notes.enabled)
+                            })
     menu.installCalls(AudelinCalls(inputs: makeRecordings(handler: RecordingsEffectHandler(calls: disk,
                                       reserve: { [weak menu] in await menu?.reserveCallsFolder() ?? false },
                                       release: { [weak menu] in await menu?.releaseCallsFolder() },
