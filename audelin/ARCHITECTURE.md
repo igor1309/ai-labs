@@ -7,26 +7,67 @@ designing, specifying or building anything.
 
 1. **A component owns the interfaces it depends on.** It declares each
    collaborator as an interface of its own, shaped by the role that
-   collaborator plays for it. It never imports another component, a concrete
-   implementation or another component's interface, so it changes only for
-   its own reasons.
+   collaborator plays for it, so it changes only for its own reasons. It
+   imports no other component, no concrete implementation and no other
+   component's interface, except as the kinds below allow.
 2. **The outside world lives only in adapters.** That covers the disk and
    file formats, audio devices, the recognition model, the OS and the UI
    toolkit. A component knows none of them. Each file format has exactly
    one reader and one writer.
-3. **Each component owns its types.** There is no shared domain module.
-   Components with similar types keep their own, and the composition root
-   translates between them.
-4. **The composition root is a responsibility, and can span several modules.**
-   It decides which components are wired and what answers each interface:
-   a fake, a stub or the real framework. A composer owns the interfaces at
-   its boundary and imports whatever it keeps inside. Coordination that
-   decides anything is a state machine with its own tests; composition only
-   builds and subscribes. One line of work is one machine: its state holds
-   every stage, and its stages are collaborators behind its effect handler,
-   never machines that drive each other.
-5. **Cross-cutting concerns are decorators at the root.** Logging, metrics
+3. **Each component owns the types it reads.** There is no shared domain
+   module. Components with similar types keep their own, and the
+   composition root translates between them. Content a component only
+   relays is not read: an operator is generic over it and names only what
+   it reads (Transcript pipeline).
+4. **The composition root builds and subscribes; it decides nothing.** It is
+   a responsibility and can span several modules (the composer packages
+   and the app). It chooses what answers each interface (a fake, a stub or
+   the real framework), maps types between ports, subscribes one machine's
+   output to another's events and applies decorators. A composer owns the
+   interfaces at its boundary and imports whatever it keeps inside. A rule
+   that picks between outcomes, orders steps or keeps state across events
+   is not composition: it belongs to a component or a machine with its own
+   tests.
+5. **Decisions over time are state machines.** A component that keeps state
+   across events and others observe on the way is a machine: a pure reducer
+   and an effect handler (`docs/app-shape.md`). One that runs once in a
+   fixed order, keeps nothing between runs and is observed by no one is a
+   plain component. One line of work is one machine: its state holds every
+   stage, and its stages are collaborators behind its effect handler, never
+   machines that drive each other.
+6. **Cross-cutting concerns are decorators at the root.** Logging, metrics
    and retries wrap interfaces in the composition root. No component logs.
+
+## Components
+
+Each target is one kind. A kind says what the target may import beyond the
+platform; anything else breaks rule 1. The lanes of
+`scripts/component-diagram.py` follow these kinds.
+
+| Kind | May import | Targets |
+|---|---|---|
+| Machine | nothing | Session, Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail |
+| Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch |
+| Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, Calls, Preferences |
+| Shared helper | nothing | SplitRows, CallFolderName, AudioConversion, ModelLoading |
+| UI | GlassLedger, NotesMarkdown, other UI | PanelUI, SettingsUI, MenuBar, CallsListUI, CallsWindowUI, SummaryPreviewUI, NotesMarkdown, GlassLedger |
+| Composition | anything | Composer, LiveAudio, RecordedCapture, CallsWindowShell, Audelin |
+| Test and rehearsal | anything | the crash writers, BlockingTestWork, RenderedText, the rehearsals |
+
+A shared helper is a pure function or value with one reason to change of
+its own (a format, a conversion); it holds no domain type, so rule 3
+stands. MenuBar is UI that also holds the pure reducer for panel presence.
+
+### Open
+
+The composer does not yet follow rule 4. It holds decisions the sections
+below give to the root: submitting notes only after a closed transcript with
+usable text, the shutdown order, and coordinating note publication with
+rename, delete and calls-folder moves. It also holds state across events
+(`CleanupRuns`, `RecordingConditions`, `NewestText`, `CallLiveNames`,
+`LiveNameBoard`). Each becomes a component or machine of its own, or is
+shown to be only mapping. No check yet fails on an import that a target's
+kind does not allow.
 
 ## Optional call notes
 
@@ -34,7 +75,7 @@ The user overview delegates panel presentation to Live panel and optional
 post-call notes to Call summaries. Existing panel scenario identities and
 wording are preserved as that responsibility is separated from the overview.
 
-Summaries is one state machine for the whole line of a call's notes:
+SummaryJobs is one state machine for the whole line of a call's notes:
 recovering a saved job, submitting, claiming, dispatching, generating,
 publishing and saving, stopping dispatch and shutdown. Its state holds every
 call's stage; storage, generation and preferences are its collaborators. No
@@ -43,7 +84,7 @@ owns its consumer-owned ports.
 SpeakerIdentification accepts supported identity evidence without rewriting the
 transcript. SummaryRuntime adapts one bounded process or compatible HTTP
 attempt; SummaryFiles owns durable job records and complete note publication.
-Each keeps its own types. Settings owns editable configuration, rendered
+Each keeps its own types. SummarySettings owns editable configuration, rendered
 validation/save/load outcomes and its preference/availability ports.
 
 The root maps those ports and decorates attempts with fallback and logging.
@@ -65,9 +106,9 @@ superseded answers cannot replace the current detail. The previous detail
 stays visible until the selected call's read answers, and no selection
 clears it.
 
-The composer connects the list's visible selection and the Summaries
+The composer connects the list's visible selection and the SummaryJobs
 machine's badge, status text and retry availability to CallDetail, without
-passing either machine's internal state. Its notes scan still fills the
+passing either machine's internal state. Its notes scan fills the
 list's notes marks and gists and tells CallDetail when notes may have
 changed. The summary view draws the rendered detail, Markdown included.
 The app owns the calls window, its split and, for a narrow window, the
@@ -77,7 +118,7 @@ call's own window; it opens that window after the selected detail is read.
 
 The user can make notes for a call that has none, cancel them while they
 are being made and retry a failed summary. The composer sends these
-actions to Summaries, whose work continues when another call is selected.
+actions to SummaryJobs, whose work continues when another call is selected.
 CallDetail only decides what the selected call shows; its effect handler
 reads notes and never starts, cancels or retries their generation. Calls
 lists folders and reads transcripts through Transcript format.
@@ -94,46 +135,18 @@ Combine: each is generic over the content it carries and constrains it only by
 what it reads. Fill-in, Side text and Call text read a segment's identity and
 its start and end, to decide what is final, to order and to merge; each
 declares that much as a requirement of its own (rule 1) and never names the
-words. Transcript writing already works this way. The content type is defined
-once, where Live text produces it, and opened only by its readers. The root
+words. The content type, `TranscriptSegment`, is defined
+once in the composer and opened only by its readers. The root
 chains the operators, as a Combine pipeline is chained where it is subscribed,
 and conforms the one content type to each operator's requirement instead of
 copying it field by field at every boundary.
 
 So a change to what a transcript holds reaches only its producer and the
-readers that use it. Rule 3 holds for what a component reads, not for content
-it relays.
+readers that use it.
 
 Live text keeps each segment's words with their times, as the recogniser
 reports them, instead of joining them into strings: they are what the call
 said and when, which a reader may need word by word.
-
-### To fix before new work
-
-The code does not yet follow this section. Measured on 2026-11-10: Fill-in,
-Side text and Call text each declare the whole text (identity, times, settled
-and pending strings), read only its identity and times, and the root rebuilds
-it field by field at seven boundaries. Live text drops word times. In order:
-
-1. Make Fill-in, Side text and Call text generic over their content, with the
-   root conforming one content type to each. No behaviour changes.
-2. Live text keeps each segment's words with their times.
-3. Split Transcript file into two adapters that change for different reasons:
-   Transcript format renders segments as Markdown, incrementally, and is the
-   format's only writer; Transcript file owns the bytes on disk: creating
-   (never over a file), replacing whole, rewriting after a kept prefix, and
-   closing. Transcript writing stays the component that decides what is
-   written during a call; the root chains it, the format and the file.
-4. Split save pacing out of Transcript writing (LAB-1146). Transcript writing
-   stands in for call text towards Session: start, switch and stop pass
-   through, updates reach readers as they come, and stopping returns once
-   the last text is kept. Save pacing is an operator generic over what it
-   saves: the latest value waiting is saved, never an older after a newer,
-   with a pause between saves that the root chooses and finishing ends;
-   a failed save is told once until one succeeds. The first changes with
-   Session's lifecycle, the second with the disk and the save interval.
-   Transcript writing owns the port it hands texts to; the root binds it
-   to save pacing, and save pacing's save port to the format and the file.
 
 ## Bleed cleanup
 
@@ -142,9 +155,9 @@ the transcript as the user's. One new responsibility answers it: decide from the
 words of a call's two sides, with their times (Transcript pipeline), whether the far side leaked, and if so have the
 microphone side recognised again from a cleaned microphone and replaced.
 
-BleedCleanup owns that responsibility and nothing else. It is a plain component,
-not a state machine: it runs once per ended call, in a fixed order, and nothing
-observes it on the way; it keeps no state between calls, so it is not an actor.
+BleedCleanup owns that responsibility and nothing else. It is a plain component
+(rule 5): it runs once per ended call, in a fixed order, and nothing observes it
+on the way; it keeps no state between calls, so it is not an actor.
 Its gate is a pure rule over its own word type. It owns three ports: clean the
 microphone against the call track, hear the cleaned samples, replace the
 microphone side of the saved transcript. Any port failing, or hearing nothing,
