@@ -19,7 +19,10 @@ func makeObservedState(_ update: (inout State) -> Void = { _ in }) -> State {
         $0.knownNames = ["Anna"]
         $0.spoken = [.init(name: "Anna", start: 1, end: nil)]
         $0.through = 5
-        $0.sequence = 3; $0.zoomSequence = 3; $0.zoomEpoch = 1; $0.zoomHealth = .healthy
+        $0.sequence = 3; $0.zoom.sequence = 3; $0.zoom.epoch = 1; $0.zoom.health = .healthy
+        $0.zoom.members = [.init(id: "Anna", name: "Anna")]
+        $0.zoom.intervals = [.init(memberID: "Anna", start: 1, end: nil)]
+        $0.zoom.through = 5
         update(&$0)
     }
 }
@@ -69,4 +72,25 @@ func assert(
     #expect(next == expected, "\(state) + \(event)", sourceLocation: sourceLocation)
     #expect(effect == nil, sourceLocation: sourceLocation)
     return next
+}
+
+func makeBrowserState(_ update: (inout State) -> Void = { _ in }) -> State {
+    makeObservedState {
+        $0.browser = .init(
+            members: [.init(id: "remote", name: "Boris"), .init(id: "self", name: "Me", isLocal: true)],
+            intervals: [.init(memberID: "remote", start: 2, end: nil), .init(memberID: "self", start: 0, end: 1)],
+            through: 6, epoch: 4, sequence: 3, health: .healthy
+        )
+        $0.roster = ["Boris"]
+        $0.spoken = [.init(name: "Boris", start: 2, end: nil), .init(name: "Me", start: 0, end: 1)]
+        $0.through = 6
+        update(&$0)
+    }
+}
+
+func makeBrowserRequest(through: Double = 6) -> NamingSpy.Request {
+    .init(start: 1, end: 5,
+          roster: [.init(id: "remote", name: "Boris"), .init(id: "self", name: "Me", isLocal: true)],
+          activities: [.init(participantID: "remote", start: 2, end: nil, uncertainty: 0.5),
+                       .init(participantID: "self", start: 0, end: 1, uncertainty: 0.5)], through: through)
 }
