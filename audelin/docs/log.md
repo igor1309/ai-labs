@@ -2,6 +2,7 @@
 
 ## 2026-11-14
 
+- LAB-1468: Each recording's session decides its own start-up, end and teardown, and Recording orders each session's begin and end in its own state; ending a recording during start-up or before its transcript opens takes the same path. Behaviour is unchanged.
 - LAB-1466: One state machine per recording names the far-side rows from Zoom's Talking indicator or the browser extension and confirms them after the call; the panel and the transcript take their names from it.
 - LAB-1467: Recognising each call side, including keeping audio already heard when live text is switched off and back on, now belongs to Live text instead of the app's composition; behaviour is unchanged.
 - LAB-1465: One state machine decides which recording conditions are met, from the microphone permission, call-audio access, the calls folder and its free room; readings that arrive late no longer overwrite newer ones, and the calls folder stays unavailable while storage moves.
