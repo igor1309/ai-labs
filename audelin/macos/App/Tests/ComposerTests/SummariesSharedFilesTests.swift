@@ -1,6 +1,7 @@
 import BlockingTestWork
 import Calls
 import CallsListUI
+import CallsStorage
 import Foundation
 import Preferences
 import SummaryFiles
@@ -192,7 +193,7 @@ import Testing
         #expect(try await files.load(call: id)?.phase == "interrupted")
     }
     private func files(_ root: URL) -> Files {
-        Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
+        Files(locations: callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
     }
     private func port(_ root: URL) -> SummariesFilesPort { .init(files: files(root), makeID: { UUID().uuidString }) }
     private func phase(_ root: URL) async throws -> String? { try await files(root).load(call: id)?.phase }

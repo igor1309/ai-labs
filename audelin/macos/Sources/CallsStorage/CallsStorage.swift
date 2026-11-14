@@ -1,70 +1,48 @@
 import Calls
-import CallsStorage
-import Recordings
 import Foundation
-import Preferences
+import Recordings
 import SummaryFiles
 import Synchronization
-import TrackFile
-import TranscriptFormat
 
-/// One transaction boundary for call mutations and note publication.
-final class SummaryStorage: SummaryFiles.Locations, Sendable {
-    typealias Journal = CallsJournal
+/// One transaction boundary for call mutations and note publication. It keeps
+/// the calls journal, recovers moves a crash interrupted, runs every operation
+/// one at a time, and refuses to delete, move or commit while a move is half finished.
+public final class CallsStorage: SummaryFiles.Locations, Sendable {
     private struct State {
         var recordingFolder: URL
-        var journal = Journal()
+        var journal = CallsJournal()
     }
     private let state: Mutex<State>
     private let journal: URL?
-    private let writeJournal: @Sendable (Journal, URL) throws -> Void
+    private let writeJournal: @Sendable (CallsJournal, URL) throws -> Void
     private let makeCalls: @Sendable (URL) -> Calls
     // Every operation, including summary writes through withFolder, takes this turn,
     // so one waiting for a long folder move suspends instead of blocking a thread.
     private let turn = Turn()
 
-    convenience init(folder: URL, timeZone: TimeZone, journal: URL? = nil, trash: @escaping @Sendable (URL) throws -> Void) {
-        self.init(folder: folder, timeZone: timeZone, journal: journal, trash: trash, writeJournal: { record, journal in
-            try FileManager.default.createDirectory(at: journal.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try JSONEncoder().encode(record).write(to: journal, options: .atomic)
-        })
-    }
-    convenience init(folder: URL, timeZone: TimeZone, journal: URL?, trash: @escaping @Sendable (URL) throws -> Void,
-                     writeJournal: @escaping @Sendable (Journal, URL) throws -> Void) {
-        var disk = CallsDisk.system
-        disk.trash = trash
-        self.init(folder: folder, journal: journal, writeJournal: writeJournal,
-                  makeCalls: { [disk] in Calls(folder: $0, timeZone: timeZone, duration: TrackFile.duration(at:),
-                                               transcript: Self.transcriptLines, disk: disk) })
-    }
-    /// A saved transcript's lines, read by the format's one reader.
-    static func transcriptLines(_ markdown: String) -> [Calls.Text.Line] {
-        TranscriptFormat.entries(markdown).map { .init(start: $0.start, words: $0.words, label: $0.label) }
-    }
-
-    init(folder: URL, journal: URL?, writeJournal: @escaping @Sendable (Journal, URL) throws -> Void,
-         makeCalls: @escaping @Sendable (URL) -> Calls) {
-        state = Mutex(State(recordingFolder: Self.directory(folder)))
+    /// `journal` is where the journal is kept; nil keeps it in memory only.
+    /// `makeCalls` opens the calls of one folder.
+    public init(folder: URL, journal: URL?, writeJournal: @escaping @Sendable (CallsJournal, URL) throws -> Void = CallsStorage.writeAtomically,
+                makeCalls: @escaping @Sendable (URL) -> Calls) {
+        state = Mutex(State(recordingFolder: directory(folder)))
         self.journal = journal; self.writeJournal = writeJournal; self.makeCalls = makeCalls
     }
 
-    func restore() async throws {
+    public func restore() async throws {
         try await perform { [self] in
             guard let journal else { return }
             let data: Data
             do { data = try Data(contentsOf: journal) }
             catch let error as CocoaError where error.code == .fileReadNoSuchFile { return }
-            do {
-                let (saved, migrated) = try CallsJournal.read(data) { [makeCalls] root in try makeCalls(root).list().map(\.id) }
-                if migrated { try save(saved) }
-                state.withLock { state in
-                    state.journal = saved
-                    recover(&state)
-                }
+            let (saved, migrated) = try CallsJournal.read(data) { [makeCalls] root in try makeCalls(root).list().map(\.id) }
+            if migrated { try save(saved) }
+            state.withLock { state in
+                state.journal = saved
+                recover(&state)
             }
         }
     }
-    private func save(_ record: Journal) throws {
+    private func save(_ record: CallsJournal) throws {
         if let journal { try writeJournal(record, journal) }
     }
     private func record(_ move: Calls.Move, id: String, state: inout State) throws {
@@ -74,13 +52,13 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
         try save(next)
         state.journal = next
     }
-    private static func directory(_ url: URL) -> URL { URL(fileURLWithPath: url.standardizedFileURL.path, isDirectory: true) }
-    private static func sameRoot(_ left: URL, _ right: URL) -> Bool {
-        left.resolvingSymlinksInPath().standardizedFileURL.path == right.resolvingSymlinksInPath().standardizedFileURL.path
+    public static let writeAtomically: @Sendable (CallsJournal, URL) throws -> Void = { record, journal in
+        try FileManager.default.createDirectory(at: journal.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try JSONEncoder().encode(record).write(to: journal, options: .atomic)
     }
 
     /// Retained volumes need not be mounted to reserve the calls they own.
-    func occupiedCallNames() throws -> [String] {
+    public func occupiedCallNames() throws -> [String] {
         state.withLock { Array(Set($0.journal.moves.keys).union($0.journal.owners.keys)) }
     }
     private func recover(_ state: inout State, id: String? = nil) {
@@ -100,7 +78,7 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
     private func ownerRoot(id: String, state: State) -> URL? {
         state.journal.moves[id]?.owner.deletingLastPathComponent() ?? state.journal.owners[id]
     }
-    func withFolder<Value: Sendable>(call: String, _ operation: @Sendable (URL) throws -> Value) async throws -> Value {
+    public func withFolder<Value: Sendable>(call: String, _ operation: @Sendable (URL) throws -> Value) async throws -> Value {
         try await perform { try folder(call: call, operation) }
     }
     private func folder<Value: Sendable>(call: String, _ operation: @Sendable (URL) throws -> Value) throws -> Value {
@@ -115,30 +93,30 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
     private func list(_ state: State) throws -> [Calls.Call] {
         var result = try makeCalls(state.recordingFolder).list().filter {
             guard let owner = ownerRoot(id: $0.id, state: state) else { return true }
-            return Self.sameRoot(owner, state.recordingFolder)
+            return sameRoot(owner, state.recordingFolder)
         }
         let otherRoots = Set((Array(state.journal.owners.values) + state.journal.moves.values.map { $0.owner.deletingLastPathComponent() }).map {
-            Self.directory($0.resolvingSymlinksInPath())
+            directory($0.resolvingSymlinksInPath())
         })
-            .filter { !Self.sameRoot($0, state.recordingFolder) }
+            .filter { !sameRoot($0, state.recordingFolder) }
         for root in otherRoots {
             result += try makeCalls(root).list().filter { call in
-                ownerRoot(id: call.id, state: state).map { Self.sameRoot($0, root) } == true
+                ownerRoot(id: call.id, state: state).map { sameRoot($0, root) } == true
             }
         }
         return result.sorted { $0.id > $1.id }
     }
-    func list() async throws -> [Calls.Call] {
+    public func list() async throws -> [Calls.Call] {
         try await perform { [self] in
             try state.withLock { state in recover(&state); return try list(state) }
         }
     }
-    func rename(id: String, title: String) async throws {
+    public func rename(id: String, title: String) async throws {
         try await perform { [self] in
             try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).rename(id: id, title: title) }
         }
     }
-    func delete(id: String) async throws {
+    public func delete(id: String) async throws {
         try await perform { [self] in
             try state.withLock { state in
                 recover(&state, id: id)
@@ -155,9 +133,9 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
             }
         }
     }
-    func location(id: String) async throws -> URL { try await perform { [self] in try folder(call: id) { $0 } } }
+    public func location(id: String) async throws -> URL { try await perform { [self] in try folder(call: id) { $0 } } }
     /// A call's notes and transcript lines, for search.
-    func text(id: String) async throws -> Calls.Text {
+    public func text(id: String) async throws -> Calls.Text {
         try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).text(id: id) } }
     }
     private func validate(_ destination: URL, state: State) throws {
@@ -169,7 +147,7 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
         }
         _ = try makeCalls(destination).count()
     }
-    func prepareMove(to destination: URL) async throws -> [MoveCall] {
+    public func prepareMove(to destination: URL) async throws -> [MoveCall] {
         try await perform { [self] in
             try state.withLock { state in
                 recover(&state)
@@ -177,12 +155,12 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
                 return try list(state).map { call in
                     let root = try location(id: call.id, state: state).deletingLastPathComponent()
                     return MoveCall(id: call.id, title: call.title, bytes: try makeCalls(root).bytes(id: call.id),
-                                    inDestination: Self.sameRoot(root, destination))
+                                    inDestination: sameRoot(root, destination))
                 }
             }
         }
     }
-    func move(id: String, to destination: URL) async throws -> Int64 {
+    public func move(id: String, to destination: URL) async throws -> Int64 {
         try await perform { [self] in
             try state.withLock { state in
                 recover(&state, id: id)
@@ -191,7 +169,7 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
                     throw CocoaError(.fileWriteUnknown)
                 }
                 let source = try location(id: id, state: state)
-                if Self.sameRoot(source.deletingLastPathComponent(), destination) {
+                if sameRoot(source.deletingLastPathComponent(), destination) {
                     return try makeCalls(destination).bytes(id: id)
                 }
                 return try makeCalls(source.deletingLastPathComponent()).move(id: id, to: destination) {
@@ -200,38 +178,23 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
             }
         }
     }
-    func commitFolder(_ destination: URL, commit: @escaping @Sendable () throws -> Void) async throws {
+    public func commitFolder(_ destination: URL, commit: @escaping @Sendable () throws -> Void) async throws {
         try await perform { [self] in
             try state.withLock { state in
                 recover(&state)
                 try validate(destination, state: state)
                 guard try list(state).allSatisfy({
-                    try Self.sameRoot(location(id: $0.id, state: state).deletingLastPathComponent(), destination)
+                    try sameRoot(location(id: $0.id, state: state).deletingLastPathComponent(), destination)
                 }), state.journal.moves.values.allSatisfy({ [.source, .destination].contains($0.phase) }) else {
                     throw CocoaError(.fileWriteUnknown)
                 }
                 try save(state.journal)
                 try commit()
-                state.recordingFolder = Self.directory(destination)
+                state.recordingFolder = directory(destination)
                 // The preference commit is the result. Keeping redundant recovery
                 // records is safe when their final cleanup cannot be persisted.
-                if (try? save(Journal())) != nil { state.journal = Journal() }
+                if (try? save(CallsJournal())) != nil { state.journal = CallsJournal() }
             }
         }
     }
-}
-
-struct SummaryCalls: RecordingsCalls {
-    let storage: SummaryStorage
-    let deleted: @Sendable (String) async -> Void
-    func list() async throws -> [RecordedCall] {
-        try await storage.list().map { .init(id: $0.id, title: $0.title, start: $0.start, duration: $0.duration) }
-    }
-    func rename(id: String, title: String) async throws { try await storage.rename(id: id, title: title) }
-    func delete(id: String) async throws {
-        try await storage.delete(id: id)
-        await deleted(id)
-    }
-    func prepareMove(to destination: URL) async throws -> [MoveCall] { try await storage.prepareMove(to: destination) }
-    func move(id: String, to destination: URL) async throws -> Int64 { try await storage.move(id: id, to: destination) }
 }

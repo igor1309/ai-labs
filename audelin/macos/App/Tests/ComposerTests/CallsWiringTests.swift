@@ -16,7 +16,7 @@ import Testing
 struct CallsWiringTests {
     @Test func callsReadTranscriptLinesThroughTranscriptFormatWithWordsAsWritten() {
         let markdown = "# Transcript\n\n**Me** 00:00:05\nпо OKR\\_2 и *да*\n\n**Them 1** 01:02:03 (filled in later)\nСогласен\n"
-        #expect(SummaryStorage.transcriptLines(markdown) == [
+        #expect(transcriptLines(markdown) == [
             .init(start: 5, words: "по OKR\\_2 и *да*", label: "Me"),
             .init(start: 3_723, words: "Согласен", label: "Them 1"),
         ])
