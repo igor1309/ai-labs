@@ -59,8 +59,10 @@ let package = Package(
         .library(name: "SystemAudioCapture", targets: ["SystemAudioCapture"]),
         .library(name: "TrackFile", targets: ["TrackFile"]),
         .library(name: "TranscriptFormat", targets: ["TranscriptFormat"]),
+        .library(name: "TranscriptJoin", targets: ["TranscriptJoin"]),
         .library(name: "TranscriptFile", targets: ["TranscriptFile"]),
         .library(name: "SavePacing", targets: ["SavePacing"]),
+        .library(name: "LatestText", targets: ["LatestText"]),
         .library(name: "TranscriptFinalization", targets: ["TranscriptFinalization"]),
         .library(name: "RecordingConditions", targets: ["RecordingConditions"]),
         .library(name: "TranscriptWriting", targets: ["TranscriptWriting"]),
@@ -244,8 +246,12 @@ let package = Package(
         ),
         .target(name: "SavePacing"),
         .testTarget(name: "SavePacingTests", dependencies: ["SavePacing"]),
+        .target(name: "LatestText"),
+        .testTarget(name: "LatestTextTests", dependencies: ["LatestText"]),
         .target(name: "TranscriptFormat"),
         .testTarget(name: "TranscriptFormatTests", dependencies: ["TranscriptFormat"]),
+        .target(name: "TranscriptJoin"),
+        .testTarget(name: "TranscriptJoinTests", dependencies: ["TranscriptJoin"]),
         .target(
             name: "TranscriptFile"
         ),

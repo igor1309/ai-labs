@@ -1,3 +1,4 @@
+import class LatestText.LatestText
 import class SavePacing.SavePacing
 import class CallAppProcesses.CallAppProcesses
 import CallFolder
@@ -43,14 +44,19 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     var sides: [SessionSide: Side]
     var transcriptFile: (any TranscriptWriter)?
     var writing: WritingReader?
-    private var readingOutput: NewestText?
+    private var readingOutput: LatestText<CallState>?
     private var readingSpeakers: AsyncStream<[Int: Int]>.Continuation?
     private var readingObservation: Task<Void, Never>?
+
+    /// A listening state replaces the panel's text; a state of another status adds to it.
+    static func readingFeed() -> LatestText<CallState> {
+        LatestText { $0.status == .listening }
+    }
 
     // Register before Session begins so its first text state cannot be missed.
     func readingText() -> (text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]>) {
 
-        let output = NewestText()
+        let output = SessionPieces.readingFeed()
         readingOutput = output
         let speakers = AsyncStream<[Int: Int]>.makeStream()
         readingSpeakers = speakers.continuation

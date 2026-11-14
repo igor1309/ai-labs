@@ -87,6 +87,14 @@ leaves no `summary.md` or `.summary-job.json`, saves screenshots of the making,
 completed and cancelled states (and of any failed wait), and quits each run. The
 folder it prints under `$TMPDIR` keeps the fixtures and screenshots.
 
+`sh scripts/live-calls-merge.sh` runs the same way for merging calls. Its first
+launch holds four calls with one-second tracks: it merges two neighbouring
+parts, then merges the result with a call past an unmarked one, going back from
+the warning once before merging anyway. It checks the merged folder, the joined
+transcript and that every track is byte for byte as written. Its second launch
+makes the calls folder read-only before confirming and checks that the failure
+shows and both parts stay.
+
 ## Browser extension
 
 `extension/` holds the Manifest V3 extension that names remote speakers in

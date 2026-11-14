@@ -88,6 +88,7 @@ let package = Package(
         .target(
             name: "Composer",
             dependencies: [
+                .product(name: "LatestText", package: "macos"),
                 .product(name: "RecordingConditions", package: "macos"),
                 .product(name: "CallDetail", package: "macos"),
                 .product(name: "BleedCleanup", package: "macos"),
@@ -125,6 +126,7 @@ let package = Package(
                 .product(name: "LiveText", package: "macos"),
                 .product(name: "TrackFile", package: "macos"),
                 .product(name: "TranscriptFormat", package: "macos"),
+                .product(name: "TranscriptJoin", package: "macos"),
                 .product(name: "TranscriptFile", package: "macos"),
                 .product(name: "TranscriptWriting", package: "macos"),
                 .product(name: "TranscriptFinalization", package: "macos"),

@@ -84,13 +84,24 @@ public func compose(
     menu.installFolderPicker(chooseCallsFolder)
     menu.installSettings(AudelinSettings(preferences: SummaryPreferences(storage: preferences),
                                         availability: SummaryAvailability(runtime: runtime), text: { language.language.settings }), present: presentSettings)
-    let disk = SummaryCalls(storage: storage, deleted: { await summaries.forget(call: $0) })
+    let disk = SummaryCalls(storage: storage, deleted: { await summaries.forget(call: $0) },
+                            merged: { call, parts, entries in
+                                await summaries.merged(call: call, parts: parts, entries: entries,
+                                                       notesOn: preferences.read().notes.enabled)
+                            })
     menu.installCalls(AudelinCalls(inputs: makeRecordings(handler: RecordingsEffectHandler(calls: disk,
                                       reserve: { [weak menu] in await menu?.reserveCallsFolder() ?? false },
                                       release: { [weak menu] in await menu?.releaseCallsFolder() },
                                       storeFolder: { destination in
                                           try await storage.commitFolder(destination) { try preferences.updateCallsFolder(destination) }
-                                      }, describe: { language.language.settings.callsFailure($0) }), text: { language.language.settings }, initial: .init(callsFolder: preferences.read().callsFolder)),
+                                      }, describe: { language.language.settings.callsFailure($0) }), text: { language.language.settings },
+                                      isIdle: { [weak menu] in
+                                          MainActor.assumeIsolated {
+                                              idleToMerge(recording: menu?.state.phase ?? .idle,
+                                                          finishing: finalization.state.calls.values.map(\.stage),
+                                                          notesBusy: summaries.busy)
+                                          }
+                                      }, initial: .init(callsFolder: preferences.read().callsFolder)),
                                   timeZone: timeZone, now: boundary.time.now, recordingState: { [weak menu] in menu?.state ?? .init() },
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
                                   present: presentCalls, summaryStatuses: { summaries.statuses }, summaryBadges: { summaries.badges },

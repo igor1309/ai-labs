@@ -12,3 +12,5 @@
 "preview.noSummary" = "No summary";
 "preview.noSelection" = "No call selected";
 "preview.notesLabel" = "Notes";
+"preview.mergeCalls" = "Merge calls…";
+"preview.mergeDone" = "Done";

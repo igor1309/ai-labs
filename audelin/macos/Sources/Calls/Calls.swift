@@ -67,14 +67,33 @@ public struct Calls: Sendable {
 
     public func list() throws -> [Call] {
         try folders(in: folder).map { url, name in
-            let lengths = ["microphone.caf", "call.caf"].compactMap { track -> TimeInterval? in
-                let trackURL = url.appendingPathComponent(track)
-                guard let info = try? values(trackURL), info.isSymbolicLink != true,
-                      let length = try? duration(trackURL), length.isFinite, length >= 0 else { return nil }
-                return length
-            }
-            return Call(id: name.id, title: name.title, start: name.start, duration: lengths.max())
+            Call(id: name.id, title: name.title, start: name.start, duration: try length(url, start: name.start))
         }.sorted { $0.id > $1.id }
+    }
+
+    /// A call's longer track; a merged call's span, from its start to the latest end of
+    /// any part, a merged part's parts included. None when a part's length is unknown.
+    /// A folder with a track of its own is a recorded call, never searched for parts.
+    private func length(_ url: URL, start: Date) throws -> TimeInterval? {
+        let tracks = ["microphone.caf", "call.caf"].map { url.appendingPathComponent($0) }
+        guard !tracks.contains(where: { (try? values($0)) != nil }) else { return trackLength(url) }
+        let parts = try folders(in: url)
+        guard !parts.isEmpty else { return nil }
+        var end: TimeInterval = 0
+        for (part, name) in parts {
+            guard let length = try length(part, start: name.start) else { return nil }
+            end = max(end, name.start.timeIntervalSince(start) + length)
+        }
+        return end
+    }
+
+    private func trackLength(_ url: URL) -> TimeInterval? {
+        ["microphone.caf", "call.caf"].compactMap { track -> TimeInterval? in
+            let trackURL = url.appendingPathComponent(track)
+            guard let info = try? values(trackURL), info.isSymbolicLink != true,
+                  let length = try? duration(trackURL), length.isFinite, length >= 0 else { return nil }
+            return length
+        }.max()
     }
 
     /// Resolves afresh, including when the title has changed in Finder.
@@ -110,6 +129,71 @@ public struct Calls: Sendable {
         }
         let notes = try string("summary.md")
         return Text(notes: notes.flatMap { $0.isEmpty ? nil : $0 }, transcript: transcript(try string("transcript.md") ?? ""))
+    }
+
+    /// A call's saved `transcript.md` as written, for a merge to read back.
+    public func savedTranscript(id: String) throws -> Data {
+        let url = try location(id: id).appendingPathComponent("transcript.md")
+        do {
+            guard let data = try disk.read(url) else { throw CocoaError(.fileReadNoSuchFile) }
+            return data
+        } catch { throw CallsFailure.unreadableTranscript(id: id, reason: error.localizedDescription) }
+    }
+
+    /// Merges calls into one call folder named as the earliest part, holding each part's
+    /// folder whole and the joined transcript `write` puts in the folder it is given.
+    /// The folder is prepared under a name no listing shows, then renamed into place.
+    /// Returns the merged call's id, the earliest part's. Every part needs a known
+    /// length, checked before anything moves. A failure moves every part back out and
+    /// removes the prepared folder, so a merge is whole or not at all.
+    @discardableResult
+    public func merge(ids: [String], write: (URL) throws -> Void) throws -> String {
+        let parts = try ids.map { try location(id: $0) }
+        guard parts.count > 1, let earliest = zip(ids, parts).min(by: { $0.0 < $1.0 }) else { throw POSIXError(.EINVAL) }
+        for (id, part) in zip(ids, parts) {
+            guard let name = CallFolderName(part.lastPathComponent, timeZone: timeZone),
+                  try length(part, start: name.start) != nil else { throw CallsFailure.unknownLength(id: id) }
+        }
+        let prepared = folder.appendingPathComponent(Self.mergePrefix + UUID().uuidString, isDirectory: true)
+        try disk.makeFolder(prepared)
+        var step = CallsFailure.MergeStep.writingTranscript
+        do {
+            try write(prepared)
+            for part in parts {
+                step = .movingPart(folder: part.lastPathComponent)
+                try rename(part, prepared.appendingPathComponent(part.lastPathComponent, isDirectory: true))
+            }
+            step = .publishing
+            try rename(prepared, folder.appendingPathComponent(earliest.1.lastPathComponent, isDirectory: true))
+            return earliest.0
+        } catch {
+            let failure = CallsFailure.mergeFailed(step: step, reason: error.localizedDescription)
+            try putBack(parts, from: prepared)
+            throw failure
+        }
+    }
+
+    /// Puts back every merge interrupted before it was in place: each part in a
+    /// prepared folder goes back to the calls folder and the prepared folder is
+    /// removed. The prepared folder is made before any part moves, so it records the
+    /// merge; a merge in place has none. Run once as Calls starts, before its first
+    /// listing, never while a merge is under way.
+    public func recoverInterruptedMerges() throws {
+        for prepared in try children(folder) where prepared.lastPathComponent.hasPrefix(Self.mergePrefix) {
+            let parts = try folders(in: prepared).map { folder.appendingPathComponent($0.0.lastPathComponent, isDirectory: true) }
+            try putBack(parts, from: prepared)
+        }
+    }
+
+    private static let mergePrefix = ".audelin-merge-"
+
+    /// Moves every part found in `prepared` back to its place and removes `prepared`.
+    private func putBack(_ parts: [URL], from prepared: URL) throws {
+        for part in parts {
+            let inside = prepared.appendingPathComponent(part.lastPathComponent, isDirectory: true)
+            if try exists(inside) { try rename(inside, part) }
+        }
+        try removeIfPresent(prepared)
     }
 
     public func bytes(id: String) throws -> Int64 { try size(location(id: id)) }
@@ -330,6 +414,18 @@ public enum CallsFailure: Error, Equatable, Sendable {
     case trashFailed(folder: String, reason: String)
     /// The copy's file sizes differ from the source's.
     case sizeMismatch
+    /// A call to merge has no known length, so its place in the merged call is unknown.
+    case unknownLength(id: String)
+    /// A call's saved transcript cannot be read.
+    case unreadableTranscript(id: String, reason: String)
+    /// A merge stopped at `step`; its parts were put back.
+    case mergeFailed(step: MergeStep, reason: String)
+
+    public enum MergeStep: Equatable, Sendable {
+        case writingTranscript
+        case movingPart(folder: String)
+        case publishing
+    }
 }
 
 /// The file system as `Calls` lists, renames, copies, trashes and removes folders.
@@ -342,6 +438,8 @@ public struct CallsDisk: Sendable {
     /// Moves a folder to the Trash of its volume, whole or not at all.
     public var trash: @Sendable (URL) throws -> Void
     var remove: @Sendable (URL) throws -> Void
+    /// Creates an empty folder, failing when anything has its name.
+    var makeFolder: @Sendable (URL) throws -> Void = { try FileManager.default.createDirectory(at: $0, withIntermediateDirectories: false) }
     /// A file's bytes, or nil when it does not exist.
     var read: @Sendable (URL) throws -> Data? = { url in
         do { return try Data(contentsOf: url) }

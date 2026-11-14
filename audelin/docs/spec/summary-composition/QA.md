@@ -62,3 +62,18 @@ A refresh that cannot read the call, or reads an unknown phase or a corrupt reco
 ## S-14 Call end starts the call's notes machine
 
 `swift test --filter CallNotesWiringTests/callEndShowsMakingThenTheNotes` ends a recorded call with automatic notes on and controlled generation held. The selected detail shows making, then the published notes after release.
+
+## S-15 A merge replaces every part's notes job
+
+Parts A pending and B done, merged as A: both jobs are dropped, the fake
+runtime never gets A's own transcript, and the one request for A holds
+both parts' text. Evidence, for the dropped jobs:
+`SummariesCancelReducerTests.S15_droppingAMergedPartsStoredJobDiscardsIt()`,
+`S15_droppingAMergedPartsStoredJobDeliversDiscard()`,
+`SummariesRetryReducerTests.S15_droppingAMergedPartsSettledCallDropsIt(stage:)`,
+`droppingARunningCallChangesNothing(stage:)` and
+`SummariesModelTests.S15_dropDropsEveryMergedPart()`; the joined request:
+`SummariesModelTests.S15_aMergedCallsNotesAreMadeFromItsJoinedTranscript()`,
+waiting for a part's stored job to be discarded:
+`SummariesCancelReducerTests.S15_aMergedCallsSubmissionWaitsForItsPartsDiscard()`
+and `S15_aMergedCallsSubmissionIsPreparedOnceThePartsJobIsGone(event:)`.

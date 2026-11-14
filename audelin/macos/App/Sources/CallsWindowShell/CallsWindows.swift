@@ -19,7 +19,8 @@ public final class CallsWindows {
                                detail: detail,
                                widthChanged: { calls.widthChanged(narrow: $0) })
         window.install(controller: split)
-        let actions = CallsToolbar(identifier: "CallsToolbar", splitView: split.splitView, title: model.callsListText(.windowTitle), text: model.previewText, act: act)
+        let actions = CallsToolbar(identifier: "CallsToolbar", splitView: split.splitView, title: model.callsListText(.windowTitle), text: model.previewText, act: act,
+                                   merge: { calls.toggleMergeMode() })
         installCallsToolbar(actions.toolbar, in: nsWindow)
         let reading = CallsToolbar(identifier: "CallToolbar", text: model.previewText, act: act)
         let readingWindow = makeCallWindow(content: NSHostingView(rootView: CallsDetailContent(model: calls, text: { model.previewText })),
@@ -45,7 +46,11 @@ func observeToolbars(_ model: AudelinMenu, calls: AudelinCalls, toolbars: [Calls
         }
     }
     Task { @MainActor in
-        for await actions in Observations({ callActions(detailState(calls.detail, text: model.previewText)) }) {
+        for await actions in Observations({ () -> CallActions in
+            var actions = callActions(detailState(calls.detail, text: model.previewText))
+            (actions.merge, actions.merging) = calls.mergeControl
+            return actions
+        }) {
             toolbars.forEach { $0.show(actions) }
         }
     }

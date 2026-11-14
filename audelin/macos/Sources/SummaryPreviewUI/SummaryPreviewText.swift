@@ -12,6 +12,8 @@ public enum SummaryPreviewPhrase: String, CaseIterable, Sendable {
 
     case notes = "preview.notesLabel"
     case copy = "preview.copy"
+    case mergeCalls = "preview.mergeCalls"
+    case mergeDone = "preview.mergeDone"
     case open = "preview.open"
     case rename = "preview.rename"
     case retrySummary = "preview.retrySummary"

@@ -95,7 +95,7 @@ struct CallsListNotesTests {
 
     // MARK: - Helpers
 
-    @MainActor private final class Shown {
+    @MainActor final class Shown {
         private(set) var sent: [CallsListEvent] = []
         private var window: NSWindow!
         private let scheme: ColorScheme
@@ -124,6 +124,9 @@ struct CallsListNotesTests {
             let box = target.convert(target.bounds, to: nil)
             return CGRect(x: box.minX, y: 420 - box.maxY, width: box.width, height: box.height)
         }
+
+        /// The row's right-click target, found by its identifier.
+        func target(_ id: String) -> NSView? { window.contentView.flatMap { find("calls.row.\(id)", in: $0) } }
 
         private func find(_ identifier: String, in view: NSView) -> NSView? {
             if view.accessibilityIdentifier() == identifier { return view }

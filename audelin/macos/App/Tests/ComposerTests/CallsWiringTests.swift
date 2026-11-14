@@ -42,6 +42,23 @@ struct CallsWiringTests {
         }
     }
 
+    @Test func mappingShowsMergeModeItsMarksTheWarningAndARunningMerge() {
+        var state = RecordingsState()
+        state.calls = [call("C", title: "Later"), call("B"), call("A", title: "Earlier")]
+        state.mergeSelection = ["A", "C"]
+        func mapped() -> CallsListState { callsListState(state, timeZone: .gmt, now: .distantFuture, text: .init(language: .russian)) }
+        #expect(mapped().merge == nil)
+        state.phase = .merging
+        #expect(mapped().merge == .init(marked: ["A", "C"]))
+        #expect(!mapped().busy)
+        state.phase = .warnedFarApart
+        #expect(mapped().merge == .init(marked: ["A", "C"],
+                                        warning: "Между «Earlier» и «Later» есть звонки, которые не выбраны. Они останутся отдельными."))
+        state.phase = .runningMerge
+        #expect(mapped().merge == .init(marked: ["A", "C"], running: true))
+        #expect(!mapped().busy)
+    }
+
     @Test func mappingOpensEachDayWithItsHeaderAndCount() {
         let hour = 3_600.0, now = Date(timeIntervalSince1970: 3 * 24 * hour + 20 * hour)
         var state = RecordingsState()

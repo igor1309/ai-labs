@@ -9,6 +9,9 @@ The rules are in `mizan-ble/AGENTS.md`: "Running the work", "Building
 cores and adapters", "UI modules". This skill is the procedure that follows
 them. Keep each issue's briefs and logs in thread storage, in `lab-<n>/`.
 
+A new feature reaches this skill only after its user spec, architecture
+and component specs have landed (root `AGENTS.md`, "Building a feature").
+
 ## Steps
 
 1. **Issue.** `multica ... issue get LAB-<n>`, then
