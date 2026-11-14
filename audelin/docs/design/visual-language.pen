@@ -28301,23 +28301,20 @@
                               "padding": "$space-24",
                               "children": [
                                 {
-                                  "id": "w8IzT9",
+                                  "id": "h9oPsM",
                                   "type": "ref",
-                                  "ref": "Cb0Qc",
+                                  "ref": "ksNeX",
                                   "name": "Settings tabs",
                                   "width": "fill_container",
                                   "descendants": {
-                                    "nor3c": {
-                                      "fill": "$selBg"
+                                    "yGGGs/OdXwE": {
+                                      "content": "Основные"
                                     },
-                                    "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                    "nO9lR/uluhv": {
+                                      "content": "Запись"
                                     },
-                                    "cUhH9": {
-                                      "fill": "$btn"
-                                    },
-                                    "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                    "C7H5c/OdXwE": {
+                                      "content": "Итоги звонков"
                                     }
                                   }
                                 },
@@ -28695,23 +28692,20 @@
                               "padding": "$space-24",
                               "children": [
                                 {
-                                  "id": "Zt4vR",
+                                  "id": "pmnDO",
                                   "type": "ref",
-                                  "ref": "Cb0Qc",
+                                  "ref": "ksNeX",
                                   "name": "Settings tabs",
                                   "width": "fill_container",
                                   "descendants": {
-                                    "nor3c": {
-                                      "fill": "$selBg"
+                                    "yGGGs/OdXwE": {
+                                      "content": "Основные"
                                     },
-                                    "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                    "nO9lR/uluhv": {
+                                      "content": "Запись"
                                     },
-                                    "cUhH9": {
-                                      "fill": "$btn"
-                                    },
-                                    "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                    "C7H5c/OdXwE": {
+                                      "content": "Итоги звонков"
                                     }
                                   }
                                 },
@@ -29026,128 +29020,79 @@
                                           "children": [
                                             {
                                               "type": "frame",
-                                              "id": "fHGTK",
+                                              "id": "MVsks",
                                               "name": "Segments",
-                                              "fill": "$btn",
+                                              "fill": "$track",
                                               "cornerRadius": "$radius-control",
+                                              "stroke": "$edge",
+                                              "strokeWidth": 1,
                                               "gap": "$space-2",
                                               "padding": "$space-2",
                                               "children": [
                                                 {
-                                                  "type": "frame",
-                                                  "id": "slvFJ",
+                                                  "id": "WCIDd",
+                                                  "type": "ref",
+                                                  "ref": "Eem0I",
                                                   "name": "Seg 2 с",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "sTFDa",
-                                                      "name": "T",
-                                                      "fill": "$text",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "OdXwE": {
                                                       "content": "2 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 },
                                                 {
-                                                  "type": "frame",
-                                                  "id": "wbxYA",
+                                                  "id": "UV1P5",
+                                                  "type": "ref",
+                                                  "ref": "Eem0I",
                                                   "name": "Seg 3 с",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "X7aiZr",
-                                                      "name": "T",
-                                                      "fill": "$text",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "OdXwE": {
                                                       "content": "3 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 },
                                                 {
-                                                  "type": "frame",
-                                                  "id": "riomU",
+                                                  "id": "NvfFS",
+                                                  "type": "ref",
+                                                  "ref": "D900EE",
                                                   "name": "Seg 4 с",
-                                                  "fill": "$selBg",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "tDJcs",
-                                                      "name": "T",
-                                                      "fill": "$selText",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "uluhv": {
                                                       "content": "4 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 },
                                                 {
-                                                  "type": "frame",
-                                                  "id": "pDMNj",
+                                                  "id": "r4eptG",
+                                                  "type": "ref",
+                                                  "ref": "Eem0I",
                                                   "name": "Seg 6 с",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "QpfHf",
-                                                      "name": "T",
-                                                      "fill": "$text",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "OdXwE": {
                                                       "content": "6 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 },
                                                 {
-                                                  "type": "frame",
-                                                  "id": "HvRWT",
+                                                  "id": "PB7oY",
+                                                  "type": "ref",
+                                                  "ref": "Eem0I",
                                                   "name": "Seg 8 с",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "wtaLj",
-                                                      "name": "T",
-                                                      "fill": "$text",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "OdXwE": {
                                                       "content": "8 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 }
                                               ]
                                             },
@@ -29286,23 +29231,20 @@
                               "padding": "$space-24",
                               "children": [
                                 {
-                                  "id": "XLJY2",
+                                  "id": "kMpmV",
                                   "type": "ref",
-                                  "ref": "Cb0Qc",
+                                  "ref": "ksNeX",
                                   "name": "Settings tabs",
                                   "width": "fill_container",
                                   "descendants": {
-                                    "nor3c": {
-                                      "fill": "$selBg"
+                                    "yGGGs/OdXwE": {
+                                      "content": "Основные"
                                     },
-                                    "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                    "nO9lR/uluhv": {
+                                      "content": "Запись"
                                     },
-                                    "cUhH9": {
-                                      "fill": "$btn"
-                                    },
-                                    "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                    "C7H5c/OdXwE": {
+                                      "content": "Итоги звонков"
                                     }
                                   }
                                 },
@@ -29713,23 +29655,20 @@
                               "padding": "$space-24",
                               "children": [
                                 {
-                                  "id": "rsjfp",
+                                  "id": "F3t1g7",
                                   "type": "ref",
-                                  "ref": "Cb0Qc",
+                                  "ref": "ksNeX",
                                   "name": "Settings tabs",
                                   "width": "fill_container",
                                   "descendants": {
-                                    "nor3c": {
-                                      "fill": "$selBg"
+                                    "yGGGs/OdXwE": {
+                                      "content": "Основные"
                                     },
-                                    "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                    "nO9lR/uluhv": {
+                                      "content": "Запись"
                                     },
-                                    "cUhH9": {
-                                      "fill": "$btn"
-                                    },
-                                    "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                    "C7H5c/OdXwE": {
+                                      "content": "Итоги звонков"
                                     }
                                   }
                                 },
@@ -30127,23 +30066,20 @@
                               "padding": "$space-24",
                               "children": [
                                 {
-                                  "id": "K2gC9H",
+                                  "id": "l5PJC7",
                                   "type": "ref",
-                                  "ref": "Cb0Qc",
+                                  "ref": "ksNeX",
                                   "name": "Settings tabs",
                                   "width": "fill_container",
                                   "descendants": {
-                                    "nor3c": {
-                                      "fill": "$selBg"
+                                    "yGGGs/OdXwE": {
+                                      "content": "Основные"
                                     },
-                                    "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                    "nO9lR/uluhv": {
+                                      "content": "Запись"
                                     },
-                                    "cUhH9": {
-                                      "fill": "$btn"
-                                    },
-                                    "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                    "C7H5c/OdXwE": {
+                                      "content": "Итоги звонков"
                                     }
                                   }
                                 },
@@ -30545,23 +30481,20 @@
                               "padding": "$space-24",
                               "children": [
                                 {
-                                  "id": "YOBD5",
+                                  "id": "lDrPr",
                                   "type": "ref",
-                                  "ref": "Cb0Qc",
+                                  "ref": "ksNeX",
                                   "name": "Settings tabs",
                                   "width": "fill_container",
                                   "descendants": {
-                                    "nor3c": {
-                                      "fill": "$selBg"
+                                    "yGGGs/OdXwE": {
+                                      "content": "Основные"
                                     },
-                                    "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                    "nO9lR/uluhv": {
+                                      "content": "Запись"
                                     },
-                                    "cUhH9": {
-                                      "fill": "$btn"
-                                    },
-                                    "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                    "C7H5c/OdXwE": {
+                                      "content": "Итоги звонков"
                                     }
                                   }
                                 },
@@ -30967,23 +30900,20 @@
                               "padding": "$space-24",
                               "children": [
                                 {
-                                  "id": "Zh4jG",
+                                  "id": "g1R1u",
                                   "type": "ref",
-                                  "ref": "Cb0Qc",
+                                  "ref": "ksNeX",
                                   "name": "Settings tabs",
                                   "width": "fill_container",
                                   "descendants": {
-                                    "nor3c": {
-                                      "fill": "$selBg"
+                                    "yGGGs/OdXwE": {
+                                      "content": "Основные"
                                     },
-                                    "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                    "nO9lR/uluhv": {
+                                      "content": "Запись"
                                     },
-                                    "cUhH9": {
-                                      "fill": "$btn"
-                                    },
-                                    "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                    "C7H5c/OdXwE": {
+                                      "content": "Итоги звонков"
                                     }
                                   }
                                 },
@@ -31361,23 +31291,20 @@
                               "padding": "$space-24",
                               "children": [
                                 {
-                                  "id": "VKIo0",
+                                  "id": "DUtsr",
                                   "type": "ref",
-                                  "ref": "Cb0Qc",
+                                  "ref": "ksNeX",
                                   "name": "Settings tabs",
                                   "width": "fill_container",
                                   "descendants": {
-                                    "nor3c": {
-                                      "fill": "$selBg"
+                                    "yGGGs/OdXwE": {
+                                      "content": "Основные"
                                     },
-                                    "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                    "nO9lR/uluhv": {
+                                      "content": "Запись"
                                     },
-                                    "cUhH9": {
-                                      "fill": "$btn"
-                                    },
-                                    "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                    "C7H5c/OdXwE": {
+                                      "content": "Итоги звонков"
                                     }
                                   }
                                 },
@@ -31692,128 +31619,79 @@
                                           "children": [
                                             {
                                               "type": "frame",
-                                              "id": "Sk92r",
+                                              "id": "pbBQo",
                                               "name": "Segments",
-                                              "fill": "$btn",
+                                              "fill": "$track",
                                               "cornerRadius": "$radius-control",
+                                              "stroke": "$edge",
+                                              "strokeWidth": 1,
                                               "gap": "$space-2",
                                               "padding": "$space-2",
                                               "children": [
                                                 {
-                                                  "type": "frame",
-                                                  "id": "cYjSz",
+                                                  "id": "eWyI7",
+                                                  "type": "ref",
+                                                  "ref": "Eem0I",
                                                   "name": "Seg 2 с",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "YH7fA",
-                                                      "name": "T",
-                                                      "fill": "$text",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "OdXwE": {
                                                       "content": "2 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 },
                                                 {
-                                                  "type": "frame",
-                                                  "id": "hhUjE",
+                                                  "id": "j5MFA",
+                                                  "type": "ref",
+                                                  "ref": "Eem0I",
                                                   "name": "Seg 3 с",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "G993m",
-                                                      "name": "T",
-                                                      "fill": "$text",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "OdXwE": {
                                                       "content": "3 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 },
                                                 {
-                                                  "type": "frame",
-                                                  "id": "M9MKl",
+                                                  "id": "LqBDB",
+                                                  "type": "ref",
+                                                  "ref": "D900EE",
                                                   "name": "Seg 4 с",
-                                                  "fill": "$selBg",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "mXwgE",
-                                                      "name": "T",
-                                                      "fill": "$selText",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "uluhv": {
                                                       "content": "4 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 },
                                                 {
-                                                  "type": "frame",
-                                                  "id": "QxOVy",
+                                                  "id": "TYWvI",
+                                                  "type": "ref",
+                                                  "ref": "Eem0I",
                                                   "name": "Seg 6 с",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "VcpIC",
-                                                      "name": "T",
-                                                      "fill": "$text",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "OdXwE": {
                                                       "content": "6 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 },
                                                 {
-                                                  "type": "frame",
-                                                  "id": "YnGyo",
+                                                  "id": "G84ULZ",
+                                                  "type": "ref",
+                                                  "ref": "Eem0I",
                                                   "name": "Seg 8 с",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "GD9vK",
-                                                      "name": "T",
-                                                      "fill": "$text",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "OdXwE": {
                                                       "content": "8 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 }
                                               ]
                                             },
@@ -31952,23 +31830,20 @@
                               "padding": "$space-24",
                               "children": [
                                 {
-                                  "id": "bPfy4",
+                                  "id": "h8joq",
                                   "type": "ref",
-                                  "ref": "Cb0Qc",
+                                  "ref": "ksNeX",
                                   "name": "Settings tabs",
                                   "width": "fill_container",
                                   "descendants": {
-                                    "nor3c": {
-                                      "fill": "$selBg"
+                                    "yGGGs/OdXwE": {
+                                      "content": "Основные"
                                     },
-                                    "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                    "nO9lR/uluhv": {
+                                      "content": "Запись"
                                     },
-                                    "cUhH9": {
-                                      "fill": "$btn"
-                                    },
-                                    "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                    "C7H5c/OdXwE": {
+                                      "content": "Итоги звонков"
                                     }
                                   }
                                 },
@@ -32379,23 +32254,20 @@
                               "padding": "$space-24",
                               "children": [
                                 {
-                                  "id": "buMPy",
+                                  "id": "zsvGN",
                                   "type": "ref",
-                                  "ref": "Cb0Qc",
+                                  "ref": "ksNeX",
                                   "name": "Settings tabs",
                                   "width": "fill_container",
                                   "descendants": {
-                                    "nor3c": {
-                                      "fill": "$selBg"
+                                    "yGGGs/OdXwE": {
+                                      "content": "Основные"
                                     },
-                                    "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                    "nO9lR/uluhv": {
+                                      "content": "Запись"
                                     },
-                                    "cUhH9": {
-                                      "fill": "$btn"
-                                    },
-                                    "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                    "C7H5c/OdXwE": {
+                                      "content": "Итоги звонков"
                                     }
                                   }
                                 },
@@ -32793,23 +32665,20 @@
                               "padding": "$space-24",
                               "children": [
                                 {
-                                  "id": "w4JLog",
+                                  "id": "sWRBa",
                                   "type": "ref",
-                                  "ref": "Cb0Qc",
+                                  "ref": "ksNeX",
                                   "name": "Settings tabs",
                                   "width": "fill_container",
                                   "descendants": {
-                                    "nor3c": {
-                                      "fill": "$selBg"
+                                    "yGGGs/OdXwE": {
+                                      "content": "Основные"
                                     },
-                                    "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                    "nO9lR/uluhv": {
+                                      "content": "Запись"
                                     },
-                                    "cUhH9": {
-                                      "fill": "$btn"
-                                    },
-                                    "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                    "C7H5c/OdXwE": {
+                                      "content": "Итоги звонков"
                                     }
                                   }
                                 },
@@ -33211,23 +33080,20 @@
                               "padding": "$space-24",
                               "children": [
                                 {
-                                  "id": "JBfk2",
+                                  "id": "WHhzW",
                                   "type": "ref",
-                                  "ref": "Cb0Qc",
+                                  "ref": "ksNeX",
                                   "name": "Settings tabs",
                                   "width": "fill_container",
                                   "descendants": {
-                                    "nor3c": {
-                                      "fill": "$selBg"
+                                    "yGGGs/OdXwE": {
+                                      "content": "Основные"
                                     },
-                                    "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                    "nO9lR/uluhv": {
+                                      "content": "Запись"
                                     },
-                                    "cUhH9": {
-                                      "fill": "$btn"
-                                    },
-                                    "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                    "C7H5c/OdXwE": {
+                                      "content": "Итоги звонков"
                                     }
                                   }
                                 },
@@ -33558,11 +33424,22 @@
                   "padding": "$space-24",
                   "children": [
                     {
-                      "id": "ZtFmy",
+                      "id": "p9wS5u",
                       "type": "ref",
-                      "ref": "Cb0Qc",
+                      "ref": "NkCta",
                       "name": "Settings tabs",
-                      "width": "fill_container"
+                      "width": "fill_container",
+                      "descendants": {
+                        "dwQBW/OdXwE": {
+                          "content": "Основные"
+                        },
+                        "a6vwAN/OdXwE": {
+                          "content": "Запись"
+                        },
+                        "ZANJ0/uluhv": {
+                          "content": "Итоги звонков"
+                        }
+                      }
                     },
                     {
                       "id": "wOYiJ",
@@ -33709,11 +33586,22 @@
                   "padding": "$space-24",
                   "children": [
                     {
-                      "id": "Bvbe1",
+                      "id": "RKqOa",
                       "type": "ref",
-                      "ref": "Cb0Qc",
+                      "ref": "NkCta",
                       "name": "Settings tabs",
-                      "width": "fill_container"
+                      "width": "fill_container",
+                      "descendants": {
+                        "dwQBW/OdXwE": {
+                          "content": "Основные"
+                        },
+                        "a6vwAN/OdXwE": {
+                          "content": "Запись"
+                        },
+                        "ZANJ0/uluhv": {
+                          "content": "Итоги звонков"
+                        }
+                      }
                     },
                     {
                       "id": "BjJXi",
@@ -33860,11 +33748,22 @@
                   "padding": "$space-24",
                   "children": [
                     {
-                      "id": "SLVw9",
+                      "id": "h4tMk",
                       "type": "ref",
-                      "ref": "Cb0Qc",
+                      "ref": "NkCta",
                       "name": "Settings tabs",
-                      "width": "fill_container"
+                      "width": "fill_container",
+                      "descendants": {
+                        "dwQBW/OdXwE": {
+                          "content": "Основные"
+                        },
+                        "a6vwAN/OdXwE": {
+                          "content": "Запись"
+                        },
+                        "ZANJ0/uluhv": {
+                          "content": "Итоги звонков"
+                        }
+                      }
                     },
                     {
                       "id": "Oq2wC",
@@ -34044,11 +33943,22 @@
                   "padding": "$space-24",
                   "children": [
                     {
-                      "id": "KV1UO",
+                      "id": "Mx0Gg",
                       "type": "ref",
-                      "ref": "Cb0Qc",
+                      "ref": "NkCta",
                       "name": "Settings tabs",
-                      "width": "fill_container"
+                      "width": "fill_container",
+                      "descendants": {
+                        "dwQBW/OdXwE": {
+                          "content": "Основные"
+                        },
+                        "a6vwAN/OdXwE": {
+                          "content": "Запись"
+                        },
+                        "ZANJ0/uluhv": {
+                          "content": "Итоги звонков"
+                        }
+                      }
                     },
                     {
                       "id": "J40Acg",
@@ -34221,11 +34131,22 @@
                   "padding": "$space-24",
                   "children": [
                     {
-                      "id": "Wgn4h",
+                      "id": "p5BiSe",
                       "type": "ref",
-                      "ref": "Cb0Qc",
+                      "ref": "NkCta",
                       "name": "Settings tabs",
-                      "width": "fill_container"
+                      "width": "fill_container",
+                      "descendants": {
+                        "dwQBW/OdXwE": {
+                          "content": "Основные"
+                        },
+                        "a6vwAN/OdXwE": {
+                          "content": "Запись"
+                        },
+                        "ZANJ0/uluhv": {
+                          "content": "Итоги звонков"
+                        }
+                      }
                     },
                     {
                       "id": "X186Mq",
@@ -34387,11 +34308,22 @@
                   "padding": "$space-24",
                   "children": [
                     {
-                      "id": "dUHh8",
+                      "id": "i6Ym7",
                       "type": "ref",
-                      "ref": "Cb0Qc",
+                      "ref": "NkCta",
                       "name": "Settings tabs",
-                      "width": "fill_container"
+                      "width": "fill_container",
+                      "descendants": {
+                        "dwQBW/OdXwE": {
+                          "content": "Основные"
+                        },
+                        "a6vwAN/OdXwE": {
+                          "content": "Запись"
+                        },
+                        "ZANJ0/uluhv": {
+                          "content": "Итоги звонков"
+                        }
+                      }
                     },
                     {
                       "id": "a8vIl",
@@ -34540,11 +34472,22 @@
                   "padding": "$space-24",
                   "children": [
                     {
-                      "id": "X9K38",
+                      "id": "Z039aD",
                       "type": "ref",
-                      "ref": "Cb0Qc",
+                      "ref": "NkCta",
                       "name": "Settings tabs",
-                      "width": "fill_container"
+                      "width": "fill_container",
+                      "descendants": {
+                        "dwQBW/OdXwE": {
+                          "content": "Основные"
+                        },
+                        "a6vwAN/OdXwE": {
+                          "content": "Запись"
+                        },
+                        "ZANJ0/uluhv": {
+                          "content": "Итоги звонков"
+                        }
+                      }
                     },
                     {
                       "id": "gi8km",
@@ -34693,11 +34636,22 @@
                   "padding": "$space-24",
                   "children": [
                     {
-                      "id": "SQ3Xj",
+                      "id": "H6tdQ",
                       "type": "ref",
-                      "ref": "Cb0Qc",
+                      "ref": "NkCta",
                       "name": "Settings tabs",
-                      "width": "fill_container"
+                      "width": "fill_container",
+                      "descendants": {
+                        "dwQBW/OdXwE": {
+                          "content": "Основные"
+                        },
+                        "a6vwAN/OdXwE": {
+                          "content": "Запись"
+                        },
+                        "ZANJ0/uluhv": {
+                          "content": "Итоги звонков"
+                        }
+                      }
                     },
                     {
                       "id": "Q3gZ6H",
@@ -34859,11 +34813,22 @@
                   "padding": "$space-24",
                   "children": [
                     {
-                      "id": "N25De",
+                      "id": "CizuH",
                       "type": "ref",
-                      "ref": "Cb0Qc",
+                      "ref": "NkCta",
                       "name": "Settings tabs",
-                      "width": "fill_container"
+                      "width": "fill_container",
+                      "descendants": {
+                        "dwQBW/OdXwE": {
+                          "content": "Основные"
+                        },
+                        "a6vwAN/OdXwE": {
+                          "content": "Запись"
+                        },
+                        "ZANJ0/uluhv": {
+                          "content": "Итоги звонков"
+                        }
+                      }
                     },
                     {
                       "id": "UURN4",
@@ -35012,11 +34977,22 @@
                   "padding": "$space-24",
                   "children": [
                     {
-                      "id": "arHXS",
+                      "id": "mIm8a",
                       "type": "ref",
-                      "ref": "Cb0Qc",
+                      "ref": "NkCta",
                       "name": "Settings tabs",
-                      "width": "fill_container"
+                      "width": "fill_container",
+                      "descendants": {
+                        "dwQBW/OdXwE": {
+                          "content": "Основные"
+                        },
+                        "a6vwAN/OdXwE": {
+                          "content": "Запись"
+                        },
+                        "ZANJ0/uluhv": {
+                          "content": "Итоги звонков"
+                        }
+                      }
                     },
                     {
                       "type": "text",
@@ -35059,11 +35035,22 @@
                   "padding": "$space-24",
                   "children": [
                     {
-                      "id": "nnq16",
+                      "id": "Iaqjp",
                       "type": "ref",
-                      "ref": "Cb0Qc",
+                      "ref": "NkCta",
                       "name": "Settings tabs",
-                      "width": "fill_container"
+                      "width": "fill_container",
+                      "descendants": {
+                        "dwQBW/OdXwE": {
+                          "content": "Основные"
+                        },
+                        "a6vwAN/OdXwE": {
+                          "content": "Запись"
+                        },
+                        "ZANJ0/uluhv": {
+                          "content": "Итоги звонков"
+                        }
+                      }
                     },
                     {
                       "id": "EV5Qt",
@@ -35248,32 +35235,20 @@
                   "padding": "$space-24",
                   "children": [
                     {
-                      "id": "qNm4f",
+                      "id": "cQmLq",
                       "type": "ref",
-                      "ref": "Cb0Qc",
+                      "ref": "rT0HO",
                       "name": "Settings tabs",
                       "width": "fill_container",
                       "descendants": {
-                        "ctTw8": {
-                          "fill": "$selBg"
+                        "JMakE/uluhv": {
+                          "content": "Основные"
                         },
-                        "ctTw8/EWsWH": {
-                          "content": "Основные",
-                          "fill": "$selText"
+                        "tQ8hK/OdXwE": {
+                          "content": "Запись"
                         },
-                        "nor3c": {
-                          "fill": "$btn"
-                        },
-                        "nor3c/EWsWH": {
-                          "content": "Запись",
-                          "fill": "$text"
-                        },
-                        "cUhH9": {
-                          "fill": "$btn"
-                        },
-                        "cUhH9/EWsWH": {
-                          "content": "Итоги звонков",
-                          "fill": "$text"
+                        "sni1W/OdXwE": {
+                          "content": "Итоги звонков"
                         }
                       }
                     },
@@ -35411,32 +35386,20 @@
                   "padding": "$space-24",
                   "children": [
                     {
-                      "id": "Y5gA8P",
+                      "id": "XjMfM",
                       "type": "ref",
-                      "ref": "Cb0Qc",
+                      "ref": "rT0HO",
                       "name": "Settings tabs",
                       "width": "fill_container",
                       "descendants": {
-                        "ctTw8": {
-                          "fill": "$selBg"
+                        "JMakE/uluhv": {
+                          "content": "General"
                         },
-                        "ctTw8/EWsWH": {
-                          "content": "General",
-                          "fill": "$selText"
+                        "tQ8hK/OdXwE": {
+                          "content": "Recording"
                         },
-                        "nor3c": {
-                          "fill": "$btn"
-                        },
-                        "nor3c/EWsWH": {
-                          "content": "Recording",
-                          "fill": "$text"
-                        },
-                        "cUhH9": {
-                          "fill": "$btn"
-                        },
-                        "cUhH9/EWsWH": {
-                          "content": "Call summaries",
-                          "fill": "$text"
+                        "sni1W/OdXwE": {
+                          "content": "Call summaries"
                         }
                       }
                     },
@@ -35574,32 +35537,20 @@
                   "padding": "$space-24",
                   "children": [
                     {
-                      "id": "OePpp",
+                      "id": "XBxZs",
                       "type": "ref",
-                      "ref": "Cb0Qc",
+                      "ref": "rT0HO",
                       "name": "Settings tabs",
                       "width": "fill_container",
                       "descendants": {
-                        "ctTw8": {
-                          "fill": "$selBg"
+                        "JMakE/uluhv": {
+                          "content": "General"
                         },
-                        "ctTw8/EWsWH": {
-                          "content": "General",
-                          "fill": "$selText"
+                        "tQ8hK/OdXwE": {
+                          "content": "Recording"
                         },
-                        "nor3c": {
-                          "fill": "$btn"
-                        },
-                        "nor3c/EWsWH": {
-                          "content": "Recording",
-                          "fill": "$text"
-                        },
-                        "cUhH9": {
-                          "fill": "$btn"
-                        },
-                        "cUhH9/EWsWH": {
-                          "content": "Call summaries",
-                          "fill": "$text"
+                        "sni1W/OdXwE": {
+                          "content": "Call summaries"
                         }
                       }
                     },
@@ -35737,32 +35688,20 @@
                   "padding": "$space-24",
                   "children": [
                     {
-                      "id": "eAFFK",
+                      "id": "VPDYg",
                       "type": "ref",
-                      "ref": "Cb0Qc",
+                      "ref": "rT0HO",
                       "name": "Settings tabs",
                       "width": "fill_container",
                       "descendants": {
-                        "ctTw8": {
-                          "fill": "$selBg"
+                        "JMakE/uluhv": {
+                          "content": "Основные"
                         },
-                        "ctTw8/EWsWH": {
-                          "content": "Основные",
-                          "fill": "$selText"
+                        "tQ8hK/OdXwE": {
+                          "content": "Запись"
                         },
-                        "nor3c": {
-                          "fill": "$btn"
-                        },
-                        "nor3c/EWsWH": {
-                          "content": "Запись",
-                          "fill": "$text"
-                        },
-                        "cUhH9": {
-                          "fill": "$btn"
-                        },
-                        "cUhH9/EWsWH": {
-                          "content": "Итоги звонков",
-                          "fill": "$text"
+                        "sni1W/OdXwE": {
+                          "content": "Итоги звонков"
                         }
                       }
                     },
@@ -35931,7 +35870,7 @@
           "name": "General behavior",
           "width": 1100,
           "height": 200,
-          "content": "General. Window content only; the native title bar is not drawn. The first tab holds Language (System / Русский / English) and Appearance (System / Light / Dark), each a three-part segmented control across the row; language names are written in their own language. System language uses the first macOS preferred language Audelin supports and English otherwise. A change applies at once to every window, the panel and the menu bar, with no relaunch and no confirmation. The grey line under Language names the language System gives, or the macOS language when one is forced. Language covers UI text only: transcription, summaries and call folders do not change. Mouse clicks a segment; keyboard moves between segments with the arrow keys after Tab. macOS only; no phone or tablet layout."
+          "content": "General. Window content only; the native title bar is not drawn. The first tab holds Language (System / Русский / English) and Appearance (System / Light / Dark), each a three-part segmented control across the row; language names are written in their own language. System language uses the first macOS preferred language Audelin supports and English otherwise. A change applies at once to every window, the panel and the menu bar, with no relaunch and no confirmation. The grey line under Language names the language System gives, or the macOS language when one is forced. Language covers UI text only: transcription, summaries and call folders do not change. Tabs, Language and Appearance are one segmented control in one size. Mouse clicks a segment; Tab focuses the control, outlining its selected chip in the accent colour with no ring around the control, and the arrow keys move between segments. macOS only; no phone or tablet layout."
         }
       ]
     },
@@ -46818,54 +46757,6 @@
         },
         {
           "type": "frame",
-          "id": "Cb0Qc",
-          "name": "Settings navigation",
-          "reusable": true,
-          "width": 572,
-          "gap": "$space-4",
-          "children": [
-            {
-              "id": "ctTw8",
-              "type": "ref",
-              "ref": "wmGeO",
-              "name": "General tab",
-              "width": "fill_container",
-              "descendants": {
-                "EWsWH": {
-                  "content": "Основные"
-                }
-              }
-            },
-            {
-              "id": "nor3c",
-              "type": "ref",
-              "ref": "wmGeO",
-              "name": "Recording tab",
-              "width": "fill_container",
-              "descendants": {
-                "EWsWH": {
-                  "content": "Запись"
-                }
-              }
-            },
-            {
-              "id": "cUhH9",
-              "type": "ref",
-              "ref": "wmGeO",
-              "name": "Summaries tab",
-              "width": "fill_container",
-              "fill": "$selBg",
-              "descendants": {
-                "EWsWH": {
-                  "content": "Итоги звонков",
-                  "fill": "$selText"
-                }
-              }
-            }
-          ]
-        },
-        {
-          "type": "frame",
           "id": "vBhzN",
           "name": "Runtime card — CLI",
           "reusable": true,
@@ -47153,9 +47044,9 @@
           "name": "Segment/Selected",
           "reusable": true,
           "width": "fill_container",
-          "fill": "$surface",
-          "cornerRadius": "$radius-control",
-          "stroke": "$rule",
+          "fill": "$segSel",
+          "cornerRadius": "$radius-segment",
+          "stroke": "$edge",
           "strokeWidth": 1,
           "padding": [
             "$space-4",
@@ -47184,7 +47075,7 @@
           "reusable": true,
           "width": "fill_container",
           "fill": "#00000000",
-          "cornerRadius": "$radius-control",
+          "cornerRadius": "$radius-segment",
           "padding": [
             "$space-4",
             "$space-12"
@@ -47211,8 +47102,10 @@
           "name": "Segmented/First",
           "reusable": true,
           "width": 400,
-          "fill": "$btn",
+          "fill": "$track",
           "cornerRadius": "$radius-control",
+          "stroke": "$edge",
+          "strokeWidth": 1,
           "gap": "$space-2",
           "padding": "$space-2",
           "children": [
@@ -47245,8 +47138,10 @@
           "name": "Segmented/Second",
           "reusable": true,
           "width": 400,
-          "fill": "$btn",
+          "fill": "$track",
           "cornerRadius": "$radius-control",
+          "stroke": "$edge",
+          "strokeWidth": 1,
           "gap": "$space-2",
           "padding": "$space-2",
           "children": [
@@ -47279,8 +47174,10 @@
           "name": "Segmented/Third",
           "reusable": true,
           "width": 400,
-          "fill": "$btn",
+          "fill": "$track",
           "cornerRadius": "$radius-control",
+          "stroke": "$edge",
+          "strokeWidth": 1,
           "gap": "$space-2",
           "padding": "$space-2",
           "children": [
@@ -47304,6 +47201,209 @@
               "ref": "D900EE",
               "name": "Segment 3",
               "width": "fill_container"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "xVKdo",
+          "name": "Segment/Hover",
+          "reusable": true,
+          "width": "fill_container",
+          "fill": "$hover",
+          "cornerRadius": "$radius-segment",
+          "padding": [
+            "$space-4",
+            "$space-12"
+          ],
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "r23fQ",
+              "name": "Label",
+              "fill": "$sub",
+              "content": "Русский",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-small",
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "k2K3TD",
+          "name": "Segment/Pressed",
+          "reusable": true,
+          "width": "fill_container",
+          "fill": "$pressed",
+          "cornerRadius": "$radius-segment",
+          "padding": [
+            "$space-4",
+            "$space-12"
+          ],
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "lAFm5",
+              "name": "Label",
+              "fill": "$sub",
+              "content": "Русский",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-small",
+              "fontWeight": "normal"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "xAbjw",
+          "name": "Segment/Selected focused",
+          "reusable": true,
+          "width": "fill_container",
+          "fill": "$segSel",
+          "cornerRadius": "$radius-segment",
+          "stroke": "$me",
+          "strokeWidth": 2,
+          "padding": [
+            "$space-4",
+            "$space-12"
+          ],
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "CnEJx",
+              "name": "Label",
+              "fill": "$text",
+              "content": "Системный",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-small",
+              "fontWeight": "600"
+            }
+          ]
+        },
+        {
+          "type": "note",
+          "id": "eVhC9",
+          "name": "Segmented control",
+          "width": "fill_container",
+          "height": 0,
+          "content": "One segmented control for every segmented choice in Settings: tabs, Language, Appearance, debug chunk size. Track: track fill, 1 pt edge outline, radius-control, 2 pt padding. Selected: segSel chip, 1 pt edge outline, radius-segment, semibold text. Unselected: sub label; hover and pressed tints. Focus: 2 pt accent outline on the selected chip, no ring around the control. Outlines reach 3:1 on the window, text 4.5:1."
+        },
+        {
+          "type": "frame",
+          "id": "mSVGu",
+          "name": "Segmented states",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": "$space-12",
+          "children": [
+            {
+              "type": "text",
+              "id": "Gvz5p",
+              "name": "State label",
+              "fill": "$sub",
+              "content": "Focused: the selected chip takes a 2 pt accent outline",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-small",
+              "fontWeight": "normal"
+            },
+            {
+              "id": "m1ioX",
+              "type": "ref",
+              "ref": "rT0HO",
+              "name": "Focused",
+              "width": "fill_container",
+              "descendants": {
+                "JMakE": {
+                  "id": "FCmH0",
+                  "type": "ref",
+                  "ref": "xAbjw",
+                  "name": "Segment",
+                  "width": "fill_container"
+                },
+                "tQ8hK/OdXwE": {
+                  "content": "Русский"
+                },
+                "sni1W/OdXwE": {
+                  "content": "English"
+                }
+              }
+            },
+            {
+              "type": "text",
+              "id": "h1VEih",
+              "name": "State label",
+              "fill": "$sub",
+              "content": "Pointer over an unselected segment",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-small",
+              "fontWeight": "normal"
+            },
+            {
+              "id": "eSz4r",
+              "type": "ref",
+              "ref": "rT0HO",
+              "name": "Hover",
+              "width": "fill_container",
+              "descendants": {
+                "JMakE/uluhv": {
+                  "content": "Системный"
+                },
+                "tQ8hK": {
+                  "id": "vKbpc",
+                  "type": "ref",
+                  "ref": "xVKdo",
+                  "name": "Segment",
+                  "width": "fill_container"
+                },
+                "sni1W/OdXwE": {
+                  "content": "English"
+                }
+              }
+            },
+            {
+              "type": "text",
+              "id": "u6EQn",
+              "name": "State label",
+              "fill": "$sub",
+              "content": "Unselected segment pressed",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-small",
+              "fontWeight": "normal"
+            },
+            {
+              "id": "y6SXY",
+              "type": "ref",
+              "ref": "rT0HO",
+              "name": "Pressed",
+              "width": "fill_container",
+              "descendants": {
+                "JMakE/uluhv": {
+                  "content": "Системный"
+                },
+                "tQ8hK": {
+                  "id": "ZliJt",
+                  "type": "ref",
+                  "ref": "k2K3TD",
+                  "name": "Segment",
+                  "width": "fill_container"
+                },
+                "sni1W/OdXwE": {
+                  "content": "English"
+                }
+              }
             }
           ]
         }
@@ -59583,13 +59683,13 @@
       "type": "color",
       "value": [
         {
-          "value": "#8A909A",
+          "value": "#686E78",
           "theme": {
             "mode": "light"
           }
         },
         {
-          "value": "#7C828D",
+          "value": "#868C97",
           "theme": {
             "mode": "dark"
           }
@@ -60074,6 +60174,95 @@
     "space-32": {
       "type": "number",
       "value": 32
+    },
+    "track": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#ECEEF1",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#24272D",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "edge": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#858B94",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#8A909B",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "segSel": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#3A3E47",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "hover": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#0000000F",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#FFFFFF14",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "pressed": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#0000001F",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#FFFFFF26",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "radius-segment": {
+      "type": "number",
+      "value": 4
     }
   },
   "fileToken": "11d61027-99ea-4c6c-bc5c-f6eff236c8bd"

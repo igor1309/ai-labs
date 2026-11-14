@@ -43,7 +43,7 @@ Each colour has a light and a dark value on the theme axis `mode`.
 | `surface` | `#FFFFFF` | `#22252C` | Fields, options, rows |
 | `text` | `#16181D` | `#E8EAED` | Main text |
 | `sub` | `#5A606A` | `#A3A9B3` | Secondary text |
-| `gutter` | `#8A909A` | `#7C828D` | Time gutter, hints, the timestamp prefix |
+| `gutter` | `#686E78` | `#868C97` | Time gutter, hints, the timestamp prefix; 4.5:1 on `win` |
 | `them` | `#C27A06` | `#F5B454` | The other side's speech; the first remote speaker |
 | `them-2` | `#6E56CF` | `#B4A2FF` | The second remote speaker |
 | `them-3` | `#2F6FDB` | `#82AAFF` | The third remote speaker |
@@ -63,6 +63,11 @@ Each colour has a light and a dark value on the theme axis `mode`.
 | `okBg` | `#0E9F9214` | `#4FD1C51F` | Info banner, selected option |
 | `shadow` | `#00000040` | `#00000080` | Window and panel shadow |
 | `btn` | `#0000000D` | `#FFFFFF14` | Secondary button, file chips |
+| `track` | `#ECEEF1` | `#24272D` | Segmented control track |
+| `edge` | `#858B94` | `#8A909B` | Segmented track and selected chip outline; 3:1 on `win` |
+| `segSel` | `#FFFFFF` | `#3A3E47` | Selected segment chip, lighter than `track` in both modes |
+| `hover` | `#0000000F` | `#FFFFFF14` | Unselected segment under the pointer |
+| `pressed` | `#0000001F` | `#FFFFFF26` | Unselected segment while pressed |
 | `dis` | `#0000000A` | `#FFFFFF0F` | Disabled button |
 | `disText` | `#A9AEB6` | `#5C626C` | Disabled text |
 | `back` | `#E3E5E8` | `#1F2228` | Desktop behind a mockup window |
@@ -75,7 +80,7 @@ Each colour has a light and a dark value on the theme axis `mode`.
 | Fonts | `font-data` IBM Plex Mono (transcript, times, paths, sizes); `font-ui` IBM Plex Sans (labels, titles) |
 | Type sizes | `type-caption` 11, `type-small` 12, `type-body` 13, `type-title` 18; weights normal and 600 only |
 | Line height | `line-body` 20 for running text on `type-body` (summary preview notes) |
-| Radius | `radius-bar` 2, `radius-control` 6, `radius-card` 10, `radius-panel` 16 |
+| Radius | `radius-bar` 2, `radius-segment` 4 (a chip inside a `radius-control` track with `space-2` padding), `radius-control` 6, `radius-card` 10, `radius-panel` 16 |
 | Spacing | `space-2`, `-4`, `-6`, `-8`, `-12`, `-16`, `-20`, `-24`, `-28`, `-32`, `-40` |
 
 UI code takes every font from `tokens.ui`, `tokens.data`, `tokens.nsUi` or
@@ -118,7 +123,7 @@ from instances.
 | Hotkey field | `ysLzd` | `Keys` |
 | Alert | `OCKfD` | `H`, `Body`; buttons "Primary action" (destructive by default; swap for Button/Primary when the action is not destructive) and "Cancel" |
 | Calls row, /Hover | `yFtkD`, `uMMD6` | `Date`, `Title`, `Duration`, `Audio`, `Dot`, pin; Hover adds the row tint and shows Delete (a Button/Destructive in the error tint) |
-| Segment/Selected, /Default; Segmented/First, /Second, /Third | on the board "Glass Ledger — call notes components" | each segment's `Label`; the variant names the selected segment ([general settings brief](general-settings.md)) |
+| Segment/Selected, /Selected focused, /Default, /Hover, /Pressed; Segmented/First, /Second, /Third | on the board "Glass Ledger — call notes components" | each segment's `Label`; the variant names the selected segment. Every segmented choice uses them: the Settings tabs, Language, Appearance and the debug chunk size ([general settings brief](general-settings.md)) |
 | Settings row | `W8h2bZ` | `Name`; replace `Control` with the row's control |
 | Live panel | `c0qJn` | The glass panel shell; replace `Body` with the header, banners and log |
 | Added late | `HIqfu` | `Late label`; the group of minutes filled in after live text is switched on mid-call |
