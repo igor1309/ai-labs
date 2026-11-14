@@ -92,7 +92,6 @@ let package = Package(
                 .product(name: "SummaryPreviewUI", package: "macos"),
                 .product(name: "BrowserBridge", package: "macos"),
                 .product(name: "SummaryJobs", package: "macos"),
-                .product(name: "CallNotes", package: "macos"),
                 .product(name: "SummaryFiles", package: "macos"),
                 .product(name: "SummaryRuntime", package: "macos"),
                 .product(name: "SpeakerIdentification", package: "macos"),

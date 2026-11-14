@@ -1,6 +1,5 @@
 import SettingsUI
 import Calls
-import CallNotes
 import CallsListUI
 import CallsSearch
 import Foundation
@@ -58,7 +57,6 @@ public final class AudelinCalls {
     /// The window is too narrow for the call beside the list.
     private var narrow = false
     private let notes: (String) async throws -> (text: String, made: String?)?
-    private let notesState: (String) -> CallNotesState?
     private let makeSummary: (String) -> Void
     private let cancelSummary: (String) async -> Void
     private var selectedID: String?
@@ -99,7 +97,6 @@ public final class AudelinCalls {
          present: @escaping () -> Void, summaryStatuses: @escaping () -> [String: String] = { [:] },
          summaryBadges: @escaping () -> [String: CallsListState.Row.Summary] = { [:] },
          notes: @escaping (String) async throws -> (text: String, made: String?)? = { _ in nil },
-         notesState: @escaping (String) -> CallNotesState? = { _ in nil },
          makeSummary: @escaping (String) -> Void = { _ in },
          cancelSummary: @escaping (String) async -> Void = { _ in },
          copy: @escaping (String) -> Void = { _ in },
@@ -116,7 +113,7 @@ public final class AudelinCalls {
         self.retrySummary = retrySummary
         self.copy = copy
         self.readCall = readCall
-        self.notesState = notesState; self.makeSummary = makeSummary; self.cancelSummary = cancelSummary
+        self.makeSummary = makeSummary; self.cancelSummary = cancelSummary
         self.summaryStatuses = summaryStatuses
         self.summaryBadges = summaryBadges
         self.notes = notes
@@ -148,9 +145,8 @@ public final class AudelinCalls {
             state.rows[index].summary = badges[state.rows[index].id] ?? .none
             state.rows[index].canRetrySummary = retryable.contains(state.rows[index].id)
             state.rows[index].hasNotes = withNotes.contains(state.rows[index].id)
-            let machine = notesState(state.rows[index].id)
             state.rows[index].canMakeSummary = state.rows[index].editable && !state.rows[index].hasNotes
-                && state.rows[index].summary == .none && (machine == nil || machine == .pending)
+                && state.rows[index].summary == .none
             state.rows[index].gist = gists[state.rows[index].id]
             state.rows[index].match = found[state.rows[index].id]
         }
@@ -246,10 +242,7 @@ public final class AudelinCalls {
     private func scanNotes() {
         notesScan?.cancel()
         notesScan = Task { [notes] in
-            for await (ids, _, _) in Observations({
-                let ids = self.inputs.state().calls.map(\.id)
-                return (ids, self.summaryStatuses(), ids.map(self.notesState))
-            }) {
+            for await (ids, _) in Observations({ (self.inputs.state().calls.map(\.id), self.summaryStatuses()) }) {
                 var found = Set<String>(), gists: [String: String] = [:]
                 for id in ids {
                     // A closed window stops the scan between reads.
@@ -293,13 +286,11 @@ public final class AudelinCalls {
             do { read = try await notes(id).map { .notes($0.text, made: $0.made) } } catch { read = .unreadable(error.localizedDescription) }
             guard !Task.isCancelled else { return }
             let content: CallsDetail.Content
-            switch (read, notesState(id), row.summary) {
-            case let (read?, _, _): content = read
-            case (nil, .loading?, _): content = .preparing
-            case let (nil, .failure(failure)?, _): content = .failed(reason: failure.reason, canRetry: row.canRetrySummary && row.editable)
-            case (nil, _, .pending): content = .preparing
-            case (nil, _, .failed): content = .failed(reason: status, canRetry: row.canRetrySummary && row.editable)
-            case (nil, _, .none): content = .none
+            switch (read, row.summary) {
+            case let (read?, _): content = read
+            case (nil, .pending): content = .preparing
+            case (nil, .failed): content = .failed(reason: status, canRetry: row.canRetrySummary && row.editable)
+            case (nil, .none): content = .none
             }
             detail = .init(id: id, title: row.displayTitle, date: date, duration: row.duration, content: content)
         }
