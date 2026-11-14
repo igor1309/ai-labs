@@ -14,10 +14,7 @@ actor RecordingSessions: RecordingSession {
         let subscription: Task<Void, Never>
         let pieces: SessionPieces
         var observation: Task<Void, Never>?
-        var beginners: [CheckedContinuation<Void, Never>] = []
         var enders: [CheckedContinuation<Void, Never>] = []
-        var started = false
-        var endRequested = false
         var announcedEnding = false
     }
 
@@ -30,8 +27,6 @@ actor RecordingSessions: RecordingSession {
     private let timeZone: @Sendable () -> TimeZone
     private let sink: any LogSink
     private var running: [UInt64: Running] = [:]
-    // Recording's effects run independently, so an end can arrive before its begin.
-    private var endedBeforeBegin: Set<UInt64> = []
 
     init(
         preferences: PreferencesStore, occupiedCallNames: @escaping @Sendable () throws -> [String],
@@ -52,77 +47,50 @@ actor RecordingSessions: RecordingSession {
         self.sink = boundary.log
     }
 
+    /// Returns once the Session has its begin; readiness and faults arrive later as status.
     func begin(id: UInt64) async {
 
-        if endedBeforeBegin.remove(id) != nil { return }
-        if running[id] == nil {
-            let pieces = makePieces(id)
-            let handler = pieces.handler()
-            let session = makeSession(handler: handler)
-            let enabled = liveText()
-            let subscription = Task {
-                let forwarding = subscribe(pieces, to: session)
-                await withTaskCancellationHandler { await forwarding.value } onCancel: { forwarding.cancel() }
-            }
-            running[id] = Running(session: session, subscription: subscription, pieces: pieces)
-            running[id]?.observation = Task {
-                // Register before begin so even a short-lived state is retained.
-                let states = await session.states()
-                let feed = await pieces.readingText()
-                let reading = await self.panel.begin(id: id, text: feed.text, speakers: feed.speakers, names: pieces.names, enableLiveText: {
-                    await self.send(.liveTextChanged(true), id: id)
-                })
-                self.start(id: id, liveText: enabled)
-                var previous: ObservedSession?
-                for await state in states {
-                    let observed = ObservedSession(state)
-                    guard observed != previous else { continue }
-                    previous = observed
-                    await reading.sessionChanged(state)
-                    StateLog(sink: self.sink).session(state, id: id)
-                    if await self.receive(state, id: id) { return }
-                }
-            }
+        guard running[id] == nil else { return }
+        let pieces = makePieces(id)
+        let handler = pieces.handler()
+        let session = makeSession(handler: handler)
+        let enabled = liveText()
+        let subscription = Task {
+            let forwarding = subscribe(pieces, to: session)
+            await withTaskCancellationHandler { await forwarding.value } onCancel: { forwarding.cancel() }
         }
-        await withCheckedContinuation { answer in
-            if running[id]?.started != false { answer.resume() }
-            else { running[id]?.beginners.append(answer) }
+        running[id] = Running(session: session, subscription: subscription, pieces: pieces)
+        // Register before begin so even a short-lived state is retained.
+        let states = await session.states()
+        let feed = await pieces.readingText()
+        let reading = await panel.begin(id: id, text: feed.text, speakers: feed.speakers, names: pieces.names, enableLiveText: {
+            await self.send(.liveTextChanged(true), id: id)
+        })
+        session.send(.begin(liveText: enabled))
+        running[id]?.observation = Task {
+            var previous: ObservedSession?
+            for await state in states {
+                let observed = ObservedSession(state)
+                guard observed != previous else { continue }
+                previous = observed
+                await reading.sessionChanged(state)
+                StateLog(sink: self.sink).session(state, id: id)
+                if await self.receive(state, id: id) { return }
+            }
         }
     }
 
+    /// Returns once the Session has ended and is torn down; Session decides when an end takes effect.
     func end(id: UInt64) async {
 
-        guard var entry = running[id] else {
-            endedBeforeBegin.insert(id)
-            return
-        }
-        if !entry.endRequested {
-            entry.endRequested = true
-            if entry.started { send(.end, to: &entry) }
-        }
-        running[id] = entry
+        guard let entry = running[id] else { return }
+        entry.session.send(.end)
         await withCheckedContinuation { running[id]?.enders.append($0) }
-    }
-
-    private func start(id: UInt64, liveText: Bool) {
-
-        guard var entry = running[id] else { return }
-        send(.begin(liveText: liveText), to: &entry)
-        entry.started = true
-        if entry.endRequested { send(.end, to: &entry) }
-        for answer in entry.beginners { answer.resume() }
-        entry.beginners.removeAll()
-        running[id] = entry
     }
 
     private func send(_ event: SessionEvent, id: UInt64) {
 
         running[id]?.session.send(event)
-    }
-
-    private func send(_ event: SessionEvent, to entry: inout Running) {
-
-        entry.session.send(event)
     }
 
     private func receive(_ state: SessionState, id: UInt64) async -> Bool {
@@ -139,7 +107,7 @@ actor RecordingSessions: RecordingSession {
         }
         guard let entry = running[id] else { return true }
         if state.phase == .ended {
-            if !entry.endRequested { await report(id, .ended) }
+            await report(id, .ended)
             let subscription = entry.subscription, observation = entry.observation, session = entry.session
             let pieces = entry.pieces
             Task {

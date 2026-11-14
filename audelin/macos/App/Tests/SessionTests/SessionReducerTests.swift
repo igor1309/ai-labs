@@ -283,6 +283,18 @@ struct SessionReducerTests {
         assert(makeRecording(withDown: piecesStopped(before: piece)), .end, delivers: stopEffect(piece))
     }
 
+    @Test(arguments: [SessionState.Phase.ending, .ended])
+    func beginAfterEndIsIgnored_state(_ phase: SessionState.Phase) {
+
+        assert(makeState(phase), .begin(liveText: true))
+    }
+
+    @Test(arguments: [SessionState.Phase.ending, .ended])
+    func beginAfterEndIsIgnored_effect(_ phase: SessionState.Phase) {
+
+        assert(makeState(phase), .begin(liveText: true), delivers: nil)
+    }
+
     @Test func endWithOnlyFolderAndProcessesUpEnds_state() {
 
         let state = makeRecording(withDown: stopOrder)

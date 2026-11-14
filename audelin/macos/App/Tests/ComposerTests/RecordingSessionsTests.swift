@@ -12,28 +12,10 @@ import Synchronization
 import Testing
 @testable import Composer
 
-/// What each Recording id gets from `RecordingSessions`. Recording never ends
-/// an id before it begins it through the menu, so these go in at the adapter's
+/// What each Recording id gets from `RecordingSessions`, through the adapter's
 /// own entry, on the boundary an application composes it with.
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingSessionsTests {
-
-    @Test func anEndBeforeItsBeginReturnsEndedWithoutBuildingASession() async throws {
-
-        try await withSessions { rig in
-            await rig.sessions.end(id: 5)
-            await rig.sessions.begin(id: 5)
-            #expect(rig.microphones.count == 0)
-
-            // Only that id is spent: the next begins, and the same id's next begin too.
-            await rig.recording(6)
-            #expect(rig.microphones.count == 1)
-            await rig.sessions.end(id: 6)
-            await rig.recording(5)
-            #expect(rig.microphones.count == 2)
-            await rig.sessions.end(id: 5)
-        }
-    }
 
     @Test func endingAnUnknownOrFinishedIdReturnsWithoutBuilding() async throws {
 
@@ -91,7 +73,7 @@ struct RecordingSessionsTests {
             await rig.statuses.wait { $0.id == 7 && $0.status.cannotRecord == "no track can record" }
             await rig.sessions.end(id: 7)
             #expect(rig.statuses.all.filter { $0.id == 7 }.reduce(into: Set()) { $0.formUnion($1.status.faults) } == [.microphone, .callAudio])
-            #expect(rig.reports.all.isEmpty)
+            #expect(rig.reports.all.map(\.id) == [7])
         }
     }
 
