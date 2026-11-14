@@ -2,6 +2,7 @@
 
 ## 2026-11-14
 
+- LAB-1463: A finished call's notes wait while a calls folder move or commit runs and are saved once it ends; the notes machine itself decides which calls get notes and reports when shutdown has settled.
 - LAB-1462: One state machine makes each recording's transcript final: diarized, cleaned and committed, or kept as written. On quit, a call still being cleaned gets its notes from the transcript as written, and quit waits only for transcript files still being replaced.
 - LAB-1461: A calls-storage component keeps the record of call moves and folder ownership and refuses to touch a call while a move is half finished; the calls list reloads after a failed rename or delete and skips calls already in a chosen folder.
 - LAB-1457: Every Monday a Developer ID signed, notarized Audelin is published to the releases of the public igor1309/audelin repository, when the app changed since the last one.
