@@ -1,11 +1,9 @@
 import CallAudioAccess
 import CoreAudioProcesses
 import Foundation
-import Lifecycle
 import LiveText
 import Preferences
 import Recording
-import Synchronization
 
 /// Retains the application's connected recording, detector and model load.
 final class AudelinRecording: Sendable {
@@ -58,13 +56,12 @@ final class AudelinRecording: Sendable {
         await inputs.releaseStorage()
     }
 
-    func lifecycle(terminate: @escaping @Sendable () async -> Void) -> LifecycleEffectHandler {
-
-        LifecycleEffectHandler(delivery: delivery, recording: ApplicationRecording(recording: inputs), terminate: terminate)
-    }
+    /// Stops call detection, the processes it watches and the model load, so no new
+    /// recording is reported while the app quits.
+    func stopDelivery() async { await delivery.stop() }
 }
 
-private struct ApplicationDelivery: LifecycleDelivery {
+private struct ApplicationDelivery: Sendable {
 
     let processes: CoreAudioProcesses
     let calls: CallRecordingSubscription
@@ -75,50 +72,6 @@ private struct ApplicationDelivery: LifecycleDelivery {
         await calls.cancel()
         await processes.stop()
         model.cancel()
-    }
-}
-
-final class ApplicationRecording: LifecycleRecording {
-
-    let recording: RecordingInputs
-    private let stopping = Mutex<Task<Void, Never>?>(nil)
-
-    init(recording: RecordingInputs) {
-
-        self.recording = recording
-    }
-
-    // Lifecycle asks for a stop without waiting, so the drain that follows joins the send.
-    func requestStop() {
-
-        stopping.withLock { [recording] previous in
-            let earlier = previous
-            previous = Task {
-                await earlier?.value
-                await recording.send(.userStop)
-            }
-        }
-    }
-
-    func drain() async {
-
-        await stopping.withLock { $0 }?.value
-        _ = await recording.state()
-    }
-    func end() async { await recording.end() }
-
-    func states() async -> AsyncStream<LifecycleRecordingState> {
-
-        let states = await recording.states()
-        return AsyncStream { output in
-            let task = Task {
-                for await state in states {
-                    output.yield(state.phase == .idle ? .idle : .busy)
-                }
-                output.finish()
-            }
-            output.onTermination = { _ in task.cancel() }
-        }
     }
 }
 
