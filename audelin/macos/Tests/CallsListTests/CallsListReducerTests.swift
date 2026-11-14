@@ -19,16 +19,17 @@ struct CallsListReducerTests {
     @Test(arguments: [false, true], ["", "Row title"])
     func beginRenameUsesRowTitle_state(alreadyEditing: Bool, title: String) {
         assert(makeState(rows: [makeRow(id: "b", title: title)], selectedID: "b",
-                         editing: alreadyEditing ? makeEditing() : nil), .beginRename("b")) {
+                         editing: alreadyEditing ? makeEditing() : nil, failure: .retryFailed), .beginRename("b")) {
             $0.editing = .init(id: "b", title: title)
-            $0.request = .clearFailure
-            $0.requests += 1
+            $0.failure = nil
+            $0.requests = [.clearFailure]
+            $0.asked += 1
         }
     }
     @Test(arguments: [false, true], ["", "Row title"])
     func beginRenameUsesRowTitle_request(alreadyEditing: Bool, title: String) {
         assert(makeState(rows: [makeRow(id: "b", title: title)], selectedID: "b",
-                         editing: alreadyEditing ? makeEditing() : nil), .beginRename("b"), delivers: .clearFailure)
+                         editing: alreadyEditing ? makeEditing() : nil, failure: .retryFailed), .beginRename("b"), delivers: [.clearFailure])
     }
 
     @Test(arguments: refusedRenames, [false, true])
@@ -53,26 +54,30 @@ struct CallsListReducerTests {
 
     @Test(arguments: ["", "  New title  ", "Звонок 🐦"])
     func submitRename_state(title: String) {
-        assert(makeState(editing: makeEditing(title: title)), .submitRename) {
+        assert(makeState(editing: makeEditing(title: title), failure: .retryFailed), .submitRename) {
             $0.editing = nil
-            $0.request = .rename(id: "a", title: title)
-            $0.requests += 1
+            $0.failure = nil
+            $0.requests = [.rename(id: "a", title: title)]
+            $0.asked += 1
         }
     }
     @Test(arguments: ["", "  New title  ", "Звонок 🐦"])
     func submitRename_request(title: String) {
-        assert(makeState(editing: makeEditing(title: title)), .submitRename, delivers: .rename(id: "a", title: title))
+        assert(makeState(editing: makeEditing(title: title), failure: .retryFailed), .submitRename, delivers: [.rename(id: "a", title: title)])
     }
 
     @Test(arguments: [CallsListMachineEvent.cancelRename, .askDelete("a"), .askDelete("b"), .askDelete("missing")],
           [false, true])
     func cancelOrAskDeleteEndsEditing_state(event: CallsListMachineEvent, busy: Bool) {
-        assert(makeState(busy: busy, selectedID: "b", editing: makeEditing()), event) { $0.editing = nil }
+        assert(makeState(busy: busy, selectedID: "b", editing: makeEditing(), failure: .retryFailed), event) {
+            $0.editing = nil
+            if event != .cancelRename { $0.failure = nil }
+        }
     }
     @Test(arguments: [CallsListMachineEvent.cancelRename, .askDelete("a"), .askDelete("b"), .askDelete("missing")],
           [false, true])
     func cancelOrAskDeleteEndsEditing_request(event: CallsListMachineEvent, busy: Bool) {
-        assert(makeState(busy: busy, selectedID: "b", editing: makeEditing()), event, delivers: nil)
+        assert(makeState(busy: busy, selectedID: "b", editing: makeEditing(), failure: .retryFailed), event, delivers: nil)
     }
 
     @Test(arguments: [CallsListMachineEvent.editTitle("ignored"), .cancelRename, .submitRename, .askDelete("a")])
@@ -98,17 +103,18 @@ struct CallsListReducerTests {
 
     @Test(arguments: ["b", "missing"], [false, true])
     func selectAnotherCallCommitsRename_state(id: String, busy: Bool) {
-        assert(makeState(busy: busy, selectedID: "a", editing: makeEditing()), .select(id)) {
+        assert(makeState(busy: busy, selectedID: "a", editing: makeEditing(), failure: .retryFailed), .select(id)) {
             $0.editing = nil
+            $0.failure = nil
             $0.selectedID = id
-            $0.request = .rename(id: "a", title: "Draft title")
-            $0.requests += 1
+            $0.requests = [.rename(id: "a", title: "Draft title")]
+            $0.asked += 1
         }
     }
     @Test(arguments: ["b", "missing"], [false, true])
     func selectAnotherCallCommitsRename_request(id: String, busy: Bool) {
-        assert(makeState(busy: busy, selectedID: "a", editing: makeEditing()), .select(id),
-               delivers: .rename(id: "a", title: "Draft title"))
+        assert(makeState(busy: busy, selectedID: "a", editing: makeEditing(), failure: .retryFailed), .select(id),
+               delivers: [.rename(id: "a", title: "Draft title")])
     }
 
     @Test(arguments: moves, [false, true])
@@ -117,15 +123,15 @@ struct CallsListReducerTests {
             $0.editing = nil
             $0.selectedID = test.expectedSelection
             if editing {
-                $0.request = .rename(id: "a", title: "Draft title")
-                $0.requests += 1
+                $0.requests = [.rename(id: "a", title: "Draft title")]
+                $0.asked += 1
             }
         }
     }
     @Test(arguments: moves, [false, true])
     fileprivate func navigation_request(test: Move, editing: Bool) {
         assert(makeState(rows: test.rows, selectedID: test.selection, editing: editing ? makeEditing() : nil), test.event,
-               delivers: editing ? .rename(id: "a", title: "Draft title") : nil)
+               delivers: editing ? [.rename(id: "a", title: "Draft title")] : nil)
     }
 
     @Test func recordingTheEditedCallEndsEditing_state() {
@@ -143,7 +149,80 @@ struct CallsListReducerTests {
     func otherRecordingChangesDoNothing_request(id: String?, editing: Bool) {
         assert(makeState(editing: editing ? makeEditing() : nil), .recordingChanged(id: id), delivers: nil)
     }
+    @Test(arguments: [CallsListMachineEvent.confirmDelete, .dismissFailure, .shown], [false, true])
+    func actionReplacesFailure_state(event: CallsListMachineEvent, editing: Bool) {
+        assert(makeState(editing: editing ? makeEditing() : nil, failure: .retryFailed), event) {
+            $0.failure = nil
+            if event == .shown { $0.editing = nil }
+        }
+    }
+    @Test(arguments: [CallsListMachineEvent.confirmDelete, .dismissFailure, .shown], [false, true])
+    func actionReplacesFailure_request(event: CallsListMachineEvent, editing: Bool) {
+        assert(makeState(editing: editing ? makeEditing() : nil, failure: .retryFailed), event, delivers: nil)
+    }
+
+    @Test(arguments: [String?.none, "b"])
+    func retryStartsAndAsksForIt_state(retryingOther: String?) {
+        assert(makeState(rows: [makeRow(id: "a", canRetry: true)], retrying: Set([retryingOther].compactMap { $0 }),
+                         failure: .retryFailed), .retry("a")) {
+            $0.retrying.insert("a")
+            $0.failure = nil
+            $0.requests = [.clearFailure, .retrySummary("a")]
+            $0.asked += 1
+        }
+    }
+    @Test(arguments: [String?.none, "b"])
+    func retryStartsAndAsksForIt_request(retryingOther: String?) {
+        assert(makeState(rows: [makeRow(id: "a", canRetry: true)], retrying: Set([retryingOther].compactMap { $0 }),
+                         failure: .retryFailed), .retry("a"), delivers: [.clearFailure, .retrySummary("a")])
+    }
+
+    @Test(arguments: refusedRetries)
+    fileprivate func retryRefused_state(test: RefusedRetry) {
+        assert(makeState(rows: test.rows, busy: test.busy, retrying: test.retrying, failure: .retryFailed), .retry("a"))
+    }
+    @Test(arguments: refusedRetries)
+    fileprivate func retryRefused_request(test: RefusedRetry) {
+        assert(makeState(rows: test.rows, busy: test.busy, retrying: test.retrying, failure: .retryFailed), .retry("a"),
+               delivers: nil)
+    }
+
+    @Test(arguments: [true, false])
+    func retryFinishedEndsRetrying_state(succeeded: Bool) {
+        assert(makeState(retrying: ["a", "b"]), .retryFinished("a", succeeded: succeeded)) {
+            $0.retrying = ["b"]
+            if !succeeded { $0.failure = .retryFailed }
+        }
+    }
+    @Test(arguments: [true, false])
+    func retryFinishedEndsRetrying_request(succeeded: Bool) {
+        assert(makeState(retrying: ["a", "b"]), .retryFinished("a", succeeded: succeeded), delivers: nil)
+    }
+
+    @Test(arguments: [true, false])
+    func retryFinishedForCallNotRetrying_state(succeeded: Bool) {
+        assert(makeState(retrying: ["b"]), .retryFinished("a", succeeded: succeeded))
+    }
+    @Test(arguments: [true, false])
+    func retryFinishedForCallNotRetrying_request(succeeded: Bool) {
+        assert(makeState(retrying: ["b"]), .retryFinished("a", succeeded: succeeded), delivers: nil)
+    }
 }
+
+private struct RefusedRetry: Sendable {
+    let rows: [CallsListMachineState.Row]
+    let busy: Bool
+    let retrying: Set<String>
+}
+
+private let refusedRetries: [RefusedRetry] = [
+    .init(rows: [makeRow(id: "a", canRetry: true)], busy: true, retrying: []),
+    .init(rows: [makeRow(id: "a", canRetry: true)], busy: false, retrying: ["a"]),
+    .init(rows: [makeRow(id: "a", editable: false, canRetry: true)], busy: false, retrying: []),
+    .init(rows: [makeRow(id: "a")], busy: false, retrying: []),
+    .init(rows: [makeRow(id: "b", canRetry: true)], busy: false, retrying: []),
+]
+
 
 private struct RowChange: Sendable {
     let rows: [CallsListMachineState.Row]
@@ -201,8 +280,9 @@ private let moves: [Move] = {
     }
 }()
 
-private func makeRow(id: String, title: String = "Row title", editable: Bool = true) -> CallsListMachineState.Row {
-    .init(id: id, title: title, editable: editable)
+private func makeRow(id: String, title: String = "Row title", editable: Bool = true,
+                     canRetry: Bool = false) -> CallsListMachineState.Row {
+    .init(id: id, title: title, editable: editable, canRetry: canRetry)
 }
 
 private func makeEditing(title: String = "Draft title") -> CallsListMachineState.Editing {
@@ -211,8 +291,9 @@ private func makeEditing(title: String = "Draft title") -> CallsListMachineState
 
 private func makeState(rows: [CallsListMachineState.Row] = [makeRow(id: "a"), makeRow(id: "b"), makeRow(id: "c")],
                        busy: Bool = false, selectedID: String? = nil,
-                       editing: CallsListMachineState.Editing? = nil) -> CallsListMachineState {
-    .init(rows: rows, busy: busy, selectedID: selectedID, editing: editing)
+                       editing: CallsListMachineState.Editing? = nil, retrying: Set<String> = [],
+                       failure: CallsListMachineState.Failure? = nil) -> CallsListMachineState {
+    .init(rows: rows, busy: busy, selectedID: selectedID, editing: editing, retrying: retrying, failure: failure)
 }
 
 private func assert(_ state: CallsListMachineState, _ event: CallsListMachineEvent,
@@ -223,8 +304,8 @@ private func assert(_ state: CallsListMachineState, _ event: CallsListMachineEve
     #expect(CallsListReducer().reduce(state, event) == expected, sourceLocation: sourceLocation)
 }
 
-private func assert(_ state: CallsListMachineState, _ event: CallsListMachineEvent, delivers request: CallsListMachineState.Request?,
+private func assert(_ state: CallsListMachineState, _ event: CallsListMachineEvent, delivers requests: [CallsListMachineState.Request]?,
                     sourceLocation: SourceLocation = #_sourceLocation) {
     let next = CallsListReducer().reduce(state, event)
-    #expect((next.requests > state.requests ? next.request : nil) == request, sourceLocation: sourceLocation)
+    #expect((next.asked > state.asked ? next.requests : nil) == requests, sourceLocation: sourceLocation)
 }

@@ -46,7 +46,6 @@ public final class AudelinCalls {
 
     private let retryableSummaries: () -> Set<String>
     private let retrySummary: (String) async throws -> Void
-    private var retrying: Set<String> = []
     private let summaryStatuses: () -> [String: String]
     private let summaryBadges: () -> [String: CallsListState.Row.Summary]
     private let inputs: RecordingsInputs
@@ -119,7 +118,7 @@ public final class AudelinCalls {
         state.search = searchOn ? .init(query: query, searching: searching) : nil
         let statuses = summaryStatuses()
         let badges = summaryBadges()
-        let retryable = retryableSummaries().subtracting(retrying)
+        let retryable = retryableSummaries().subtracting(list.state.retrying)
         for index in state.rows.indices {
             state.rows[index].summaryStatus = statuses[state.rows[index].id] ?? ""
             state.rows[index].summary = badges[state.rows[index].id] ?? .none
@@ -134,9 +133,15 @@ public final class AudelinCalls {
         state.selectedID = state.rows.contains { $0.id == selectedID } ? selectedID : nil
         state.narrow = narrow
         state.editing = list.state.editing.map { .init(id: $0.id, title: $0.title) }
-        state.failure = openFailure ?? state.failure
+        state.failure = openFailure ?? list.state.failure.map(failureText) ?? state.failure
         state.busy = state.busy || opening
         return state
+    }
+
+    private func failureText(_ failure: CallsListMachineState.Failure) -> String {
+        switch failure {
+        case .retryFailed: listText(.summaryRetryFailed)
+        }
     }
 
     private func rowSnippet(_ snippet: CallsSearch.Snippet) -> CallsListState.Row.Match.Snippet {
@@ -201,7 +206,7 @@ public final class AudelinCalls {
     public func show() {
         search(query)
         openFailure = nil
-        list.event(.cancelRename)
+        list.event(.shown)
         inputs.send(.refresh)
         present()
         scanNotes()
@@ -296,20 +301,26 @@ public final class AudelinCalls {
     }
 
     /// Sends the list an event and passes each request it makes on to Recordings.
-    private func sendList(_ event: CallsListMachineEvent) {
-        let made = list.state.requests
+    private func sendList(_ event: CallsListMachineEvent) async {
+        let asked = list.state.asked
         list.event(event)
-        guard list.state.requests > made, let request = list.state.request else { return }
+        guard list.state.asked > asked else { return }
         openFailure = nil
-        switch request {
-        case let .rename(id, title): inputs.send(.rename(id: id, title: title))
-        case .clearFailure: inputs.send(.clearFailure)
+        for request in list.state.requests {
+            switch request {
+            case let .rename(id, title): inputs.send(.rename(id: id, title: title))
+            case .clearFailure: inputs.send(.clearFailure)
+            case let .retrySummary(id):
+                let succeeded: Bool
+                do { try await retrySummary(id); succeeded = true } catch { succeeded = false }
+                await sendList(.retryFinished(id, succeeded: succeeded))
+            }
         }
     }
 
     func recordingChanged(_ state: RecordingState) {
         let id = recordedCallID(state)
-        sendList(.recordingChanged(id: id))
+        list.event(.recordingChanged(id: id))
         inputs.send(.recordingChanged(id))
     }
 
@@ -317,33 +328,35 @@ public final class AudelinCalls {
         guard !opening else { return }
         recordingChanged(recordingState())
         let snapshot = state
-        sendList(.rowsChanged(snapshot.rows.map { .init(id: $0.id, title: $0.title, editable: $0.editable) }, busy: snapshot.busy))
+        await sendList(.rowsChanged(snapshot.rows.map { .init(id: $0.id, title: $0.title, editable: $0.editable, canRetry: $0.canRetrySummary) },
+                                     busy: snapshot.busy))
         switch event {
-        case let .beginRename(id): sendList(.beginRename(id))
-        case let .editTitle(title): sendList(.editTitle(title))
-        case .cancelRename: sendList(.cancelRename)
-        case .submitRename: sendList(.submitRename)
+        case let .beginRename(id): await sendList(.beginRename(id))
+        case let .editTitle(title): await sendList(.editTitle(title))
+        case .cancelRename: await sendList(.cancelRename)
+        case .submitRename: await sendList(.submitRename)
         case let .askDelete(id):
-            sendList(.askDelete(id))
+            await sendList(.askDelete(id))
             openFailure = nil
             inputs.send(.askDelete(id))
         case .confirmDelete:
+            await sendList(.confirmDelete)
             openFailure = nil
             inputs.send(.confirmDelete)
         case .cancelDelete: inputs.send(.cancelDelete)
         case let .select(id):
-            sendList(.select(id))
+            await sendList(.select(id))
             selectDetail()
         case let .search(text): search(text)
         case .selectNext:
-            sendList(.selectNext)
+            await sendList(.selectNext)
             followSelection(snapshot.selectedID)
         case .selectPrevious:
-            sendList(.selectPrevious)
+            await sendList(.selectPrevious)
             followSelection(snapshot.selectedID)
         case let .read(id):
             guard snapshot.rows.contains(where: { $0.id == id }) else { return }
-            sendList(.select(id))
+            await sendList(.select(id))
             let revision = detailModel.state.revision
             selectDetail()
             // The selection event is asynchronous; open only after its latest read has answered.
@@ -357,17 +370,11 @@ public final class AudelinCalls {
             guard !snapshot.busy, let row = snapshot.rows.first(where: { $0.id == id }), row.canMakeSummary else { return }
             makeSummary(id)
         case let .retrySummary(id):
-            guard !snapshot.busy, let row = snapshot.rows.first(where: { $0.id == id }),
-                  row.editable, row.canRetrySummary else { return }
-            retrying.insert(id)
-            defer { retrying.remove(id) }
-            openFailure = nil
-            inputs.send(.clearFailure)
-            do { try await retrySummary(id) }
-            catch { openFailure = listText(.summaryRetryFailed) }
+            await sendList(.retry(id))
         case let .open(id):
             guard !snapshot.busy else { return }
-            sendList(.cancelRename)
+            await sendList(.cancelRename)
+            await sendList(.dismissFailure)
             openFailure = nil
             inputs.send(.clearFailure)
             opening = true
