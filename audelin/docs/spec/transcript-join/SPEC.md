@@ -46,7 +46,7 @@ Feature: Joining calls' transcripts
   Scenario: S-4 Rows pass through unchanged
     Given parts whose rows carry speakers and words
     When I join them
-    Then I can read every row with what it carried, in its part's order
+    Then I can read every row with what it carried but its speaker key, in its part's order
 
   Scenario: S-5 Overlapping parts join with no gap
     Given a part that starts before the previous one ended

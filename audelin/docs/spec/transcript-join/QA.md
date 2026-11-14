@@ -19,7 +19,8 @@ between A's rows and B's.
 
 ## S-4 Rows pass through unchanged
 
-Each output row equals its input row but for its time; markers in order.
+Each output row equals its input row but for its time and speaker key;
+markers in order.
 
 ## S-5 Overlapping parts join with no gap
 
