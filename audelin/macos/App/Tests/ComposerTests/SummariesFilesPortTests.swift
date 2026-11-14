@@ -52,6 +52,51 @@ import Testing
         #expect(files.retried.isEmpty)
     }
 
+    @Test func startWritesTheRunningJob() async throws {
+        let files = FilesFake()
+        #expect(try await makeSUT(files).start(job))
+        #expect(files.writes == [.start(try await record(phase: "running"))])
+    }
+    @Test func checkpointWritesTheIdentitiesAndWarning() async throws {
+        let files = FilesFake()
+        try await makeSUT(files).checkpoint(job, identities: [.init(label: "A", name: "Ann", time: "0", quote: "hi")], warning: true)
+        guard case let .progress(written) = try #require(files.writes.first) else { Issue.record("not a progress write"); return }
+        let names = try JSONSerialization.jsonObject(with: try #require(written.checkpoint)) as? [[String: String]]
+        #expect(written.phase == "running" && written.warning && names == [["label": "A", "name": "Ann", "time": "0", "quote": "hi"]])
+    }
+    @Test func publishWritesTheNotes() async throws {
+        let files = FilesFake()
+        try await makeSUT(files).publish(job, notes: "notes", warning: true)
+        #expect(files.writes == [.publish(try await record(phase: "running", warning: true), "notes")])
+    }
+    @Test(arguments: [(SummariesState.Call.Stage.succeeded, "succeeded"), (.failed, "failed")])
+    func saveWritesTheLastStage(stage: SummariesState.Call.Stage, phase: String) async throws {
+        let files = FilesFake()
+        try await makeSUT(files).save(job, stage: stage, warning: true)
+        #expect(files.writes == [.progress(try await record(phase: phase, warning: true))])
+    }
+    @Test func saveOfAStageThatIsNotLastThrowsWithoutWriting() async {
+        let files = FilesFake()
+        await #expect(throws: (any Error).self) { try await makeSUT(files).save(job, stage: .noting, warning: false) }
+        #expect(files.writes.isEmpty)
+    }
+    @Test func discardRemovesTheJob() async throws {
+        let files = FilesFake()
+        try await makeSUT(files).discard(job)
+        #expect(files.writes == [.discard(try await record(phase: "running"))])
+    }
+    @Test func releaseFreesTheJobsLease() async {
+        let files = FilesFake()
+        await makeSUT(files).release(job)
+        #expect(files.writes == [.release(job: "job", call: "call", input: "input")])
+    }
+    @Test func aFailedWriteThrows() async {
+        let sut = makeSUT(FilesFake(fails: true))
+        await #expect(throws: (any Error).self) { try await sut.start(job) }
+        await #expect(throws: (any Error).self) { try await sut.publish(job, notes: "n", warning: false) }
+        await #expect(throws: (any Error).self) { try await sut.discard(job) }
+    }
+
     /// A stored record of the job as the port writes it, in the given phase.
     private func record(phase: String, warning: Bool = false) async throws -> SummaryFiles.Record {
         let files = FilesFake()
@@ -63,7 +108,12 @@ import Testing
 
 /// Answers the port's file calls from a stored record and records each call.
 final class FilesFake: SummariesFiles {
-    private struct Calls { var claimed: [SummaryFiles.Record] = []; var loaded: [String] = []; var retried: [(SummaryFiles.Record, String)] = [] }
+    enum Write: Equatable { case start(SummaryFiles.Record), progress(SummaryFiles.Record), publish(SummaryFiles.Record, String),
+                            discard(SummaryFiles.Record), release(job: String, call: String, input: String) }
+    private struct Calls {
+        var claimed: [SummaryFiles.Record] = []; var loaded: [String] = []; var retried: [(SummaryFiles.Record, String)] = []
+        var writes: [Write] = []
+    }
     private let calls = Mutex(Calls())
     private let answers = Mutex<(stored: SummaryFiles.Record?, claim: @Sendable (SummaryFiles.Record) throws -> (Bool, SummaryFiles.Record))>(
         (nil, { (true, $0) }))
@@ -78,6 +128,18 @@ final class FilesFake: SummariesFiles {
     var claimed: [SummaryFiles.Record] { calls.withLock { $0.claimed } }
     var loaded: [String] { calls.withLock { $0.loaded } }
     var retried: [(SummaryFiles.Record, String)] { calls.withLock { $0.retried } }
+    var writes: [Write] { calls.withLock { $0.writes } }
+    let fails: Bool
+    init(fails: Bool = false) { self.fails = fails }
+    func start(_ record: SummaryFiles.Record) async throws -> Bool { try write(.start(record)); return true }
+    func progress(_ record: SummaryFiles.Record) async throws { try write(.progress(record)) }
+    func publish(_ record: SummaryFiles.Record, notes: String) async throws { try write(.publish(record, notes)) }
+    func discard(_ record: SummaryFiles.Record) async throws { try write(.discard(record)) }
+    func release(job: String, call: String, input: String) async { calls.withLock { $0.writes.append(.release(job: job, call: call, input: input)) } }
+    private func write(_ value: Write) throws {
+        calls.withLock { $0.writes.append(value) }
+        if fails { throw CocoaError(.fileWriteUnknown) }
+    }
     func claim(_ record: SummaryFiles.Record) async throws -> (owned: Bool, record: SummaryFiles.Record) {
         calls.withLock { $0.claimed.append(record) }
         let (owned, value) = try claimAnswer(record); return (owned, value)
