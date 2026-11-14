@@ -158,6 +158,17 @@ modules are machines; an app composes them.
   reads another machine through a closure, no wait or join that only syncs
   two machines, and no doer, wrapper or adapter that remembers work outside
   the state.
+- These bans are about splitting one line, not about machines meeting. A
+  separate concern, such as a screen, may have its own machine that takes
+  another machine's state as input: the app sends that state to it as an
+  event, and its pure reducer decides what the screen shows. It must not
+  start, cancel, retry or wait on the other machine's work; those stay
+  events sent to the machine that owns the line.
+- Before adding a machine, name the line it runs. If its work is a stage of
+  a line another machine already runs, it is not a machine: make it that
+  machine's stage. A machine that only renders another's state for a
+  screen is fine. When a machine needs a stage another machine owns, merge
+  them into one; do not connect them.
 - **Async** (`ObservableModel`): `event(_:)` returns before the event is
   reduced. Use it unless a caller needs the sync order below.
 - **Sync** (`SyncModel`): `event(_:)` reduces before it returns, so a read
