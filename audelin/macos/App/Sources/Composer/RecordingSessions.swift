@@ -26,6 +26,7 @@ actor RecordingSessions: RecordingSession {
         var reportedFaults: Set<RecordingFault> = []
         var callSilent = false
         var reportedFolder = false
+        var announcedEnding = false
         var reports: [RecordingSessionReport] = []
     }
 
@@ -33,6 +34,7 @@ actor RecordingSessions: RecordingSession {
     private let makePieces: @Sendable (UInt64) -> SessionPieces
     private let liveText: @Sendable () -> Bool
     private let report: @Sendable (UInt64, RecordingSessionReport) async -> Void
+    private let summaries: SummaryCallbacks
     private let timeZone: @Sendable () -> TimeZone
     private let sink: any LogSink
     private var running: [UInt64: Running] = [:]
@@ -49,7 +51,8 @@ actor RecordingSessions: RecordingSession {
         self.timeZone = boundary.time.timeZone
         self.panel = panel
         self.makePieces = composeRecordingPieces(preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: callApp,
-                                                 processes: processes, boundary: boundary, finalization: finalization, finalizationResources: finalizationResources, summaries: summaries)
+                                                 processes: processes, boundary: boundary, finalization: finalization, finalizationResources: finalizationResources)
+        self.summaries = summaries
         self.liveText = { preferences.read().liveText }
         self.report = report
         self.sink = boundary.log
@@ -139,6 +142,11 @@ actor RecordingSessions: RecordingSession {
            let callID = Calls.id(in: URL(fileURLWithPath: folder.id).lastPathComponent, timeZone: timeZone()) {
             running[id]?.reportedFolder = true
             await report(id, .callCreated(id: callID))
+        }
+        // Notes show the call as waiting once its text stops; a later finalized transcript supersedes this.
+        if state.callText == .stopping || state.callText == .closed, let folder = state.recordedFolder, running[id]?.announcedEnding == false {
+            running[id]?.announcedEnding = true
+            await summaries.waiting(URL(fileURLWithPath: folder.id))
         }
         guard var entry = running[id] else { return true }
         if let reason = state.cannotRecord, !entry.reportedFailure {

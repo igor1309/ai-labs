@@ -5,6 +5,7 @@ import BlockingTestWork
 import CoreAudioProcesses
 import Foundation
 import Preferences
+import Calls
 import Recording
 import SessionRehearsal
 import Synchronization
@@ -55,6 +56,18 @@ struct RecordingSessionsTests {
             #expect(await rig.sessions.begin(id: 3) != .ready)
             await rig.sessions.end(id: 3)
             #expect(await rig.panel.states().first(where: { _ in true })?.recording == .off)
+        }
+    }
+
+    @Test func endingARecordingTellsNotesItsCallIsWaitingOnce() async throws {
+
+        try await withSessions { rig in
+            #expect(await rig.sessions.begin(id: 4) == .ready)
+            #expect(rig.waiting.all.isEmpty)
+            await rig.sessions.end(id: 4)
+            let created = rig.reports.all.compactMap { if case let .callCreated(id) = $0.report { id } else { nil } }
+            #expect(rig.waiting.all.count == 1)
+            #expect(rig.waiting.all.map(\.lastPathComponent).map { Calls.id(in: $0, timeZone: .gmt) } == created)
         }
     }
 
@@ -196,13 +209,14 @@ private struct SessionsRig: Sendable {
     let microphones: Captures
     let calls: Captures
     let reports: Reports
+    let waiting: Values<URL>
     let log: FixtureLog
 }
 
 private func withSessions(folderFails: Bool = false, _ body: @Sendable (SessionsRig) async throws -> Void) async throws {
 
     try await withComposeFolder { root in
-        let microphones = Captures(), calls = Captures(), reports = Reports(), log = FixtureLog(), clock = FixtureClock()
+        let microphones = Captures(), calls = Captures(), reports = Reports(), waiting = Values<URL>(), log = FixtureLog(), clock = FixtureClock()
         defer { reports.end(); clock.finish() }
         var boundary = rehearsalBoundary(capturePersistence: .recorded,
             microphone: { try microphones.start() }, call: { _ in try calls.start() },
@@ -230,8 +244,9 @@ private func withSessions(folderFails: Bool = false, _ body: @Sendable (Sessions
             cleanup: FinalizationCleanup(resources: resources), replacement: FinalizationReplacement(resources: resources),
             finals: SessionFinals(resources: resources))
         let sessions = RecordingSessions(preferences: preferences, occupiedCallNames: { [] }, callApp: app, processes: processes, boundary: boundary,
-                                         report: { id, report in reports.append(.init(id: id, report: report)) }, panel: panel, finalization: finalization, finalizationResources: resources)
-        try await body(SessionsRig(sessions: sessions, panel: panel, microphones: microphones, calls: calls, reports: reports, log: log))
+                                         report: { id, report in reports.append(.init(id: id, report: report)) }, panel: panel, finalization: finalization, finalizationResources: resources,
+                                         summaries: SummaryCallbacks(waiting: { waiting.append($0) }))
+        try await body(SessionsRig(sessions: sessions, panel: panel, microphones: microphones, calls: calls, reports: reports, waiting: waiting, log: log))
         await processes.stop()
     }
 }

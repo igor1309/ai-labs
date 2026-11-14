@@ -31,7 +31,6 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     nonisolated let transcriptFailures: TranscriptFailureReport
     let finalization: TranscriptFinalizationModel
     let finalizationResources: FinalizationResources
-    let summaries: SummaryCallbacks
     let folder: CallFolder
     let folderTitle: String?
     let processes: CallAppProcesses
@@ -71,10 +70,9 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     /// A long call's transcript is saved at most this often, and at once when its text stops.
     static let transcriptInterval: Duration = .seconds(5)
 
-    init(folder: CallFolder, folderTitle: String?, processes: CallAppProcesses, boundary: ComposerBoundary, finalization: TranscriptFinalizationModel, finalizationResources: FinalizationResources, summaries: SummaryCallbacks = .disabled) {
+    init(folder: CallFolder, folderTitle: String?, processes: CallAppProcesses, boundary: ComposerBoundary, finalization: TranscriptFinalizationModel, finalizationResources: FinalizationResources) {
         self.finalization = finalization
         self.finalizationResources = finalizationResources
-        self.summaries = summaries
         self.folder = folder
         self.folderTitle = folderTitle
         self.processes = processes
@@ -202,7 +200,6 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
 
     func stop() async throws {
 
-        if let made { await summaries.waiting(made.url) }
         await writing?.stop()
         await readingObservation?.value
         // Saving calls back into these pieces; release the stopped reader's destination.
