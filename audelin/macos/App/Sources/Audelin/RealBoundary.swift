@@ -78,12 +78,28 @@ struct SystemMicrophonePermission: MicrophonePermission {
     func authorized() -> Bool { AVCaptureDevice.authorizationStatus(for: .audio) == .authorized }
     func request() async { _ = await AVCaptureDevice.requestAccess(for: .audio) }
 }
+/// The free space on a folder's volume. The capacity for important usage counts space the
+/// system can purge, but a process outside a user session, such as a CI runner, can read it
+/// as zero on a volume with space; the volume's plain free space is read then.
 struct DiskCapacity: FolderCapacity {
+    /// A folder's volume's free space for important usage and its plain free space; nil when unreadable.
+    typealias Space = (important: Int64?, plain: Int?)
+    let read: @Sendable (URL) -> Space?
+
+    init(read: @escaping @Sendable (URL) -> Space? = DiskCapacity.system) { self.read = read }
+
+    static let system: @Sendable (URL) -> Space? = { folder in
+        (try? folder.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey, .volumeAvailableCapacityKey]))
+            .map { ($0.volumeAvailableCapacityForImportantUsage, $0.volumeAvailableCapacity) }
+    }
+
     func available(at folder: URL) -> Int64? {
-        try? folder.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
-            .volumeAvailableCapacityForImportantUsage
+        guard let space = read(folder) else { return nil }
+        if let important = space.important, important > 0 { return important }
+        return space.plain.map(Int64.init) ?? space.important
     }
 }
+
 
 struct RealProcessSource: CallProcessSource {
     private let binding = CoreAudioBinding(native: .system)
