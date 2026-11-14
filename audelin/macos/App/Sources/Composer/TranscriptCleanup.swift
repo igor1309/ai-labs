@@ -1,6 +1,5 @@
 import BleedCleanup
 import Foundation
-import SummaryJobs
 
 public struct CleanupRecording: Equatable, Sendable {
     public let microphoneURL: URL
@@ -11,7 +10,7 @@ public struct CleanupRecording: Equatable, Sendable {
     }
 }
 
-/// Runs on the closed snapshot; the summary follows the successful atomic replacement.
+/// Applies the bleed gate and hears the cleaned microphone without changing the file.
 struct TranscriptCleanup: Sendable {
     let recording: CleanupRecording
     let duration: @Sendable () -> Double
@@ -19,8 +18,8 @@ struct TranscriptCleanup: Sendable {
     let hearing: any CleanedHearing<[Float], [TranscriptSegment]>
     let sink: any LogSink
 
-    func run(_ raw: CallState, attributed: Transcript.Attributed? = nil, replacing replace: @escaping @Sendable ([TranscriptSegment]) async throws -> Void) async -> [Job.Entry] {
-        let replacement = CleanupReplacement(replace: replace)
+    func run(_ raw: CallState) async -> [TranscriptSegment]? {
+        let replacement = CleanupReplacement()
         let cleanup = BleedCleanup(
             gate: BleedGate(), cleaning: cleaning,
             hearing: NonemptyHearing(base: hearing), replacing: replacement
@@ -30,9 +29,9 @@ struct TranscriptCleanup: Sendable {
             microphone: words(in: raw, speaker: .mine), call: words(in: raw, speaker: .theirs), duration: duration()
         )
         if case .replaced = outcome {
-            return summaryEntries(raw, heard: await replacement.heard, attributed: attributed)
+            return await replacement.heard
         }
-        return summaryEntries(raw, attributed: attributed)
+        return nil
     }
 
     private func words(in state: CallState, speaker: CallState.Speaker) -> [Word] {
@@ -43,14 +42,10 @@ struct TranscriptCleanup: Sendable {
 }
 
 private actor CleanupReplacement: MicrophoneReplacing {
-    let replace: @Sendable ([TranscriptSegment]) async throws -> Void
-    private(set) var heard: [TranscriptSegment] = []
-
-    init(replace: @escaping @Sendable ([TranscriptSegment]) async throws -> Void) { self.replace = replace }
+    private(set) var heard: [TranscriptSegment]?
 
     func replaceMicrophone(of recording: CleanupRecording, with text: [TranscriptSegment]) async throws {
         try Task.checkCancellation()
-        try await replace(text)
         heard = text
     }
 }

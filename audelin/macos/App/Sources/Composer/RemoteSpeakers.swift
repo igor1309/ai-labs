@@ -2,6 +2,14 @@ import CallDiarizer
 import Foundation
 import SpeakerAttribution
 
+/// Offline speaker attribution and its eager model preparation at transcript open.
+public protocol TranscriptDiarizer: Sendable {
+    func prepare() async
+    func diarize(_ track: URL, speakers: Int?) async throws -> CallDiarizer.Diarization
+}
+
+extension CallDiarizer: TranscriptDiarizer {}
+
 extension TranscriptSegment: SpeakerSegment {
     public var wordTimes: [SpeakerAttribution.WordTime] {
         words.map { .init(start: $0.start, end: $0.end) }
@@ -17,10 +25,10 @@ extension TranscriptSegment: SpeakerSegment {
 
 /// The far side of a closed call, given to its remote speakers.
 struct RemoteSpeakers: Sendable {
-    private let diarizer: CallDiarizer
+    private let diarizer: any TranscriptDiarizer
     private let sink: any LogSink
 
-    init(diarizer: CallDiarizer, sink: any LogSink) {
+    init(diarizer: any TranscriptDiarizer, sink: any LogSink) {
         self.diarizer = diarizer; self.sink = sink
     }
 

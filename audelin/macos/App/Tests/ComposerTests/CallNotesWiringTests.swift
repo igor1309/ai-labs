@@ -221,14 +221,13 @@ struct CallNotesWiringTests {
             try savedCall(a, in: root)
             let storage = callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
             let files = Files(locations: storage, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
-            let http = NotesHTTP(), notesOn = Mutex(true)
+            let http = NotesHTTP()
             let sut = makeSummaries(files: files, storage: storage, http: http, enabled: true)
-            let callbacks = sut.callbacks(timeZone: .gmt, notesOn: { notesOn.withLock { $0 } })
+            let callbacks = sut.callbacks(timeZone: .gmt, notesOn: { true })
             do {
                 await callbacks.waiting(root.appendingPathComponent(a))
                 sut.make(call: a); await http.started.next()
-                notesOn.withLock { $0 = false }
-                await callbacks.completed(root.appendingPathComponent(a), [], true, true)
+                sut.forget(call: a)
                 #expect(sut.badges[a] == .pending)
                 try await http.succeed()
                 try await waitUntil("notes are made") { sut.state.calls[a]?.stage == .succeeded }

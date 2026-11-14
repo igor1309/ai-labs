@@ -383,6 +383,10 @@ daily dashboard flags it.
 
 - `gh`, `multica`, `agister` and `git fetch`/`push` fail inside the
   sandbox with TLS errors; run them with the sandbox off.
+- `swift build` and `swift test` fail inside the sandbox with
+  `sandbox-exec: sandbox_apply: Operation not permitted`: SwiftPM starts
+  its own sandbox, which cannot nest. Run them with the sandbox off from
+  the first call.
 
 ## Long waits
 

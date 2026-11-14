@@ -60,6 +60,8 @@ public final class AudelinMenu {
     private let reserveStorage: () async -> Bool
     private let releaseStorage: () async -> Void
     private let quit: () async -> Void
+    private var finalizationSubscriptions: [Task<Void, Never>] = []
+    private var finishFinalTranscripts: () -> Void = {}
     private var observation: Task<Void, Never>?
     private var detectionObservation: Task<Void, Never>?
     private var updateWatch: Task<Void, Never>?
@@ -116,7 +118,7 @@ public final class AudelinMenu {
         sink: any LogSink,
         presentPanel: @escaping (Bool) -> Void,
         sleep: @escaping @Sendable (Duration) async throws -> Void,
-        cleanupRuns: CleanupRuns,
+        finalization: TranscriptFinalizationModel, finalizationResources: FinalizationResources,
         summaries: SummariesModel? = nil,
         language: CurrentLanguage
     ) async {
@@ -137,12 +139,12 @@ public final class AudelinMenu {
         let application: MenuApplication?
         do {
             let recording = try await AudelinRecording(preferences: storage, occupiedCallNames: occupiedCallNames, boundary: boundary,
-                                                       processes: processes, panel: panel, cleanupRuns: cleanupRuns, summaries: summaries?.callbacks(timeZone: boundary.time.timeZone(), notesOn: { storage.read().notes.enabled }) ?? .disabled)
+                                                       processes: processes, panel: panel, finalization: finalization, finalizationResources: finalizationResources, summaries: summaries?.callbacks(timeZone: boundary.time.timeZone(), notesOn: { storage.read().notes.enabled }) ?? .disabled)
             application = MenuApplication(
                 states: { await recording.inputs.states() }, failures: recording.detectionFailures,
                 send: { await recording.inputs.send($0) },
                 quit: { await Composer.quit(recording.lifecycle(terminate: {
-                    await cleanupRuns.shutdown()
+                    await finalization.shutdown(); await finalizationResources.drain()
                     await summaries?.shutdown()
                     await terminate()
                 })) },
@@ -164,7 +166,7 @@ public final class AudelinMenu {
         self.openURL = openURL
         self.reserveStorage = application?.reserveStorage ?? { false }
         self.releaseStorage = application?.releaseStorage ?? {}
-        self.quit = application?.quit ?? { await cleanupRuns.shutdown(); await summaries?.shutdown(); await terminate() }
+        self.quit = application?.quit ?? { await finalization.shutdown(); await finalizationResources.drain(); await summaries?.shutdown(); await terminate() }
         self.sendPanelEvent = application?.sendPanel ?? { _ in }
         if let application {
             panelObservation = Task { [weak self, states = application.panelStates] in
@@ -190,6 +192,11 @@ public final class AudelinMenu {
                 }
             }
         }
+    }
+
+    func installFinalizationSubscriptions(speakers: Task<Void, Never>, publication: Task<Void, Never>, finish: @escaping () -> Void) {
+        finalizationSubscriptions = [speakers, publication]
+        finishFinalTranscripts = finish
     }
 
     func installFolderPicker(_ choose: @escaping () async throws -> URL?) { chooseFolder = choose }
@@ -384,6 +391,8 @@ public final class AudelinMenu {
 
     isolated deinit {
 
+        finishFinalTranscripts()
+        for subscription in finalizationSubscriptions { subscription.cancel() }
         hideDelay?.cancel()
         panelObservation?.cancel()
         observation?.cancel()

@@ -44,12 +44,12 @@ actor RecordingSessions: RecordingSession {
         callApp: RecordingCallApp, processes: CoreAudioProcesses,
         boundary: ComposerBoundary,
         report: @escaping @Sendable (UInt64, RecordingSessionReport) async -> Void,
-        panel: AudelinPanel, cleanupRuns: CleanupRuns, summaries: SummaryCallbacks = .disabled
+        panel: AudelinPanel, finalization: TranscriptFinalizationModel, finalizationResources: FinalizationResources, summaries: SummaryCallbacks = .disabled
     ) {
         self.timeZone = boundary.time.timeZone
         self.panel = panel
         self.makePieces = composeRecordingPieces(preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: callApp,
-                                                 processes: processes, boundary: boundary, cleanupRuns: cleanupRuns, summaries: summaries)
+                                                 processes: processes, boundary: boundary, finalization: finalization, finalizationResources: finalizationResources, summaries: summaries)
         self.liveText = { preferences.read().liveText }
         self.report = report
         self.sink = boundary.log
@@ -168,7 +168,7 @@ actor RecordingSessions: RecordingSession {
             Task {
                 // The session has sent all it will; a feed whose transcript never opened ends here too.
                 await pieces.finishReading()
-                await self.panel.end(id: id)
+                Task { await self.panel.end(id: id) }
                 subscription.cancel()
                 await subscription.value
                 await sends?.value

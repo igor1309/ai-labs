@@ -19,13 +19,13 @@ final class AudelinRecording: Sendable {
     init(
         preferences: PreferencesStore, occupiedCallNames: @escaping @Sendable () throws -> [String],
         boundary: ComposerBoundary, processes: CoreAudioProcesses,
-        panel: AudelinPanel, cleanupRuns: CleanupRuns, summaries: SummaryCallbacks = .disabled
+        panel: AudelinPanel, finalization: TranscriptFinalizationModel, finalizationResources: FinalizationResources, summaries: SummaryCallbacks = .disabled
     ) async throws {
 
         let app = RecordingCallApp()
         self.panel = panel
         let (recording, conditions) = await composeRecordingWithPreferences(
-            preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: app, processes: processes, boundary: boundary, panel: panel, cleanupRuns: cleanupRuns, summaries: summaries
+            preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: app, processes: processes, boundary: boundary, panel: panel, finalization: finalization, finalizationResources: finalizationResources, summaries: summaries
         )
         let inputs = recording
         self.inputs = inputs

@@ -46,7 +46,7 @@ platform; anything else breaks rule 1. The lanes of
 
 | Kind | May import | Targets |
 |---|---|---|
-| Machine | nothing | Session, Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail |
+| Machine | nothing | Session, Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, TranscriptFinalization |
 | Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch |
 | Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, Calls, CallsStorage, Preferences |
 | Shared helper | nothing | SplitRows, CallFolderName, AudioConversion, ModelLoading |
@@ -61,9 +61,8 @@ stands. MenuBar is UI that also holds the pure reducer for panel presence.
 ### Open
 
 The composer does not yet follow rule 4. It holds decisions the sections
-below give to the root: submitting notes only after a closed transcript with
-usable text, and the shutdown order. It also holds state across events
-(`CleanupRuns`, `RecordingConditions`, `NewestText`, `CallLiveNames`,
+below give to the root: the shutdown order. It also holds state across events
+(`RecordingConditions`, `NewestText`, `CallLiveNames`,
 `LiveNameBoard`). Each becomes a component or machine of its own, or is
 shown to be only mapping. No check yet fails on an import that a target's
 kind does not allow.
@@ -87,11 +86,11 @@ Each keeps its own types. SummarySettings owns editable configuration, rendered
 validation/save/load outcomes and its preference/availability ports.
 
 The root maps those ports and decorates attempts with fallback and logging.
-It submits only after the latest final transcript snapshot has been written
-successfully and closed, with usable spoken text. Submission does not await
-LLM work on recording cleanup. Root lifecycle integration stops dispatch,
-drains recording, retains pending handoffs, cancels and joins active summary
-resources, then allows termination. Root storage integration coordinates
+It subscribes SummaryJobs to TranscriptFinalization's final transcripts
+(Transcript finalization), so a call's notes start from its final form.
+Root lifecycle integration stops dispatch, drains recording, shuts
+TranscriptFinalization down and waits for it to settle, cancels and joins
+active summary resources, then allows termination. Root storage integration coordinates
 publication with call rename, deletion, merging and calls-folder moves.
 
 ### Calls storage
@@ -225,6 +224,36 @@ Live text keeps each segment's words with their times, as the recogniser
 reports them, instead of joining them into strings: they are what the call
 said and when, which a reader may need word by word.
 
+## Transcript finalization
+
+A recording's transcript is written live; once the recording closes, it is
+made final. TranscriptFinalization is the state machine for that line. Its
+state holds each call's stage, writing, diarizing, cleaning, committing,
+then finalized or failed, with the call's last saved text, its attributed
+far side and its cleaned microphone side; whether the latest write
+succeeded; and whether a shutdown has settled. Its events are each live
+write's success or failure, the close, each stage's result and shutdown.
+
+A call whose latest write failed is final as last saved, without further
+work. A saved call is diarized (Remote speakers), then cleaned (Bleed
+cleanup); cleaned microphone text is committed to the file, and a failed
+commit keeps the text as written. Each call's final transcript, its entries,
+whether they hold words, and whether the file holds the latest text, is
+published once. Entries come from an injected pure mapping.
+
+On shutdown no new model work starts. A call being cleaned is final at once
+as written; a call being diarized or committed is final when that file write
+returns, since both replace the file; a call closing afterwards is final as
+last saved. The machine publishes settled once no file write is pending.
+
+Its collaborators are ports it owns: the diarizer (the root's after-call
+pass, which also confirms live names), microphone cleanup, transcript
+replacement, and the receiver of final transcripts. The transcript writer
+only renders and saves: live writes and whole replacements. The root keeps
+each call's writer and cleanup inputs as resource handles until its final
+transcript is published, sends the session's writes and close as events,
+and subscribes SummaryJobs and the panel's speaker rows to the machine.
+
 ## Bleed cleanup
 
 After a call on speakers, far-side speech heard by the microphone appears in
@@ -247,10 +276,10 @@ passing the two tracks as recorded. Hearing is Live text over the Parakeet
 recogniser, composed by the root over those samples, as Fill-in hears missed
 audio. The replacement is rendered by Transcript format, the format's only writer, and saved by Transcript file's replacing whole.
 
-The root builds BleedCleanup with those answers and runs it on each recording's
-closed transcript. Summary submission waits for its outcome instead of the
-close and is handed the transcript it produced, cleaned or raw. Logging of a kept raw
-transcript is a root decorator.
+The root builds BleedCleanup with those answers and runs it as
+TranscriptFinalization's cleanup stage, returning the heard microphone side
+for the machine to commit. Logging of a kept raw transcript is a root
+decorator.
 
 ## Remote speakers
 

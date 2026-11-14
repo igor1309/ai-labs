@@ -65,6 +65,7 @@ TARGETS = {
     "SettingsUI": ("ui", "the Settings window", 1),
     "GlassLedger": ("ui", "design tokens for both views", 2),
     "MenuBar": ("ui", "menu entries and panel presence", 3),
+    "TranscriptFinalization": ("machines", "turns a saved transcript\ninto its final form", 9),
     "Lifecycle": ("machines", "drains recording before termination", 3),
     "CallDetail": ("machines", "decides the selected call's\nnotes and summary display", 8),
     "CallAudioAccess": ("machines", "keeps reception evidence fresh", 4),
