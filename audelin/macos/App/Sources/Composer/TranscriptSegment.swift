@@ -1,4 +1,4 @@
-import struct LiveText.Word
+import LiveText
 import protocol CallText.Segment
 import struct CallText.State
 import protocol FillIn.Segment
@@ -48,4 +48,12 @@ extension TranscriptSegment {
 
     /// The pending words as readers show them: joined with single spaces.
     var pendingText: String { words.dropFirst(settledCount).map(\.text).joined(separator: " ") }
+}
+
+extension TranscriptSegment {
+
+    init(_ segment: RecognitionStream.Segment) {
+
+        self.init(id: segment.id, start: segment.start, end: segment.end, words: segment.words, settledCount: segment.settledCount)
+    }
 }

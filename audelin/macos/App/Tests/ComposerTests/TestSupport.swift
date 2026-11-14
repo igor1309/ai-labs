@@ -108,3 +108,19 @@ actor ScriptRecognizer: Recognizer {
     return FileManager.default.fileExists(atPath: path, isDirectory: &directory) && directory.boolValue
 }
 
+
+extension RecognitionStream.Update {
+
+    init(final: [TranscriptSegment], tail: [TranscriptSegment]) {
+
+        self.init(final: final.map(\.stream), tail: tail.map(\.stream))
+    }
+}
+
+extension TranscriptSegment {
+
+    var stream: RecognitionStream.Segment {
+
+        .init(id: id, start: start, end: end, words: words, settledCount: settledCount)
+    }
+}

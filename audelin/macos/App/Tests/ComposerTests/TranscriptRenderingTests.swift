@@ -1,3 +1,4 @@
+import CallNames
 import LiveText
 import Foundation
 import Synchronization
@@ -14,11 +15,11 @@ struct TranscriptRenderingTests {
     func microphoneReplacementUsesTheSuppliedFarSideAndNames(attributed: Bool) async throws {
 
         let bytes = BytesSpy()
-        let liveNames = LiveNameBoard()
-        liveNames.give([1: "Another call"])
-        let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: liveNames, sink: RenderingLog())
-        let names = LiveNameBoard()
-        names.give([1: "Anna"])
+        let otherCall = RecordingNames()
+        otherCall.published(liveNames([1: "Another call"]))
+        let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: otherCall, sink: RenderingLog())
+        let names = RecordingNames()
+        names.published(liveNames([1: "Anna"]))
         let state = CallState(status: .finished, entries: [
             .init(speaker: .theirs, text: .init(id: 1, start: 0, end: 1, words: [.init("raw far", start: 0, end: 1)], settledCount: 1), writtenLater: true),
             .init(speaker: .mine, text: .init(id: 2, start: 1, end: 2, words: [.init("old microphone", start: 1, end: 2)], settledCount: 1), writtenLater: false),
@@ -57,7 +58,7 @@ struct TranscriptRenderingTests {
 
         let bytes = BytesSpy()
         let renderer = RendererStub()
-        let writer = WritingTranscript(file: bytes, format: renderer, names: LiveNameBoard(), sink: RenderingLog())
+        let writer = WritingTranscript(file: bytes, format: renderer, names: RecordingNames(), sink: RenderingLog())
         let state = CallState(status: .listening, entries: [
             .init(speaker: .mine, text: .init(id: 0, start: 1, end: 2, words: [.init("1", start: 1, end: 2), .init("final", start: 1, end: 2)], settledCount: 2), writtenLater: false),
         ], finalCount: 1)
@@ -76,7 +77,7 @@ struct TranscriptRenderingTests {
             let binding = RecordingTranscriptBinding()
             var initial = TranscriptFormat()
             let file = try await TranscriptFile(url: url, initialBytes: try initial.render([]).chunks, binding: binding)
-            let writer = WritingTranscript(file: file, format: TranscriptFormat(), names: LiveNameBoard(), sink: RenderingLog())
+            let writer = WritingTranscript(file: file, format: TranscriptFormat(), names: RecordingNames(), sink: RenderingLog())
             let bad = CallState(status: .listening, entries: [
                 .init(speaker: .mine, text: .init(id: 1, start: .nan, end: 3, words: [.init("bad", start: .nan, end: 3)], settledCount: 1), writtenLater: false),
             ])
@@ -98,8 +99,8 @@ struct TranscriptRenderingTests {
             let binding = RecordingTranscriptBinding()
             var initial = TranscriptFormat()
             let file = try await TranscriptFile(url: url, initialBytes: try initial.render([]).chunks, binding: binding)
-            let names = LiveNameBoard()
-            names.give([1: "Anna"])
+            let names = RecordingNames()
+            names.published(liveNames([1: "Anna"]))
             let writer = WritingTranscript(file: file, format: TranscriptFormat(), names: names, sink: RenderingLog())
             let snapshot = CallState(status: .listening, entries: [
                 .init(speaker: .theirs, text: .init(id: 1, start: 2, end: 3, words: [.init("1", start: 2, end: 3), .init("hello", start: 2, end: 3)], settledCount: 2), writtenLater: false),
@@ -181,4 +182,14 @@ private final class RecordingTranscriptBinding: TranscriptFileBinding {
         try disk.rename(from: source, to: target)
     }
     func remove(at url: URL) { disk.remove(at: url) }
+}
+
+/// Live names as CallNames publishes them: each new name gets the next participant ID, in row order.
+func liveNames(_ rows: [Int: String], roster: [String] = [], spoken: [CallNamesState.Spoken] = [], through: Double = 0) -> CallNamesState {
+    var state = CallNamesState(roster: roster, spoken: spoken, through: through, rowNames: rows)
+    for name in rows.sorted(by: { $0.key < $1.key }).map(\.value) where state.participantIDs[name] == nil {
+        state.participantOrder.append(name)
+        state.participantIDs[name] = "z\(state.participantOrder.count)"
+    }
+    return state
 }

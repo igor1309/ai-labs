@@ -88,6 +88,7 @@ let package = Package(
         .target(
             name: "Composer",
             dependencies: [
+                .product(name: "LatestText", package: "macos"),
                 .product(name: "RecordingConditions", package: "macos"),
                 .product(name: "CallDetail", package: "macos"),
                 .product(name: "BleedCleanup", package: "macos"),
@@ -134,6 +135,7 @@ let package = Package(
                 .product(name: "PanelUI", package: "macos"),
                 .product(name: "SplitRows", package: "macos"),
                 .product(name: "CallObservation", package: "macos"),
+                .product(name: "CallNames", package: "macos"),
                 .product(name: "SpeakerNaming", package: "macos"),
                 .product(name: "ZoomAccessibility", package: "macos"),
                 .product(name: "CallDiarizer", package: "macos"),

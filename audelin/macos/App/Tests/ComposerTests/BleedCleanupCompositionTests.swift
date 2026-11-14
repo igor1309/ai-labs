@@ -130,8 +130,8 @@ private enum CleanupFailure: Error { case failed }
 private struct ReplacementStorage: TranscriptStorage {
     let fails: Bool
     var replaced: @Sendable () -> Void = {}
-    func open(at url: URL, sink: any LogSink) async throws -> OpenedTranscript {
-        let opened = try await FileTranscriptStorage(diarizer: CallDiarizer.unavailable).open(at: url, sink: sink)
+    func open(at url: URL, names: RecordingNames, sink: any LogSink) async throws -> OpenedTranscript {
+        let opened = try await FileTranscriptStorage(diarizer: CallDiarizer.unavailable).open(at: url, names: names, sink: sink)
         return OpenedTranscript(writer: ReplacementFile(base: opened.writer, fails: fails, replaced: replaced), pass: opened.pass, names: opened.names)
     }
 }

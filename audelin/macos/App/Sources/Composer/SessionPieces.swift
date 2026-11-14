@@ -1,7 +1,9 @@
+import class LatestText.LatestText
 import class SavePacing.SavePacing
 import class CallAppProcesses.CallAppProcesses
 import CallFolder
 import Foundation
+import class LiveText.RecognitionStream
 import Session
 import TrackFile
 import TranscriptFile
@@ -37,18 +39,25 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     let boundary: ComposerBoundary
     let timeOrigin: Double
     var made: CallFolder.Made?
+    /// The names this recording's CallNames publishes, read by its transcript.
+    nonisolated let names = RecordingNames()
     var selections: [String: CaptureSelection] = [:]
     var sides: [SessionSide: Side]
     var transcriptFile: (any TranscriptWriter)?
     var writing: WritingReader?
-    private var readingOutput: NewestText?
+    private var readingOutput: LatestText<CallState>?
     private var readingSpeakers: AsyncStream<[Int: Int]>.Continuation?
     private var readingObservation: Task<Void, Never>?
+
+    /// A listening state replaces the panel's text; a state of another status adds to it.
+    static func readingFeed() -> LatestText<CallState> {
+        LatestText { $0.status == .listening }
+    }
 
     // Register before Session begins so its first text state cannot be missed.
     func readingText() -> (text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]>) {
 
-        let output = NewestText()
+        let output = SessionPieces.readingFeed()
         readingOutput = output
         let speakers = AsyncStream<[Int: Int]>.makeStream()
         readingSpeakers = speakers.continuation
@@ -130,8 +139,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     func openTranscript(in folder: SessionCallFolder) async throws {
 
         let made = try places(in: folder)
-        LiveNameBoard.shared.callTrack(made.callURL)
-        let file = try await boundary.transcripts.open(at: made.transcriptURL, sink: boundary.log)
+        let file = try await boundary.transcripts.open(at: made.transcriptURL, names: names, sink: boundary.log)
         transcriptFile = file.writer
         await finalizationResources.add(call: made.url.path, transcript: file, cleanup: TranscriptCleanup(
             recording: CleanupRecording(microphoneURL: made.microphoneURL, callURL: made.callURL),
@@ -212,7 +220,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
 
         guard let destination = sides[sessionSide], let file = destination.track else { return nil }
         let boundary = boundary
-        let adapter = TrackText(recognizerSource: { SignpostedRecognizer(base: BoundaryRecognizer(base: try await boundary.recognizers.recognizer(for: side)), intervals: boundary.intervals) })
+        let adapter = RecognitionStream(recognizerSource: { SignpostedRecognizer(base: BoundaryRecognizer(base: try await boundary.recognizers.recognizer(for: side)), intervals: boundary.intervals) })
         // A transient capture writes nothing, so its track would never cover what fill-in reads.
         let written = boundary.capturePersistence == .recorded ? WrittenTrack(track: file) : nil
         return CallSide(audio: destination.audio, text: adapter, written: written, sampleRate: TrackFile.sampleRate)

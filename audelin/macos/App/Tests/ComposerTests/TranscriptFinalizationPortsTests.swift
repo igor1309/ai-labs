@@ -1,3 +1,4 @@
+import CallNames
 import CallDiarizer
 import CallText
 import Foundation
@@ -25,7 +26,7 @@ struct TranscriptFinalizationPortsTests {
         let heard = [line("my actual answer", start: 3)]
         let cleaning = Values<CleanupRecording>(), hearing = Values<[Float]>()
         let log = FixtureLog(), bytes = FinalizationBytes()
-        let names = LiveNameBoard()
+        let names = RecordingNames()
         let opened = openedTranscript(bytes: bytes, names: names, diarizer: .unused, sink: log)
         let resources = FinalizationResources()
         let recording = CleanupRecording(microphoneURL: URL(fileURLWithPath: "/mic"), callURL: URL(fileURLWithPath: "/call"))
@@ -66,12 +67,12 @@ struct TranscriptFinalizationPortsTests {
         let far = AttributedFar(far: [.init(side: .theirs, start: 0, settled: "their words", pending: "", speaker: "d0"),
                                      .init(side: .theirs, start: 2, settled: "later words", pending: "", speaker: "d1")],
                                 speakers: [.init(id: "d0", name: "Anna", state: "confirmed"), .init(id: "d1", name: nil, state: "diarized")])
-        let bytes = FinalizationBytes(fails: fails), log = FixtureLog(), names = LiveNameBoard()
+        let bytes = FinalizationBytes(fails: fails), log = FixtureLog(), names = RecordingNames()
         let resources = FinalizationResources()
-        names.give([0: "Anna"])
+        names.published(liveNames([0: "Anna"]))
         add(call: "a", to: resources, opened: openedTranscript(bytes: bytes, names: names, diarizer: .unused, sink: log), sink: log)
         resources.captureNames(call: "a")
-        names.reset(); names.give([0: "Boris"])
+        names.published(liveNames([0: "Boris"]))
         let sut = FinalizationReplacement(resources: resources)
         let heard = [line("my answer", start: 3)]
         do {
@@ -100,13 +101,11 @@ struct TranscriptFinalizationPortsTests {
 
     @Test nonisolated func diarizingUsesTheCallsPassAndPublishesTheSavedFarSide() async throws {
         try await withCallTrack { track in
-            let names = LiveNameBoard(), bytes = FinalizationBytes(), log = FixtureLog()
-            names.callTrack(track)
+            let names = RecordingNames(), bytes = FinalizationBytes(), log = FixtureLog()
             let samples = Values<Int>()
             let diarizer = CallDiarizer(binding: FinalizationDiarizer { samples.append($0.count) })
             let resources = await FinalizationResources()
-            await add(call: "a", to: resources, opened: openedTranscript(bytes: bytes, names: names, diarizer: diarizer, sink: log), sink: log)
-            names.callTrack(URL(fileURLWithPath: "/another-call/call.caf"))
+            await add(call: "a", to: resources, opened: openedTranscript(bytes: bytes, names: names, track: track, diarizer: diarizer, sink: log), sink: log)
             let raw = try await publishedCall(status: .finished, mine: [], theirs: [
                 .init(text: line("first", start: 0)), .init(text: line("second", start: 2)),
             ])
@@ -140,7 +139,7 @@ struct TranscriptFinalizationPortsTests {
     @Test func publishedCallReleasesItsHandlesAndFinishesOnlyItsReadingFeed() async throws {
         let resources = FinalizationResources(), log = FixtureLog()
         let finished = Values<String>(), rows = Values<[Int: Int]>()
-        let opened = openedTranscript(bytes: FinalizationBytes(), names: LiveNameBoard(), diarizer: .unused, sink: log)
+        let opened = openedTranscript(bytes: FinalizationBytes(), names: RecordingNames(), diarizer: .unused, sink: log)
         resources.add(call: "a", transcript: opened, cleanup: unusedCleanup(sink: log),
                       speakers: { rows.append($0) }, finishReading: { finished.append("a") })
         resources.add(call: "b", transcript: opened, cleanup: unusedCleanup(sink: log),
@@ -164,9 +163,9 @@ private func line(_ text: String, start: Double) -> TranscriptSegment {
     return .init(id: Int(start), start: start, end: start + 1, words: words, settledCount: words.count)
 }
 
-private func openedTranscript(bytes: FinalizationBytes, names: LiveNameBoard, diarizer: CallDiarizer, sink: any LogSink) -> OpenedTranscript {
+private func openedTranscript(bytes: FinalizationBytes, names: RecordingNames, track: URL? = nil, diarizer: CallDiarizer, sink: any LogSink) -> OpenedTranscript {
     let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: names, sink: sink)
-    return OpenedTranscript(writer: writer, pass: AfterCallPass(writer: writer, track: names.snapshot().callTrack, names: names, diarizer: diarizer, sink: sink), names: names)
+    return OpenedTranscript(writer: writer, pass: AfterCallPass(writer: writer, track: track, names: names, diarizer: diarizer, sink: sink), names: names)
 }
 
 @MainActor private func add(call: String, to resources: FinalizationResources, opened: OpenedTranscript, sink: any LogSink) {
