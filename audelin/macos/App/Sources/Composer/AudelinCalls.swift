@@ -193,7 +193,7 @@ public final class AudelinCalls {
     }
     func drainMove() async {
         inputs.send(.stopActions)
-        for await state in Observations({ self.inputs.state() }) where state.stopping && state.callsFolderAvailable { return }
+        for await state in Observations({ self.inputs.state() }) where state.stopped { return }
     }
 
     public func show() {

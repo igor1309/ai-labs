@@ -49,6 +49,8 @@ public struct RecordingsState: Equatable, Sendable {
     public var callsFolder: URL?
     public var callsFolderAvailable = true
     public var stopping = false
+    /// Stopping, with no folder move holding the calls folder and no merge running: storage has settled for quit.
+    public var stopped = false
     public var move: CallsFolderMove?
     /// The calls chosen to merge, while merging.
     public var mergeSelection: Set<String> = []
@@ -57,10 +59,10 @@ public struct RecordingsState: Equatable, Sendable {
 
     public init(calls: [RecordedCall] = [], isListing: Bool = false, phase: Phase = .idle,
                 recordingID: String? = nil, failure: Failure? = nil, callsFolder: URL? = nil,
-                callsFolderAvailable: Bool = true, stopping: Bool = false, move: CallsFolderMove? = nil,
+                callsFolderAvailable: Bool = true, stopping: Bool = false, stopped: Bool = false, move: CallsFolderMove? = nil,
                 mergeSelection: Set<String> = [], mergedCallID: String? = nil) {
         self.calls = calls; self.isListing = isListing; self.phase = phase; self.recordingID = recordingID
-        self.failure = failure; self.callsFolder = callsFolder; self.callsFolderAvailable = callsFolderAvailable; self.stopping = stopping; self.move = move
+        self.failure = failure; self.callsFolder = callsFolder; self.callsFolderAvailable = callsFolderAvailable; self.stopping = stopping; self.stopped = stopped; self.move = move
         self.mergeSelection = mergeSelection; self.mergedCallID = mergedCallID
     }
 }
@@ -103,6 +105,12 @@ public struct RecordingsReducer: Sendable {
     }
 
     public func reduce(_ state: RecordingsState, _ event: RecordingsEvent) -> (RecordingsState, RecordingsEffect?) {
+        var (next, effect) = reduceEvent(state, event)
+        if next.stopping, next.callsFolderAvailable, next.phase != .runningMerge { next.stopped = true }
+        return (next, effect)
+    }
+
+    private func reduceEvent(_ state: RecordingsState, _ event: RecordingsEvent) -> (RecordingsState, RecordingsEffect?) {
         if let result = reduceMove(state, event) { return result }
         var state = state
         switch event {

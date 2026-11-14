@@ -75,6 +75,14 @@ public struct RecordingState: Equatable, Sendable {
     public var faults: Set<RecordingFault> = []
     public var callID: String?
     public var callSilent = false
+    /// Set by a shutdown; `settled` once no session runs, and no session begins after it.
+    public var shutdown: Shutdown?
+
+    public enum Shutdown: Equatable, Sendable {
+
+        case requested
+        case settled
+    }
 
     /// Conditions start unknown, so a start waits for each to be reported available.
     public init(automatic: Bool = false, missing: Set<RecordingCondition> = Set(RecordingCondition.allCases), storageReserved: Bool = false, pendingStart: Origin? = nil) {
@@ -96,6 +104,7 @@ public enum RecordingEvent: Equatable, Sendable {
     case automaticChanged(Bool)
     case conditionChanged(RecordingCondition, available: Bool)
     case sessionReported(id: UInt64, RecordingSessionReport)
+    case shutdown
 }
 
 public enum RecordingReducer {
@@ -104,6 +113,13 @@ public enum RecordingReducer {
 
         var state = state
         switch event {
+        case .shutdown:
+            guard state.shutdown == nil else { return state }
+            state.pendingStart = nil
+            state.pendingCall = false
+            state = end(&state)
+            state.shutdown = state.phase == .idle ? .settled : .requested
+            return state
         case .reserveStorage:
             guard state.phase == .idle else { return state }
             state.storageReserved = true
@@ -120,7 +136,7 @@ public enum RecordingReducer {
                 state.pendingCall = true
                 return state
             }
-            if state.storageReserved {
+            if state.storageReserved, state.shutdown == nil {
                 if state.pendingStart == nil { state.pendingStart = .call }
                 return state
             }
@@ -136,7 +152,7 @@ public enum RecordingReducer {
             return end(&state)
 
         case .userStart:
-            if state.storageReserved { state.pendingStart = .hand; return state }
+            if state.storageReserved, state.shutdown == nil { state.pendingStart = .hand; return state }
             return begin(&state, origin: .hand)
 
         case .userStop:
@@ -198,6 +214,7 @@ public enum RecordingReducer {
                 state.sessionBeganDuringCall = false
                 let resumeCall = state.pendingCall && state.callOn && state.automatic && !state.heldForCall
                 state.pendingCall = false
+                if state.shutdown == .requested { state.shutdown = .settled }
                 if resumeCall { return begin(&state, origin: .call) }
                 return state
             }
@@ -207,7 +224,7 @@ public enum RecordingReducer {
     private static func begin(_ state: inout RecordingState, origin: RecordingState.Origin) -> RecordingState {
 
         // Call-audio evidence is refreshed by the doer, including when the last reading failed.
-        guard !state.storageReserved, state.phase == .idle, state.missing.subtracting([.callAudioAccess]).isEmpty else { return state }
+        guard state.shutdown == nil, !state.storageReserved, state.phase == .idle, state.missing.subtracting([.callAudioAccess]).isEmpty else { return state }
         state.pendingStart = nil
         state.callID = nil
         state.lastSessionID += 1

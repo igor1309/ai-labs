@@ -33,6 +33,17 @@ struct QuitTests {
         }
     }
 
+    @Test func quitAfterStartupFailedTerminatesOnce() async throws {
+
+        let binding = CallBinding(fails: true, input: false), terminated = Values<Bool>()
+        try await withComposition(configure: { $0.processes = FixtureProcesses(binding: binding) },
+                                  terminate: { terminated.append(true) }) { rig in
+            await rig.menu.perform(.quit)
+            #expect(terminated.all == [true])
+            #expect(rig.microphone.starts.all.isEmpty && rig.call.starts.all.isEmpty)
+        }
+    }
+
     /// A call that came back while the first session was still ending would
     /// start a second session; quitting clears it instead.
     @Test func quitClearsACallWaitingForTheEndingSession() async throws {

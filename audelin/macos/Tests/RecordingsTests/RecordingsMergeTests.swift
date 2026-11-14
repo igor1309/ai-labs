@@ -15,7 +15,7 @@ struct RecordingsMergeTests {
     @Test func mergeModeWaitsForOtherActions() {
         assert(listed { $0.phase = .renaming("A") }, .enterMergeMode, delivers: nil)
         assert(listed { $0.isListing = true }, .enterMergeMode, delivers: nil)
-        assert(listed { $0.stopping = true }, .enterMergeMode, delivers: nil)
+        assert(listed { $0.stopping = true }, .enterMergeMode, delivers: nil) { $0.stopped = true }
     }
 
     @Test func S3_selectingAndUnselectingCalls() {
@@ -149,6 +149,18 @@ struct RecordingsMergeTests {
     @Test func aMergeDoesNotStartWhileStopping() {
         assert(listed { $0.phase = .merging; $0.mergeSelection = ["A", "B"]; $0.stopping = true }, .confirmMerge, delivers: nil) {
             $0.failure = .init(id: nil, reason: "busy")
+            $0.stopped = true
+        }
+    }
+
+    @Test func storageSettlesForQuitOnlyOnceARunningMergeEnds() {
+        let running = listed { $0.phase = .runningMerge; $0.mergeSelection = ["A", "B"] }
+        assert(running, .stopActions, delivers: nil) { $0.stopping = true }
+        assert(listed { $0.phase = .runningMerge; $0.mergeSelection = ["A", "B"]; $0.stopping = true },
+               .mergeFailed("disk"), delivers: nil) {
+            $0.phase = .merging
+            $0.failure = .init(id: nil, reason: "disk")
+            $0.stopped = true
         }
     }
 
