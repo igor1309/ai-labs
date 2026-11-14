@@ -155,6 +155,32 @@ struct RecognitionStreamTests {
         #expect(await recognizer.base.chunks == [[0]])
     }
 
+    @Test func cancellingHearingEndsTheHearInFlightAndKeepsItsInterval() async throws {
+
+        let recognizer = HeldRecognizer(ScriptRecognizer([.init(words: [first])]))
+        let stream = RecognitionStream(recognizerSource: { recognizer })
+        try await stream.prepare()
+        let running = Task { try await stream.hear(audio(0)) }
+        await recognizer.heard()
+
+        await stream.cancelHearing()
+
+        await #expect(throws: CancellationError.self) { try await running.value }
+        recognizer.release()
+        #expect(try await stream.hear(audio(0)).tail.map(\.words) == [[first]])
+        #expect(await recognizer.base.chunks == [[0]])
+    }
+
+    @Test func cancellingHearingWithNothingInFlightReturns() async throws {
+
+        let stream = RecognitionStream(recognizerSource: { ScriptRecognizer([.init(words: [first])]) })
+        try await stream.prepare()
+
+        await stream.cancelHearing()
+
+        #expect(try await stream.hear(audio(0)).tail.map(\.words) == [[first]])
+    }
+
     @Test func shutdownEndsTheSessionWithoutAnotherUpdate() async throws {
 
         let recognizer = ScriptRecognizer([.init(words: [first])])

@@ -180,6 +180,7 @@ public actor RecognitionStream {
     private var noTextBefore: Double?
     private var accepted: Accepted?
     private var appliedReply: Reply?
+    private var hearing: Task<Update, any Error>?
 
     public init(recognizerSource: @escaping @Sendable () async throws -> any Recognizer) {
 
@@ -230,6 +231,24 @@ public actor RecognitionStream {
     /// may repeat audio already accepted, as a replay after a cancelled hear
     /// does: only the part after the accepted audio is heard.
     public func hear(_ audio: Audio) async throws -> Update {
+
+        let operation = Task { try await heard(audio) }
+        hearing = operation
+        defer { if hearing == operation { hearing = nil } }
+        return try await withTaskCancellationHandler {
+            try await operation.value
+        } onCancel: { operation.cancel() }
+    }
+
+    /// Cancels the hear in flight, if any, and returns once it has ended.
+    /// Its interval stays accepted for a replay.
+    public func cancelHearing() async {
+
+        hearing?.cancel()
+        _ = await hearing?.result
+    }
+
+    private func heard(_ audio: Audio) async throws -> Update {
 
         try Task.checkCancellation()
         guard let listening else { throw Failure.notPrepared }
