@@ -99,7 +99,7 @@ struct SummaryAvailability: SummarySettings.Availability {
 }
 
 // Persistence DTOs belong to the root mapping, not to the job domain.
-private struct Snapshot: Codable {
+struct Snapshot: Codable {
     struct Runtime: Codable {
         var kind: String; var model: String; var program: String; var endpoint: String; var credentialVariable: String
         init(_ value: Job.Runtime) { kind = value.kind; model = value.model; program = value.program; endpoint = value.endpoint; credentialVariable = value.credentialVariable }
