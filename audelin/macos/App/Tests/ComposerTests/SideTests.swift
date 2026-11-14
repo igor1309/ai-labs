@@ -240,7 +240,7 @@ private actor SideWritten: FillIn.WrittenTrack {
     }
 }
 
-private actor SideEngine: TextEngine {
+private actor SideEngine: TrackRecognition {
 
     struct Refusal: Error, CustomStringConvertible {
         var description: String { "word refused" }
@@ -270,7 +270,7 @@ private actor SideEngine: TextEngine {
         try Task.checkCancellation()
     }
 
-    func hear(_ audio: SideText.Audio) throws -> TrackText.Update {
+    func hear(_ audio: RecognitionStream.Audio) throws -> RecognitionStream.Update {
 
         if let failWord, audio.samples.contains(Float(failWord)) { throw Refusal() }
         samples += audio.samples
@@ -282,17 +282,18 @@ private actor SideEngine: TextEngine {
         }
         return .init(
             final: text.prefix(finalWordCount).map {
-                .init(id: $0.id, start: $0.start, end: $0.end, words: $0.words, settledCount: $0.words.count)
+                TranscriptSegment(id: $0.id, start: $0.start, end: $0.end, words: $0.words, settledCount: $0.words.count)
             },
             tail: Array(text.dropFirst(finalWordCount))
         )
     }
 
-    func finish() -> TrackText.Update {
+    func finish() -> RecognitionStream.Update {
 
-        .init(final: text.map { .init(id: $0.id, start: $0.start, end: $0.end, words: $0.words, settledCount: $0.words.count) }, tail: [])
+        .init(final: text.map { TranscriptSegment(id: $0.id, start: $0.start, end: $0.end, words: $0.words, settledCount: $0.words.count) }, tail: [])
     }
 
+    func cancelHearing() {}
     func shutdown() { stops += 1 }
 }
 

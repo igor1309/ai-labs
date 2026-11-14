@@ -108,7 +108,7 @@ private final class StallingSide: Side, Sendable {
 }
 
 /// Answers each hearing with the next scripted text, then keeps the last.
-actor ScriptedEngine: TextEngine {
+actor ScriptedEngine: TrackRecognition {
 
     private var script: [[TranscriptSegment]]
     private var latest: [TranscriptSegment] = []
@@ -117,13 +117,14 @@ actor ScriptedEngine: TextEngine {
 
     func prepare() {}
 
-    func hear(_ audio: SideText.Audio) -> TrackText.Update {
+    func hear(_ audio: RecognitionStream.Audio) -> RecognitionStream.Update {
 
         if !script.isEmpty { latest = script.removeFirst() }
         return .init(final: [], tail: latest)
     }
 
-    func finish() -> TrackText.Update { .init(final: [], tail: latest) }
+    func finish() -> RecognitionStream.Update { .init(final: [], tail: latest) }
 
+    func cancelHearing() {}
     func shutdown() {}
 }

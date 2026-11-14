@@ -78,19 +78,20 @@ private func storage<T>(_ entries: [T]) -> UInt {
     entries.withUnsafeBufferPointer { UInt(bitPattern: $0.baseAddress) }
 }
 
-private actor FinalEngine: TextEngine {
+private actor FinalEngine: TrackRecognition {
 
-    private var script: [TrackText.Update]
-    private let ending: TrackText.Update
+    private var script: [RecognitionStream.Update]
+    private let ending: RecognitionStream.Update
 
-    init(script: [TrackText.Update], ending: TrackText.Update) {
+    init(script: [RecognitionStream.Update], ending: RecognitionStream.Update) {
 
         self.script = script
         self.ending = ending
     }
 
     func prepare() {}
-    func hear(_ audio: SideText.Audio) -> TrackText.Update { script.removeFirst() }
-    func finish() -> TrackText.Update { ending }
+    func hear(_ audio: RecognitionStream.Audio) -> RecognitionStream.Update { script.removeFirst() }
+    func finish() -> RecognitionStream.Update { ending }
+    func cancelHearing() {}
     func shutdown() {}
 }
