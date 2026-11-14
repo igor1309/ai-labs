@@ -75,12 +75,12 @@ import Testing
         assert(make(.failed), event, delivers: nil)
     }
 
-    @Test(arguments: [SummariesState.Call.Stage.succeeded, .failed, .interrupted, .unavailable])
+    @Test(arguments: [SummariesState.Call.Stage.succeeded, .failed, .interrupted, .unavailable, .waiting])
     func forgettingASettledCallDropsIt(stage: SummariesState.Call.Stage) {
         assert(make(stage), .forget("call")) { $0.calls["call"] = nil }
         #expect(format.payloads.isEmpty)
     }
-    @Test(arguments: [SummariesState.Call.Stage.succeeded, .failed, .interrupted, .unavailable])
+    @Test(arguments: [SummariesState.Call.Stage.succeeded, .failed, .interrupted, .unavailable, .waiting])
     func forgettingASettledCallDeliversNothing(stage: SummariesState.Call.Stage) {
         assert(make(stage), .forget("call"), delivers: nil)
     }

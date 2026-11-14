@@ -4,7 +4,7 @@ public struct SummariesState: Equatable, Sendable {
     public enum Lifecycle: Equatable, Sendable { case accepting, draining, ended }
     public struct Call: Equatable, Sendable {
         public enum Stage: Equatable, Sendable {
-            case recovering, preparing, claiming, pending, starting, identifying, checkpointing, noting, publishing, saving
+            case waiting, recovering, preparing, claiming, pending, starting, identifying, checkpointing, noting, publishing, saving
             case retrying, discarding
             case succeeded, failed, interrupted, unavailable, observed
         }
@@ -73,6 +73,8 @@ public struct SummariesSaved: Equatable, Sendable {
 
 public enum SummariesEvent: Equatable, Sendable {
     case recover(String)
+    /// A recording ended and its transcript is not ready yet.
+    case waiting(String)
     /// The call's saved job, or none when storage holds no job for it.
     case recovered(String, SummariesSaved?)
     case loadFailed(String)
@@ -201,7 +203,11 @@ public struct SummariesReducer: Sendable {
             // A submission waits for recovery; a saved job takes precedence over it.
             next.calls[submission.call]?.submission = submission
             return (next, nil)
-        case let .submit(submission) where state.lifecycle == .accepting && state.calls[submission.call] == nil:
+        case let .waiting(id) where state.lifecycle == .accepting && state.calls[id] == nil:
+            call = id
+            next.calls[id] = .init(stage: .waiting)
+        case let .submit(submission) where state.lifecycle == .accepting
+                                        && (state.calls[submission.call] == nil || state.calls[submission.call]?.stage == .waiting):
             call = submission.call
             next.calls[call] = .init(stage: .preparing, requested: submission.requested, submission: submission)
             effect = .prepare(submission)
@@ -282,7 +288,7 @@ public struct SummariesReducer: Sendable {
         case let .retryFailed(id) where state.calls[id]?.stage == .retrying:
             call = id
             next.calls[id]?.stage = state.calls[id]?.terminal ?? .failed; next.calls[id]?.retryFailed = true
-        case let .forget(id) where state.calls[id].map({ SummariesReducer.settled.contains($0.stage) }) ?? false:
+        case let .forget(id) where state.calls[id].map({ SummariesReducer.settled.contains($0.stage) || $0.stage == .waiting }) ?? false:
             next.calls[id] = nil
             return (next, nil)
         case let .cancel(id) where state.calls[id].map({ SummariesReducer.running.contains($0.stage) && !$0.cancelling }) ?? false:

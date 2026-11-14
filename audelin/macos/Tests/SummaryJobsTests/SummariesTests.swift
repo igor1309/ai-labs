@@ -34,6 +34,34 @@ import Testing
     @Test func aSubmissionForAKnownCallDeliversNothing() {
         assert(makeState(calls: ["call": .init(stage: .claiming)]), .submit(makeSubmission()), delivers: nil)
     }
+    @Test func anEndedRecordingWaitsForItsTranscript() {
+        assert(makeState(), .waiting("call")) { $0.calls["call"] = .init(stage: .waiting, status: "waiting:false") }
+        #expect(format.payloads == [.init(stage: .waiting, warning: false)])
+    }
+    @Test func anEndedRecordingDeliversNothing() {
+        assert(makeState(), .waiting("call"), delivers: nil)
+    }
+    @Test func waitingForAKnownCallChangesNothing() {
+        assert(makeState(calls: ["call": .init(stage: .claiming)]), .waiting("call"))
+        #expect(format.payloads.isEmpty)
+    }
+    @Test func waitingForAKnownCallDeliversNothing() {
+        assert(makeState(calls: ["call": .init(stage: .claiming)]), .waiting("call"), delivers: nil)
+    }
+    @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func waitingAfterShutdownChangesNothing(lifecycle: SummariesState.Lifecycle) {
+        assert(makeState(lifecycle: lifecycle), .waiting("call"))
+    }
+    @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func waitingAfterShutdownDeliversNothing(lifecycle: SummariesState.Lifecycle) {
+        assert(makeState(lifecycle: lifecycle), .waiting("call"), delivers: nil)
+    }
+    @Test func aSubmissionForAWaitingCallPreparesItsJob() {
+        assert(makeState(calls: ["call": .init(stage: .waiting)]), .submit(makeSubmission())) {
+            $0.calls["call"] = .init(stage: .preparing, submission: makeSubmission(), status: "preparing:false")
+        }
+    }
+    @Test func aSubmissionForAWaitingCallDeliversPrepare() {
+        assert(makeState(calls: ["call": .init(stage: .waiting)]), .submit(makeSubmission()), delivers: .prepare(makeSubmission()))
+    }
     @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func aSubmissionAfterShutdownChangesNothing(lifecycle: SummariesState.Lifecycle) {
         assert(makeState(lifecycle: lifecycle), .submit(makeSubmission()))
     }

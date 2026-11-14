@@ -51,6 +51,14 @@ import Testing
         #expect(sut.badges == ["call": .failed])
         #expect(sut.retryable == ["call"])
     }
+    @Test func anEndedRecordingShowsWaitingUntilItsTranscriptArrives() async throws {
+        let sut = makeSUT(FilesFake())
+        sut.waiting(call: "call")
+        try await waitUntil("the call waits") { sut.statuses == ["call": CallsListText(language: .english)(.summaryWaiting)] }
+        #expect(sut.badges == ["call": .pending])
+        sut.completed(call: "call", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)
+        try await waitUntil("notes are saved") { sut.state.calls["call"]?.stage == .succeeded }
+    }
     @Test func forgetDropsASettledCall() async throws {
         let files = FilesFake()
         files.stored = try await record(phase: "succeeded")

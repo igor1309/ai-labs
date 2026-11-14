@@ -31,6 +31,8 @@ public final class SummariesModel {
     }
     /// The calls whose notes the user can make again.
     public var retryable: Set<String> { Set(model.state.calls.filter(\.value.retryable).keys) }
+    /// Shows a just-ended recording as waiting for its transcript.
+    public func waiting(call: String) { model.event(.waiting(call)) }
     /// Hands a finished recording's transcript to the machine.
     public func completed(call: String, entries: [Job.Entry], finalWrite: Bool, usable: Bool) {
         model.event(.submit(.init(call: call, input: summaryInput(entries), entries: entries, finalWrite: finalWrite, usable: usable)))
@@ -67,7 +69,7 @@ extension CallsListText {
     /// A call's notes status as its calls list row shows it, from the Summaries machine's stage.
     func summariesStatus(_ stage: SummariesState.Call.Stage, _ warning: Bool) -> String {
         switch stage {
-        case .recovering, .preparing: self(.summaryWaiting)
+        case .waiting, .recovering, .preparing: self(.summaryWaiting)
         case .claiming, .pending, .observed, .retrying, .discarding: self(.summaryPending)
         case .starting, .identifying, .checkpointing, .noting, .publishing, .saving: self(.summaryRunning)
         case .succeeded: warning ? self(.summaryReadyUnnamed) : self(.summaryReady)
