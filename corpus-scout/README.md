@@ -119,7 +119,7 @@ Returns `{ file, content, startLine, endLine, truncated }`.
 | `CORPUS_ROOT` | yes | — | Absolute path to corpus directory |
 | `CORPUS_GLOB` | no | `**/*.md` | File pattern to search within |
 | `CORPUS_MAX_RESULTS` | no | `20` | Maximum search results returned |
-| `CORPUS_MAX_LINES` | no | `200` | Maximum lines returned by `read_section` |
+| `CORPUS_MAX_LINES` | no | `200` | Maximum lines returned by heading or full-file reads; explicit line ranges are not capped |
 | `LOG_LEVEL` | no | `info` | `info` logs every call; `silent` suppresses all output |
 
 ## Log format
