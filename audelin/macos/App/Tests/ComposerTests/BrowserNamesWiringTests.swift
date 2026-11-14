@@ -15,7 +15,7 @@ struct BrowserNamesWiringTests {
 
     @MainActor
     @Test func aConnectedExtensionNamesTheRemoteRow() async throws {
-        let clock = FixtureClock(), channel = FakeChannel()
+        let clock = FixtureClock(), channel = FakeBrowserChannel()
         let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals,
                                  browser: { channel.open() }, sleep: { try await Task.sleep(for: $0 * 10_000) })
         let text = AsyncStream<CallState>.makeStream()
@@ -28,9 +28,9 @@ struct BrowserNamesWiringTests {
         var sent = peer.sent.makeAsyncIterator()
         #expect(await sent.next() == BrowserClockReply.ping(0))
         peer.send(#"{"version":1,"ping":0,"at":100000}"#)
-        peer.send(message(0, #"{"type":"roster","at":89000,"participants":[{"id":"t1","name":"Анна","isSelf":false}]}"#))
-        peer.send(message(1, #"{"type":"speakingStarted","at":90000,"participantId":"t1"}"#))
-        peer.send(message(2, #"{"type":"speakingStopped","at":94000,"participantId":"t1"}"#))
+        peer.send(browserMessage(0, #"{"type":"roster","at":89000,"participants":[{"id":"t1","name":"Анна","isSelf":false}]}"#))
+        peer.send(browserMessage(1, #"{"type":"speakingStarted","at":90000,"participantId":"t1"}"#))
+        peer.send(browserMessage(2, #"{"type":"speakingStopped","at":94000,"participantId":"t1"}"#))
 
         // The row may come before the extension's reports are read; each new
         // text asks for its name again.
@@ -78,42 +78,4 @@ private func remote(_ round: Int) -> CallState {
         .init("привет", start: 11, end: 11.5), .init("w\(round)", start: 11.5, end: 12),
     ], settledCount: 1), writtenLater: false)
     return .init(status: .listening, entries: .init(tail: [entry]), finalCount: 0)
-}
-
-private func message(_ sequence: Int, _ event: String) -> String {
-    #"{"version":1,"callId":"12345678901234","sequence":\#(sequence),"event":\#(event)}"#
-}
-
-private final class FakeChannel: Sendable {
-    private let connections = AsyncStream<BrowserConnection>.makeStream()
-    private let stops = Mutex(0)
-
-    var stopped: Bool { stops.withLock { $0 } == 1 }
-
-    func open() -> BrowserChannel {
-        BrowserChannel(connections: connections.stream, stop: { [self] in
-            stops.withLock { $0 += 1 }
-            connections.continuation.finish()
-        })
-    }
-
-    func connect() -> FakePeer {
-        let peer = FakePeer()
-        connections.continuation.yield(BrowserConnection(frames: peer.frames, send: { peer.sentIn.yield($0) }, close: { peer.framesIn.finish() }))
-        return peer
-    }
-}
-
-private final class FakePeer: Sendable {
-    let frames: AsyncStream<Data>
-    let framesIn: AsyncStream<Data>.Continuation
-    let sent: AsyncStream<Data>
-    let sentIn: AsyncStream<Data>.Continuation
-
-    init() {
-        (frames, framesIn) = AsyncStream.makeStream()
-        (sent, sentIn) = AsyncStream.makeStream()
-    }
-
-    func send(_ text: String) { framesIn.yield(Data(text.utf8)) }
 }
