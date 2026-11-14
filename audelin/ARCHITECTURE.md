@@ -56,36 +56,125 @@ publication with call rename, deletion and calls-folder moves.
 
 SummaryFiles is also the one reader of published notes: it gives a call's
 notes text, none, or why they cannot be read. The calls list holds the
-selected call; that call's Call notes machine (below) holds its notes, and
-the summary view draws them, Markdown included, beside the list. The app owns the calls window, its
-split and, for a narrow window, the call's own window.
+selected call; Call notes presents its notes and progress from Summaries,
+and the summary view draws them, Markdown included, beside the list. The app
+owns the calls window, its split and, for a narrow window, the call's own
+window.
 
 ### Making a call's notes on request
 
 The user can make notes for a call that has none, from the calls window,
 and cancel them while they are being made.
 
-Call notes is a state machine for what the calls window shows of one call's
-notes: none, being made, made (the text and when), or failed (why). The
-user's make, cancel and retry and the outcome its collaborator reports are
-its events. It owns one port, a collaborator that makes a call's notes or
-stops making them, and reports made or failed. It keeps no clock: how long
-making may take, and failing when it takes too long, belong to the
-collaborator.
+Summaries owns requested notes as well as notes after recording or merging:
+reading the saved input, making, cancelling and retrying all belong to its
+one line of work. Its effect handler dispatches to its own transcript,
+preferences, storage and generation interfaces. The root answers the
+transcript interface with Calls for location and bytes and Transcript format
+for reading labelled text. Cancellation stops the attempt and has SummaryFiles
+drop its record, leaving the transcript and any earlier notes.
 
-The root answers that port. Transcript format, the format's one writer, is
-also its one reader: it reads a saved transcript back into labelled entries,
-so the root can submit them to SummaryJobs as a closed call's entries are
-submitted. A cancel by the user stops the job and SummaryFiles drops its
-record, leaving the transcript and any earlier notes. SummaryFiles records
-when notes were published, for the date shown under them.
+Call notes is a pure presentation component. It offers the selected call's
+notes, progress, available actions and formatted publication date, through
+its own vocabulary, from supplied progress and saved-note readings. It
+depends only on injected pure formatting. It starts no work and holds no
+second job lifecycle. The root maps user requests directly to Summaries and
+maps its progress and SummaryFiles readings into Call notes; the calls window
+renders the result. Changing selection does not stop work.
 
-The root holds one Call notes machine per call, so making goes on while
-another call is selected. It starts each machine from what SummaryFiles
-reads: made with the published notes and their date, none, or failed; and
-in being made when notes are submitted after a call ends. The calls list draws the selected
-call's state and sends make, cancel and retry; it decides nothing. Calls
-lists folders and reads transcripts through Transcript format.
+The app-lifetime summaries composition holds one Summaries machine and the
+Call notes presenter, constructed by the Composer factories. There is no
+per-call notes machine, job-model registry or coordinator that drives a job
+machine. SummaryFiles records publication time and reads notes; Calls gets
+notes for search through an injected reading role answered by SummaryFiles,
+rather than interpreting published notes itself.
+
+## Merging calls
+
+Recordings owns the calls list's merge interaction and the complete merge
+operation, through publication of the joined transcript. Notes are a
+separate, ordinary ended-call workload: their failure leaves a successfully
+merged transcript readable. The merge never waits for notes or treats their
+failure as a failed merge.
+
+### Responsibilities and ownership
+
+All components below declare their collaborator roles themselves. Composer
+factories construct them and translate between their vocabularies; only the
+composer imports the concrete pieces and swift-imrx.
+
+| Component | Responsibility, dependencies and offering | Holder and lifetime |
+| --- | --- | --- |
+| Recordings | Extends its list and mutation machine with merge availability, selection, the intervening-call warning, confirmation, work in progress and the resulting call or failure. Depends on its own listing, merging and pure presentation roles. Offers observable list and merge presentation and accepts user interactions and activity reports. Its pure reducer owns the decisions; its effect handler dispatches work and returns outcomes. | The app's calls composition holds one model for the app's lifetime, including while the window is closed. |
+| Transcript merge | Purely joins supplied parts in chronological order, offsets their entries from the earliest start, preserves speaker distinctions between parts and inserts explicit gap boundaries. Offers the joined content, earliest start and title and overall time span. Depends on no storage or machine; it does not render Markdown. | The calls composition retains it as a collaborator for merging. |
+| Calls | Owns the on-disk call collection, including merged-call membership, staging, publication and the transaction boundary for call mutations and summary publication. Offers logical calls, their locations and content, and collection mutations. Depends on its own disk, admission, naming, folder-creation, transcript-reading, joining, transcript-writing and notes-reading roles. It is the sole reader and writer of merge membership records. | The app's storage composition holds one collection for the app's lifetime. |
+| Transcript finishing | Owns the observable lifecycle of final transcript preparation, through attribution, cleanup and final publication. Depends on its own attribution, cleanup and transcript-storage roles. Offers activity and completed transcripts. One async machine holds all unfinished calls and their stages; its pure reducer advances the work and its effect handler only dispatches collaborators. | The recording composition holds one model for the app's lifetime, until finishing has drained on shutdown. |
+| CallFolder; CallFolderName | CallFolder creates an exclusively owned folder at a supplied call start, reserving existing identities; it depends on its own disk and naming roles. CallFolderName alone reads and writes folder names. The root answers the naming roles of Calls and CallFolder with it. | Storage composition retains the naming and creation collaborators; each created folder belongs to its call. |
+| Transcript format; Transcript file | Transcript format alone reads and writes transcript syntax, including part and gap boundaries. Transcript file creates, replaces and closes transcript bytes through its own file binding. Neither chooses which calls to merge. | Storage composition supplies the format reader and creates a fresh renderer and file writer for each candidate transcript, releasing them when writing ends. |
+| CallsListUI; CallsWindowUI | Render supplied merge selection, availability, confirmation, warning and failure alongside the existing list and window controls, and emit interactions. Depend on their own presentation inputs and UI frameworks. | The app's window composition holds the window and toolbar for the window's lifetime and supplies the list view's current presentation. |
+
+The merge interaction belongs to Recordings because selection, ordering and
+mutations already belong to the calls list. Transcript joining changes with
+what a joined call means; Calls changes with the storage collection and its
+publication boundary. Neither needs the other's concrete language.
+
+### Storage and publication
+
+The merged call has its own folder in the calls folder, with a fresh
+identity based on the earliest part's start and the earliest part's title.
+CallFolderName supplies the collision suffix: the merged call never reuses
+a source identity or its notes job. The folder contains its joined
+`transcript.md`, merge membership record and, when made, its own notes and
+job record. It contains no combined audio.
+
+Each source folder stays at its existing location, with its audio,
+transcript and earlier notes untouched. Membership records identify retained
+parts independently of their titles. Calls lists the published merged call
+in their place, resolves its transcript and notes from its own folder, and
+gets its time span from the merge record rather than looking for audio in
+that folder. The merged call and its retained parts form one storage group:
+rename changes the merged title, delete removes the group, and a calls-folder
+move carries the group and preserves its membership. Removing the merged
+call must not expose its parts as newly listed calls.
+
+Calls prepares a complete candidate outside the visible collection. The
+root binds its transcript roles to Transcript format and Transcript file;
+Calls neither concatenates Markdown nor writes transcript syntax. Publishing
+the complete candidate and its membership is one atomic visibility change
+under the call-storage transaction boundary. Before it, all source calls
+are listed; after it, the merged call replaces them. A failed preparation or
+publication leaves the source folders and their visibility unchanged. That
+same committed membership determines visibility after reopening Audelin.
+
+### Idleness and notes
+
+Composition subscribes to recording activity, transcript-finishing activity
+and Summaries progress, and maps them into Recordings' own activity reports.
+Transcript finishing remains active through final writes, speaker attribution
+and bleed cleanup, even after recording stops and when notes are disabled.
+Recordings holds these reported facts and derives the rendered merge
+availability through injected pure presentation. Its reducer reads no other
+machine and owns mode entry, confirmation and refusal when activity changes.
+The intervening-call check uses the whole ordered collection, including
+calls hidden by search.
+
+Confirmation starts work only while idle. Calls' admission role rechecks
+external activity at publication, so a previously rendered idle answer cannot
+publish a merge after recording, finishing or notes work has begun. Such a
+refusal leaves the original calls readable. Composition serializes that
+final check and publication with activity changes; the storage transaction
+protects selected inputs against competing mutations. Recordings holds the
+pending operation until publication answers. Composition keeps no separate
+merge-work registry or admission workflow beside it.
+
+After successful publication, root wiring maps the completed call into the
+same closed-transcript submission used after recording. Summaries alone owns
+the subsequent notes workload, using the whole merged transcript, gap context
+included, and the ordinary permission, runtime, failure and retry policy.
+Earlier parts' notes are never combined or reused as the merged notes. The
+root supplies Call notes with that workload's progress and SummaryFiles'
+readings, so the new row and selected detail update as notes finish. No merge
+effect invokes Summaries, and no presentation machine starts or joins it.
 
 ## Transcript pipeline
 
@@ -162,10 +251,11 @@ passing the two tracks as recorded. Hearing is Live text over the Parakeet
 recogniser, composed by the root over those samples, as Fill-in hears missed
 audio. The replacement is rendered by Transcript format, the format's only writer, and saved by Transcript file's replacing whole.
 
-The root builds BleedCleanup with those answers and runs it on each recording's
-closed transcript. Summary submission waits for its outcome instead of the
-close and is handed the transcript it produced, cleaned or raw. Logging of a kept raw
-transcript is a root decorator.
+The root builds BleedCleanup with those answers and supplies it to Transcript
+finishing for each recording's closed transcript. That machine holds the
+unfinished stage until the cleaned or raw transcript is ready. Root wiring
+hands that completion to Summaries instead of submitting at close. Logging
+of a kept raw transcript is a root decorator.
 
 ## Remote speakers
 
