@@ -65,4 +65,9 @@ Feature: Merging calls in the calls list
     Given merge mode with rows marked
     When I press Escape or leave merge mode in the toolbar
     Then no row is marked and a click reads a call again
+
+  Scenario: S-10 Confirming a merge
+    Given merge mode with two or more rows marked
+    When I press the merge button
+    Then the merge is confirmed for the marked rows
 ```

@@ -46,3 +46,8 @@ Preview: merge mode with rows marked and the failure's reason.
 ## S-9 Leaving merge mode
 
 Behaviour: Escape and the toolbar control each send leave merge mode.
+
+## S-10 Confirming a merge
+
+Behaviour: with two rows marked, pressing the button sends confirm; with
+one marked, pressing the disabled button sends nothing. Evidence: Missing.
