@@ -17,6 +17,23 @@ public final class SummariesModel {
     }
     public var state: SummariesState { model.state }
     public func send(_ event: SummariesEvent) { model.event(event) }
+
+    /// Picks up each stored call's job at launch.
+    public func recover(calls: [String]) { calls.forEach { model.event(.recover($0)) } }
+    /// Reads again the calls whose jobs another process runs.
+    public func refresh() { model.event(.refresh) }
+    /// Starts no new job; running ones go on.
+    public func stopDispatch() { model.event(.stopDispatch) }
+    /// Drains the machine and returns once it has ended.
+    public func shutdown() async {
+        model.event(.shutdown)
+        while model.state.lifecycle != .ended { await changed() }
+    }
+    private func changed() async {
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            withObservationTracking { _ = model.state } onChange: { done.resume() }
+        }
+    }
 }
 
 extension CallsListText {
