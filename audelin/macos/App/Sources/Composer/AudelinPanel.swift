@@ -33,6 +33,9 @@ actor AudelinPanel {
     private let sleep: @Sendable (Duration) async throws -> Void
     private var current: (id: UInt64, reading: ReadingInputs, enableLiveText: @Sendable () async -> Void)?
     private var subscription: (id: UInt64, value: ReadingSubscription)?
+    /// The finished call's subscription, kept until the next recording so names confirmed
+    /// after the call still reach its rows.
+    private var finished: (id: UInt64, value: ReadingSubscription)?
     private var state = PanelState(recording: .off, log: .empty)
     private var mappedRows = MappedRows()
     private var panelText = PanelText(language: .russian)
@@ -78,6 +81,7 @@ actor AudelinPanel {
                names published: RecordingNames = RecordingNames(), enableLiveText: @escaping @Sendable () async -> Void) async -> ReadingSubscription {
 
         let reading = await makeReading()
+        finished = nil
         current = (id, reading, enableLiveText)
         mappedRows = .init()
         lastReading = nil
@@ -114,6 +118,7 @@ actor AudelinPanel {
         if let subscription, subscription.id == id { await subscription.value.end() }
         guard current?.id == id else { return }
         current = nil
+        finished = subscription
         subscription = nil
         // The finished call stays readable, with its confirmed names, until the next recording.
         publish(.init(recording: .off, log: state.log))
@@ -121,9 +126,13 @@ actor AudelinPanel {
 
     private func receive(_ state: ReadingState, id: UInt64) {
 
-        guard current?.id == id else { return }
-        lastReading = state
-        publish(panelState(panelText.callAsFunction, state, rows: &mappedRows))
+        if current?.id == id {
+            lastReading = state
+            publish(panelState(panelText.callAsFunction, state, rows: &mappedRows))
+        } else if current == nil, finished?.id == id {
+            lastReading = state
+            publish(.init(recording: .off, log: panelState(panelText.callAsFunction, state, rows: &mappedRows).log))
+        }
     }
 
     /// Maps what the panel shows again, from scratch, in the new language.
@@ -163,7 +172,7 @@ final class ReadingSubscription {
     private let presenter: ReadingPresenter
     private let text: Task<Void, Never>
     private let timer: Task<Void, Never>
-    private let observation: Task<Void, Never>
+    private var observation: Task<Void, Never>
     private let names: ObservableModel<CallNamesState, CallNamesEvent, CallNamesEffect>
     private let naming: Task<Void, Never>
     private var ended = false
@@ -251,7 +260,6 @@ final class ReadingSubscription {
         ended = true
         names.event(.stop)
         for await state in Observations({ self.names.state }) where state.observation != .observing && state.observation != .stopping { break }
-        naming.cancel()
         await text.value
         timer.cancel()
         await timer.value
@@ -261,6 +269,14 @@ final class ReadingSubscription {
         observation.cancel()
         await observation.value
         await presenter.show(reading.state())
+        // Names keep arriving after the call (the after-call pass confirms them); show each change.
+        let presenter = presenter, reading = reading, states = Observations { reading.state() }
+        observation = Task {
+            for await state in states {
+                guard !Task.isCancelled else { return }
+                await presenter.show(state)
+            }
+        }
     }
 
     isolated deinit {
