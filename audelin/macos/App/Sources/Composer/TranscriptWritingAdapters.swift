@@ -80,24 +80,16 @@ extension TranscriptFormat: TranscriptRenderer {
 }
 extension TranscriptFile: TranscriptBytes {}
 
-actor WritingTranscript: SessionTranscriptFile {
+actor WritingTranscript: WholeTranscriptReplacing {
 
     let file: any TranscriptBytes
     let sink: any LogSink
     private let names: LiveNameBoard
-    private let diarizer: CallDiarizer
     private var format: any TranscriptRenderer
     private var replaceNext = false
     private var closed = false
-    private var closedNames: LiveNameBoard.Names?
-    /// The far side as the after-call pass gave it to diarized speakers; nil keeps plain Them.
-    private var attributed: Composer.Transcript.Attributed?
-    private var last: CallState?
-    /// The after-call pass runs once; a later call returns what it saved.
-    private var passed = false
-
-    init(file: any TranscriptBytes, format: any TranscriptRenderer, names: LiveNameBoard, diarizer: CallDiarizer, sink: any LogSink) {
-        self.file = file; self.format = format; self.names = names; self.diarizer = diarizer; self.sink = sink
+    init(file: any TranscriptBytes, format: any TranscriptRenderer, names: LiveNameBoard, sink: any LogSink) {
+        self.file = file; self.format = format; self.names = names; self.sink = sink
     }
 
     /// Logs each save with the final count it wrote, so a reader of the log knows
@@ -105,7 +97,6 @@ actor WritingTranscript: SessionTranscriptFile {
     func write(_ state: CallState) async throws {
 
         guard !closed else { throw TranscriptFile.Failure.writingEnded }
-        last = state
         try await save(state)
     }
 
@@ -133,92 +124,16 @@ actor WritingTranscript: SessionTranscriptFile {
         sink.write(.init(category: .session, message: "transcript saved finalCount=\(finalCount)"))
     }
 
-    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws {
+    func replaceWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) async throws {
 
-        let rendering: TranscriptFormat.Rendering
-        if let attributed {
-            let microphone = segments.map { TranscriptFormat.Segment(side: .mine, start: $0.start, settled: $0.settledText, pending: $0.pendingText) }
-            rendering = try format.renderWhole(Composer.Transcript.merging(microphone, with: attributed.far), speakers: attributed.speakers)
-        } else {
-            let board = closedNames ?? names.snapshot()
-            rendering = try format.renderWhole(
-                Composer.Transcript.replacingMicrophone(in: state, with: segments, names: board),
-                speakers: Composer.Transcript.speakers(board)
-            )
-        }
+        let rendering = try format.renderWhole(segments, speakers: speakers)
         try await file.replace(rendering.chunks, finalLength: rendering.finalLength)
     }
 
     func close() async {
 
-        closedNames = names.snapshot()
         closed = true
         await file.close()
-    }
-
-    /// One diarization of the call track gives the far side to its speakers and, on a Zoom
-    /// call, confirms the names Zoom showed. A failed diarization keeps the far side as plain
-    /// Them and Zoom's names tentative.
-    func attributeSpeakers() async -> Composer.Transcript.Attributed? {
-
-        guard attributed == nil else { return attributed }
-        let board = names.snapshot()
-        guard closed, !passed, let state = last, let track = board.callTrack else { return nil }
-        passed = true
-        await afterCall(state, track: track, board: board)
-        closedNames = names.snapshot()
-        return attributed
-    }
-
-    private func afterCall(_ state: CallState, track: URL, board: LiveNameBoard.Names) async {
-
-        let zoom = !board.spoken.isEmpty
-        guard let result = await RemoteSpeakers(diarizer: diarizer, sink: sink).attribute(state, track: track, speakers: nil) else { return }
-        // A pass that heard no one has nothing to confirm or attribute: the live names stay tentative.
-        guard !result.turns.isEmpty else { return }
-        var clusters: [Int: String] = [:]
-        if zoom {
-            let rows = state.entries.filter { $0.speaker != .mine }.map { (id: $0.text.id, start: $0.text.start, end: $0.text.end) }
-            let confirmed = AfterCallNames.names(rows: rows, turns: result.turns, board: board)
-            names.confirm(confirmed)
-            await names.announce(confirmed)
-            clusters = AfterCallNames.clusterNames(turns: result.turns, board: board)
-            sink.write(.init(category: .session, message: "after-call names confirmed=\(clusters.count) turns=\(result.turns.count)"))
-        }
-        var attributed = Composer.Transcript.attributed(result.pieces, in: state, names: clusters)
-        let rows = state.entries.filter { $0.speaker != .mine }.map { (id: $0.text.id, start: $0.text.start, end: $0.text.end) }
-        attributed.rows = Composer.Transcript.rowSpeakers(rows: rows, turns: result.turns, speakers: attributed.speakers)
-        let microphone = state.entries.filter { $0.speaker == .mine }.map { Composer.Transcript.segment(from: $0) }
-        do {
-            let rendering = try format.renderWhole(Composer.Transcript.merging(microphone, with: attributed.far), speakers: attributed.speakers)
-            try await file.replace(rendering.chunks, finalLength: rendering.finalLength)
-            self.attributed = attributed
-            sink.write(.init(category: .session, message: "remote speakers saved speakers=\(attributed.speakers.count)"))
-        } catch {
-            sink.write(.init(category: .session, message: "remote speakers not saved: \(error)"))
-            if zoom { await saveConfirmedNames(state) }
-        }
-    }
-
-    /// Without the attributed far side, the confirmed names still reach the file on the
-    /// call's own rows, rendered afresh so rows already final take their corrected names.
-    /// Once saved, those rows are the far side the pass returns.
-    private func saveConfirmedNames(_ state: CallState) async {
-
-        let board = names.snapshot()
-        let rows = state.entries.map { entry in
-            Composer.Transcript.segment(from: entry, speaker: board.rows[entry.text.id].flatMap { board.ids[$0] })
-        }
-        let speakers = Composer.Transcript.speakers(board)
-        do {
-            let rendering = try format.renderWhole(rows, speakers: speakers)
-            try await file.replace(rendering.chunks, finalLength: rendering.finalLength)
-            // What the file now holds is the far side later readers and replacements take.
-            attributed = .init(far: rows.filter { $0.side == .theirs }, speakers: speakers)
-            sink.write(.init(category: .session, message: "after-call names saved"))
-        } catch {
-            sink.write(.init(category: .session, message: "after-call names not saved: \(error)"))
-        }
     }
 }
 
@@ -264,6 +179,9 @@ public struct FileTranscriptStorage: TranscriptStorage {
         let initial = try format.render([])
         let file = try await TranscriptFile(url: url, initialBytes: initial.chunks, binding: DiskTranscriptBinding())
         // Opening has no live write revision; the first saved speaker block starts at one.
-        return WritingTranscript(file: file, format: TranscriptFormat(), names: .shared, diarizer: diarizer, sink: sink)
+        let names = LiveNameBoard.shared
+        let writer = WritingTranscript(file: file, format: TranscriptFormat(), names: names, sink: sink)
+        let pass = AfterCallPass(writer: writer, names: names, diarizer: diarizer, sink: sink)
+        return ClosingTranscript(call: url.path, writer: writer, pass: pass, names: names)
     }
 }
