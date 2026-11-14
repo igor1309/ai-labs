@@ -15,7 +15,6 @@ actor RecordingSessions: RecordingSession {
         let pieces: SessionPieces
         var observation: Task<Void, Never>?
         var enders: [CheckedContinuation<Void, Never>] = []
-        var announcedEnding = false
     }
 
     nonisolated let panel: AudelinPanel
@@ -72,10 +71,11 @@ actor RecordingSessions: RecordingSession {
             for await state in states {
                 let observed = ObservedSession(state)
                 guard observed != previous else { continue }
+                let textWasRunning = previous.map { !Self.textStopped($0.value) } ?? true
                 previous = observed
                 await reading.sessionChanged(state)
                 StateLog(sink: self.sink).session(state, id: id)
-                if await self.receive(state, id: id) { return }
+                if await self.receive(state, id: id, textStoppedNow: textWasRunning && Self.textStopped(state)) { return }
             }
         }
     }
@@ -93,7 +93,11 @@ actor RecordingSessions: RecordingSession {
         running[id]?.session.send(event)
     }
 
-    private func receive(_ state: SessionState, id: UInt64) async -> Bool {
+    private static func textStopped(_ state: SessionState) -> Bool {
+        state.callText == .stopping || state.callText == .closed
+    }
+
+    private func receive(_ state: SessionState, id: UInt64, textStoppedNow: Bool) async -> Bool {
 
         await status(id, RecordingSessionStatus(
             callID: state.recordedFolder.flatMap { Calls.id(in: URL(fileURLWithPath: $0.id).lastPathComponent, timeZone: timeZone()) },
@@ -101,8 +105,7 @@ actor RecordingSessions: RecordingSession {
             faults: recordingFaults(state), callSilent: state.audioWarning == .callSilent
         ))
         // Notes show the call as waiting once its text stops; a later finalized transcript supersedes this.
-        if state.callText == .stopping || state.callText == .closed, let folder = state.recordedFolder, running[id]?.announcedEnding == false {
-            running[id]?.announcedEnding = true
+        if textStoppedNow, let folder = state.recordedFolder {
             await summaries.waiting(URL(fileURLWithPath: folder.id))
         }
         guard let entry = running[id] else { return true }
