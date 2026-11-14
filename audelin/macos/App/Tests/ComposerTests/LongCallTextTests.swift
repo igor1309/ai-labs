@@ -4,7 +4,7 @@ import Testing
 
 /// However long the call, a word only changes the text it belongs to.
 @Suite(.timeLimit(.minutes(1)))
-struct TrackTextDeltaTests {
+struct LongCallTextTests {
 
     @Test(arguments: [20, 800, 6_000])
     func keepsTextAcrossRevisionsAdvanceAndFinish(count: Int) async throws {
