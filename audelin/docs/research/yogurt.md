@@ -40,4 +40,4 @@ or Linux.
 
 - Whether Yogurt's tap settings (drift compensation, voice processing off on
   the mic) differ from Audelin's capture in ways worth adopting; see
-  [system-audio.md](system-audio.md).
+  [system-audio.md](system-audio.md); tracked in Multica.
