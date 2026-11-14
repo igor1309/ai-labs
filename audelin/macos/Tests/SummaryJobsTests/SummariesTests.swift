@@ -69,27 +69,37 @@ import Testing
         assert(makeState(lifecycle: lifecycle), .submit(makeSubmission()), delivers: nil)
     }
 
-    @Test func noJobForgetsTheCall() {
-        assert(makePreparing(), .prepared("call", nil)) { $0.calls["call"] = nil }
+    @Test func anAutomaticCallWithNotesOffIsDropped() {
+        assert(makePreparing(), .prepared("call", makeJob(), notesOn: false)) { $0.calls["call"] = nil }
         #expect(format.payloads.isEmpty)
     }
-    @Test func noJobDeliversNothing() {
-        assert(makePreparing(), .prepared("call", nil), delivers: nil)
+    @Test func anAutomaticCallWithNotesOffDeliversNothing() {
+        assert(makePreparing(), .prepared("call", makeJob(), notesOn: false), delivers: nil)
+    }
+    @Test func aRequestedCallWithNotesOffIsClaimed() {
+        assert(makePreparing(requested: true), .prepared("call", makeJob(), notesOn: false)) {
+            $0.calls["call"]?.stage = .claiming; $0.calls["call"]?.job = makeJob()
+            $0.calls["call"]?.submission = nil; $0.calls["call"]?.status = "claiming:false"
+        }
+        #expect(format.payloads == [.init(stage: .claiming, warning: false)])
+    }
+    @Test func aRequestedCallWithNotesOffDeliversClaim() {
+        assert(makePreparing(requested: true), .prepared("call", makeJob(), notesOn: false), delivers: .claim(makeJob()))
     }
     @Test func anEligibleJobIsClaimed() {
-        assert(makePreparing(), .prepared("call", makeJob())) {
+        assert(makePreparing(), .prepared("call", makeJob(), notesOn: true)) {
             $0.calls["call"]?.stage = .claiming; $0.calls["call"]?.job = makeJob()
             $0.calls["call"]?.submission = nil; $0.calls["call"]?.status = "claiming:false"
         }
         #expect(format.payloads == [.init(stage: .claiming, warning: false)])
     }
     @Test func anEligibleJobDeliversClaim() {
-        assert(makePreparing(), .prepared("call", makeJob()), delivers: .claim(makeJob()))
+        assert(makePreparing(), .prepared("call", makeJob(), notesOn: true), delivers: .claim(makeJob()))
     }
     @Test(arguments: [(false, true, false), (true, false, false), (true, true, true)])
     func anIneligibleJobIsUnavailable(finalWrite: Bool, usable: Bool, empty: Bool) {
         let job = makeJob(entries: empty ? [] : makeEntries())
-        assert(makePreparing(finalWrite: finalWrite, usable: usable), .prepared("call", job)) {
+        assert(makePreparing(finalWrite: finalWrite, usable: usable), .prepared("call", job, notesOn: true)) {
             $0.calls["call"]?.stage = .unavailable; $0.calls["call"]?.job = job
             $0.calls["call"]?.submission = nil; $0.calls["call"]?.status = "unavailable:false"
         }
@@ -97,13 +107,13 @@ import Testing
     @Test(arguments: [(false, true, false), (true, false, false), (true, true, true)])
     func anIneligibleJobDeliversNothing(finalWrite: Bool, usable: Bool, empty: Bool) {
         let job = makeJob(entries: empty ? [] : makeEntries())
-        assert(makePreparing(finalWrite: finalWrite, usable: usable), .prepared("call", job), delivers: nil)
+        assert(makePreparing(finalWrite: finalWrite, usable: usable), .prepared("call", job, notesOn: true), delivers: nil)
     }
     @Test func aJobForACallNotPreparingChangesNothing() {
-        assert(makeState(calls: ["call": .init(stage: .claiming)]), .prepared("call", makeJob()))
+        assert(makeState(calls: ["call": .init(stage: .claiming)]), .prepared("call", makeJob(), notesOn: true))
     }
     @Test func aJobForACallNotPreparingDeliversNothing() {
-        assert(makeState(calls: ["call": .init(stage: .claiming)]), .prepared("call", makeJob()), delivers: nil)
+        assert(makeState(calls: ["call": .init(stage: .claiming)]), .prepared("call", makeJob(), notesOn: true), delivers: nil)
     }
 
     @Test(arguments: [(true, SummariesState.Call.Stage.pending, SummariesState.Call.Stage.starting),
@@ -151,14 +161,14 @@ import Testing
 
 @Suite struct SummariesSubmissionEffectHandlerTests {
     @Test func prepareHandsTheSubmissionToPreparation() async {
-        let preparation = PreparationSpy(job: nil), claims = ClaimsSpy()
+        let preparation = PreparationSpy(), claims = ClaimsSpy()
         _ = await makeSUT(preparation, claims).handle(.prepare(makeSubmission(requested: true)))
         #expect(preparation.payloads == [makeSubmission(requested: true)])
     }
-    @Test(arguments: [false, true]) func prepareDeliversThePreparedJob(found: Bool) async {
-        let job = found ? makeJob() : nil
-        let event = await makeSUT(PreparationSpy(job: job), ClaimsSpy()).handle(.prepare(makeSubmission()))
-        #expect(event == .prepared("call", job))
+    @Test(arguments: [false, true]) func prepareDeliversThePreparedJobAndWhetherNotesAreOn(notesOn: Bool) async {
+        let job = makeJob(entries: [])
+        let event = await makeSUT(PreparationSpy(job: job, notesOn: notesOn), ClaimsSpy()).handle(.prepare(makeSubmission()))
+        #expect(event == .prepared("call", job, notesOn: notesOn))
     }
     @Test func prepareDoesNotClaim() async {
         let claims = ClaimsSpy()
@@ -167,20 +177,20 @@ import Testing
     }
     @Test func claimHandsTheJobToClaims() async {
         let claims = ClaimsSpy()
-        _ = await makeSUT(PreparationSpy(job: nil), claims).handle(.claim(makeJob()))
+        _ = await makeSUT(PreparationSpy(), claims).handle(.claim(makeJob()))
         #expect(claims.payloads == [makeJob()])
     }
     @Test(arguments: [false, true]) func claimDeliversWhatStorageHolds(owned: Bool) async {
         let saved = SummariesSaved(stage: .identifying, job: makeJob(), warning: true)
-        let event = await makeSUT(PreparationSpy(job: nil), ClaimsSpy(result: .success((owned, saved)))).handle(.claim(makeJob()))
+        let event = await makeSUT(PreparationSpy(), ClaimsSpy(result: .success((owned, saved)))).handle(.claim(makeJob()))
         #expect(event == .claimed("call", owned: owned, saved))
     }
     @Test func aFailedClaimDeliversStorageFailure() async {
-        let event = await makeSUT(PreparationSpy(job: nil), ClaimsSpy(result: .failure(SpyFailure()))).handle(.claim(makeJob()))
+        let event = await makeSUT(PreparationSpy(), ClaimsSpy(result: .failure(SpyFailure()))).handle(.claim(makeJob()))
         #expect(event == .storageFailed("call"))
     }
     @Test func claimDoesNotPrepare() async {
-        let preparation = PreparationSpy(job: nil)
+        let preparation = PreparationSpy()
         _ = await makeSUT(preparation, ClaimsSpy()).handle(.claim(makeJob()))
         #expect(preparation.payloads.isEmpty)
     }
@@ -305,12 +315,12 @@ import Testing
         #expect(event == .loadFailed("call"))
     }
     @Test func loadDoesNotPrepareOrClaim() async {
-        let preparation = PreparationSpy(job: nil), claims = ClaimsSpy()
+        let preparation = PreparationSpy(), claims = ClaimsSpy()
         _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: RecordsSpy(), starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy()).handle(.load("call"))
         #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty)
     }
     private func makeSUT(_ records: RecordsSpy) -> SummariesEffectHandler {
-        .init(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: records, starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy())
+        .init(preparation: PreparationSpy(), claims: ClaimsSpy(), records: records, starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy())
     }
 }
 
@@ -442,13 +452,13 @@ import Testing
     }
     @Test func aFailedStartReleasesTheJob() async {
         let storage = StorageSpy()
-        _ = await SummariesEffectHandler(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: RecordsSpy(),
+        _ = await SummariesEffectHandler(preparation: PreparationSpy(), claims: ClaimsSpy(), records: RecordsSpy(),
                                          starts: StartsSpy(result: .failure(SpyFailure())), storage: storage, generation: GenerationsSpy())
             .handle(.start(makeJob()))
         #expect(storage.payloads == [.release(makeJob())])
     }
     @Test func startDoesNothingElse() async {
-        let preparation = PreparationSpy(job: nil), claims = ClaimsSpy(), records = RecordsSpy()
+        let preparation = PreparationSpy(), claims = ClaimsSpy(), records = RecordsSpy()
         _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: records, starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy()).handle(.start(makeJob()))
         #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && records.payloads.isEmpty)
     }
@@ -458,7 +468,7 @@ import Testing
         #expect(starts.payloads.isEmpty)
     }
     private func makeSUT(_ starts: StartsSpy) -> SummariesEffectHandler {
-        .init(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: RecordsSpy(), starts: starts, storage: StorageSpy(), generation: GenerationsSpy())
+        .init(preparation: PreparationSpy(), claims: ClaimsSpy(), records: RecordsSpy(), starts: starts, storage: StorageSpy(), generation: GenerationsSpy())
     }
 }
 
@@ -474,8 +484,9 @@ func makeIdentity() -> Identity { .init(label: "A", name: "Ann", time: "0", quot
 func makeSubmission(finalWrite: Bool = true, usable: Bool = true, requested: Bool = false) -> SummariesSubmission {
     .init(call: "call", input: "input", entries: makeEntries(), finalWrite: finalWrite, usable: usable, requested: requested)
 }
-func makePreparing(finalWrite: Bool = true, usable: Bool = true) -> SummariesState {
-    makeState(calls: ["call": .init(stage: .preparing, submission: makeSubmission(finalWrite: finalWrite, usable: usable))])
+func makePreparing(finalWrite: Bool = true, usable: Bool = true, requested: Bool = false) -> SummariesState {
+    makeState(calls: ["call": .init(stage: .preparing, requested: requested,
+                                    submission: makeSubmission(finalWrite: finalWrite, usable: usable, requested: requested))])
 }
 func makeClaiming(requested: Bool = false) -> SummariesState {
     makeState(calls: ["call": .init(stage: .claiming, job: makeJob(), requested: requested)])
@@ -497,14 +508,15 @@ struct SpyFailure: Error {}
 final class PreparationSpy: SummariesPreparation {
     private let recorded = Mutex<[SummariesSubmission]>([])
     private let read = Mutex<[String]>([])
-    private let job: Job?
+    private let job: Job
+    private let notesOn: Bool
     private let submission: Result<SummariesSubmission, SpyFailure>
-    init(job: Job?, submission: Result<SummariesSubmission, SpyFailure> = .success(makeSubmission(requested: true))) {
-        self.job = job; self.submission = submission
+    init(job: Job = makeJob(), notesOn: Bool = true, submission: Result<SummariesSubmission, SpyFailure> = .success(makeSubmission(requested: true))) {
+        self.job = job; self.notesOn = notesOn; self.submission = submission
     }
     var payloads: [SummariesSubmission] { recorded.withLock { $0 } }
     var reads: [String] { read.withLock { $0 } }
-    func job(for submission: SummariesSubmission) async -> Job? { recorded.withLock { $0.append(submission) }; return job }
+    func job(for submission: SummariesSubmission) async -> (job: Job, notesOn: Bool) { recorded.withLock { $0.append(submission) }; return (job, notesOn) }
     func submission(call: String) async throws -> SummariesSubmission { read.withLock { $0.append(call) }; return try submission.get() }
 }
 final class ClaimsSpy: SummariesClaims {

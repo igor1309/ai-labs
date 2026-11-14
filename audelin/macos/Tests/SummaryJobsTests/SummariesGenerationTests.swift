@@ -179,7 +179,7 @@ import Testing
     }
 
     private func makeSUT(_ storage: StorageSpy = StorageSpy(), _ generation: GenerationsSpy = GenerationsSpy()) -> SummariesEffectHandler {
-        .init(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: RecordsSpy(), starts: StartsSpy(),
+        .init(preparation: PreparationSpy(), claims: ClaimsSpy(), records: RecordsSpy(), starts: StartsSpy(),
               storage: storage, generation: generation)
     }
     private func makeSUT(generation: GenerationsSpy) -> SummariesEffectHandler { makeSUT(StorageSpy(), generation) }

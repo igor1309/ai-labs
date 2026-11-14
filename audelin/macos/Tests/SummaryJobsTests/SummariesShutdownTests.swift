@@ -184,7 +184,7 @@ private func job(_ call: String) -> Job { var job = makeJob(); job.call = call; 
         #expect(event == .reloaded([:]))
     }
     @Test func releaseAndReloadDoNothingElse() async {
-        let preparation = PreparationSpy(job: nil), claims = ClaimsSpy(), starts = StartsSpy(), generation = GenerationsSpy()
+        let preparation = PreparationSpy(), claims = ClaimsSpy(), starts = StartsSpy(), generation = GenerationsSpy()
         let sut = SummariesEffectHandler(preparation: preparation, claims: claims, records: RecordsSpy(), starts: starts,
                                          storage: StorageSpy(), generation: generation)
         _ = await sut.handle(.release([makeJob()])); _ = await sut.handle(.reload(["a"]))
@@ -192,7 +192,7 @@ private func job(_ call: String) -> Job { var job = makeJob(); job.call = call; 
     }
     private func makeSUT(records: RecordsSpy = RecordsSpy(), storage: StorageSpy = StorageSpy(),
                          generation: GenerationsSpy = GenerationsSpy()) -> SummariesEffectHandler {
-        .init(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: records, starts: StartsSpy(),
+        .init(preparation: PreparationSpy(), claims: ClaimsSpy(), records: records, starts: StartsSpy(),
               storage: storage, generation: generation)
     }
 }

@@ -86,8 +86,8 @@ public enum SummariesEvent: Equatable, Sendable {
     case recovered(String, SummariesSaved?)
     case loadFailed(String)
     case submit(SummariesSubmission)
-    /// The submission's job, or none when notes are off and the user did not ask.
-    case prepared(String, Job?)
+    /// The submission's job, and whether notes are on; the reducer drops an automatic call while they are off.
+    case prepared(String, Job, notesOn: Bool)
     case claimed(String, owned: Bool, SummariesSaved)
     /// Storage's answer to a start: owned when this machine runs the job, else another process does.
     case started(String, owned: Bool)
@@ -245,9 +245,9 @@ public struct SummariesReducer: Sendable {
             call = submission.call
             next.calls[call] = .init(stage: .preparing, requested: submission.requested, submission: submission)
             effect = .prepare(submission)
-        case let .prepared(id, job) where state.calls[id]?.stage == .preparing:
+        case let .prepared(id, job, notesOn) where state.calls[id]?.stage == .preparing:
             call = id
-            guard let job, let submission = state.calls[id]?.submission else { next.calls[id] = nil; return (next, nil) }
+            guard let submission = state.calls[id]?.submission, notesOn || submission.requested else { next.calls[id] = nil; return (next, nil) }
             let eligible = submission.finalWrite && submission.usable && !job.entries.isEmpty
             next.calls[id]?.job = job
             next.calls[id]?.submission = nil

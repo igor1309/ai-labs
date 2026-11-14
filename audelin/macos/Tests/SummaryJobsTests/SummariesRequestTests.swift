@@ -85,20 +85,20 @@ import Testing
 
 @Suite struct SummariesRequestEffectHandlerTests {
     @Test func readAsksForTheCallsTranscript() async {
-        let preparation = PreparationSpy(job: nil)
+        let preparation = PreparationSpy()
         _ = await makeSUT(preparation).handle(.read("call"))
         #expect(preparation.reads == ["call"])
     }
     @Test func readDeliversTheSubmission() async {
-        let event = await makeSUT(PreparationSpy(job: nil)).handle(.read("call"))
+        let event = await makeSUT(PreparationSpy()).handle(.read("call"))
         #expect(event == .submit(makeSubmission(requested: true)))
     }
     @Test func aFailedReadDeliversReadFailed() async {
-        let event = await makeSUT(PreparationSpy(job: nil, submission: .failure(SpyFailure()))).handle(.read("call"))
+        let event = await makeSUT(PreparationSpy(submission: .failure(SpyFailure()))).handle(.read("call"))
         #expect(event == .readFailed("call"))
     }
     @Test func readDoesNothingElse() async {
-        let preparation = PreparationSpy(job: nil), claims = ClaimsSpy(), records = RecordsSpy(), starts = StartsSpy()
+        let preparation = PreparationSpy(), claims = ClaimsSpy(), records = RecordsSpy(), starts = StartsSpy()
         let storage = StorageSpy(), generation = GenerationsSpy()
         _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: records, starts: starts,
                                          storage: storage, generation: generation).handle(.read("call"))
