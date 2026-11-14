@@ -91,7 +91,11 @@ public func compose(
                                           try await storage.commitFolder(destination) { try preferences.updateCallsFolder(destination) }
                                       }, describe: { language.language.settings.callsFailure($0) }), text: { language.language.settings },
                                       isIdle: { [weak menu] in
-                                          MainActor.assumeIsolated { menu?.state.phase == .idle && !summaries.busy }
+                                          MainActor.assumeIsolated {
+                                              idleToMerge(recording: menu?.state.phase ?? .idle,
+                                                          finishing: finalization.state.calls.values.map(\.stage),
+                                                          notesBusy: summaries.busy)
+                                          }
                                       }, initial: .init(callsFolder: preferences.read().callsFolder)),
                                   timeZone: timeZone, now: boundary.time.now, recordingState: { [weak menu] in menu?.state ?? .init() },
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
