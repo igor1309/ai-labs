@@ -61,7 +61,7 @@ import Testing
     }
     @Test(arguments: [SummariesState.Call.Stage.succeeded, .failed]) func aSaveEndsInItsTerminal(terminal: SummariesState.Call.Stage) {
         assert(make(.saving, terminal: terminal), .saved("call")) {
-            $0.calls["call"]?.stage = terminal; $0.calls["call"]?.status = "\(terminal):false"
+            $0.calls["call"]?.stage = terminal; $0.calls["call"]?.status = "\(terminal):false"; $0.calls["call"]?.retryable = terminal == .failed
         }
         #expect(format.payloads == [.init(stage: terminal, warning: false)])
     }
@@ -71,7 +71,7 @@ import Testing
 
     @Test(arguments: [SummariesState.Call.Stage.starting, .identifying, .checkpointing, .noting, .publishing, .saving])
     func aStorageFailureFailsWork(stage: SummariesState.Call.Stage) {
-        assert(make(stage), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false" }
+        assert(make(stage), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false"; $0.calls["call"]?.retryable = true }
     }
     @Test(arguments: [SummariesState.Call.Stage.starting, .identifying, .checkpointing, .noting, .publishing, .saving])
     func aStorageFailureDeliversNothing(stage: SummariesState.Call.Stage) {

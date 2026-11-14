@@ -23,7 +23,7 @@ import Testing
         #expect(format.payloads.isEmpty)
     }
     @Test(arguments: [SummariesState.Call.Stage.observed, .unavailable]) func aCancelOnAnUnrunJobInterruptsIt(stage: SummariesState.Call.Stage) {
-        assert(make(stage), .cancel("call")) { $0.calls["call"]?.stage = .interrupted; $0.calls["call"]?.status = "interrupted:false" }
+        assert(make(stage), .cancel("call")) { $0.calls["call"]?.stage = .interrupted; $0.calls["call"]?.status = "interrupted:false"; $0.calls["call"]?.retryable = true }
     }
     @Test(arguments: [SummariesState.Call.Stage.observed, .unavailable]) func aCancelOnAnUnrunJobDeliversNothing(stage: SummariesState.Call.Stage) {
         assert(make(stage), .cancel("call"), delivers: nil)
@@ -54,7 +54,7 @@ import Testing
         assert(make(.starting, cancelling: true), .started("call", owned: false), delivers: nil)
     }
     @Test func aStorageFailureAfterACancelFailsTheCall() {
-        assert(make(.noting, cancelling: true), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false" }
+        assert(make(.noting, cancelling: true), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false"; $0.calls["call"]?.retryable = true }
     }
     @Test func aResultForAnotherStageAfterACancelChangesNothing() {
         assert(make(.noting, cancelling: true), .published("call"))
@@ -71,7 +71,7 @@ import Testing
         assert(make(.noting, cancelling: true), .discarded("call"))
     }
     @Test func aFailedDiscardFailsTheCall() {
-        assert(make(.discarding, cancelling: true), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false" }
+        assert(make(.discarding, cancelling: true), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false"; $0.calls["call"]?.retryable = true }
     }
     @Test func aFailedDiscardDeliversNothing() {
         assert(make(.discarding, cancelling: true), .storageFailed("call"), delivers: nil)

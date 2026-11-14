@@ -23,12 +23,14 @@ public struct SummariesState: Equatable, Sendable {
         public var status: String
         /// The mark the call's row shows.
         public var badge: Badge
+        /// The user can ask for this call's notes again.
+        public var retryable: Bool
         public init(stage: Stage, job: Job? = nil, identities: [Identity] = [], warning: Bool = false, notes: String? = nil,
                     terminal: Stage? = nil, requested: Bool = false, cancelling: Bool = false, retryFailed: Bool = false,
-                    submission: SummariesSubmission? = nil, status: String = "", badge: Badge = .none) {
+                    submission: SummariesSubmission? = nil, status: String = "", badge: Badge = .none, retryable: Bool = false) {
             self.stage = stage; self.job = job; self.identities = identities; self.warning = warning; self.notes = notes
             self.terminal = terminal; self.requested = requested; self.cancelling = cancelling; self.retryFailed = retryFailed
-            self.submission = submission; self.status = status; self.badge = badge
+            self.submission = submission; self.status = status; self.badge = badge; self.retryable = retryable
         }
     }
     public var lifecycle: Lifecycle
@@ -156,6 +158,9 @@ public struct SummariesReducer: Sendable {
     public func reduce(_ state: SummariesState, _ event: SummariesEvent) -> (SummariesState, SummariesEffect?) {
         var (next, effect) = step(state, event)
         if next == state && effect == nil { return (state, nil) }
+        for (id, work) in next.calls where work != state.calls[id] {
+            next.calls[id]?.retryable = (work.stage == .failed || work.stage == .interrupted) && work.job != nil
+        }
         if next.lifecycle == .draining && !next.releasing && !next.calls.values.contains(where: { SummariesReducer.inFlight.contains($0.stage) }) {
             next.lifecycle = .ended
         }

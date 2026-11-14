@@ -10,7 +10,7 @@ import Testing
         state.calls["call"]?.warning = true
         assert(state, .shutdown) {
             $0.lifecycle = .draining; $0.dispatch = false; $0.releasing = true
-            $0.calls["call"]?.stage = .interrupted; $0.calls["call"]?.status = "interrupted:true"
+            $0.calls["call"]?.stage = .interrupted; $0.calls["call"]?.status = "interrupted:true"; $0.calls["call"]?.retryable = true
         }
         #expect(format.payloads == [.init(stage: .interrupted, warning: true)])
     }

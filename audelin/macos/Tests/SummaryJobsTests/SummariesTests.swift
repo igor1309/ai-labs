@@ -84,7 +84,7 @@ import Testing
         let record = SummariesSaved(stage: saved, job: makeJob(), identities: [makeIdentity()], warning: true, notes: "notes", terminal: .succeeded)
         assert(makeClaiming(requested: true), .claimed("call", owned: owned, record)) {
             $0.calls["call"] = .init(stage: stage, job: makeJob(), identities: [makeIdentity()], warning: true, notes: "notes",
-                                     terminal: .succeeded, requested: true, status: "\(stage):true")
+                                     terminal: .succeeded, requested: true, status: "\(stage):true", retryable: stage == .failed)
         }
         #expect(format.payloads == [.init(stage: stage, warning: true)])
     }
@@ -101,7 +101,7 @@ import Testing
         assert(makePreparing(), .claimed("call", owned: true, .init(stage: .pending, job: makeJob())), delivers: nil)
     }
     @Test func aFailedClaimFailsTheCall() {
-        assert(makeClaiming(), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false" }
+        assert(makeClaiming(), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false"; $0.calls["call"]?.retryable = true }
     }
     @Test func aFailedClaimDeliversNothing() {
         assert(makeClaiming(), .storageFailed("call"), delivers: nil)
@@ -349,7 +349,7 @@ import Testing
         assert(makePending(), .started("call", owned: true), delivers: nil)
     }
     @Test func aFailedStartFailsTheCall() {
-        assert(makeStarting(), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false" }
+        assert(makeStarting(), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false"; $0.calls["call"]?.retryable = true }
     }
     @Test func aFailedStartDeliversNothing() {
         assert(makeStarting(), .storageFailed("call"), delivers: nil)

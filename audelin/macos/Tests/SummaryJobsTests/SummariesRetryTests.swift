@@ -58,7 +58,7 @@ import Testing
     }
     @Test(arguments: [SummariesState.Call.Stage.failed, .interrupted]) func aFailedRetryRestoresTheStageAndMarksIt(stage: SummariesState.Call.Stage) {
         assert(makeRetrying(from: stage), .retryFailed("call")) {
-            $0.calls["call"]?.stage = stage; $0.calls["call"]?.retryFailed = true; $0.calls["call"]?.status = "\(stage):false"
+            $0.calls["call"]?.stage = stage; $0.calls["call"]?.retryFailed = true; $0.calls["call"]?.retryable = true; $0.calls["call"]?.status = "\(stage):false"
         }
         #expect(format.payloads == [.init(stage: stage, warning: false)])
     }

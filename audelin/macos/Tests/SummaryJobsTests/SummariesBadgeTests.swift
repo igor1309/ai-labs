@@ -29,7 +29,7 @@ import Testing
         let state = makeState(calls: ["call": .init(stage: .noting, job: makeJob())])
         assert(state, .shutdown) {
             $0.lifecycle = .draining; $0.dispatch = false; $0.releasing = true
-            $0.calls["call"]?.stage = .interrupted; $0.calls["call"]?.status = "interrupted:false"; $0.calls["call"]?.badge = .pending
+            $0.calls["call"]?.stage = .interrupted; $0.calls["call"]?.status = "interrupted:false"; $0.calls["call"]?.badge = .pending; $0.calls["call"]?.retryable = true
         }
         #expect(badge.payloads == [.interrupted])
     }
