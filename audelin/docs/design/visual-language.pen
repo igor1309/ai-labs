@@ -28308,16 +28308,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -28702,16 +28715,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -29293,16 +29319,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -29720,16 +29759,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -30134,16 +30186,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -30552,16 +30617,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -30974,16 +31052,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -31368,16 +31459,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -31959,16 +32063,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -32386,16 +32503,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -32800,16 +32930,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -33218,16 +33361,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -35255,25 +35411,40 @@
                       "width": "fill_container",
                       "descendants": {
                         "ctTw8": {
-                          "fill": "$selBg"
+                          "fill": "$segThumb",
+                          "effect": {
+                            "type": "shadow",
+                            "shadowType": "outer",
+                            "color": "$segShadow",
+                            "offset": {
+                              "x": 0,
+                              "y": 1
+                            },
+                            "blur": 2
+                          }
                         },
                         "ctTw8/EWsWH": {
                           "content": "Основные",
-                          "fill": "$selText"
+                          "fill": "$text",
+                          "fontWeight": "500"
                         },
                         "nor3c": {
-                          "fill": "$btn"
+                          "fill": "#00000000",
+                          "effect": []
                         },
                         "nor3c/EWsWH": {
                           "content": "Запись",
-                          "fill": "$text"
+                          "fill": "$text",
+                          "fontWeight": "normal"
                         },
                         "cUhH9": {
-                          "fill": "$btn"
+                          "fill": "#00000000",
+                          "effect": []
                         },
                         "cUhH9/EWsWH": {
                           "content": "Итоги звонков",
-                          "fill": "$text"
+                          "fill": "$text",
+                          "fontWeight": "normal"
                         }
                       }
                     },
@@ -35418,25 +35589,40 @@
                       "width": "fill_container",
                       "descendants": {
                         "ctTw8": {
-                          "fill": "$selBg"
+                          "fill": "$segThumb",
+                          "effect": {
+                            "type": "shadow",
+                            "shadowType": "outer",
+                            "color": "$segShadow",
+                            "offset": {
+                              "x": 0,
+                              "y": 1
+                            },
+                            "blur": 2
+                          }
                         },
                         "ctTw8/EWsWH": {
                           "content": "General",
-                          "fill": "$selText"
+                          "fill": "$text",
+                          "fontWeight": "500"
                         },
                         "nor3c": {
-                          "fill": "$btn"
+                          "fill": "#00000000",
+                          "effect": []
                         },
                         "nor3c/EWsWH": {
                           "content": "Recording",
-                          "fill": "$text"
+                          "fill": "$text",
+                          "fontWeight": "normal"
                         },
                         "cUhH9": {
-                          "fill": "$btn"
+                          "fill": "#00000000",
+                          "effect": []
                         },
                         "cUhH9/EWsWH": {
                           "content": "Call summaries",
-                          "fill": "$text"
+                          "fill": "$text",
+                          "fontWeight": "normal"
                         }
                       }
                     },
@@ -35581,25 +35767,40 @@
                       "width": "fill_container",
                       "descendants": {
                         "ctTw8": {
-                          "fill": "$selBg"
+                          "fill": "$segThumb",
+                          "effect": {
+                            "type": "shadow",
+                            "shadowType": "outer",
+                            "color": "$segShadow",
+                            "offset": {
+                              "x": 0,
+                              "y": 1
+                            },
+                            "blur": 2
+                          }
                         },
                         "ctTw8/EWsWH": {
                           "content": "General",
-                          "fill": "$selText"
+                          "fill": "$text",
+                          "fontWeight": "500"
                         },
                         "nor3c": {
-                          "fill": "$btn"
+                          "fill": "#00000000",
+                          "effect": []
                         },
                         "nor3c/EWsWH": {
                           "content": "Recording",
-                          "fill": "$text"
+                          "fill": "$text",
+                          "fontWeight": "normal"
                         },
                         "cUhH9": {
-                          "fill": "$btn"
+                          "fill": "#00000000",
+                          "effect": []
                         },
                         "cUhH9/EWsWH": {
                           "content": "Call summaries",
-                          "fill": "$text"
+                          "fill": "$text",
+                          "fontWeight": "normal"
                         }
                       }
                     },
@@ -35744,25 +35945,40 @@
                       "width": "fill_container",
                       "descendants": {
                         "ctTw8": {
-                          "fill": "$selBg"
+                          "fill": "$segThumb",
+                          "effect": {
+                            "type": "shadow",
+                            "shadowType": "outer",
+                            "color": "$segShadow",
+                            "offset": {
+                              "x": 0,
+                              "y": 1
+                            },
+                            "blur": 2
+                          }
                         },
                         "ctTw8/EWsWH": {
                           "content": "Основные",
-                          "fill": "$selText"
+                          "fill": "$text",
+                          "fontWeight": "500"
                         },
                         "nor3c": {
-                          "fill": "$btn"
+                          "fill": "#00000000",
+                          "effect": []
                         },
                         "nor3c/EWsWH": {
                           "content": "Запись",
-                          "fill": "$text"
+                          "fill": "$text",
+                          "fontWeight": "normal"
                         },
                         "cUhH9": {
-                          "fill": "$btn"
+                          "fill": "#00000000",
+                          "effect": []
                         },
                         "cUhH9/EWsWH": {
                           "content": "Итоги звонков",
-                          "fill": "$text"
+                          "fill": "$text",
+                          "fontWeight": "normal"
                         }
                       }
                     },
@@ -46822,7 +47038,7 @@
           "name": "Settings navigation",
           "reusable": true,
           "width": 572,
-          "gap": "$space-4",
+          "gap": "$space-2",
           "children": [
             {
               "id": "ctTw8",
@@ -46832,9 +47048,18 @@
               "width": "fill_container",
               "descendants": {
                 "EWsWH": {
-                  "content": "Основные"
+                  "content": "Основные",
+                  "fill": "$text",
+                  "fontWeight": "normal"
                 }
-              }
+              },
+              "fill": "#00000000",
+              "cornerRadius": "$radius-thumb",
+              "padding": [
+                "$space-2",
+                "$space-12"
+              ],
+              "effect": []
             },
             {
               "id": "nor3c",
@@ -46844,9 +47069,18 @@
               "width": "fill_container",
               "descendants": {
                 "EWsWH": {
-                  "content": "Запись"
+                  "content": "Запись",
+                  "fill": "$text",
+                  "fontWeight": "normal"
                 }
-              }
+              },
+              "fill": "#00000000",
+              "cornerRadius": "$radius-thumb",
+              "padding": [
+                "$space-2",
+                "$space-12"
+              ],
+              "effect": []
             },
             {
               "id": "cUhH9",
@@ -46854,15 +47088,34 @@
               "ref": "wmGeO",
               "name": "Summaries tab",
               "width": "fill_container",
-              "fill": "$selBg",
+              "fill": "$segThumb",
               "descendants": {
                 "EWsWH": {
                   "content": "Итоги звонков",
-                  "fill": "$selText"
+                  "fill": "$text",
+                  "fontWeight": "500"
                 }
+              },
+              "cornerRadius": "$radius-thumb",
+              "padding": [
+                "$space-2",
+                "$space-12"
+              ],
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$segShadow",
+                "offset": {
+                  "x": 0,
+                  "y": 1
+                },
+                "blur": 2
               }
             }
-          ]
+          ],
+          "fill": "$segTrack",
+          "padding": "$space-2",
+          "cornerRadius": "$radius-control"
         },
         {
           "type": "frame",
@@ -47153,12 +47406,10 @@
           "name": "Segment/Selected",
           "reusable": true,
           "width": "fill_container",
-          "fill": "$surface",
-          "cornerRadius": "$radius-control",
-          "stroke": "$rule",
-          "strokeWidth": 1,
+          "fill": "$segThumb",
+          "cornerRadius": "$radius-thumb",
           "padding": [
-            "$space-4",
+            "$space-2",
             "$space-12"
           ],
           "justifyContent": "center",
@@ -47173,9 +47424,19 @@
               "lineHeight": 1.45,
               "fontFamily": "$font-ui",
               "fontSize": "$type-small",
-              "fontWeight": "600"
+              "fontWeight": "500"
             }
-          ]
+          ],
+          "effect": {
+            "type": "shadow",
+            "shadowType": "outer",
+            "color": "$segShadow",
+            "offset": {
+              "x": 0,
+              "y": 1
+            },
+            "blur": 2
+          }
         },
         {
           "type": "frame",
@@ -47184,9 +47445,9 @@
           "reusable": true,
           "width": "fill_container",
           "fill": "#00000000",
-          "cornerRadius": "$radius-control",
+          "cornerRadius": "$radius-thumb",
           "padding": [
-            "$space-4",
+            "$space-2",
             "$space-12"
           ],
           "justifyContent": "center",
@@ -47196,7 +47457,7 @@
               "type": "text",
               "id": "OdXwE",
               "name": "Label",
-              "fill": "$sub",
+              "fill": "$text",
               "content": "Русский",
               "lineHeight": 1.45,
               "fontFamily": "$font-ui",
@@ -47211,7 +47472,7 @@
           "name": "Segmented/First",
           "reusable": true,
           "width": 400,
-          "fill": "$btn",
+          "fill": "$segTrack",
           "cornerRadius": "$radius-control",
           "gap": "$space-2",
           "padding": "$space-2",
@@ -47245,7 +47506,7 @@
           "name": "Segmented/Second",
           "reusable": true,
           "width": 400,
-          "fill": "$btn",
+          "fill": "$segTrack",
           "cornerRadius": "$radius-control",
           "gap": "$space-2",
           "padding": "$space-2",
@@ -47279,7 +47540,7 @@
           "name": "Segmented/Third",
           "reusable": true,
           "width": 400,
-          "fill": "$btn",
+          "fill": "$segTrack",
           "cornerRadius": "$radius-control",
           "gap": "$space-2",
           "padding": "$space-2",
@@ -60074,6 +60335,61 @@
     "space-32": {
       "type": "number",
       "value": 32
+    },
+    "segTrack": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#0000000F",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#FFFFFF14",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "segThumb": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#FFFFFF38",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "segShadow": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#00000033",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#00000066",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "radius-thumb": {
+      "type": "number",
+      "value": 5
     }
   },
   "fileToken": "11d61027-99ea-4c6c-bc5c-f6eff236c8bd"
