@@ -17,7 +17,9 @@ and 605 s. Evidence: `TranscriptJoinTests.rowsKeepTheirTimeOfDay()`.
 ## S-3 A gap says how long the call was cut off
 
 A at 10:00 lasting 8 min, B at 10:10: one gap at 480 s lasting 120 s,
-between A's rows and B's. Evidence: Missing.
+between A's rows and B's; one gap between each two parts. Evidence:
+`TranscriptJoinTests.aGapSaysHowLongTheCallWasCutOff()` and
+`oneGapSitsBetweenEachTwoParts()`.
 
 ## S-4 Rows pass through unchanged
 
@@ -27,7 +29,8 @@ markers in order. Evidence:
 
 ## S-5 Overlapping parts join with no gap
 
-A at 10:00 lasting 12 min, B at 10:10: a gap of 0 s at 720 s. Evidence: Missing.
+A at 10:00 lasting 12 min, B at 10:10: a gap of 0 s at 720 s. Evidence:
+`TranscriptJoinTests.overlappingPartsJoinWithAGapOfNoLength()`.
 
 ## S-6 The same speaker number in two parts is two speakers
 
