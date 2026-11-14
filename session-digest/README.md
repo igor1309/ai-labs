@@ -44,7 +44,7 @@ If omitted, the CLI uses `session-digest/digest-schema.yaml`.
 
 If more than one provider is configured, the CLI uses Nomos first, then OpenRouter, then NVIDIA NIM.
 
-If the shell has `HTTPS_PROXY`, `HTTP_PROXY`, or `ALL_PROXY`, the CLI uses it automatically for model requests.
+If the shell has `HTTPS_PROXY`, `HTTP_PROXY`, or `ALL_PROXY`, the CLI uses it automatically for non-local model requests; requests to the local Nomos proxy bypass it.
 
 Optional non-secret settings live in `~/.session-digests/settings.env`:
 
