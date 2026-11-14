@@ -42,11 +42,11 @@ public final class SummariesModel {
     }
     /// Whether a job is being made or stored in this process, which an update must not cut short.
     public var busy: Bool { SummariesReducer.busy(model.state) }
-    /// Marks the ended recording as waiting while notes are enabled.
+    /// Hands the ended recording, with whether notes are on, to the machine.
     func callbacks(timeZone: TimeZone, notesOn: @escaping @Sendable () -> Bool) -> SummaryCallbacks {
         SummaryCallbacks(waiting: { [weak self] folder in
-            guard notesOn(), let call = Calls.id(in: folder.lastPathComponent, timeZone: timeZone) else { return }
-            await self?.waiting(call: call)
+            guard let call = Calls.id(in: folder.lastPathComponent, timeZone: timeZone) else { return }
+            await self?.waiting(call: call, notesOn: notesOn())
         })
     }
     /// Each call's calls list icon.
@@ -57,12 +57,8 @@ public final class SummariesModel {
     }
     /// The calls whose notes the user can make again.
     public var retryable: Set<String> { Set(model.state.calls.filter(\.value.retryable).keys) }
-    /// Shows a just-ended recording as waiting for its transcript.
-    public func waiting(call: String) { model.event(.waiting(call)) }
-    /// Hands a finished recording's transcript to the machine.
-    public func completed(call: String, entries: [Job.Entry], finalWrite: Bool, usable: Bool) {
-        model.event(.submit(.init(call: call, input: summaryInput(entries), entries: entries, finalWrite: finalWrite, usable: usable)))
-    }
+    /// Shows a just-ended recording as waiting for its transcript while notes are on.
+    public func waiting(call: String, notesOn: Bool) { model.event(.waiting(call, notesOn: notesOn)) }
     /// Makes notes the user asked for from the call's stored transcript, even when notes are off.
     public func make(call: String) { model.event(.request(call)) }
     /// Stops the call's notes and returns once the attempt is discarded or has settled.
@@ -87,10 +83,11 @@ public final class SummariesModel {
     /// Drops the merged parts' jobs, done or stored, so none of them runs.
     public func drop(parts: [String]) { parts.forEach { model.event(.drop($0)) } }
 
-    /// Replaces the merged parts' jobs with one for the merged call's joined transcript.
-    public func merged(call: String, parts: [String], entries: [Job.Entry]) {
+    /// Replaces the merged parts' jobs with one for the merged call's joined transcript,
+    /// offered for notes as an ended recording's is.
+    public func merged(call: String, parts: [String], entries: [Job.Entry], notesOn: Bool) {
         drop(parts: parts)
-        completed(call: call, entries: entries, finalWrite: true, usable: true)
+        model.event(.finalized(call, entries: entries, finalWrite: true, usable: true, notesOn: notesOn))
     }
     /// Picks up each stored call's job at launch.
     public func recover(calls: [String]) { calls.forEach { model.event(.recover($0)) } }
@@ -105,10 +102,10 @@ public final class SummariesModel {
     }
     /// Starts no new job; running ones go on.
     public func stopDispatch() { model.event(.stopDispatch) }
-    /// Drains the machine and returns once it has ended.
+    /// Drains the machine and returns once it has published settled.
     public func shutdown() async {
         model.event(.shutdown)
-        while model.state.lifecycle != .ended { await changed() }
+        for await lifecycle in Observations({ self.model.state.lifecycle }) where lifecycle == .settled { return }
     }
     private func changed() async {
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
@@ -123,7 +120,7 @@ extension CallsListText {
         switch stage {
         case .waiting, .recovering, .preparing: self(.summaryWaiting)
         case .claiming, .pending, .observed, .retrying, .discarding: self(.summaryPending)
-        case .reading, .starting, .identifying, .checkpointing, .noting, .publishing, .saving: self(.summaryRunning)
+        case .reading, .starting, .identifying, .checkpointing, .noting, .deferred, .publishing, .saving: self(.summaryRunning)
         case .succeeded: warning ? self(.summaryReadyUnnamed) : self(.summaryReady)
         case .failed: self(.summaryFailed)
         case .interrupted: self(.summaryInterrupted)

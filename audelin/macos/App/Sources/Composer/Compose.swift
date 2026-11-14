@@ -67,10 +67,9 @@ public func compose(
         for await final in finals.stream {
             await resources.showSpeakers(finalization.state)
             if let call = Calls.id(in: URL(fileURLWithPath: final.call).lastPathComponent, timeZone: timeZone) {
-                if preferences.read().notes.enabled {
-                    summaries.completed(call: call, entries: final.transcript.entries,
-                                        finalWrite: final.transcript.finalWrite, usable: final.transcript.usable)
-                } else { summaries.forget(call: call) }
+                summaries.send(.finalized(call, entries: final.transcript.entries,
+                                          finalWrite: final.transcript.finalWrite, usable: final.transcript.usable,
+                                          notesOn: preferences.read().notes.enabled))
             }
             await resources.published(call: final.call)
         }
@@ -79,7 +78,9 @@ public func compose(
         openFolder: { _ = openCallsFolder($0) }, openURL: openURL, terminate: terminate,
         sink: boundary.log, presentPanel: presentPanel, sleep: boundary.time.sleep,
         finalization: finalization, finalizationResources: resources, summaries: summaries, language: language)
-    menu.installFinalizationSubscriptions(speakers: speakers, publication: publication, finish: { finals.continuation.finish() })
+    menu.installFinalizationSubscriptions(speakers: speakers, publication: publication,
+                                          transactions: subscribeTransactions(storage.transactions(), to: summaries),
+                                          finish: { finals.continuation.finish() })
     menu.installFolderPicker(chooseCallsFolder)
     menu.installSettings(AudelinSettings(preferences: SummaryPreferences(storage: preferences),
                                         availability: SummaryAvailability(runtime: runtime), text: { language.language.settings }), present: presentSettings)
@@ -111,6 +112,11 @@ public func compose(
     do { summaries.recover(calls: try await storage.list().map(\.id)) }
     catch { boundary.log.write(.init(category: .session, message: "summary recovery listing failed")) }
     return menu
+}
+
+/// Sends each calls-storage transaction state to SummaryJobs, which holds note publication while one runs.
+@MainActor func subscribeTransactions(_ transactions: AsyncStream<CallsTransaction>, to summaries: SummariesModel) -> Task<Void, Never> {
+    Task { for await transaction in transactions { summaries.send(.transaction(running: transaction == .running)) } }
 }
 
 func summaryExecutable(path: String, home: String) -> ClaudeExecutable {

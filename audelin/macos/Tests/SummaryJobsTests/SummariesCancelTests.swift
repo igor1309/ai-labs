@@ -106,10 +106,10 @@ import Testing
     }
 
     @Test func S15_aMergedCallsSubmissionWaitsForItsPartsDiscard() {
-        assert(make(.discarding, cancelling: true), .submit(makeSubmission())) { $0.calls["call"]?.submission = makeSubmission() }
-        assert(make(.discarding, cancelling: true), .submit(makeSubmission()), delivers: nil)
+        assert(make(.discarding, cancelling: true), makeFinalized()) { $0.calls["call"]?.submission = makeSubmission() }
+        assert(make(.discarding, cancelling: true), makeFinalized(), delivers: nil)
         let held = makeState(calls: ["call": .init(stage: .discarding, job: makeJob(), cancelling: true, submission: makeSubmission(requested: true))])
-        assert(held, .submit(makeSubmission()))
+        assert(held, makeFinalized())
     }
     @Test(arguments: [SummariesEvent.discarded("call"), .storageFailed("call")])
     func S15_aMergedCallsSubmissionIsPreparedOnceThePartsJobIsGone(event: SummariesEvent) {
@@ -151,7 +151,7 @@ import Testing
         #expect(event == .storageFailed("call") && storage.payloads == [.discard(makeJob()), .release(makeJob())])
     }
     @Test func discardDoesNothingElse() async {
-        let preparation = PreparationSpy(job: nil), claims = ClaimsSpy(), records = RecordsSpy(), starts = StartsSpy(), generation = GenerationsSpy()
+        let preparation = PreparationSpy(), claims = ClaimsSpy(), records = RecordsSpy(), starts = StartsSpy(), generation = GenerationsSpy()
         _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: records, starts: starts,
                                          storage: StorageSpy(), generation: generation).handle(.discard(makeJob()))
         #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && records.payloads.isEmpty
@@ -159,12 +159,12 @@ import Testing
     }
     @Test func abortStopsTheJobsGenerationAndDeliversAborted() async {
         let generation = GenerationsSpy()
-        let event = await SummariesEffectHandler(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: RecordsSpy(),
+        let event = await SummariesEffectHandler(preparation: PreparationSpy(), claims: ClaimsSpy(), records: RecordsSpy(),
                                                  starts: StartsSpy(), storage: StorageSpy(), generation: generation).handle(.abort(makeJob()))
         #expect(event == .aborted("call") && generation.payloads == [.cancel(makeJob())])
     }
     @Test func abortDoesNothingElse() async {
-        let preparation = PreparationSpy(job: nil), claims = ClaimsSpy(), records = RecordsSpy(), starts = StartsSpy(), storage = StorageSpy()
+        let preparation = PreparationSpy(), claims = ClaimsSpy(), records = RecordsSpy(), starts = StartsSpy(), storage = StorageSpy()
         _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: records, starts: starts,
                                          storage: storage, generation: GenerationsSpy()).handle(.abort(makeJob()))
         #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && records.payloads.isEmpty
@@ -177,7 +177,7 @@ import Testing
         #expect(!storage.payloads.contains(.discard(makeJob())))
     }
     private func makeSUT(_ storage: StorageSpy) -> SummariesEffectHandler {
-        .init(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: RecordsSpy(), starts: StartsSpy(),
+        .init(preparation: PreparationSpy(), claims: ClaimsSpy(), records: RecordsSpy(), starts: StartsSpy(),
               storage: storage, generation: GenerationsSpy())
     }
 }

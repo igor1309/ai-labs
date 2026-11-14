@@ -1,10 +1,11 @@
 /// One machine for the whole line of a call's notes: every call's stage, from
 /// recovery or submission to saved notes, and the lifecycle around them.
 public struct SummariesState: Equatable, Sendable {
-    public enum Lifecycle: Equatable, Sendable { case accepting, draining, ended }
+    /// After `.shutdown` the machine drains, then publishes `settled` once nothing it started is in flight.
+    public enum Lifecycle: Equatable, Sendable { case accepting, draining, settled }
     public struct Call: Equatable, Sendable {
         public enum Stage: Equatable, Sendable {
-            case waiting, reading, recovering, preparing, claiming, pending, starting, identifying, checkpointing, noting, publishing, saving
+            case waiting, reading, recovering, preparing, claiming, pending, starting, identifying, checkpointing, noting, deferred, publishing, saving
             case retrying, discarding
             case succeeded, failed, interrupted, unavailable, observed
         }
@@ -40,24 +41,25 @@ public struct SummariesState: Equatable, Sendable {
     public var releasing: Bool
     /// A reload of the observed calls has not answered yet.
     public var refreshing: Bool
+    /// A calls-storage transaction runs, so made notes wait in `deferred` instead of publishing.
+    public var transaction: Bool
     public init(lifecycle: Lifecycle = .accepting, dispatch: Bool = true, calls: [String: Call] = [:], releasing: Bool = false,
-                refreshing: Bool = false) {
+                refreshing: Bool = false, transaction: Bool = false) {
         self.lifecycle = lifecycle; self.dispatch = dispatch; self.calls = calls; self.releasing = releasing
-        self.refreshing = refreshing
+        self.refreshing = refreshing; self.transaction = transaction
     }
 }
 
 /// A finished call's transcript offered for notes.
 public struct SummariesSubmission: Equatable, Sendable {
     public var call: String
-    public var input: String
     public var entries: [Job.Entry]
     public var finalWrite: Bool
     public var usable: Bool
     /// The user asked for these notes, so they are made even when notes are off.
     public var requested: Bool
-    public init(call: String, input: String, entries: [Job.Entry], finalWrite: Bool, usable: Bool, requested: Bool = false) {
-        self.call = call; self.input = input; self.entries = entries; self.finalWrite = finalWrite; self.usable = usable; self.requested = requested
+    public init(call: String, entries: [Job.Entry], finalWrite: Bool, usable: Bool, requested: Bool = false) {
+        self.call = call; self.entries = entries; self.finalWrite = finalWrite; self.usable = usable; self.requested = requested
     }
 }
 
@@ -77,17 +79,21 @@ public struct SummariesSaved: Equatable, Sendable {
 
 public enum SummariesEvent: Equatable, Sendable {
     case recover(String)
-    /// A recording ended and its transcript is not ready yet.
-    case waiting(String)
+    /// A recording ended and its transcript is not ready yet, and whether notes are on; it waits only while they are.
+    case waiting(String, notesOn: Bool)
     /// The user asked for the call's notes, made from its stored transcript.
     case request(String)
     case readFailed(String)
     /// The call's saved job, or none when storage holds no job for it.
     case recovered(String, SummariesSaved?)
     case loadFailed(String)
+    /// A recording's finalized transcript, offered for automatic notes, and whether notes are on; while they are
+    /// off the call is dropped at once.
+    case finalized(String, entries: [Job.Entry], finalWrite: Bool, usable: Bool, notesOn: Bool)
+    /// The stored transcript a request read.
     case submit(SummariesSubmission)
-    /// The submission's job, or none when notes are off and the user did not ask.
-    case prepared(String, Job?)
+    /// The submission's job, and whether notes are on; the reducer drops an automatic call while they are off.
+    case prepared(String, Job, notesOn: Bool)
     case claimed(String, owned: Bool, SummariesSaved)
     /// Storage's answer to a start: owned when this machine runs the job, else another process does.
     case started(String, owned: Bool)
@@ -113,7 +119,7 @@ public enum SummariesEvent: Equatable, Sendable {
     case discarded(String)
     /// A running generation call for the call was told to stop.
     case aborted(String)
-    /// Stops the machine: running jobs are interrupted and released, and it ends once nothing is in flight.
+    /// Stops the machine: running jobs are interrupted and released, and it settles once nothing is in flight.
     case shutdown
     case released
     /// Reloads the calls another process runs.
@@ -122,6 +128,8 @@ public enum SummariesEvent: Equatable, Sendable {
     case reloaded([String: SummariesSaved?])
     /// Stops starting jobs; a start not yet answered goes back to pending.
     case stopDispatch
+    /// Whether a calls-storage transaction runs; notes made meanwhile publish once it ends.
+    case transaction(running: Bool)
 }
 
 public enum SummariesEffect: Equatable, Sendable {
@@ -178,7 +186,7 @@ public struct SummariesReducer: Sendable {
         default: nil
         }
     }
-    /// The stages that wait on a storage answer shutdown lets arrive before the machine ends.
+    /// The stages that wait on a storage answer shutdown lets arrive before the machine settles.
     static let inFlight: Set<SummariesState.Call.Stage> = [.reading, .recovering, .preparing, .claiming, .retrying]
     static let working: Set<SummariesState.Call.Stage> = [.claiming, .starting, .identifying, .checkpointing, .noting, .publishing, .saving, .discarding]
     public func reduce(_ state: SummariesState, _ event: SummariesEvent) -> (SummariesState, SummariesEffect?) {
@@ -188,8 +196,17 @@ public struct SummariesReducer: Sendable {
         for (id, work) in next.calls where work != state.calls[id] {
             next.calls[id]?.retryable = (work.stage == .failed || work.stage == .interrupted) && (work.job != nil || work.requested)
         }
+        if effect == nil, !next.transaction, next.lifecycle == .accepting,
+           let (id, work) = next.calls.filter({ $0.value.stage == .deferred }).min(by: { $0.key < $1.key }),
+           let job = work.job, let notes = work.notes {
+            // One deferred call publishes on each step that starts no other work, so a finished
+            // transaction resumes them in turn: each publication ends in a save that frees the next.
+            next.calls[id]?.stage = .publishing
+            next.calls[id]?.status = format(.publishing, work.warning); next.calls[id]?.badge = badge(.publishing)
+            effect = .publish(job, notes, warning: work.warning)
+        }
         if next.lifecycle == .draining && !next.releasing && !next.calls.values.contains(where: { SummariesReducer.inFlight.contains($0.stage) }) {
-            next.lifecycle = .ended
+            next.lifecycle = .settled
         }
         return (next, effect)
     }
@@ -223,16 +240,17 @@ public struct SummariesReducer: Sendable {
         case let .loadFailed(id) where state.calls[id]?.stage == .recovering:
             call = id
             next.calls[id] = .init(stage: .failed)
-        case let .submit(submission) where state.lifecycle == .accepting && state.calls[submission.call]?.stage == .recovering
-                                        && state.calls[submission.call]?.submission == nil:
-            // A submission waits for recovery; a saved job takes precedence over it.
-            next.calls[submission.call]?.submission = submission
+        case let .finalized(id, entries, finalWrite, usable, notesOn: true) where state.lifecycle == .accepting && state.calls[id]?.stage == .recovering
+                                                              && state.calls[id]?.submission == nil:
+            // A finalized transcript waits for recovery; a saved job takes precedence over it.
+            next.calls[id]?.submission = .init(call: id, entries: entries, finalWrite: finalWrite, usable: usable)
             return (next, nil)
-        case let .submit(submission) where state.lifecycle == .accepting && state.calls[submission.call]?.stage == .discarding
-                                        && state.calls[submission.call]?.submission == nil:
-            next.calls[submission.call]?.submission = submission
+        case let .finalized(id, entries, finalWrite, usable, notesOn: true) where state.lifecycle == .accepting && state.calls[id]?.stage == .discarding
+                                                              && state.calls[id]?.submission == nil:
+            // A merged call's transcript waits for its parts' job to be discarded.
+            next.calls[id]?.submission = .init(call: id, entries: entries, finalWrite: finalWrite, usable: usable)
             return (next, nil)
-        case let .waiting(id) where state.lifecycle == .accepting && state.calls[id] == nil:
+        case let .waiting(id, notesOn: true) where state.lifecycle == .accepting && state.calls[id] == nil:
             call = id
             next.calls[id] = .init(stage: .waiting)
         case let .request(id) where state.lifecycle == .accepting
@@ -246,15 +264,22 @@ public struct SummariesReducer: Sendable {
         case let .submit(submission) where state.lifecycle != .accepting && state.calls[submission.call]?.stage == .reading:
             next.calls[submission.call] = nil
             return (next, nil)
-        case let .submit(submission) where state.lifecycle == .accepting
-                                        && (state.calls[submission.call] == nil || state.calls[submission.call]?.stage == .waiting
-                                            || state.calls[submission.call]?.stage == .reading):
+        case let .submit(submission) where state.lifecycle == .accepting && state.calls[submission.call]?.stage == .reading:
             call = submission.call
             next.calls[call] = .init(stage: .preparing, requested: submission.requested, submission: submission)
             effect = .prepare(submission)
-        case let .prepared(id, job) where state.calls[id]?.stage == .preparing:
+        case let .finalized(id, _, _, _, notesOn: false) where state.calls[id]?.stage == .waiting:
+            next.calls[id] = nil
+            return (next, nil)
+        case let .finalized(id, entries, finalWrite, usable, notesOn: true) where state.lifecycle == .accepting
+                                                              && (state.calls[id] == nil || state.calls[id]?.stage == .waiting):
             call = id
-            guard let job, let submission = state.calls[id]?.submission else { next.calls[id] = nil; return (next, nil) }
+            let submission = SummariesSubmission(call: id, entries: entries, finalWrite: finalWrite, usable: usable)
+            next.calls[id] = .init(stage: .preparing, submission: submission)
+            effect = .prepare(submission)
+        case let .prepared(id, job, notesOn) where state.calls[id]?.stage == .preparing:
+            call = id
+            guard let submission = state.calls[id]?.submission, notesOn || submission.requested else { next.calls[id] = nil; return (next, nil) }
             let eligible = submission.finalWrite && submission.usable && !job.entries.isEmpty
             next.calls[id]?.job = job
             next.calls[id]?.submission = nil
@@ -291,8 +316,9 @@ public struct SummariesReducer: Sendable {
         case let .noted(id, notes) where state.calls[id]?.stage == .noting:
             guard let work = state.calls[id], let job = work.job else { return (state, nil) }
             call = id
-            next.calls[id]?.notes = notes; next.calls[id]?.stage = .publishing
-            effect = .publish(job, notes, warning: work.warning)
+            next.calls[id]?.notes = notes
+            if state.transaction { next.calls[id]?.stage = .deferred }
+            else { next.calls[id]?.stage = .publishing; effect = .publish(job, notes, warning: work.warning) }
         case let .notesFailed(id) where state.calls[id]?.stage == .noting:
             guard let work = state.calls[id], let job = work.job else { return (state, nil) }
             call = id
@@ -313,6 +339,9 @@ public struct SummariesReducer: Sendable {
         case let .storageFailed(id) where state.calls[id].map({ SummariesReducer.working.contains($0.stage) }) ?? false:
             call = id
             next.calls[id]?.stage = .failed; next.calls[id]?.cancelling = false
+        case let .transaction(running) where state.transaction != running:
+            next.transaction = running
+            return (next, nil)
         case .stopDispatch where state.dispatch:
             next.dispatch = false
             for (id, work) in state.calls where work.stage == .starting {
@@ -349,8 +378,8 @@ public struct SummariesReducer: Sendable {
             call = id
             next.calls[id]?.cancelling = true
             effect = state.calls[id]?.job.map(SummariesEffect.abort)
-        case let .cancel(id) where state.calls[id]?.stage == .pending:
-            // A job stored but not started yet has nothing running to wait for.
+        case let .cancel(id) where state.calls[id]?.stage == .pending || state.calls[id]?.stage == .deferred:
+            // A job stored but not started yet, or whose notes wait to publish, has nothing running to wait for.
             guard let job = state.calls[id]?.job else { return (state, nil) }
             call = id
             next.calls[id]?.stage = .discarding; next.calls[id]?.cancelling = true
@@ -371,7 +400,7 @@ public struct SummariesReducer: Sendable {
             next.lifecycle = .draining; next.dispatch = false
             var jobs: [Job] = []
             for (id, work) in state.calls.sorted(by: { $0.key < $1.key })
-            where SummariesReducer.running.contains(work.stage) || work.stage == .discarding {
+            where SummariesReducer.running.contains(work.stage) || work.stage == .discarding || work.stage == .deferred {
                 next.calls[id]?.stage = .interrupted
                 next.calls[id]?.status = format(.interrupted, work.warning); next.calls[id]?.badge = badge(.interrupted)
                 if let job = work.job { jobs.append(job) }
@@ -381,7 +410,7 @@ public struct SummariesReducer: Sendable {
         case .released where state.releasing:
             next.releasing = false
             return (next, nil)
-        case .refresh where state.lifecycle != .ended && !state.refreshing:
+        case .refresh where state.lifecycle != .settled && !state.refreshing:
             let observed = state.calls.filter { SummariesReducer.reloadable($0.value) }.keys.sorted()
             guard !observed.isEmpty else { return (state, nil) }
             next.refreshing = true

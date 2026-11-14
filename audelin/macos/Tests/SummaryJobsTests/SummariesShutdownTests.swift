@@ -19,7 +19,7 @@ import Testing
                delivers: .release([job("a"), job("b")]))
     }
     @Test func shutdownWithNothingRunningEnds() {
-        assert(make(["call": .pending, "done": .succeeded]), .shutdown) { $0.lifecycle = .ended; $0.dispatch = false }
+        assert(make(["call": .pending, "done": .succeeded]), .shutdown) { $0.lifecycle = .settled; $0.dispatch = false }
         #expect(format.payloads.isEmpty)
     }
     @Test func shutdownWithNothingRunningDeliversNothing() {
@@ -29,15 +29,15 @@ import Testing
     func shutdownWaitsForStorageAnswersInFlight(stage: SummariesState.Call.Stage) {
         assert(make(["call": stage]), .shutdown) { $0.lifecycle = .draining; $0.dispatch = false }
     }
-    @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func aSecondShutdownChangesNothing(lifecycle: SummariesState.Lifecycle) {
+    @Test(arguments: [SummariesState.Lifecycle.draining, .settled]) func aSecondShutdownChangesNothing(lifecycle: SummariesState.Lifecycle) {
         assert(make(["call": .noting], lifecycle: lifecycle), .shutdown)
     }
-    @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func aSecondShutdownDeliversNothing(lifecycle: SummariesState.Lifecycle) {
+    @Test(arguments: [SummariesState.Lifecycle.draining, .settled]) func aSecondShutdownDeliversNothing(lifecycle: SummariesState.Lifecycle) {
         assert(make(["call": .noting], lifecycle: lifecycle), .shutdown, delivers: nil)
     }
 
     @Test func theReleaseEndsADrainWithNothingInFlight() {
-        assert(makeDraining(["call": .interrupted]), .released) { $0.releasing = false; $0.lifecycle = .ended }
+        assert(makeDraining(["call": .interrupted]), .released) { $0.releasing = false; $0.lifecycle = .settled }
     }
     @Test func theReleaseKeepsDrainingWhileAnAnswerIsInFlight() {
         assert(makeDraining(["call": .interrupted, "other": .claiming]), .released) { $0.releasing = false }
@@ -50,7 +50,7 @@ import Testing
     }
     @Test func theLastAnswerInFlightEndsADrainWhoseReleaseAnswered() {
         assert(make(["call": .claiming], lifecycle: .draining, dispatch: false), .claimed("call", owned: true, .init(stage: .pending, job: job("call")))) {
-            $0.lifecycle = .ended
+            $0.lifecycle = .settled
             $0.calls["call"] = .init(stage: .pending, job: job("call"), status: "pending:false")
         }
     }
@@ -115,7 +115,7 @@ import Testing
         assert(make(["a": .interrupted]), .reloaded(["a": .init(stage: .observed, job: job("a"))]), delivers: nil)
     }
     @Test func refreshAfterTheEndDeliversNothing() {
-        assert(make(["a": .observed], lifecycle: .ended), .refresh, delivers: nil)
+        assert(make(["a": .observed], lifecycle: .settled), .refresh, delivers: nil)
     }
     @Test(arguments: [(SummariesState.Call.Stage.pending, SummariesState.Call.Stage.observed), (.noting, .noting), (.succeeded, .succeeded)])
     func aReloadedCallTakesItsSavedJob(saved: SummariesState.Call.Stage, stage: SummariesState.Call.Stage) {
@@ -184,7 +184,7 @@ private func job(_ call: String) -> Job { var job = makeJob(); job.call = call; 
         #expect(event == .reloaded([:]))
     }
     @Test func releaseAndReloadDoNothingElse() async {
-        let preparation = PreparationSpy(job: nil), claims = ClaimsSpy(), starts = StartsSpy(), generation = GenerationsSpy()
+        let preparation = PreparationSpy(), claims = ClaimsSpy(), starts = StartsSpy(), generation = GenerationsSpy()
         let sut = SummariesEffectHandler(preparation: preparation, claims: claims, records: RecordsSpy(), starts: starts,
                                          storage: StorageSpy(), generation: generation)
         _ = await sut.handle(.release([makeJob()])); _ = await sut.handle(.reload(["a"]))
@@ -192,7 +192,7 @@ private func job(_ call: String) -> Job { var job = makeJob(); job.call = call; 
     }
     private func makeSUT(records: RecordsSpy = RecordsSpy(), storage: StorageSpy = StorageSpy(),
                          generation: GenerationsSpy = GenerationsSpy()) -> SummariesEffectHandler {
-        .init(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: records, starts: StartsSpy(),
+        .init(preparation: PreparationSpy(), claims: ClaimsSpy(), records: records, starts: StartsSpy(),
               storage: storage, generation: generation)
     }
 }

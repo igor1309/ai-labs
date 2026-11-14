@@ -6,7 +6,7 @@ import Testing
     let badge = BadgeSpy(stub: .pending)
 
     @Test func aChangedCallTakesTheRenderedBadge() {
-        assert(makeState(), .submit(makeSubmission())) {
+        assert(makeState(), makeFinalized()) {
             $0.calls["call"] = .init(stage: .preparing, submission: makeSubmission(), status: "preparing:false", badge: .pending)
         }
         #expect(badge.payloads == [.preparing])
@@ -40,7 +40,7 @@ import Testing
         }
         #expect(badge.payloads == [.succeeded])
     }
-    @Test(arguments: [SummariesEvent.prepared("call", nil), .forget("call"), .discarded("call"), .submit(makeSubmission())])
+    @Test(arguments: [SummariesEvent.prepared("call", makeJob(), notesOn: false), .forget("call"), .discarded("call"), makeFinalized()])
     func aCallRemovedOrUnchangedRendersNoBadge(event: SummariesEvent) {
         _ = reducer.reduce(makeState(calls: ["call": .init(stage: .preparing, submission: makeSubmission())]), event)
         #expect(badge.payloads.isEmpty)
