@@ -2,7 +2,7 @@
 
 Observer: Session, which starts, switches and stops call text through
 `SessionCallText` and must tell which piece failed (`../session/SPEC.md`).
-A decorator compose puts around call text (ARCHITECTURE rule 5): it keeps
+A decorator compose puts around call text (ARCHITECTURE rule 6): it keeps
 call text's text in the recording's transcript, as the data flow says
 (`../../app-shape.md`), so the call is kept to its last word (user S-7,
 S-17 in `../SPEC.md`). It owns the interfaces it writes and tells through.
