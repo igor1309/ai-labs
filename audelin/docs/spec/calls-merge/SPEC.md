@@ -21,11 +21,15 @@ and moves hold as in `../calls/SPEC.md`.
   earliest part's name. Renames stay on one volume, so no file is copied.
 - **A merge is whole or not at all.** It is recorded before any part
   moves, as a move is; a failure moves the parts back out and removes the
-  prepared folder. On the next listing an interrupted merge is put back the
-  same way, unless the merged call is already in place.
-- **A merged call's duration is its span,** from the earliest part's start
-  to the end of the latest part's longer track; none when a part's tracks
-  cannot be read.
+  prepared folder. An interrupted merge is put back the same way when Calls
+  starts, before its first listing, unless the merged call is in place. A
+  merge under way is never undone by a listing; it is only renames, and
+  Recordings lists again after its outcome.
+- **A merged call's duration is its span,** from the earliest start to the
+  latest end of any part's longer track, a merged part's parts included.
+- **Every part needs a known length,** read from its tracks, so its gap can
+  be placed; a part without one fails the merge, named, before anything
+  moves.
 - **Rename, delete, move and text treat a merged call as any call:** delete
   sends it to the Trash with its parts, a move carries them, and its text
   is its joined transcript and its own notes.
@@ -49,14 +53,14 @@ Feature: Keeping merged calls on disk
     Then I get the joined transcript's lines, not the parts'
 
   Scenario: S-4 A merged call's duration spans its parts
-    Given two calls ten minutes apart, merged
+    Given merged calls of which an earlier one ends last
     When I list the calls
-    Then the merged call's duration runs from the first part's start to the second part's end
+    Then the merged call's duration runs from the earliest start to the latest end
 
   Scenario: S-5 A merge being prepared is not listed
     Given a merge prepared but not yet in place
     When I list the calls
-    Then the parts are listed and nothing else
+    Then the prepared folder is not listed and the merge goes on
 
   Scenario: S-6 A failed merge leaves the parts
     Given a merge that fails after a part moved
@@ -65,7 +69,7 @@ Feature: Keeping merged calls on disk
 
   Scenario: S-7 An interrupted merge is put back
     Given a merge interrupted after a part moved
-    When I list the calls
+    When Calls starts
     Then every part is listed where it was, with its files
 
   Scenario: S-8 A merged call is deleted with its parts
@@ -77,4 +81,9 @@ Feature: Keeping merged calls on disk
     Given a merged call
     When I move it to another calls folder
     Then it is there with its parts inside and listed as one call
+
+  Scenario: S-10 A part without a known length is not merged
+    Given a call whose tracks cannot be read
+    When I merge it with another
+    Then nothing moves and I can tell which call has no known length
 ```
