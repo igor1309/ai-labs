@@ -17,22 +17,27 @@ import Testing
 @Suite struct SummariesSubmissionReducerTests {
     let format = FormatSpy()
 
-    @Test(arguments: [false, true]) func aSubmissionForANewCallPreparesItsJob(requested: Bool) {
-        let submission = makeSubmission(requested: requested)
-        assert(makeState(), .submit(submission)) {
-            $0.calls["call"] = .init(stage: .preparing, requested: requested, submission: submission, status: "preparing:false")
+    @Test func aFinalizedTranscriptForANewCallPreparesItsJob() {
+        assert(makeState(), makeFinalized()) {
+            $0.calls["call"] = .init(stage: .preparing, submission: makeSubmission(), status: "preparing:false")
         }
         #expect(format.payloads == [.init(stage: .preparing, warning: false)])
     }
-    @Test func aSubmissionForANewCallDeliversPrepare() {
-        assert(makeState(), .submit(makeSubmission()), delivers: .prepare(makeSubmission()))
+    @Test func aFinalizedTranscriptForANewCallDeliversPrepare() {
+        assert(makeState(), makeFinalized(), delivers: .prepare(makeSubmission()))
+    }
+    @Test func aStoredTranscriptForANewCallChangesNothing() {
+        assert(makeState(), .submit(makeSubmission(requested: true)))
+    }
+    @Test func aStoredTranscriptForANewCallDeliversNothing() {
+        assert(makeState(), .submit(makeSubmission(requested: true)), delivers: nil)
     }
     @Test func aSubmissionForAKnownCallChangesNothing() {
-        assert(makeState(calls: ["call": .init(stage: .claiming)]), .submit(makeSubmission()))
+        assert(makeState(calls: ["call": .init(stage: .claiming)]), makeFinalized())
         #expect(format.payloads.isEmpty)
     }
     @Test func aSubmissionForAKnownCallDeliversNothing() {
-        assert(makeState(calls: ["call": .init(stage: .claiming)]), .submit(makeSubmission()), delivers: nil)
+        assert(makeState(calls: ["call": .init(stage: .claiming)]), makeFinalized(), delivers: nil)
     }
     @Test func anEndedRecordingWaitsForItsTranscript() {
         assert(makeState(), .waiting("call", notesOn: true)) { $0.calls["call"] = .init(stage: .waiting, status: "waiting:false") }
@@ -62,18 +67,18 @@ import Testing
         assert(makeState(lifecycle: lifecycle), .waiting("call", notesOn: true), delivers: nil)
     }
     @Test func aSubmissionForAWaitingCallPreparesItsJob() {
-        assert(makeState(calls: ["call": .init(stage: .waiting)]), .submit(makeSubmission())) {
+        assert(makeState(calls: ["call": .init(stage: .waiting)]), makeFinalized()) {
             $0.calls["call"] = .init(stage: .preparing, submission: makeSubmission(), status: "preparing:false")
         }
     }
     @Test func aSubmissionForAWaitingCallDeliversPrepare() {
-        assert(makeState(calls: ["call": .init(stage: .waiting)]), .submit(makeSubmission()), delivers: .prepare(makeSubmission()))
+        assert(makeState(calls: ["call": .init(stage: .waiting)]), makeFinalized(), delivers: .prepare(makeSubmission()))
     }
     @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func aSubmissionAfterShutdownChangesNothing(lifecycle: SummariesState.Lifecycle) {
-        assert(makeState(lifecycle: lifecycle), .submit(makeSubmission()))
+        assert(makeState(lifecycle: lifecycle), makeFinalized())
     }
     @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func aSubmissionAfterShutdownDeliversNothing(lifecycle: SummariesState.Lifecycle) {
-        assert(makeState(lifecycle: lifecycle), .submit(makeSubmission()), delivers: nil)
+        assert(makeState(lifecycle: lifecycle), makeFinalized(), delivers: nil)
     }
 
     @Test func anAutomaticCallWithNotesOffIsDropped() {
@@ -238,15 +243,15 @@ import Testing
         assert(makeState(lifecycle: lifecycle), .recover("call"), delivers: nil)
     }
 
-    @Test func aSubmissionWhileRecoveringWaits() {
-        assert(makeRecovering(), .submit(makeSubmission(requested: true))) { $0.calls["call"]?.submission = makeSubmission(requested: true) }
+    @Test func aFinalizedTranscriptWhileRecoveringWaits() {
+        assert(makeRecovering(), makeFinalized()) { $0.calls["call"]?.submission = makeSubmission() }
         #expect(format.payloads.isEmpty)
     }
     @Test func aSubmissionWhileRecoveringDeliversNothing() {
-        assert(makeRecovering(), .submit(makeSubmission()), delivers: nil)
+        assert(makeRecovering(), makeFinalized(), delivers: nil)
     }
-    @Test func aSecondSubmissionWhileRecoveringChangesNothing() {
-        assert(makeRecovering(submission: makeSubmission()), .submit(makeSubmission(requested: true)))
+    @Test func aSecondFinalizedTranscriptWhileRecoveringChangesNothing() {
+        assert(makeRecovering(submission: makeSubmission()), .finalized("call", entries: [], finalWrite: false, usable: false))
     }
 
     @Test(arguments: [false, true]) func aSavedJobIsInstalled(queued: Bool) {
@@ -488,8 +493,11 @@ func makeJob(entries: [Job.Entry] = makeEntries()) -> Job {
           primary: .init(kind: "cli", model: "m", program: "p", endpoint: "", credentialVariable: ""))
 }
 func makeIdentity() -> Identity { .init(label: "A", name: "Ann", time: "0", quote: "I am Ann") }
+func makeFinalized() -> SummariesEvent {
+    .finalized("call", entries: makeEntries(), finalWrite: true, usable: true)
+}
 func makeSubmission(finalWrite: Bool = true, usable: Bool = true, requested: Bool = false) -> SummariesSubmission {
-    .init(call: "call", input: "input", entries: makeEntries(), finalWrite: finalWrite, usable: usable, requested: requested)
+    .init(call: "call", entries: makeEntries(), finalWrite: finalWrite, usable: usable, requested: requested)
 }
 func makePreparing(finalWrite: Bool = true, usable: Bool = true, requested: Bool = false) -> SummariesState {
     makeState(calls: ["call": .init(stage: .preparing, requested: requested,

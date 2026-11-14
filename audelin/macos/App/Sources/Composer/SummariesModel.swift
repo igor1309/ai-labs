@@ -59,10 +59,6 @@ public final class SummariesModel {
     public var retryable: Set<String> { Set(model.state.calls.filter(\.value.retryable).keys) }
     /// Shows a just-ended recording as waiting for its transcript while notes are on.
     public func waiting(call: String, notesOn: Bool) { model.event(.waiting(call, notesOn: notesOn)) }
-    /// Hands a finished recording's transcript to the machine.
-    public func completed(call: String, entries: [Job.Entry], finalWrite: Bool, usable: Bool) {
-        model.event(.submit(.init(call: call, input: summaryInput(entries), entries: entries, finalWrite: finalWrite, usable: usable)))
-    }
     /// Makes notes the user asked for from the call's stored transcript, even when notes are off.
     public func make(call: String) { model.event(.request(call)) }
     /// Stops the call's notes and returns once the attempt is discarded or has settled.
