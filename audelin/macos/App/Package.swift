@@ -88,6 +88,7 @@ let package = Package(
         .target(
             name: "Composer",
             dependencies: [
+                .product(name: "LatestText", package: "macos"),
                 .product(name: "RecordingConditions", package: "macos"),
                 .product(name: "CallDetail", package: "macos"),
                 .product(name: "BleedCleanup", package: "macos"),
