@@ -43,14 +43,9 @@ final class RecordingConditions: Sendable {
     }
 
     func refresh() async {
-        _ = await access.refresh()
         await turn.take()
-        // The checks read the disk and access status where they are called; the turn orders them.
-        var readings = checks.map { ($0.0, $0.1()) }
-        for await state in await access.states() {
-            readings.insert((.callAudioAccess, state.published), at: 1)
-            break
-        }
+        // The checks read the disk where they are called; the turn orders them. Call-audio access comes only from its subscription.
+        let readings = checks.map { ($0.0, $0.1()) }
         for (condition, available) in readings { await publish(condition, available: available && (condition != .callsFolder || !storageMoving.withLock { $0 })) }
         turn.give()
     }

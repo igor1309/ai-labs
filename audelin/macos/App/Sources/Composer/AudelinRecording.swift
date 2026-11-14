@@ -14,6 +14,7 @@ final class AudelinRecording: Sendable {
     let panel: AudelinPanel
     let detectionFailures: AsyncStream<any Error>
     private let conditions: RecordingConditions
+    private let refresh: @Sendable () async -> Void
     private let delivery: ApplicationDelivery
 
     init(
@@ -30,10 +31,17 @@ final class AudelinRecording: Sendable {
         let inputs = recording
         self.inputs = inputs
         self.conditions = conditions
-        await conditions.refresh()
+        let access = boundary.access
+        // The access probe is refreshed here; conditions hear its result through their subscription.
+        let refresh: @Sendable () async -> Void = {
+            _ = await access.refresh()
+            await conditions.refresh()
+        }
+        self.refresh = refresh
+        await refresh()
         let calls: CallRecordingSubscription
         do {
-            calls = try await composeCalls(processes, to: inputs, conditions: conditions, startedApp: { app.started($0) }, sink: boundary.log)
+            calls = try await composeCalls(processes, to: inputs, refreshConditions: refresh, startedApp: { app.started($0) }, sink: boundary.log)
         } catch {
             await processes.stop()
             Task { await inputs.end() }
@@ -43,7 +51,7 @@ final class AudelinRecording: Sendable {
         delivery = ApplicationDelivery(processes: processes, calls: calls, model: boundary.recognizers.startLoading())
         Task {
             await boundary.microphonePermission.request()
-            await conditions.refresh()
+            await refresh()
         }
     }
 
@@ -54,7 +62,7 @@ final class AudelinRecording: Sendable {
     }
     func releaseStorage() async {
         await conditions.setStorageMoving(false)
-        await conditions.refresh()
+        await refresh()
         await inputs.releaseStorage()
     }
 
