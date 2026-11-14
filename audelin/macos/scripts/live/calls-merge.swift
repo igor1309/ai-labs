@@ -162,132 +162,194 @@ extension Driver {
     }
 }
 
-/// A call folder with a sealed-length-unknown TrackFile track of one second and a one-line transcript.
-private func makeCall(_ name: String, in calls: URL, saying words: String) throws -> Data {
-    let folder = calls.appendingPathComponent(name)
-    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-    var track = Data()
-    func integer<T: FixedWidthInteger>(_ value: T) { var bytes = value.bigEndian; withUnsafeBytes(of: &bytes) { track.append(contentsOf: $0) } }
-    track.append(contentsOf: Array("caff".utf8)); integer(UInt16(1)); integer(UInt16(0))
-    track.append(contentsOf: Array("desc".utf8)); integer(UInt64(32)); integer(Float64(48_000).bitPattern)
-    track.append(contentsOf: Array("lpcm".utf8)); integer(UInt32(2)); integer(UInt32(2)); integer(UInt32(1)); integer(UInt32(1)); integer(UInt32(16))
-    track.append(contentsOf: Array("data".utf8)); integer(UInt64.max); integer(UInt32(0))
-    track.append(Data(repeating: 0, count: 48_000 * 2))
-    try track.write(to: folder.appendingPathComponent("call.caf"))
-    try "# Transcript\n\n**Me** 00:00:03\n\n\(words)\n".write(to: folder.appendingPathComponent("transcript.md"), atomically: true, encoding: .utf8)
-    return track
+/// The calls `CallsRehearsal --seed merge` writes: A and B, one call cut off, with transcripts
+/// and notes; C, whose transcript failed; D, with a transcript and no notes.
+private let a = "2024.01.01-1000", b = "2024.01.01-1006", c = "2024.01.01-1012", d = "2024.01.01-1030"
+private let busy = "Audelin занят; объедините звонки, когда он освободится."
+private let needsTwo = "Отметьте хотя бы два звонка"
+
+private struct Fixture {
+    let calls: URL, state: URL, control: URL, trash: URL, output: URL
+    func files(_ path: String = "") throws -> [String] {
+        try FileManager.default.contentsOfDirectory(atPath: calls.appendingPathComponent(path).path)
+            .filter { !$0.hasPrefix(".") }.sorted()
+    }
 }
 
 @main private enum CallsMergeLive {
     @MainActor static func main() async {
+        var output: URL?
         do {
             guard CommandLine.arguments.count == 2 else { throw LiveFailure("Usage: calls-merge <CallsRehearsal executable>") }
             guard AXIsProcessTrusted() else { throw LiveFailure("The live driver needs Accessibility access in this logged-in session.") }
             let app = URL(fileURLWithPath: CommandLine.arguments[1]).standardizedFileURL
-            let output = FileManager.default.temporaryDirectory.appendingPathComponent("audelin-merge-live-\(UUID())")
-            try FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
-            print("Artifacts: \(output.path)")
-            try launch(app: app, output: output, name: "merge", run: merging)
-            try launch(app: app, output: output, name: "failure", run: failing)
-            print("PASS: merging neighbouring and far-apart calls, and a failed merge")
+            let root = FileManager.default.temporaryDirectory.appendingPathComponent("audelin-merge-live-\(UUID())")
+            output = root
+            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+            print("Artifacts: \(root.path)")
+            try launch(app: app, root: root, name: "refused", run: refusing)
+            try launch(app: app, root: root, name: "merge", run: merging)
+            try launch(app: app, root: root, name: "far-apart", run: farApart)
+            try launch(app: app, root: root, name: "failure", run: failing)
+            removeFixtures(root)
+            print("PASS: refusing a call without a transcript, merging a cut call with its notes, the far-apart warning and a failed merge")
         } catch {
             fputs("FAIL: \(error)\n", stderr)
+            if let output { removeFixtures(output) }
             exit(1)
         }
     }
 
-    private static let a = "2024.01.01-1000", b = "2024.01.01-1020", u = "2024.01.01-1040", c = "2024.01.01-1100"
+    /// Keeps the screenshots and the merged transcript, and removes each scenario's seeded folder.
+    private static func removeFixtures(_ root: URL) {
+        for name in (try? FileManager.default.contentsOfDirectory(atPath: root.path)) ?? [] {
+            let url = root.appendingPathComponent(name)
+            guard (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true else { continue }
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: url.appendingPathComponent("calls").path)
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
 
-    @MainActor private static func launch(app: URL, output: URL, name: String,
-                                          run: (Driver, URL, URL) throws -> Void) throws {
-        let fixture = output.appendingPathComponent(name)
-        let calls = fixture.appendingPathComponent("calls"), state = fixture.appendingPathComponent("state")
-        for folder in [calls, state] { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
+    /// Launches the rehearsal on a fresh seeded folder, runs one scenario and quits it.
+    @MainActor private static func launch(app: URL, root: URL, name: String, seed: String = "merge",
+                                          run: (Driver, Fixture) throws -> Void) throws {
+        let folder = root.appendingPathComponent(name)
+        let fixture = Fixture(calls: folder.appendingPathComponent("calls"), state: folder.appendingPathComponent("state"),
+                              control: folder.appendingPathComponent("state/control"), trash: folder.appendingPathComponent("trash"),
+                              output: root)
+        for made in [fixture.calls, fixture.control] { try FileManager.default.createDirectory(at: made, withIntermediateDirectories: true) }
         let application = Process()
         application.executableURL = app
-        application.arguments = ["--calls", calls.path, "--state", state.path, "--trash", fixture.appendingPathComponent("trash").path]
+        application.arguments = ["--calls", fixture.calls.path, "--state", fixture.state.path, "--trash", fixture.trash.path, "--seed", seed]
         defer {
-            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: calls.path)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fixture.calls.path)
             if application.isRunning { application.terminate() }
         }
-        // The fixture is written before launch, so the driver watches the calls folder only.
-        var tracks: [String: Data] = [:]
-        let names = name == "merge" ? [a, b, u, c] : [a, b]
-        for (index, call) in names.enumerated() { tracks[call] = try makeCall(call, in: calls, saying: "Часть \(index + 1).") }
-        try tracks.map { ($0.key, $0.value) }.forEach { try $0.1.write(to: output.appendingPathComponent("\(name)-\($0.0).caf")) }
         try application.run()
-        let driver = try Driver(process: application, folders: [calls])
+        let driver = try Driver(process: application, folders: [fixture.calls, fixture.control])
         defer { driver.stop() }
-        do { try run(driver, calls, output) }
+        do { try run(driver, fixture) }
         catch {
-            try? driver.screenshot("\(name)-failure", into: output)
+            try? driver.screenshot("\(name)-failure", into: root)
             throw error
-        }
-        for (call, bytes) in tracks {
-            let found = try FileManager.default.subpathsOfDirectory(atPath: calls.path)
-                .filter { $0.hasSuffix("\(call)/call.caf") }
-            guard found.count == 1, try Data(contentsOf: calls.appendingPathComponent(found[0])) == bytes else {
-                throw LiveFailure("\(call)'s audio changed or moved twice: \(found)")
-            }
         }
         application.terminate()
         _ = try driver.wait("app termination") { application.isRunning ? nil : true }
     }
 
-    /// S-1, then S-2: two neighbouring parts merge; the merged call and a call past an unmarked one ask first.
-    @MainActor private static func merging(_ driver: Driver, _ calls: URL, _ output: URL) throws {
-        _ = try driver.element("calls.select.\(c)")
+    /// One marked call: Merge is disabled and says why. A call whose transcript failed is
+    /// refused when the merge is confirmed: the window reads why and every call stays.
+    @MainActor private static func refusing(_ driver: Driver, _ fixture: Fixture) throws {
+        _ = try driver.element("calls.select.\(d)")
+        try driver.pressMergeControl()
+        try driver.mark(b, true)
+        _ = try driver.element("calls.merge.confirm", value: { $0 == needsTwo })
+        try driver.mark(c, true)
+        _ = try driver.element("calls.merge.confirm", value: { $0.isEmpty })
+        try driver.screenshot("refused-marked", into: fixture.output)
+        try driver.press("calls.merge.confirm")
+        _ = try driver.element("calls.failure", value: { $0.contains("«\(c)»") })
+        _ = try driver.element("calls.select.\(b)", value: { $0.hasSuffix(", Отмечен") })
+        _ = try driver.element("calls.select.\(c)", value: { $0.hasSuffix(", Отмечен") })
+        try driver.screenshot("refused", into: fixture.output)
+        guard try fixture.files() == [a, b, c, d] else { throw LiveFailure("After a refused merge the folder holds \(try fixture.files())") }
+    }
+
+    /// A and B merge into one call at A's start: the transcript holds A, the gap, then B with
+    /// each part's speakers kept apart; the parts are kept whole inside it; its notes are made.
+    @MainActor private static func merging(_ driver: Driver, _ fixture: Fixture) throws {
+        _ = try driver.element("calls.select.\(d)")
         try driver.pressMergeControl()
         try driver.mark(a, true)
         try driver.mark(b, true)
-        try driver.screenshot("merge-marked", into: output)
+        try driver.screenshot("merge-marked", into: fixture.output)
         try driver.press("calls.merge.confirm")
         try driver.absent("calls.select.\(b)")
-        let merged = calls.appendingPathComponent(a)
+        let merged = fixture.calls.appendingPathComponent(a)
         _ = try driver.wait("the merged folder") {
             FileManager.default.fileExists(atPath: merged.appendingPathComponent(b).path) ? true : nil
         }
+        guard try fixture.files() == [a, c, d] else { throw LiveFailure("After the merge the folder holds \(try fixture.files())") }
+        guard try fixture.files(a) == [a, b, "transcript.md"] else {
+            throw LiveFailure("The merged call holds \(try fixture.files(a))")
+        }
+        for part in [a, b] where try fixture.files("\(a)/\(part)") != ["call.caf", "summary.md", "transcript.md"] {
+            throw LiveFailure("Part \(part) holds \(try fixture.files("\(a)/\(part)"))")
+        }
         let transcript = try String(contentsOf: merged.appendingPathComponent("transcript.md"), encoding: .utf8)
-        guard let first = transcript.range(of: "Часть 1."), let second = transcript.range(of: "Часть 2."),
-              first.upperBound <= second.lowerBound else { throw LiveFailure("Merged transcript:\n\(transcript)") }
-        guard !transcript.contains("Часть 3.") else { throw LiveFailure("The unrelated call joined:\n\(transcript)") }
-        _ = try driver.element("calls.select.\(u)")
-        try driver.screenshot("merged", into: output)
+        try transcript.write(to: fixture.output.appendingPathComponent("merged-transcript.md"), atomically: true, encoding: .utf8)
+        try checkJoined(transcript)
+        // A merged call's length is its span, from A's start to B's end.
+        _ = try driver.element("calls.select.\(a)", value: { $0.hasPrefix("6:10") })
+        guard !FileManager.default.fileExists(atPath: fixture.trash.path) else { throw LiveFailure("A merge moved something to the Trash") }
+        try driver.screenshot("merged", into: fixture.output)
+        // Notes are off in the rehearsal, so the merged call offers its notes as an ended call does.
+        try driver.press("preview.make")
+        _ = try driver.wait("the merged call's notes started") {
+            FileManager.default.fileExists(atPath: fixture.control.appendingPathComponent("started-1").path) ? true : nil
+        }
+        try Data().write(to: fixture.control.appendingPathComponent("finish-1"))
+        _ = try driver.element("preview.notes", value: { $0.contains("Обсудили выпуск Audelin.") })
+        let notes = try String(contentsOf: merged.appendingPathComponent("summary.md"), encoding: .utf8)
+        guard notes.contains("Обсудили выпуск Audelin.") else { throw LiveFailure("Merged notes:\n\(notes)") }
+        try driver.screenshot("merged-notes", into: fixture.output)
+    }
 
+    /// A's rows, a gap row, then B's rows, with no remote label shared between the parts.
+    private static func checkJoined(_ transcript: String) throws {
+        let order = ["Часть один.", "Ответ один.", "**Gap**", "Часть два.", "Ответ два."]
+        let places = order.map { transcript.range(of: $0)?.lowerBound }
+        guard places.allSatisfy({ $0 != nil }), zip(places, places.dropFirst()).allSatisfy({ $0! < $1! }) else {
+            throw LiveFailure("Merged transcript out of order:\n\(transcript)")
+        }
+        /// The remote label heading the row with these words, such as `Them 2`.
+        func label(before words: String) -> String? {
+            guard let end = transcript.range(of: words)?.lowerBound,
+                  let open = transcript[..<end].range(of: "**Them", options: .backwards),
+                  let close = transcript[open.upperBound..<end].range(of: "**") else { return nil }
+            return String(transcript[transcript.index(open.lowerBound, offsetBy: 2)..<close.lowerBound])
+        }
+        guard let first = label(before: "Ответ один."), let second = label(before: "Ответ два."), first != second else {
+            throw LiveFailure("The parts' speakers share a label:\n\(transcript)")
+        }
+    }
+
+    /// Calls with another between them ask again; going back keeps the marks; merging anyway merges.
+    @MainActor private static func farApart(_ driver: Driver, _ fixture: Fixture) throws {
+        _ = try driver.element("calls.select.\(d)")
         try driver.pressMergeControl()
         try driver.mark(a, true)
-        try driver.mark(c, true)
+        try driver.mark(d, true)
         try driver.press("calls.merge.confirm")
         _ = try driver.element("calls.merge.anyway")
-        try driver.screenshot("merge-warning", into: output)
+        try driver.screenshot("merge-warning", into: fixture.output)
         try driver.press("calls.merge.back")
         try driver.absent("calls.merge.anyway")
         _ = try driver.element("calls.select.\(a)", value: { $0.hasSuffix(", Отмечен") })
-        _ = try driver.element("calls.select.\(c)", value: { $0.hasSuffix(", Отмечен") })
-        _ = try driver.element("calls.select.\(u)", value: { $0.hasSuffix(", Не отмечен") })
+        _ = try driver.element("calls.select.\(d)", value: { $0.hasSuffix(", Отмечен") })
+        _ = try driver.element("calls.select.\(b)", value: { $0.hasSuffix(", Не отмечен") })
         try driver.press("calls.merge.confirm")
         try driver.press("calls.merge.anyway")
-        try driver.absent("calls.select.\(c)")
+        try driver.absent("calls.select.\(d)")
         _ = try driver.wait("the merged-anyway folder") {
-            FileManager.default.fileExists(atPath: merged.appendingPathComponent(c).path) ? true : nil
+            FileManager.default.fileExists(atPath: fixture.calls.appendingPathComponent("\(a)/\(d)").path) ? true : nil
         }
-        _ = try driver.element("calls.select.\(u)")
-        try driver.screenshot("merged-anyway", into: output)
+        _ = try driver.element("calls.select.\(b)")
+        try driver.screenshot("merged-anyway", into: fixture.output)
     }
 
-    /// S-3: with the calls folder read-only, the merge fails, says why, and both parts stay.
-    @MainActor private static func failing(_ driver: Driver, _ calls: URL, _ output: URL) throws {
-        _ = try driver.element("calls.select.\(b)")
+    /// With the calls folder read-only, the merge fails, says why, and both parts stay.
+    @MainActor private static func failing(_ driver: Driver, _ fixture: Fixture) throws {
+        _ = try driver.element("calls.select.\(d)")
         try driver.pressMergeControl()
         try driver.mark(a, true)
         try driver.mark(b, true)
-        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: calls.path)
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: fixture.calls.path)
         try driver.press("calls.merge.confirm")
         _ = try driver.element("calls.failure", value: { !$0.isEmpty })
-        try driver.screenshot("merge-failed", into: output)
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: calls.path)
-        let left = try FileManager.default.contentsOfDirectory(atPath: calls.path).filter { !$0.hasPrefix(".") }.sorted()
-        guard left == [a, b] else { throw LiveFailure("After a failed merge the folder holds \(left)") }
+        try driver.screenshot("merge-failed", into: fixture.output)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: fixture.calls.path)
+        guard try fixture.files() == [a, b, c, d] else { throw LiveFailure("After a failed merge the folder holds \(try fixture.files())") }
         _ = try driver.element("calls.select.\(a)")
         _ = try driver.element("calls.select.\(b)")
     }
