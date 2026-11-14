@@ -3,6 +3,9 @@ import TranscriptFinalization
 
 struct TranscriptFinalizationReducerTests {
 
+    @Test func openingStartsTheCall_state() { assert(makeState(), .opened(call: callID)) { $0.calls[callID] = .init() } }
+    @Test func openingStartsTheCall_effect() { assert(makeState(), .opened(call: callID), delivers: nil) }
+
     @Test func firstWriteStartsTheCall_state() { assert(makeState(), .wrote(call: callID, "a")) { $0.calls[callID] = makeCall(raw: "a") } }
     @Test func firstWriteStartsTheCall_effect() { assert(makeState(), .wrote(call: callID, "a"), delivers: nil) }
 
@@ -166,11 +169,11 @@ struct TranscriptFinalizationEntriesTests {
 let outOfStage: [(State, Event)] = {
     let all: [Event] = [
         .wrote(call: callID, "x"), .writeFailed(call: callID), .closed(call: callID, names: "names"), .diarized(call: callID, "f"),
-        .cleaned(call: callID, "h"), .committed(call: callID, succeeded: true),
+        .cleaned(call: callID, "h"), .committed(call: callID, succeeded: true), .published(calls: [callID]), .opened(call: callID),
     ]
-    let accepted: [State.Stage: Set<Int>] = [.writing: [0, 1, 2], .diarizing: [3], .cleaning: [4], .committing: [5], .finalized: [], .failed: []]
+    let accepted: [State.Stage: Set<Int>] = [.writing: [0, 1, 2], .diarizing: [3], .cleaning: [4], .committing: [5], .finalized: [6], .failed: [6]]
     let stages: [State.Stage] = [.writing, .diarizing, .cleaning, .committing, .finalized, .failed]
     return stages.flatMap { stage in
         all.indices.filter { !accepted[stage]!.contains($0) }.map { (makeState(makeCall(stage, heard: stage == .committing ? "h" : nil)), all[$0]) }
-    } + all.indices.filter { $0 >= 3 }.map { (makeState(), all[$0]) }
+    } + all.indices.filter { (3...6).contains($0) }.map { (makeState(), all[$0]) }
 }()

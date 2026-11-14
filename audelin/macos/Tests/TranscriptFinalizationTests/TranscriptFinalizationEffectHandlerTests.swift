@@ -51,13 +51,13 @@ struct TranscriptFinalizationEffectHandlerTests {
         })
     }
 
-    @Test func publishHandsEveryFinalOverAndDeliversNothing() async {
+    @Test func publishHandsEveryFinalOverAndDeliversPublished() async {
         let (sut, spies) = makeHandler()
         let finals = ["a": FinalTranscript(entries: ["e"], usable: true, finalWrite: true),
                       "b": FinalTranscript<String>(entries: [], usable: false, finalWrite: false)]
         async let event = sut.handle(.publish(finals))
         await spies.finals.complete(with: ())
-        #expect(await event == nil)
+        #expect(await event == .published(calls: ["a", "b"]))
         #expect(await spies.finals.payloads == [finals])
     }
 
@@ -71,7 +71,7 @@ struct TranscriptFinalizationEffectHandlerTests {
         #expect(await spies.finals.payloads.isEmpty)
         await spies.stops.complete(with: ())
         await spies.finals.complete(with: ())
-        #expect(await event == nil)
+        #expect(await event == .published(calls: ["a", "b"]))
         #expect(await spies.stops.payloads == ["a", "b"])
         #expect(await spies.finals.payloads == [finals])
     }

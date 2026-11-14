@@ -52,8 +52,8 @@ public struct TranscriptFinalizationEffectHandler<Raw: Equatable & Sendable, Nam
         self.diarizing = diarizing; self.cleanup = cleanup; self.replacement = replacement; self.finals = finals
     }
 
-    /// The event that completes the effect; none for a publication.
-    public func handle(_ effect: Effect) async -> Event? {
+    /// The event that completes the effect.
+    public func handle(_ effect: Effect) async -> Event {
         switch effect {
         case let .diarize(call, raw):
             return .diarized(call: call, await diarizing.diarize(call: call, raw))
@@ -68,11 +68,11 @@ public struct TranscriptFinalizationEffectHandler<Raw: Equatable & Sendable, Nam
             }
         case let .publish(transcripts):
             await finals.publish(transcripts)
-            return nil
+            return .published(calls: Set(transcripts.keys))
         case let .stopCleaning(transcripts):
             for call in transcripts.keys.sorted() { await cleanup.stop(call: call) }
             await finals.publish(transcripts)
-            return nil
+            return .published(calls: Set(transcripts.keys))
         }
     }
 }

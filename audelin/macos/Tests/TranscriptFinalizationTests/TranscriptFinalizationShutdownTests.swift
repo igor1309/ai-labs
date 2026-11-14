@@ -6,15 +6,38 @@ struct TranscriptFinalizationShutdownTests {
     @Test func shutdownWithNoWorkIsSettled_state() { assert(makeState(), .shutdown) { $0.shuttingDown = true; $0.settled = true } }
     @Test func shutdownWithNoWorkIsSettled_effect() { assert(makeState(), .shutdown, delivers: nil) }
 
-    /// A call still being written is closed by the recording's own stop; shutdown does not wait for it.
-    @Test func writingCallDoesNotHoldSettling_state() {
-        assert(makeState(makeCall()), .shutdown) { $0.shuttingDown = true; $0.settled = true }
+    /// A call still being written is closed by the recording's own stop; its final form is still to come.
+    @Test func writingCallHoldsSettling_state() { assert(makeState(makeCall()), .shutdown) { $0.shuttingDown = true } }
+    @Test func writingCallHoldsSettling_effect() { assert(makeState(makeCall()), .shutdown, delivers: nil) }
+
+    @Test func publishedCallsSettle_state() {
+        assert(makeState(makeCall(.finalized)), .shutdown) { $0.shuttingDown = true }
+        assert(makeState(makeCall(.finalized, published: true)), .shutdown) { $0.shuttingDown = true; $0.settled = true }
     }
-    @Test func writingCallDoesNotHoldSettling_effect() { assert(makeState(makeCall()), .shutdown, delivers: nil) }
+    @Test func publishedCallsSettle_effect() { assert(makeState(makeCall(.finalized, published: true)), .shutdown, delivers: nil) }
+
+    /// Publication is what settles: the last final call published settles the machine.
+    @Test(arguments: [State.Stage.finalized, .failed])
+    func publicationSettles_state(stage: State.Stage) {
+        assert(makeState(makeCall(stage), shuttingDown: true), .published(calls: [callID])) {
+            $0.calls[callID]?.published = true
+            $0.settled = true
+        }
+    }
+    @Test(arguments: [State.Stage.finalized, .failed])
+    func publicationSettles_effect(stage: State.Stage) {
+        assert(makeState(makeCall(stage), shuttingDown: true), .published(calls: [callID]), delivers: nil)
+    }
+
+    @Test func publicationOfOneCallLeavesAnotherUnsettled() {
+        let state = State(calls: ["a": makeCall(.finalized), "b": makeCall(.finalized)], shuttingDown: true)
+        assert(state, .published(calls: ["a"])) { $0.calls["a"]?.published = true }
+        assert(state, .published(calls: ["a"]), delivers: nil)
+    }
 
     @Test func cleaningCallIsFinalAsWritten_state() {
         assert(makeState(makeCall(.cleaning, far: "far")), .shutdown) {
-            $0.shuttingDown = true; $0.settled = true
+            $0.shuttingDown = true
             $0.calls[callID]?.stage = .finalized
         }
     }
@@ -34,7 +57,6 @@ struct TranscriptFinalizationShutdownTests {
 
     @Test func diarizedAfterShutdownIsFinalWithoutCleaning_state() {
         assert(makeState(makeCall(.diarizing), shuttingDown: true), .diarized(call: callID, "far")) {
-            $0.settled = true
             $0.calls[callID]?.stage = .finalized
             $0.calls[callID]?.far = "far"
         }
@@ -43,19 +65,17 @@ struct TranscriptFinalizationShutdownTests {
         assert(makeState(makeCall(.diarizing), shuttingDown: true), .diarized(call: callID, "far"), delivers: published())
     }
 
-    @Test func committedAfterShutdownSettles_state() {
+    @Test func committedAfterShutdownIsFinal_state() {
         assert(makeState(makeCall(.committing, heard: "h"), shuttingDown: true), .committed(call: callID, succeeded: true)) {
-            $0.settled = true
             $0.calls[callID]?.stage = .finalized
         }
     }
-    @Test func committedAfterShutdownSettles_effect() {
+    @Test func committedAfterShutdownIsFinal_effect() {
         assert(makeState(makeCall(.committing, heard: "h"), shuttingDown: true), .committed(call: callID, succeeded: true), delivers: published())
     }
 
     @Test func closedAfterShutdownIsFinalWithoutDiarizing_state() {
         assert(makeState(makeCall(), shuttingDown: true), .closed(call: callID, names: "names")) {
-            $0.settled = true
             $0.calls[callID]?.stage = .finalized
             $0.calls[callID]?.names = "names"
         }
@@ -66,18 +86,18 @@ struct TranscriptFinalizationShutdownTests {
 
     /// A cleanup result that arrives after its call was settled is dropped.
     @Test func lateCleanupIsIgnored_state() {
-        assert(makeState(makeCall(.finalized), shuttingDown: true), .cleaned(call: callID, "heard")) { $0.settled = true }
+        assert(makeState(makeCall(.finalized, published: true), shuttingDown: true, settled: true), .cleaned(call: callID, "heard"))
     }
     @Test func lateCleanupIsIgnored_effect() {
-        assert(makeState(makeCall(.finalized), shuttingDown: true), .cleaned(call: callID, "heard"), delivers: nil)
+        assert(makeState(makeCall(.finalized, published: true), shuttingDown: true, settled: true), .cleaned(call: callID, "heard"), delivers: nil)
     }
 
     @Test func repeatedShutdownIsIgnored_state() {
-        let state = State(calls: [callID: makeCall(.finalized)], shuttingDown: true, settled: true)
+        let state = State(calls: [callID: makeCall(.finalized, published: true)], shuttingDown: true, settled: true)
         assert(state, .shutdown)
     }
     @Test func repeatedShutdownIsIgnored_effect() {
-        assert(State(calls: [callID: makeCall(.finalized)], shuttingDown: true, settled: true), .shutdown, delivers: nil)
+        assert(State(calls: [callID: makeCall(.finalized, published: true)], shuttingDown: true, settled: true), .shutdown, delivers: nil)
     }
 
     @Test func shutdownSettlesEveryCleaningCallAtOnce() {

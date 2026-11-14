@@ -28,7 +28,7 @@ final class TranscriptFinalizationModel {
         }, handleEffect: { effect in
             AsyncStream { output in
                 let work = Task {
-                    if let event = await handler.handle(effect) { output.yield(event) }
+                    output.yield(await handler.handle(effect))
                     output.finish()
                 }
                 output.onTermination = { _ in work.cancel() }

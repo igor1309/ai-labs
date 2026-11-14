@@ -7,7 +7,7 @@ public struct TranscriptFinalizationState<Raw: Equatable & Sendable, Names: Equa
     public var calls: [String: Call]
     /// After shutdown no new model work starts: each call becomes final as soon as its file is.
     public var shuttingDown: Bool
-    /// Shut down with no call's file still being replaced.
+    /// Shut down with every call's final form published.
     public var settled: Bool
 
     public init(calls: [String: Call] = [:], shuttingDown: Bool = false, settled: Bool = false) {
@@ -26,10 +26,13 @@ public struct TranscriptFinalizationState<Raw: Equatable & Sendable, Names: Equa
         public var far: Far?
         /// While committing, the side being saved; once final, the side the file holds.
         public var heard: Heard?
+        /// The final form has reached its consumers.
+        public var published: Bool
 
-        public init(stage: Stage = .writing, latestWriteSucceeded: Bool = false, raw: Raw? = nil, names: Names? = nil, far: Far? = nil, heard: Heard? = nil) {
+        public init(stage: Stage = .writing, latestWriteSucceeded: Bool = false, raw: Raw? = nil, names: Names? = nil, far: Far? = nil,
+                    heard: Heard? = nil, published: Bool = false) {
             self.stage = stage; self.latestWriteSucceeded = latestWriteSucceeded
-            self.raw = raw; self.names = names; self.far = far; self.heard = heard
+            self.raw = raw; self.names = names; self.far = far; self.heard = heard; self.published = published
         }
     }
 
@@ -65,6 +68,8 @@ public struct FinalTranscript<Entry: Equatable & Sendable>: Equatable, Sendable 
 
 public enum TranscriptFinalizationEvent<Raw: Equatable & Sendable, Names: Equatable & Sendable, Far: Equatable & Sendable, Heard: Equatable & Sendable>: Equatable, Sendable {
 
+    /// The call's transcript is open; it is final only once it closes and is published.
+    case opened(call: String)
     case wrote(call: String, Raw)
     case writeFailed(call: String)
     /// Carries the call's names as they were when its transcript closed.
@@ -74,6 +79,8 @@ public enum TranscriptFinalizationEvent<Raw: Equatable & Sendable, Names: Equata
     /// Nil when cleanup kept the microphone side as written.
     case cleaned(call: String, Heard?)
     case committed(call: String, succeeded: Bool)
+    /// The calls' final forms have reached their consumers.
+    case published(calls: Set<String>)
     case shutdown
 }
 
@@ -104,7 +111,7 @@ public struct TranscriptFinalizationReducer<Raw: Equatable & Sendable, Names: Eq
         let (stepped, effect) = step(state, event)
         var next = stepped
         if next.shuttingDown {
-            next.settled = !next.calls.values.contains { $0.stage == .diarizing || $0.stage == .committing }
+            next.settled = next.calls.values.allSatisfy(\.published)
         }
         return (next, effect)
     }
@@ -113,6 +120,11 @@ public struct TranscriptFinalizationReducer<Raw: Equatable & Sendable, Names: Eq
 
         var next = state
         switch event {
+        case let .opened(id):
+            guard state.calls[id] == nil else { return (state, nil) }
+            next.calls[id] = .init()
+            return (next, nil)
+
         case let .wrote(id, raw):
             var call = state.calls[id] ?? .init()
             guard call.stage == .writing else { return (state, nil) }
@@ -176,6 +188,12 @@ public struct TranscriptFinalizationReducer<Raw: Equatable & Sendable, Names: Eq
             call.stage = .finalized
             next.calls[id] = call
             return (next, publish(id, call, finalWrite: true))
+
+        case let .published(ids):
+            for id in ids where state.calls[id].map({ $0.stage == .finalized || $0.stage == .failed }) == true {
+                next.calls[id]?.published = true
+            }
+            return (next, nil)
 
         case .shutdown:
             guard !state.shuttingDown else { return (state, nil) }

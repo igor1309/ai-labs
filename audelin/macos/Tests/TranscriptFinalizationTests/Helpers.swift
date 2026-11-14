@@ -9,14 +9,15 @@ typealias Reducer = TranscriptFinalizationReducer<String, String, String, String
 
 let callID = "call"
 
-func makeState(_ call: State.Call? = nil, shuttingDown: Bool = false) -> State {
-    State(calls: call.map { [callID: $0] } ?? [:], shuttingDown: shuttingDown)
+func makeState(_ call: State.Call? = nil, shuttingDown: Bool = false, settled: Bool = false) -> State {
+    State(calls: call.map { [callID: $0] } ?? [:], shuttingDown: shuttingDown, settled: settled)
 }
 
 func makeCall(
-    _ stage: State.Stage = .writing, saved: Bool = true, raw: String? = "raw", names: String? = nil, far: String? = nil, heard: String? = nil
+    _ stage: State.Stage = .writing, saved: Bool = true, raw: String? = "raw", names: String? = nil, far: String? = nil, heard: String? = nil,
+    published: Bool = false
 ) -> State.Call {
-    .init(stage: stage, latestWriteSucceeded: saved, raw: raw, names: names, far: far, heard: heard)
+    .init(stage: stage, latestWriteSucceeded: saved, raw: raw, names: names, far: far, heard: heard, published: published)
 }
 
 /// Records each entries request and answers with `stub`.
