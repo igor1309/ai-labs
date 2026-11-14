@@ -218,11 +218,10 @@ final class SummaryStorage: SummaryFiles.Locations, Sendable {
             try state.withLock { state in
                 recover(&state)
                 try validate(destination, state: state)
-                return try list(state).filter {
-                    try !Self.sameRoot(location(id: $0.id, state: state).deletingLastPathComponent(), destination)
-                }.map { call in
+                return try list(state).map { call in
                     let root = try location(id: call.id, state: state).deletingLastPathComponent()
-                    return MoveCall(id: call.id, title: call.title, bytes: try makeCalls(root).bytes(id: call.id))
+                    return MoveCall(id: call.id, title: call.title, bytes: try makeCalls(root).bytes(id: call.id),
+                                    inDestination: Self.sameRoot(root, destination))
                 }
             }
         }

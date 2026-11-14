@@ -12,6 +12,20 @@ import Testing
 @testable import Composer
 
 @Suite struct SummaryStorageTests {
+    @Test func preparationMarksCallsAlreadyInTheDestination() async throws {
+        try await withComposeFolder { root in
+            let source = root.appendingPathComponent("source")
+            let id = "1970.01.01-0000"
+            do {
+                try FileManager.default.createDirectory(at: source.appendingPathComponent(id), withIntermediateDirectories: true)
+                try Data([1, 2, 3]).write(to: source.appendingPathComponent(id + "/audio"))
+            }
+            let storage = SummaryStorage(folder: source, timeZone: .gmt, trash: removeForTrash)
+            #expect(try await storage.prepareMove(to: source.appendingPathComponent(".")) == [.init(id: id, title: "", bytes: 3, inDestination: true)])
+            #expect(try await storage.prepareMove(to: root) == [.init(id: id, title: "", bytes: 3, inDestination: false)])
+        }
+    }
+
     @Test(arguments: [false, true])
     func legacyJournalMigratesSplitCallsAndPublishesTheirSummaries(completed: Bool) async throws {
         try await withComposeFolder { root in
@@ -45,7 +59,7 @@ import Testing
                 try await files.publish(job, notes: "summary for " + id)
                 #expect(try String(contentsOf: folder.appendingPathComponent(id + "/summary.md"), encoding: .utf8).hasSuffix("summary for " + id))
             }
-            #expect(try await recovered.prepareMove(to: destination).map(\.id) == [remaining])
+            #expect(try await recovered.prepareMove(to: destination).filter { !$0.inDestination }.map(\.id) == [remaining])
             _ = try await recovered.move(id: remaining, to: destination)
             try await recovered.commitFolder(destination, commit: {})
             #expect(try await recovered.list().map(\.id) == [remaining, moved])
@@ -84,7 +98,7 @@ import Testing
             let files = Files(locations: storage, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let record = Record(job: "job", call: latest, input: "input", snapshot: Data(), phase: "pending")
             _ = try await files.claim(record); _ = try await files.start(record)
-            #expect(try await storage.prepareMove(to: destination).map(\.id) == [latest, oldest])
+            #expect(try await storage.prepareMove(to: destination).filter { !$0.inDestination }.map(\.id) == [latest, oldest])
             _ = try await storage.move(id: latest, to: destination)
             await #expect(throws: (any Error).self) { _ = try await storage.move(id: oldest, to: destination) }
             try await files.publish(record, notes: "complete after partial move")
@@ -125,7 +139,7 @@ import Testing
             #expect(try await sameDirectory(recovered.location(id: id), destination.appendingPathComponent(id)))
             #expect(try await sameDirectory(recovered.location(id: fresh), source.appendingPathComponent(fresh)))
             #expect(try await recovered.list().map(\.id) == [fresh, id])
-            #expect(try await recovered.prepareMove(to: destination).map(\.id) == [fresh])
+            #expect(try await recovered.prepareMove(to: destination).filter { !$0.inDestination }.map(\.id) == [fresh])
             await #expect(throws: (any Error).self) { try await recovered.commitFolder(destination, commit: { Issue.record("Abandoned a source call") }) }
             _ = try await recovered.move(id: fresh, to: destination)
             try await recovered.commitFolder(destination, commit: {})
@@ -255,7 +269,7 @@ import Testing
             await send(.confirmMove)
             #expect(state.phase == .failedMove)
             #expect(state.move?.completed.map(\.id) == [a])
-            #expect(try await storage.prepareMove(to: destination).map(\.id) == [b])
+            #expect(try await storage.prepareMove(to: destination).filter { !$0.inDestination }.map(\.id) == [b])
             await #expect(throws: (any Error).self) { _ = try await storage.location(id: c) }
             try FileManager.default.removeItem(at: destination.appendingPathComponent(b))
             let retryStart = observedMoves.count
