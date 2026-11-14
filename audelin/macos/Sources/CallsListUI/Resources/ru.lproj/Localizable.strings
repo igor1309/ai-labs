@@ -38,3 +38,5 @@
 "search.noMatchesHint" = "«%@» нет в названиях, итогах и расшифровках";
 "row.preparing" = "Подготовка итогов…";
 "row.failed" = "Не удалось подготовить итоги";
+"merge.marked" = "Отмечен";
+"merge.unmarked" = "Не отмечен";

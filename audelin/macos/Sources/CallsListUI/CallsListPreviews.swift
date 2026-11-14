@@ -42,6 +42,9 @@ public enum CallsListPreviews {
             ("rename", with(sample) { $0.editing = .init(id: $0.rows[0].id, title: $0.rows[0].title) }),
             ("search", search(words, text, searching: false)),
             ("searching", with(search(words, text, searching: true)) { $0.rows.removeLast() }),
+            ("merge", with(notes) { $0.merge = .init() }),
+            ("merge-marked", with(notes) { $0.selectedID = $0.rows[0].id; $0.merge = .init(marked: [$0.rows[0].id, $0.rows[1].id]) }),
+            ("merge-running", with(notes) { $0.selectedID = $0.rows[0].id; $0.merge = .init(marked: [$0.rows[0].id, $0.rows[1].id], running: true) }),
             ("search-none", CallsListState(search: .init(query: "Kubernetes", searching: false), searchText: "Kubernetes")),
         ]
     }

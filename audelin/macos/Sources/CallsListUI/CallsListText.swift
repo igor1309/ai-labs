@@ -56,6 +56,8 @@ public enum CallsListPhrase: String, CaseIterable, Sendable {
     case noMatches = "search.noMatches"
     /// Takes the query.
     case noMatchesHint = "search.noMatchesHint"
+    case markOn = "merge.marked"
+    case markOff = "merge.unmarked"
 }
 
 /// Looks up calls list text in a given language, whatever the process locale.

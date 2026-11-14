@@ -84,7 +84,17 @@ public struct CallsListState: Equatable, Sendable {
         public init(query: String, searching: Bool) { self.query = query; self.searching = searching }
     }
 
+    /// Choosing calls to merge: a click marks a row instead of reading it.
+    public struct Merge: Equatable, Sendable {
+        public var marked: Set<String>
+        /// The marked calls are being merged; rows take no clicks.
+        public var running: Bool
+        public init(marked: Set<String> = [], running: Bool = false) { self.marked = marked; self.running = running }
+    }
+
     public var rows: [Row]
+    /// Merge mode; nil when a click reads a call.
+    public var merge: Merge?
     public var search: Search?
     /// The field's exact input, including whitespace that does not start a search.
     public var searchText: String
@@ -100,7 +110,8 @@ public struct CallsListState: Equatable, Sendable {
     public var narrow: Bool
 
     public init(rows: [Row] = [], editing: Editing? = nil, deleteID: String? = nil, deleteBody: String? = nil, busy: Bool = false, failure: String? = nil,
-                selectedID: String? = nil, narrow: Bool = false, search: Search? = nil, searchText: String = "") {
+                selectedID: String? = nil, narrow: Bool = false, search: Search? = nil, searchText: String = "", merge: Merge? = nil) {
+        self.merge = merge
         self.searchText = searchText
         self.search = search
         self.rows = rows; self.editing = editing; self.deleteID = deleteID; self.deleteBody = deleteBody; self.busy = busy; self.failure = failure
@@ -117,4 +128,6 @@ public enum CallsListEvent: Equatable, Sendable {
     case read(String)
     /// The search field's text changed; an empty text ends the search.
     case search(String)
+    /// A click on a row in merge mode: mark it, or unmark a marked one.
+    case toggleMark(String)
 }

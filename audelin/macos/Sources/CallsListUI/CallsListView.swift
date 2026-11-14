@@ -66,7 +66,7 @@ public struct CallsListView: View {
             return .handled
         }
         .onKeyPress(keys: [.return, .space, "r", .delete, .backspace]) { press in
-            guard state.editing == nil, let row = state.rows.first(where: { $0.id == state.selectedID }),
+            guard state.editing == nil, state.merge == nil, let row = state.rows.first(where: { $0.id == state.selectedID }),
                   let action = keyAction(press, row) else { return .ignored }
             event(action)
             return .handled
@@ -77,16 +77,29 @@ public struct CallsListView: View {
     }
 
     /// The whole row is a button that selects it. Renaming starts only from the menu or ⌘R.
+    /// In merge mode a click marks the row instead, and the row has no menu or double-click.
     private func callRow(_ row: CallsListState.Row) -> some View {
-        Button { event(.select(row.id)) } label: { rowContent(row).contentShape(.rect) }
+        Button { click(row) } label: { rowContent(row).contentShape(.rect) }
             .buttonStyle(.plain)
             .accessibilityIdentifier("calls.select.\(row.id)")
             .accessibilityLabel(row.displayTitle)
-            .accessibilityValue(row.duration)
-            .simultaneousGesture(TapGesture(count: 2).onEnded { if !state.busy { event(.open(row.id)) } })
+            .accessibilityValue(rowValue(row))
+            .simultaneousGesture(TapGesture(count: 2).onEnded { if !state.busy, state.merge == nil { event(.open(row.id)) } })
             .overlay {
-                RowMenuTarget(identifier: "calls.row.\(row.id)", select: { event(.select(row.id)) }, items: { menu(row) })
+                RowMenuTarget(identifier: "calls.row.\(row.id)", select: { if state.merge == nil { event(.select(row.id)) } },
+                              items: { state.merge == nil ? menu(row) : [] })
             }
+    }
+
+    private func click(_ row: CallsListState.Row) {
+        guard let merge = state.merge else { return event(.select(row.id)) }
+        if !merge.running { event(.toggleMark(row.id)) }
+    }
+
+    /// The duration, and in merge mode whether the row is marked.
+    private func rowValue(_ row: CallsListState.Row) -> String {
+        guard let merge = state.merge else { return row.duration }
+        return row.duration + ", " + text(merge.marked.contains(row.id) ? .markOn : .markOff)
     }
 
     /// The row's actions, the same in its context menu and on its keys,
@@ -134,6 +147,7 @@ public struct CallsListView: View {
                 .fill(selected ? (active ? tokens.me : tokens.gutter) : Color.clear)
                 .frame(width: barWidth)
             HStack(alignment: .firstTextBaseline, spacing: tokens.space12) {
+                if let merge = state.merge { mark(merge.marked.contains(row.id)) }
                 Text(row.time).font(tokens.data(tokens.typeSmall)).foregroundStyle(selected && active ? tokens.me : tokens.sub)
                     .frame(width: timeWidth, alignment: .leading).allowsHitTesting(false)
                 lines(row)
@@ -143,6 +157,14 @@ public struct CallsListView: View {
         .lineLimit(1)
         .background(selected ? (active ? tokens.okBg : tokens.btn) : tokens.surface)
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    /// A circle that fills with a check when the row is marked to merge.
+    private func mark(_ marked: Bool) -> some View {
+        Image(systemName: marked ? "checkmark.circle" : "circle")
+            .font(tokens.ui(tokens.typeSmall))
+            .foregroundStyle(marked ? tokens.me : tokens.gutter)
+            .frame(width: iconSize).allowsHitTesting(false).accessibilityHidden(true)
     }
 
     /// The title and duration; then the gist, the summary's state or a search match.
