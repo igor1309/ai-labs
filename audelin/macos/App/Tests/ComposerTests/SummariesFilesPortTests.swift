@@ -20,6 +20,19 @@ import Testing
         let result = try await makeSUT(files).claim(job)
         #expect(result.owned == owned && result.saved == .init(stage: .pending, job: job))
     }
+    @Test func aClaimReplacesAFinishedRecordWhoseNotesWereDeleted() async throws {
+        let files = FilesFake(), finished = try await record(phase: "succeeded")
+        files.claimAnswer = { [files] new in files.writes.isEmpty ? (false, finished) : (true, new) }
+        let result = try await makeSUT(files).claim(job)
+        #expect(files.writes == [.discard(finished)] && result.owned && result.saved == .init(stage: .pending, job: job))
+    }
+    @Test func aClaimKeepsAFinishedRecordWithItsNotes() async throws {
+        let files = FilesFake(), finished = try await record(phase: "succeeded")
+        files.storedNotes = .init(text: "notes", made: .distantPast)
+        files.claimAnswer = { _ in (false, finished) }
+        let result = try await makeSUT(files).claim(job)
+        #expect(files.writes.isEmpty && !result.owned && result.saved.stage == .succeeded)
+    }
     @Test func aFailedClaimThrows() async {
         let files = FilesFake(); files.claimAnswer = { _ in throw CocoaError(.fileWriteUnknown) }
         await #expect(throws: (any Error).self) { try await makeSUT(files).claim(job) }
@@ -131,6 +144,12 @@ final class FilesFake: SummariesFiles {
     var writes: [Write] { calls.withLock { $0.writes } }
     let fails: Bool
     init(fails: Bool = false) { self.fails = fails }
+    private let notesAnswer = Mutex<SummaryFiles.Notes?>(nil)
+    var storedNotes: SummaryFiles.Notes? {
+        get { notesAnswer.withLock { $0 } }
+        set { notesAnswer.withLock { $0 = newValue } }
+    }
+    func notes(call: String) async throws -> SummaryFiles.Notes? { storedNotes }
     func start(_ record: SummaryFiles.Record) async throws -> Bool { try write(.start(record)); return true }
     func progress(_ record: SummaryFiles.Record) async throws { try write(.progress(record)) }
     func publish(_ record: SummaryFiles.Record, notes: String) async throws { try write(.publish(record, notes)) }

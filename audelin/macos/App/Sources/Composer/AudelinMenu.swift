@@ -41,7 +41,7 @@ public final class AudelinMenu {
     public private(set) var summarySettings: AudelinSettings?
     private var chooseFolder: () async throws -> URL? = { nil }
     private var pickerFailed = false
-    private var summaries: AudelinSummaries?
+    private var summaries: SummariesModel?
     private var presentSettings: () -> Void = {}
     private let presentPanel: (Bool) -> Void
     private let sleep: @Sendable (Duration) async throws -> Void
@@ -117,7 +117,7 @@ public final class AudelinMenu {
         presentPanel: @escaping (Bool) -> Void,
         sleep: @escaping @Sendable (Duration) async throws -> Void,
         cleanupRuns: CleanupRuns,
-        summaries: AudelinSummaries? = nil,
+        summaries: SummariesModel? = nil,
         language: CurrentLanguage
     ) async {
 
@@ -137,7 +137,7 @@ public final class AudelinMenu {
         let application: MenuApplication?
         do {
             let recording = try await AudelinRecording(preferences: storage, occupiedCallNames: occupiedCallNames, boundary: boundary,
-                                                       processes: processes, panel: panel, cleanupRuns: cleanupRuns, summaries: summaries?.callbacks(timeZone: boundary.time.timeZone()) ?? .disabled)
+                                                       processes: processes, panel: panel, cleanupRuns: cleanupRuns, summaries: summaries?.callbacks(timeZone: boundary.time.timeZone(), notesOn: { storage.read().notes.enabled }) ?? .disabled)
             application = MenuApplication(
                 states: { await recording.inputs.states() }, failures: recording.detectionFailures,
                 send: { await recording.inputs.send($0) },
@@ -311,7 +311,7 @@ public final class AudelinMenu {
     /// recording can start behind this check and be cut short by the quit.
     func relaunchIfIdle(_ relaunch: () throws -> Void) async -> Bool {
 
-        await summaries?.refreshObserved()
+        await summaries?.refresh()
         guard !quitting, updateCanInterrupt, await reserveStorage() else { return false }
         do {
             guard !quitting, updateCanInterrupt else { throw CancellationError() }

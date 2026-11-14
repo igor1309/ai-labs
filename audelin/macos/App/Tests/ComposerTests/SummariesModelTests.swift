@@ -21,15 +21,17 @@ import Testing
     @Test func makeSubmitsTheStoredTranscriptAsAsked() async throws {
         let files = FilesFake()
         let sut = makeSUT(files, notes: false, transcript: [.init(start: 3, words: "spoken", label: "A")])
-        try await sut.make(call: "call")
+        sut.make(call: "call")
         try await waitUntil("notes are saved") { sut.state.calls["call"]?.stage == .succeeded }
         let snapshot = try #require(files.claimed.first).snapshot
         #expect(String(decoding: snapshot, as: UTF8.self).contains(#"{"label":"A","text":"spoken","time":"3.0"}"#))
     }
-    @Test func aFailedTranscriptReadThrows() async {
-        let sut = makeSUT(FilesFake(), readFails: true)
-        await #expect(throws: (any Error).self) { try await sut.make(call: "call") }
-        #expect(sut.state.calls.isEmpty)
+    @Test func aFailedTranscriptReadFailsTheCallSoTheUserCanRetry() async throws {
+        let files = FilesFake()
+        let sut = makeSUT(files, readFails: true)
+        sut.make(call: "call")
+        try await waitUntil("the read fails") { sut.state.calls["call"]?.stage == .failed }
+        #expect(sut.retryable == ["call"] && files.claimed.isEmpty)
     }
     @Test func retryRunsAFailedJobAgainUnderAFreshID() async throws {
         let files = FilesFake()
@@ -37,7 +39,7 @@ import Testing
         let sut = makeSUT(files)
         sut.recover(calls: ["call"])
         try await waitUntil("the call is recovered") { sut.state.calls["call"]?.retryable == true }
-        sut.retry(call: "call")
+        try await sut.retry(call: "call")
         try await waitUntil("the retry succeeds") { sut.state.calls["call"]?.stage == .succeeded }
         #expect(files.retried.map(\.1) == ["fresh"])
     }
@@ -83,7 +85,7 @@ import Testing
         sut.recover(calls: ["call"])
         try await waitUntil("the call is observed") { sut.state.calls["call"]?.stage == .observed }
         files.stored = try await record(phase: "succeeded")
-        sut.refresh()
+        await sut.refresh()
         try await waitUntil("the call is reloaded") { sut.state.calls["call"]?.stage == .succeeded }
     }
     @Test func shutdownReturnsOnceTheMachineHasEnded() async {
@@ -94,9 +96,9 @@ import Testing
 
     private func makeSUT(_ files: FilesFake, notes: Bool = true, transcript: [Calls.Text.Line] = [], readFails: Bool = false) -> SummariesModel {
         SummariesModel(text: { CallsListText(language: .english) },
-                       callText: { _ in if readFails { throw CocoaError(.fileReadNoSuchFile) }; return .init(notes: nil, transcript: transcript) },
                        preparation: SummariesPreparationPort(notes: { .init(enabled: notes, speakers: false, primary: .init(kind: "cli", model: "m", executable: "/bin/p", endpoint: "", credentialVariable: "")) },
-                                                             makeID: { "job" }),
+                                                             makeID: { "job" },
+                                                             callText: { _ in if readFails { throw CocoaError(.fileReadNoSuchFile) }; return .init(notes: nil, transcript: transcript) }),
                        files: .init(files: files, makeID: { "fresh" }), generation: GenerationStub())
     }
     private func record(phase: String) async throws -> SummaryFiles.Record {
@@ -111,4 +113,5 @@ import Testing
 private struct GenerationStub: SummariesGeneration {
     func identify(_ job: Job) async throws -> [Identity] { [] }
     func notes(_ job: Job, identities: [Identity]) async throws -> String { "notes" }
+    func cancel(_ job: Job) async {}
 }

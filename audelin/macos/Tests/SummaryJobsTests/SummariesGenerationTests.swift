@@ -204,7 +204,7 @@ final class StorageSpy: SummariesStorage {
     }
 }
 final class GenerationsSpy: SummariesGeneration {
-    enum Payload: Equatable, Sendable { case identify(Job), notes(Job, [Identity]) }
+    enum Payload: Equatable, Sendable { case identify(Job), notes(Job, [Identity]), cancel(Job) }
     private let recorded = Mutex<[Payload]>([])
     private let identities: [Identity], notes: String, fails: Bool
     init(identities: [Identity] = [], notes: String = "notes", fails: Bool = false) {
@@ -219,4 +219,5 @@ final class GenerationsSpy: SummariesGeneration {
         recorded.withLock { $0.append(.notes(job, identities)) }
         if fails { throw SpyFailure() }; return notes
     }
+    func cancel(_ job: Job) async { recorded.withLock { $0.append(.cancel(job)) } }
 }

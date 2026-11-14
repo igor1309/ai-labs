@@ -15,8 +15,15 @@ import Testing
         assert(make(stage), .cancel("call")) { $0.calls["call"]?.cancelling = true; $0.calls["call"]?.status = "\(stage):false" }
         #expect(format.payloads == [.init(stage: stage, warning: false)])
     }
-    @Test(arguments: running) func aCancelOnARunningStageDeliversNothing(stage: SummariesState.Call.Stage) {
-        assert(make(stage), .cancel("call"), delivers: nil)
+    @Test(arguments: running) func aCancelOnARunningStageDeliversAbort(stage: SummariesState.Call.Stage) {
+        assert(make(stage), .cancel("call"), delivers: .abort(makeJob()))
+    }
+    @Test func anAbortChangesNothing() {
+        assert(make(.noting, cancelling: true), .aborted("call"))
+        #expect(format.payloads.isEmpty)
+    }
+    @Test func anAbortDeliversNothing() {
+        assert(make(.noting, cancelling: true), .aborted("call"), delivers: nil)
     }
     @Test func aSecondCancelChangesNothing() {
         assert(make(.noting, cancelling: true), .cancel("call"))
@@ -108,6 +115,19 @@ import Testing
                                          storage: StorageSpy(), generation: generation).handle(.discard(makeJob()))
         #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && records.payloads.isEmpty
                 && starts.payloads.isEmpty && generation.payloads.isEmpty)
+    }
+    @Test func abortStopsTheJobsGenerationAndDeliversAborted() async {
+        let generation = GenerationsSpy()
+        let event = await SummariesEffectHandler(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: RecordsSpy(),
+                                                 starts: StartsSpy(), storage: StorageSpy(), generation: generation).handle(.abort(makeJob()))
+        #expect(event == .aborted("call") && generation.payloads == [.cancel(makeJob())])
+    }
+    @Test func abortDoesNothingElse() async {
+        let preparation = PreparationSpy(job: nil), claims = ClaimsSpy(), records = RecordsSpy(), starts = StartsSpy(), storage = StorageSpy()
+        _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: records, starts: starts,
+                                         storage: storage, generation: GenerationsSpy()).handle(.abort(makeJob()))
+        #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && records.payloads.isEmpty
+                && starts.payloads.isEmpty && storage.payloads.isEmpty)
     }
     @Test(arguments: [SummariesEffect.identify(makeJob()), .notes(makeJob(), []), .publish(makeJob(), "n", warning: false)])
     func otherEffectsDoNotDiscard(effect: SummariesEffect) async {

@@ -1,4 +1,5 @@
 import Composer
+import Foundation
 import Preferences
 import SummaryJobs
 import Testing
@@ -22,11 +23,26 @@ import Testing
         #expect(job?.fallback == nil && job?.speakers == false)
     }
 
+    @Test func aStoredCallsTranscriptBecomesARequestedSubmission() async throws {
+        let sut = SummariesPreparationPort(notes: { .init(enabled: false) }, makeID: { "id-1" },
+                                           callText: { _ in .init(notes: nil, transcript: [.init(start: 3, words: "spoken", label: "A")]) })
+        let submission = try await sut.submission(call: "call")
+        #expect(submission.call == "call" && submission.entries == [.init(label: "A", time: "3.0", text: "spoken")]
+                && submission.finalWrite && submission.usable && submission.requested && !submission.input.isEmpty)
+    }
+    @Test func anEmptyTranscriptIsNotUsable() async throws {
+        #expect(try await makeSUT(.init(enabled: true)).submission(call: "call").usable == false)
+    }
+    @Test func aFailedTranscriptReadThrows() async {
+        let sut = SummariesPreparationPort(notes: { .init(enabled: true) }, makeID: { "id-1" }, callText: { _ in throw CocoaError(.fileReadNoSuchFile) })
+        await #expect(throws: CocoaError.self) { try await sut.submission(call: "call") }
+    }
+
     private let entries = [Job.Entry(label: "A", time: "0", text: "spoken")]
     private func submission(requested: Bool) -> SummariesSubmission {
         .init(call: "call", input: "input", entries: entries, finalWrite: true, usable: true, requested: requested)
     }
     private func makeSUT(_ notes: NotesPreferences) -> SummariesPreparationPort {
-        .init(notes: { notes }, makeID: { "id-1" })
+        .init(notes: { notes }, makeID: { "id-1" }, callText: { _ in .init(notes: nil, transcript: []) })
     }
 }

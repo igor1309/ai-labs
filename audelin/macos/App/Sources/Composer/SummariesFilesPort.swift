@@ -12,6 +12,7 @@ public protocol SummariesFiles: Sendable {
     func publish(_ record: SummaryFiles.Record, notes: String) async throws
     func discard(_ record: SummaryFiles.Record) async throws
     func release(job: String, call: String, input: String) async
+    func notes(call: String) async throws -> SummaryFiles.Notes?
 }
 extension SummaryFiles.Files: SummariesFiles {}
 
@@ -22,7 +23,13 @@ public struct SummariesFilesPort: SummariesClaims, SummariesRecords, SummariesSt
     public init(files: any SummariesFiles, makeID: @escaping @Sendable () -> String) { self.files = files; self.makeID = makeID }
 
     public func claim(_ job: Job) async throws -> (owned: Bool, saved: SummariesSaved) {
-        let result = try await files.claim(try Self.record(job, phase: "pending"))
+        let record = try Self.record(job, phase: "pending")
+        var result = try await files.claim(record)
+        // Notes deleted after they were made leave a finished record with nothing to show; a new job replaces it.
+        if !result.owned, result.record.phase == "succeeded", try await files.notes(call: job.call) == nil {
+            try await files.discard(result.record)
+            result = try await files.claim(record)
+        }
         return (result.owned, try Self.saved(result.record))
     }
     public func load(call: String) async throws -> SummariesSaved? {

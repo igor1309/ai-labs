@@ -496,10 +496,16 @@ final class FormatSpy: Sendable {
 struct SpyFailure: Error {}
 final class PreparationSpy: SummariesPreparation {
     private let recorded = Mutex<[SummariesSubmission]>([])
+    private let read = Mutex<[String]>([])
     private let job: Job?
-    init(job: Job?) { self.job = job }
+    private let submission: Result<SummariesSubmission, SpyFailure>
+    init(job: Job?, submission: Result<SummariesSubmission, SpyFailure> = .success(makeSubmission(requested: true))) {
+        self.job = job; self.submission = submission
+    }
     var payloads: [SummariesSubmission] { recorded.withLock { $0 } }
+    var reads: [String] { read.withLock { $0 } }
     func job(for submission: SummariesSubmission) async -> Job? { recorded.withLock { $0.append(submission) }; return job }
+    func submission(call: String) async throws -> SummariesSubmission { read.withLock { $0.append(call) }; return try submission.get() }
 }
 final class ClaimsSpy: SummariesClaims {
     private let recorded = Mutex<[Job]>([])

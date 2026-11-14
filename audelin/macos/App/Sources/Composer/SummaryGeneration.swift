@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 import SpeakerIdentification
 import SummaryJobs
 import SummaryRuntime
@@ -6,23 +7,26 @@ import SummaryRuntime
 struct SummaryGeneration: SummaryJobs.Generation {
     let runtime: SummaryRuntime.Runtime
     let sink: any LogSink
+    private let running = RunningCalls()
     func identify(_ job: Job) async throws -> [SummaryJobs.Identity] {
-        try await fallback(job) { configuration in
+        try await running.run(job.id) { try await fallback(job) { configuration in
             let output = try await runtime.generate(configuration, prompt: Prompts.speakers + "\nTRANSCRIPT DATA:\n" + transcript(job))
             let entries = job.entries.map { SpeakerIdentification.Entry(label: $0.label, time: $0.time, text: $0.text) }
             return try SpeakerIdentification.Validator().validate(Data(output.utf8), entries: entries).map {
                 SummaryJobs.Identity(label: $0.label, name: $0.name, time: $0.time, quote: $0.quote)
             }
-        }
+        } }
     }
     func notes(_ job: Job, identities: [SummaryJobs.Identity]) async throws -> String {
-        try await fallback(job) { configuration in
+        try await running.run(job.id) { try await fallback(job) { configuration in
             let mapping = identities.map { "\($0.label): \($0.name) (\($0.time): \($0.quote))" }.joined(separator: "\n")
             let prompt = NotesResponse.prompt + "\nACCEPTED EVIDENCE:\n" + mapping + "\nTRANSCRIPT DATA:\n" + transcript(job)
             let output = try await runtime.generate(configuration, prompt: prompt)
             return try NotesResponse.validate(output)
-        }
+        } }
     }
+    /// Stops the job's running call, which then throws a cancellation.
+    func cancel(_ job: Job) async { running.cancel(job.id) }
     private func fallback<Value: Sendable>(_ job: Job, attempt: (SummaryRuntime.Configuration) async throws -> Value) async throws -> Value {
         do { return try await attempt(runtimeConfiguration(job.primary)) }
         catch {
@@ -39,6 +43,18 @@ struct SummaryGeneration: SummaryJobs.Generation {
 }
 
 extension SummaryGeneration: SummariesGeneration {}
+
+/// The generation calls running now, by job, so a cancel can stop one.
+private final class RunningCalls: Sendable {
+    private let cancels = Mutex<[String: @Sendable () -> Void]>([:])
+    func run<Value: Sendable>(_ id: String, _ work: @escaping @Sendable () async throws -> Value) async throws -> Value {
+        let task = Task { try await work() }
+        cancels.withLock { $0[id] = { task.cancel() } }
+        defer { cancels.withLock { _ = $0.removeValue(forKey: id) } }
+        return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+    }
+    func cancel(_ id: String) { cancels.withLock { $0[id] }?() }
+}
 
 enum NotesResponse {
     private static let russian = ["О чём встреча", "Ключевые моменты", "Решения", "Задачи", "Открытые вопросы"]

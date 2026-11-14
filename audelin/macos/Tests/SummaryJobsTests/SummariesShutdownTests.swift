@@ -69,8 +69,23 @@ import Testing
     }
 
     @Test func refreshReloadsObservedCalls() {
-        assert(make(["b": .observed, "a": .observed, "c": .noting]), .refresh)
+        assert(make(["b": .observed, "a": .observed, "c": .noting]), .refresh) { $0.refreshing = true }
         #expect(format.payloads.isEmpty)
+    }
+    @Test func refreshWithoutObservedCallsChangesNothing() {
+        assert(make(["c": .noting]), .refresh)
+    }
+    @Test func aRefreshWhileOneRunsChangesNothing() {
+        var state = make(["a": .observed]); state.refreshing = true
+        assert(state, .refresh)
+    }
+    @Test func aRefreshWhileOneRunsDeliversNothing() {
+        var state = make(["a": .observed]); state.refreshing = true
+        assert(state, .refresh, delivers: nil)
+    }
+    @Test func aReloadEndsTheRefresh() {
+        var state = make(["a": .observed]); state.refreshing = true
+        assert(state, .reloaded([:])) { $0.refreshing = false }
     }
     @Test func refreshDeliversReloadOfObservedCalls() {
         assert(make(["b": .observed, "a": .observed, "c": .noting]), .refresh, delivers: .reload(["a", "b"]))
@@ -121,6 +136,12 @@ import Testing
 private func job(_ call: String) -> Job { var job = makeJob(); job.call = call; return job }
 
 @Suite struct SummariesShutdownEffectHandlerTests {
+    @Test func releaseStopsEveryJobsGeneration() async {
+        let generation = GenerationsSpy()
+        var other = makeJob(); other.call = "other"
+        _ = await makeSUT(generation: generation).handle(.release([makeJob(), other]))
+        #expect(generation.payloads == [.cancel(makeJob()), .cancel(other)])
+    }
     @Test func releaseFreesEveryJobAndDeliversReleased() async {
         let storage = StorageSpy()
         var other = makeJob(); other.call = "other"
@@ -146,10 +167,11 @@ private func job(_ call: String) -> Job { var job = makeJob(); job.call = call; 
         let sut = SummariesEffectHandler(preparation: preparation, claims: claims, records: RecordsSpy(), starts: starts,
                                          storage: StorageSpy(), generation: generation)
         _ = await sut.handle(.release([makeJob()])); _ = await sut.handle(.reload(["a"]))
-        #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && starts.payloads.isEmpty && generation.payloads.isEmpty)
+        #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && starts.payloads.isEmpty && generation.payloads == [.cancel(makeJob())])
     }
-    private func makeSUT(records: RecordsSpy = RecordsSpy(), storage: StorageSpy = StorageSpy()) -> SummariesEffectHandler {
+    private func makeSUT(records: RecordsSpy = RecordsSpy(), storage: StorageSpy = StorageSpy(),
+                         generation: GenerationsSpy = GenerationsSpy()) -> SummariesEffectHandler {
         .init(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: records, starts: StartsSpy(),
-              storage: storage, generation: GenerationsSpy())
+              storage: storage, generation: generation)
     }
 }
