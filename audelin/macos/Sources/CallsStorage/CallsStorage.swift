@@ -19,6 +19,7 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
     // Every operation, including summary writes through withFolder, takes this turn,
     // so one waiting for a long folder move suspends instead of blocking a thread.
     private let turn = Turn()
+    private let published = Mutex<(state: CallsTransaction, watchers: [UUID: AsyncStream<CallsTransaction>.Continuation])>((.idle, [:]))
 
     /// `journal` is where the journal is kept; nil keeps it in memory only.
     /// `makeCalls` opens the calls of one folder.
@@ -26,6 +27,32 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
                 makeCalls: @escaping @Sendable (URL) -> Calls) {
         state = Mutex(State(recordingFolder: directory(folder)))
         self.journal = journal; self.writeJournal = writeJournal; self.makeCalls = makeCalls
+    }
+
+    /// Whether a move or folder commit is running: the current value on subscribe, then each change.
+    public func transactions() -> AsyncStream<CallsTransaction> {
+        let (stream, continuation) = AsyncStream<CallsTransaction>.makeStream()
+        let id = UUID()
+        published.withLock {
+            continuation.yield($0.state)
+            $0.watchers[id] = continuation
+        }
+        continuation.onTermination = { [weak self] _ in self?.published.withLock { _ = $0.watchers.removeValue(forKey: id) } }
+        return stream
+    }
+    private func publish(_ state: CallsTransaction) {
+        published.withLock {
+            $0.state = state
+            for watcher in $0.watchers.values { watcher.yield(state) }
+        }
+    }
+    /// Runs a move or folder commit holding the turn, published as running until it ends.
+    private func transaction<Value: Sendable>(_ work: () throws -> Value) async throws -> Value {
+        try await perform {
+            publish(.running)
+            defer { publish(.idle) }
+            return try work()
+        }
     }
 
     public func restore() async throws {
@@ -161,7 +188,7 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
         }
     }
     public func move(id: String, to destination: URL) async throws -> Int64 {
-        try await perform { [self] in
+        try await transaction { [self] in
             try state.withLock { state in
                 recover(&state, id: id)
                 try validate(destination, state: state)
@@ -179,7 +206,7 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
         }
     }
     public func commitFolder(_ destination: URL, commit: @escaping @Sendable () throws -> Void) async throws {
-        try await perform { [self] in
+        try await transaction { [self] in
             try state.withLock { state in
                 recover(&state)
                 try validate(destination, state: state)
@@ -197,4 +224,8 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
             }
         }
     }
+}
+
+public enum CallsTransaction: Equatable, Sendable {
+    case idle, running
 }
