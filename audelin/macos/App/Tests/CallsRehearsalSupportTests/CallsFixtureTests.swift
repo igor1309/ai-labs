@@ -13,7 +13,7 @@ struct CallsFixtureTests {
             #expect(options.seed == .merge)
             try await options.seedCalls()
             let names = try FileManager.default.contentsOfDirectory(atPath: calls.path).sorted()
-            #expect(names == [CallsFixture.a, CallsFixture.b, CallsFixture.c])
+            #expect(names == [CallsFixture.a, CallsFixture.b, CallsFixture.c, CallsFixture.d])
             for id in names {
                 let length = try TrackFile.duration(at: calls.appendingPathComponent("\(id)/call.caf"))
                 #expect(abs(length - CallsFixture.length) < 0.01)
@@ -24,6 +24,8 @@ struct CallsFixtureTests {
                 #expect(saved.segments.map(\.side) == [.mine, .theirs, .theirs])
                 #expect(FileManager.default.fileExists(atPath: calls.appendingPathComponent("\(id)/summary.md").path))
             }
+            let d = try FileManager.default.contentsOfDirectory(atPath: calls.appendingPathComponent(CallsFixture.d).path).sorted()
+            #expect(d == ["call.caf", "transcript.md"])
             let c = try FileManager.default.contentsOfDirectory(atPath: calls.appendingPathComponent(CallsFixture.c).path)
             #expect(c == ["call.caf"])
         }
