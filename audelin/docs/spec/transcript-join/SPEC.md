@@ -4,13 +4,14 @@ Observer: compose, which joins the transcripts of calls being merged and
 hands the result to Transcript format to render (`../../../ARCHITECTURE.md`,
 Merging calls), so the user can read them as one call (user merging calls,
 `../merge-calls/SPEC.md`). A plain component and a transcript pipeline
-operator: generic over the rows it carries, it reads only their times.
+operator: generic over the rows it carries, it reads only their times and
+their speaker keys.
 
 ## Decided
 
 - **A part is its start, its length and its rows,** each row's time counted
-  from the part's start. Join reads nothing else of a row and passes it on
-  unchanged.
+  from the part's start. Join reads nothing else of a row but its speaker
+  key, and passes the rest on unchanged.
 - **The merged clock starts at the earliest part's start.** Each row moves by
   its part's start less the earliest start, so every row keeps its real
   time of day in the merged call.
@@ -19,6 +20,9 @@ operator: generic over the rows it carries, it reads only their times.
 - **A gap sits between each two parts,** at the earlier part's end, with its
   length: the later start less the earlier part's end. Overlapping parts
   give a gap of no length rather than a failure; the user picks the parts.
+- **Speakers stay apart across parts:** each part's speaker keys and names
+  are given a key of that part, so the same number in two parts is two
+  speakers. Diarization numbers each call on its own.
 - **No state and no ports.** The same parts always join the same way.
 
 ```gherkin
@@ -48,4 +52,9 @@ Feature: Joining calls' transcripts
     Given a part that starts before the previous one ended
     When I join them
     Then I can read a gap of no length between them
+
+  Scenario: S-6 The same speaker number in two parts is two speakers
+    Given two parts that each have a speaker 1, with different names
+    When I join them
+    Then I can tell the two speakers apart, each with its own name
 ```

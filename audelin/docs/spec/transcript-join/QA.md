@@ -24,3 +24,9 @@ Each output row equals its input row but for its time; markers in order.
 ## S-5 Overlapping parts join with no gap
 
 A at 10:00 lasting 12 min, B at 10:10: a gap of 0 s at 720 s.
+
+## S-6 The same speaker number in two parts is two speakers
+
+A and B each with speaker 1, named Anna and Boris: the joined rows carry
+two distinct keys, and the joined names give Anna for A's and Boris for
+B's. Evidence: Missing.
