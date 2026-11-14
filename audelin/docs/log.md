@@ -2,6 +2,7 @@
 
 ## 2026-11-14
 
+- LAB-1423 (LAB-1421): Settings draws its tabs, Language, Appearance and the debug chunk size as one native-style segmented control. Keyboard focus rings the focused segment inside the control, so its border is no longer clipped.
 - LAB-1422: Design: Settings tabs, Language, Appearance and the debug chunk size share one native-style segmented control with full-contrast labels; keyboard focus rings the selected segment instead of the whole control, and the grey hint text is darker in light mode.
 - LAB-1377: One state machine makes each call's notes, from the transcript to the saved file. When two copies of Audelin share a calls folder, a refresh in one follows the other's retry of an interrupted call, and on quit a running notes request stops before its job is freed for another copy.
 - LAB-1365: The extension has install steps, and a nightly live scenario checks that Telemost speakers are named on the panel and in the transcript from the extension's events. A diarization pass that hears no one now keeps the live names instead of erasing them.

@@ -12,12 +12,15 @@ struct SettingsSegmentsTarget: NSViewRepresentable {
     var identifier: String
     var segmentIdentifiers: [String]
     var select: (Int) -> Void
+    /// Told when the control gains or loses keyboard focus; SwiftUI rings the selected segment.
+    var focusChanged: (Bool) -> Void
 
     func makeNSView(context: Context) -> SegmentsView { SegmentsView() }
 
     func updateNSView(_ view: SegmentsView, context: Context) {
         view.update(titles: titles, enabled: enabled, selected: selected, identifier: identifier,
                     segmentIdentifiers: segmentIdentifiers, select: select)
+        view.focusChanged = focusChanged
     }
 }
 
@@ -26,13 +29,14 @@ final class SegmentsView: NSView {
     private var selected: Int?
     private var select: (Int) -> Void = { _ in }
     private var segments: [SegmentElement] = []
+    var focusChanged: (Bool) -> Void = { _ in }
 
     func update(titles: [String], enabled: [Bool], selected: Int?, identifier: String,
                 segmentIdentifiers: [String], select: @escaping (Int) -> Void) {
         self.enabled = enabled
         self.selected = selected
         self.select = select
-        focusRingType = .exterior
+        focusRingType = .none
         setAccessibilityElement(true)
         setAccessibilityRole(.radioGroup)
         setAccessibilityIdentifier(identifier)
@@ -56,8 +60,18 @@ final class SegmentsView: NSView {
 
     override var acceptsFirstResponder: Bool { enabled.contains(true) }
     override var canBecomeKeyView: Bool { enabled.contains(true) }
-    override var focusRingMaskBounds: NSRect { bounds }
-    override func drawFocusRingMask() { NSBezierPath(roundedRect: bounds, xRadius: 6, yRadius: 6).fill() }
+
+    override func becomeFirstResponder() -> Bool {
+        let became = super.becomeFirstResponder()
+        if became { focusChanged(true) }
+        return became
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        if resigned { focusChanged(false) }
+        return resigned
+    }
 
     override func mouseDown(with event: NSEvent) {
         guard !segments.isEmpty, bounds.width > 0 else { return }
