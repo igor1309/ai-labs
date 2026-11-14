@@ -44,6 +44,38 @@ struct AfterCallNamesWiringTests {
         await panel.end(id: 1)
         clock.finish()
     }
+
+    @MainActor
+    @Test func diarizedTurnsAfterTheCallEndsConfirmTheFinishedCall() async throws {
+        let clock = FixtureClock(), channel = FakeBrowserChannel(), names = RecordingNames()
+        let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals,
+                                 browser: { channel.open() }, sleep: { try await Task.sleep(for: $0 * 10_000) })
+        let text = AsyncStream<CallState>.makeStream()
+        let reading = await panel.begin(id: 1, text: text.stream, names: names, enableLiveText: {})
+        reading.sessionChanged(SessionState(phase: .recording))
+        clock.advance(20)
+        try await speakInTurns(channel.connect())
+
+        var round = 0
+        text.continuation.yield(remote(round))
+        for await shown in await panel.states() {
+            guard case let .lines(lines) = shown.log, let row = lines.entries.first else { continue }
+            if row.label == "Анна" { break }
+            round += 1
+            text.continuation.yield(remote(round))
+        }
+        text.continuation.finish()
+        await reading.end()
+        await panel.end(id: 1)
+        clock.finish()
+
+        // The pass runs during finalization, after the panel has ended the reading.
+        await names.diarized(turns, rows: [Row(id: 1, start: 0, end: 4)])
+        for await shown in await panel.states() {
+            guard case let .lines(lines) = shown.log, let row = lines.entries.first else { continue }
+            if row.label == "Анна", !row.labelIsTentative { break }
+        }
+    }
 }
 
 /// The browser's clock reads 100 s at call time 20 s; Анна and Борис take turns
