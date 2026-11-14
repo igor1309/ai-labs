@@ -66,7 +66,7 @@ struct TranscriptFinalizationPortsTests {
                                           theirs: [.init(text: line("raw far", start: 0))])
         let far = AttributedFar(far: [.init(side: .theirs, start: 0, settled: "their words", pending: "", speaker: "d0"),
                                      .init(side: .theirs, start: 2, settled: "later words", pending: "", speaker: "d1")],
-                                speakers: [.init(id: "d0", name: "Anna", state: "confirmed"), .init(id: "d1", name: nil, state: "diarized")])
+                                speakers: [.init(id: "d0", name: "Vera", state: "confirmed"), .init(id: "d1", name: nil, state: "diarized")])
         let bytes = FinalizationBytes(fails: fails), log = FixtureLog(), names = RecordingNames()
         let resources = FinalizationResources()
         names.published(liveNames([0: "Anna"]))
@@ -87,14 +87,15 @@ struct TranscriptFinalizationPortsTests {
             #expect(text.contains("**Them 1** 00:00:00\ntheir words"))
             #expect(text.contains("**Them 2** 00:00:02\nlater words"))
             #expect(text.contains("**Me** 00:00:03\nmy answer"))
-            #expect(text.contains("- Them 1: Anna"))
-            #expect(!text.contains("raw mic") && !text.contains("raw far") && !text.contains("Boris"))
+            #expect(text.contains("- Them 1: Vera"))
+            // An attributed far side names its own speakers; the names taken at close are not read.
+            #expect(!text.contains("raw mic") && !text.contains("raw far") && !text.contains("Anna") && !text.contains("Boris"))
         }
         // Without attribution the replacement uses the same closed names snapshot.
         if !fails {
             try await sut.replace(call: "a", raw, far: nil, heard: heard)
             let text = try #require(await bytes.replacements.last)
-            #expect(text.contains("- Them: Anna") && !text.contains("Boris"))
+            #expect(text.contains("- Them: Anna") && !text.contains("Vera") && !text.contains("Boris"))
         }
         await resources.published(call: "a")
     }
