@@ -1,6 +1,8 @@
-/// A recording's transcript on its way from the last live write to its final form.
-/// `Entry` is one transcript row as the app's consumers read it.
-public struct TranscriptFinalizationState<Entry: Equatable & Sendable>: Equatable, Sendable {
+/// Recordings' transcripts on their way from the last live write to their final form.
+///
+/// `Raw` is a call's text as last written, `Far` its far side given to diarized speakers,
+/// `Heard` the microphone side heard again from cleaned audio, `Entry` one row as consumers read it.
+public struct TranscriptFinalizationState<Raw: Equatable & Sendable, Far: Equatable & Sendable, Heard: Equatable & Sendable>: Equatable, Sendable {
 
     public var calls: [String: Call]
 
@@ -11,13 +13,15 @@ public struct TranscriptFinalizationState<Entry: Equatable & Sendable>: Equatabl
         public var stage: Stage
         /// Eligibility follows the latest attempted write, never an older saved one.
         public var latestWriteSucceeded: Bool
-        /// The entries of the latest successful write.
-        public var entries: [Entry]
-        /// Whether those entries hold recognized words.
-        public var usable: Bool
+        /// The text of the latest successful write.
+        public var raw: Raw?
+        public var far: Far?
+        /// While committing, the side being saved; once final, the side the file holds.
+        public var heard: Heard?
 
-        public init(stage: Stage = .writing, latestWriteSucceeded: Bool = false, entries: [Entry] = [], usable: Bool = false) {
-            self.stage = stage; self.latestWriteSucceeded = latestWriteSucceeded; self.entries = entries; self.usable = usable
+        public init(stage: Stage = .writing, latestWriteSucceeded: Bool = false, raw: Raw? = nil, far: Far? = nil, heard: Heard? = nil) {
+            self.stage = stage; self.latestWriteSucceeded = latestWriteSucceeded
+            self.raw = raw; self.far = far; self.heard = heard
         }
     }
 
@@ -26,6 +30,10 @@ public struct TranscriptFinalizationState<Entry: Equatable & Sendable>: Equatabl
         case writing
         /// Closed after a saved write: the far side's speakers are being found.
         case diarizing
+        /// The microphone side is being heard again from cleaned audio.
+        case cleaning
+        /// The cleaned microphone side is replacing the saved one.
+        case committing
         /// Closed after a saved write; the transcript is final.
         case finalized
         /// Closed after a failed write; the transcript is final as last saved.
@@ -37,6 +45,7 @@ public struct TranscriptFinalizationState<Entry: Equatable & Sendable>: Equatabl
 public struct FinalTranscript<Entry: Equatable & Sendable>: Equatable, Sendable {
 
     public let entries: [Entry]
+    /// Whether the entries hold recognized words.
     public let usable: Bool
     /// Whether the transcript file holds the latest text.
     public let finalWrite: Bool
@@ -46,35 +55,45 @@ public struct FinalTranscript<Entry: Equatable & Sendable>: Equatable, Sendable 
     }
 }
 
-public enum TranscriptFinalizationEvent<Entry: Equatable & Sendable>: Equatable, Sendable {
+public enum TranscriptFinalizationEvent<Raw: Equatable & Sendable, Far: Equatable & Sendable, Heard: Equatable & Sendable>: Equatable, Sendable {
 
-    case wrote(call: String, entries: [Entry], usable: Bool)
+    case wrote(call: String, Raw)
     case writeFailed(call: String)
     case closed(call: String)
-    /// The entries with their remote speakers; nil when diarizing failed.
-    case diarized(call: String, entries: [Entry]?)
+    /// Nil when diarizing failed: the far side stays as written.
+    case diarized(call: String, Far?)
+    /// Nil when cleanup kept the microphone side as written.
+    case cleaned(call: String, Heard?)
+    case committed(call: String, succeeded: Bool)
 }
 
-public enum TranscriptFinalizationEffect<Entry: Equatable & Sendable>: Equatable, Sendable {
+public enum TranscriptFinalizationEffect<Raw: Equatable & Sendable, Far: Equatable & Sendable, Heard: Equatable & Sendable, Entry: Equatable & Sendable>: Equatable, Sendable {
 
-    case diarize(call: String)
+    case diarize(call: String, Raw)
+    case clean(call: String, Raw, Far?)
+    case commit(call: String, Raw, Far?, Heard)
     case publish(call: String, FinalTranscript<Entry>)
 }
 
-public enum TranscriptFinalizationReducer<Entry: Equatable & Sendable> {
+public struct TranscriptFinalizationReducer<Raw: Equatable & Sendable, Far: Equatable & Sendable, Heard: Equatable & Sendable, Entry: Equatable & Sendable>: Sendable {
 
-    public typealias State = TranscriptFinalizationState<Entry>
-    public typealias Event = TranscriptFinalizationEvent<Entry>
-    public typealias Effect = TranscriptFinalizationEffect<Entry>
+    public typealias State = TranscriptFinalizationState<Raw, Far, Heard>
+    public typealias Event = TranscriptFinalizationEvent<Raw, Far, Heard>
+    public typealias Effect = TranscriptFinalizationEffect<Raw, Far, Heard, Entry>
 
-    public static func reduce(_ state: State, _ event: Event) -> (State, Effect?) {
+    private let entries: @Sendable (Raw, Far?, Heard?) -> [Entry]
+
+    /// `entries` gives a call's rows from its text, far side and heard microphone side.
+    public init(entries: @escaping @Sendable (Raw, Far?, Heard?) -> [Entry]) { self.entries = entries }
+
+    public func reduce(_ state: State, _ event: Event) -> (State, Effect?) {
 
         var next = state
         switch event {
-        case let .wrote(id, entries, usable):
+        case let .wrote(id, raw):
             var call = state.calls[id] ?? .init()
             guard call.stage == .writing else { return (state, nil) }
-            call.entries = entries; call.usable = usable; call.latestWriteSucceeded = true
+            call.raw = raw; call.latestWriteSucceeded = true
             next.calls[id] = call
             return (next, nil)
 
@@ -89,21 +108,44 @@ public enum TranscriptFinalizationReducer<Entry: Equatable & Sendable> {
             var call = state.calls[id] ?? .init()
             guard call.stage == .writing else { return (state, nil) }
             // Only a saved transcript has speakers to find; a failed one is final as it is.
-            guard call.latestWriteSucceeded else {
+            guard call.latestWriteSucceeded, let raw = call.raw else {
                 call.stage = .failed
                 next.calls[id] = call
-                return (next, .publish(call: id, .init(entries: call.entries, usable: call.usable, finalWrite: false)))
+                return (next, .publish(call: id, final(call, finalWrite: false)))
             }
             call.stage = .diarizing
             next.calls[id] = call
-            return (next, .diarize(call: id))
+            return (next, .diarize(call: id, raw))
 
-        case let .diarized(id, entries):
-            guard var call = state.calls[id], call.stage == .diarizing else { return (state, nil) }
-            if let entries { call.entries = entries }
+        case let .diarized(id, far):
+            guard var call = state.calls[id], call.stage == .diarizing, let raw = call.raw else { return (state, nil) }
+            call.far = far; call.stage = .cleaning
+            next.calls[id] = call
+            return (next, .clean(call: id, raw, far))
+
+        case let .cleaned(id, heard):
+            guard var call = state.calls[id], call.stage == .cleaning, let raw = call.raw else { return (state, nil) }
+            guard let heard else {
+                call.stage = .finalized
+                next.calls[id] = call
+                return (next, .publish(call: id, final(call, finalWrite: true)))
+            }
+            call.heard = heard; call.stage = .committing
+            next.calls[id] = call
+            return (next, .commit(call: id, raw, call.far, heard))
+
+        case let .committed(id, succeeded):
+            guard var call = state.calls[id], call.stage == .committing else { return (state, nil) }
+            // What the file holds is what consumers read: an uncommitted cleanup is dropped.
+            if !succeeded { call.heard = nil }
             call.stage = .finalized
             next.calls[id] = call
-            return (next, .publish(call: id, .init(entries: call.entries, usable: call.usable, finalWrite: true)))
+            return (next, .publish(call: id, final(call, finalWrite: true)))
         }
+    }
+
+    private func final(_ call: State.Call, finalWrite: Bool) -> FinalTranscript<Entry> {
+        let rows = call.raw.map { entries($0, call.far, call.heard) } ?? []
+        return .init(entries: rows, usable: !rows.isEmpty, finalWrite: finalWrite)
     }
 }
