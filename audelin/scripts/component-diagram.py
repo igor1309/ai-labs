@@ -16,13 +16,13 @@ from pathlib import Path
 # Lane: (title, colour, x, y, width, height, columns)
 LANES = {
     "compose": ("Composition", "#60a5fa", 40, 110, 1800, 130, 6),
-    "ui": ("UI", "#7dd3fc", 40, 280, 460, 230, 2),
-    "machines": ("State machines", "#fbbf24", 560, 280, 1240, 230, 5),
-    "text": ("Live text and plain components", "#bef264", 40, 530, 820, 550, 3),
-    "capture": ("Capture and processes", "#fb923c", 900, 530, 440, 550, 2),
-    "storage": ("Storage", "#a78bfa", 1380, 530, 460, 550, 2),
-    "tools": ("Rehearsal and integration helpers", "#60a5fa", 40, 1120, 1800, 140, 4),
-    "external": ("Platform and packages", "#94a3b8", 40, 1280, 1800, 120, 4),
+    "ui": ("UI", "#7dd3fc", 40, 280, 460, 380, 2),
+    "machines": ("State machines", "#fbbf24", 560, 280, 1240, 380, 5),
+    "text": ("Live text and plain components", "#bef264", 40, 680, 820, 550, 3),
+    "capture": ("Capture and processes", "#fb923c", 900, 680, 440, 550, 2),
+    "storage": ("Storage", "#a78bfa", 1380, 680, 460, 550, 2),
+    "tools": ("Rehearsal and integration helpers", "#60a5fa", 40, 1270, 1800, 140, 4),
+    "external": ("Platform and packages", "#94a3b8", 40, 1430, 1800, 206, 4),
 }
 
 # Target: (lane, line under its name, slot in the lane). Planned boxes have no target yet.
@@ -67,6 +67,9 @@ TARGETS = {
     "TranscriptFinalization": ("machines", "turns a saved transcript\ninto its final form", 9),
     "Lifecycle": ("machines", "drains recording before termination", 3),
     "CallDetail": ("machines", "decides the selected call's\nnotes and summary display", 8),
+    "CallsList": ("machines", "owns selection and inline rename editing", 10),
+    "RecordingConditions": ("machines", "decides recording availability", 11),
+    "CallNames": ("machines", "names one recording's remote rows", 12),
     "CallAudioAccess": ("machines", "keeps reception evidence fresh", 4),
     "Recording": ("machines", "decides whether a recording runs", 2),
     "Session": ("machines", "brings one recording's\npieces up and down", 0),
@@ -150,12 +153,12 @@ def main():
         sys.exit(f"update TARGETS: not drawn {unknown}, no longer in the package {gone}")
 
     cells = [
-        cell("canvas", "", "rounded=0;whiteSpace=wrap;html=1;fillColor=#252525;strokeColor=none;container=1;pointerEvents=0;", "1", 0, 0, 1880, 1470),
+        cell("canvas", "", "rounded=0;whiteSpace=wrap;html=1;fillColor=#252525;strokeColor=none;container=1;pointerEvents=0;", "1", 0, 0, 1880, 1706),
         cell("title", "Audelin", "text;html=1;align=left;verticalAlign=middle;fontSize=28;fontColor=#f8fafc;fontStyle=1;", "canvas", 40, 24, 400, 40),
         cell("subtitle", "components as built — generated from both package manifests by scripts/component-diagram.py",
              "text;html=1;align=left;verticalAlign=middle;fontSize=15;fontColor=#94a3b8;", "canvas", 42, 66, 900, 26),
         cell("legend", "solid box: a target · dashed box: planned · arrow: depends on",
-             "text;html=1;align=left;verticalAlign=middle;fontSize=13;fontColor=#94a3b8;", "canvas", 40, 1430, 900, 26),
+             "text;html=1;align=left;verticalAlign=middle;fontSize=13;fontColor=#94a3b8;", "canvas", 40, 1666, 900, 26),
     ]
     for lane, (title, colour, x, y, w, h, _) in LANES.items():
         cells.append(cell(f"lane-{lane}", title,
@@ -175,8 +178,14 @@ def main():
         place(lane, n, "planned-" + label, label, line, dashed=True)
     for lane, label, line, n in STANDING:
         place(lane, n, "standing-" + label, label, line)
-    for n, name in enumerate(sorted(externals)):
-        place("external", n * 2, name, name, "Swift package")
+    occupied = {n for lane, _, n in TARGETS.values() if lane == "external"}
+    occupied.update(n for lane, _, _, n in PLANNED + STANDING if lane == "external")
+    slot = 0
+    for name in sorted(externals):
+        while slot in occupied:
+            slot += 1
+        place("external", slot, name, name, "Swift package")
+        slot += 1
 
     edge = 0
     for name, deps in targets.items():
