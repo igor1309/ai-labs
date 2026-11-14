@@ -12199,6 +12199,17 @@
                           "gap": 4,
                           "children": [
                             {
+                              "type": "text",
+                              "id": "lCRql",
+                              "name": "Time",
+                              "fill": "$me",
+                              "content": "12:42",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-data",
+                              "fontSize": "$type-body",
+                              "fontWeight": "normal"
+                            },
+                            {
                               "type": "frame",
                               "id": "GwkBM",
                               "name": "Symbol microphone.fill",
@@ -12218,19 +12229,9 @@
                                   "height": 12.5
                                 }
                               ]
-                            },
-                            {
-                              "type": "text",
-                              "id": "lCRql",
-                              "name": "Time",
-                              "fill": "$me",
-                              "content": "12:42",
-                              "lineHeight": 1.45,
-                              "fontFamily": "$font-data",
-                              "fontSize": "$type-body",
-                              "fontWeight": "normal"
                             }
-                          ]
+                          ],
+                          "justifyContent": "end"
                         },
                         {
                           "type": "frame",
@@ -12272,6 +12273,17 @@
                           "gap": 4,
                           "children": [
                             {
+                              "type": "text",
+                              "id": "KM1eH",
+                              "name": "Time",
+                              "fill": "$them",
+                              "content": "12:42",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-data",
+                              "fontSize": "$type-body",
+                              "fontWeight": "normal"
+                            },
+                            {
                               "type": "frame",
                               "id": "I3LNK",
                               "name": "Symbol speaker.wave.3.fill",
@@ -12291,19 +12303,9 @@
                                   "height": 11
                                 }
                               ]
-                            },
-                            {
-                              "type": "text",
-                              "id": "KM1eH",
-                              "name": "Time",
-                              "fill": "$them",
-                              "content": "12:42",
-                              "lineHeight": 1.45,
-                              "fontFamily": "$font-data",
-                              "fontSize": "$type-body",
-                              "fontWeight": "normal"
                             }
-                          ]
+                          ],
+                          "justifyContent": "end"
                         },
                         {
                           "type": "frame",
@@ -12345,6 +12347,17 @@
                           "gap": 4,
                           "children": [
                             {
+                              "type": "text",
+                              "id": "Fwp4c",
+                              "name": "Time",
+                              "fill": "$me",
+                              "content": "12:42",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-data",
+                              "fontSize": "$type-body",
+                              "fontWeight": "normal"
+                            },
+                            {
                               "type": "frame",
                               "id": "QYXnM",
                               "name": "Symbol microphone.fill",
@@ -12364,19 +12377,9 @@
                                   "height": 12.5
                                 }
                               ]
-                            },
-                            {
-                              "type": "text",
-                              "id": "Fwp4c",
-                              "name": "Time",
-                              "fill": "$me",
-                              "content": "12:42",
-                              "lineHeight": 1.45,
-                              "fontFamily": "$font-data",
-                              "fontSize": "$type-body",
-                              "fontWeight": "normal"
                             }
-                          ]
+                          ],
+                          "justifyContent": "end"
                         },
                         {
                           "type": "frame",
