@@ -149,14 +149,14 @@ struct CallsListReducerTests {
     func otherRecordingChangesDoNothing_request(id: String?, editing: Bool) {
         assert(makeState(editing: editing ? makeEditing() : nil), .recordingChanged(id: id), delivers: nil)
     }
-    @Test(arguments: [CallsListMachineEvent.confirmDelete, .dismissFailure, .shown], [false, true])
+    @Test(arguments: [CallsListMachineEvent.confirmDelete, .shown], [false, true])
     func actionReplacesFailure_state(event: CallsListMachineEvent, editing: Bool) {
         assert(makeState(editing: editing ? makeEditing() : nil, failure: .retryFailed), event) {
             $0.failure = nil
             if event == .shown { $0.editing = nil }
         }
     }
-    @Test(arguments: [CallsListMachineEvent.confirmDelete, .dismissFailure, .shown], [false, true])
+    @Test(arguments: [CallsListMachineEvent.confirmDelete, .shown], [false, true])
     func actionReplacesFailure_request(event: CallsListMachineEvent, editing: Bool) {
         assert(makeState(editing: editing ? makeEditing() : nil, failure: .retryFailed), event, delivers: nil)
     }
@@ -207,7 +207,65 @@ struct CallsListReducerTests {
     func retryFinishedForCallNotRetrying_request(succeeded: Bool) {
         assert(makeState(retrying: ["b"]), .retryFinished("a", succeeded: succeeded), delivers: nil)
     }
+    @Test(arguments: ["a", "missing"], [false, true])
+    func openStartsAndAsksForTheFolder_state(id: String, editing: Bool) {
+        assert(makeState(editing: editing ? makeEditing() : nil, failure: .retryFailed), .open(id)) {
+            $0.editing = nil
+            $0.failure = nil
+            $0.opening = true
+            $0.requests = [.clearFailure, .openFolder(id)]
+            $0.asked += 1
+        }
+    }
+    @Test(arguments: ["a", "missing"], [false, true])
+    func openStartsAndAsksForTheFolder_request(id: String, editing: Bool) {
+        assert(makeState(editing: editing ? makeEditing() : nil, failure: .retryFailed), .open(id),
+               delivers: [.clearFailure, .openFolder(id)])
+    }
+
+    @Test(arguments: [(true, false), (false, true)])
+    func openRefusedWhileBusyOrOpening_state(busy: Bool, opening: Bool) {
+        assert(makeState(busy: busy, editing: makeEditing(), failure: .retryFailed, opening: opening), .open("a"))
+    }
+    @Test(arguments: [(true, false), (false, true)])
+    func openRefusedWhileBusyOrOpening_request(busy: Bool, opening: Bool) {
+        assert(makeState(busy: busy, editing: makeEditing(), failure: .retryFailed, opening: opening), .open("a"),
+               delivers: nil)
+    }
+
+    @Test(arguments: openOutcomes)
+    fileprivate func openFinished_state(test: OpenOutcomeCase) {
+        assert(makeState(opening: true), .openFinished("a", test.outcome)) {
+            $0.opening = false
+            $0.failure = test.failure
+        }
+    }
+    @Test(arguments: openOutcomes)
+    fileprivate func openFinished_request(test: OpenOutcomeCase) {
+        assert(makeState(opening: true), .openFinished("a", test.outcome), delivers: nil)
+    }
+
+    @Test(arguments: openOutcomes)
+    fileprivate func openFinishedWhileNotOpening_state(test: OpenOutcomeCase) {
+        assert(makeState(failure: .retryFailed), .openFinished("a", test.outcome))
+    }
+    @Test(arguments: openOutcomes)
+    fileprivate func openFinishedWhileNotOpening_request(test: OpenOutcomeCase) {
+        assert(makeState(failure: .retryFailed), .openFinished("a", test.outcome), delivers: nil)
+    }
 }
+
+private struct OpenOutcomeCase: Sendable {
+    let outcome: CallsListMachineState.OpenOutcome
+    let failure: CallsListMachineState.Failure?
+}
+
+private let openOutcomes: [OpenOutcomeCase] = [
+    .init(outcome: .opened, failure: nil),
+    .init(outcome: .notOpened, failure: .openFailed(id: "a")),
+    .init(outcome: .locationFailed(reason: "gone"), failure: .locationFailed(id: "a", reason: "gone")),
+]
+
 
 private struct RefusedRetry: Sendable {
     let rows: [CallsListMachineState.Row]
@@ -292,8 +350,9 @@ private func makeEditing(title: String = "Draft title") -> CallsListMachineState
 private func makeState(rows: [CallsListMachineState.Row] = [makeRow(id: "a"), makeRow(id: "b"), makeRow(id: "c")],
                        busy: Bool = false, selectedID: String? = nil,
                        editing: CallsListMachineState.Editing? = nil, retrying: Set<String> = [],
-                       failure: CallsListMachineState.Failure? = nil) -> CallsListMachineState {
-    .init(rows: rows, busy: busy, selectedID: selectedID, editing: editing, retrying: retrying, failure: failure)
+                       failure: CallsListMachineState.Failure? = nil, opening: Bool = false) -> CallsListMachineState {
+    .init(rows: rows, busy: busy, selectedID: selectedID, editing: editing, retrying: retrying, failure: failure,
+          opening: opening)
 }
 
 private func assert(_ state: CallsListMachineState, _ event: CallsListMachineEvent,

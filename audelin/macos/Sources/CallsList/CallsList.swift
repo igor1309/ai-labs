@@ -1,4 +1,4 @@
-/// Owns the calls list's selection, inline rename editing and summary retries.
+/// Owns the calls list's selection, inline rename editing, summary retries and opening a call's folder.
 public struct CallsListMachineState: Equatable, Sendable {
     public struct Row: Equatable, Sendable {
         public var id: String
@@ -21,16 +21,29 @@ public struct CallsListMachineState: Equatable, Sendable {
         }
     }
 
-    /// What the list asks of others: Recordings renames and clears its failure, SummaryJobs retries.
+    /// What the list asks of others: Recordings renames and clears its failure, SummaryJobs retries,
+    /// and the app opens a call's folder.
     public enum Request: Equatable, Sendable {
         case rename(id: String, title: String)
         case clearFailure
         case retrySummary(String)
+        case openFolder(String)
     }
 
     /// Why the list's own last action failed.
     public enum Failure: Equatable, Sendable {
         case retryFailed
+        /// The call's folder was found but did not open.
+        case openFailed(id: String)
+        /// The call's folder could not be found, for the given reason.
+        case locationFailed(id: String, reason: String)
+    }
+
+    /// How opening a call's folder ended.
+    public enum OpenOutcome: Equatable, Sendable {
+        case opened
+        case notOpened
+        case locationFailed(reason: String)
     }
 
     public var rows: [Row]
@@ -41,15 +54,18 @@ public struct CallsListMachineState: Equatable, Sendable {
     /// Calls whose summary retry is running; they cannot be retried again until it answers.
     public var retrying: Set<String>
     public var failure: Failure?
+    /// A call's folder is being opened; the list takes no other action until it answers.
+    public var opening: Bool
     /// The requests the latest asking event made, in order.
     public var requests: [Request]
     /// How many events have made requests; new requests are sent when it grows.
     public var asked: Int
 
     public init(rows: [Row] = [], busy: Bool = false, selectedID: String? = nil, editing: Editing? = nil,
-                retrying: Set<String> = [], failure: Failure? = nil, requests: [Request] = [], asked: Int = 0) {
+                retrying: Set<String> = [], failure: Failure? = nil, opening: Bool = false,
+                requests: [Request] = [], asked: Int = 0) {
         self.rows = rows; self.busy = busy; self.selectedID = selectedID; self.editing = editing
-        self.retrying = retrying; self.failure = failure; self.requests = requests; self.asked = asked
+        self.retrying = retrying; self.failure = failure; self.opening = opening; self.requests = requests; self.asked = asked
     }
 }
 
@@ -67,8 +83,8 @@ public enum CallsListMachineEvent: Equatable, Sendable {
     case retryFinished(String, succeeded: Bool)
     /// The window was shown again.
     case shown
-    /// Another action began that replaces the shown failure.
-    case dismissFailure
+    case open(String)
+    case openFinished(String, CallsListMachineState.OpenOutcome)
 }
 
 public struct CallsListReducer: Sendable {
@@ -92,7 +108,7 @@ public struct CallsListReducer: Sendable {
         case .askDelete:
             state.editing = nil
             state.failure = nil
-        case .confirmDelete, .dismissFailure: state.failure = nil
+        case .confirmDelete: state.failure = nil
         case .shown:
             state.editing = nil
             state.failure = nil
@@ -114,6 +130,20 @@ public struct CallsListReducer: Sendable {
             state.retrying.insert(id)
             state.failure = nil
             ask([.clearFailure, .retrySummary(id)], &state)
+        case let .open(id):
+            guard !state.busy, !state.opening else { return state }
+            state.editing = nil
+            state.failure = nil
+            state.opening = true
+            ask([.clearFailure, .openFolder(id)], &state)
+        case let .openFinished(id, outcome):
+            guard state.opening else { return state }
+            state.opening = false
+            switch outcome {
+            case .opened: break
+            case .notOpened: state.failure = .openFailed(id: id)
+            case let .locationFailed(reason): state.failure = .locationFailed(id: id, reason: reason)
+            }
         case let .retryFinished(id, succeeded):
             guard state.retrying.remove(id) != nil else { return state }
             if !succeeded { state.failure = .retryFailed }

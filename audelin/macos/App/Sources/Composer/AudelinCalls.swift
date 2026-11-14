@@ -55,8 +55,6 @@ public final class AudelinCalls {
     private let timeZone: TimeZone
     private let now: () -> Date
     private let recordingState: () -> RecordingState
-    private var openFailure: String?
-    private var opening = false
     private let describe: (any Error) -> String
     /// The calls list's text, in the language Audelin is shown in.
     public private(set) var listText: CallsListText
@@ -133,14 +131,16 @@ public final class AudelinCalls {
         state.selectedID = state.rows.contains { $0.id == selectedID } ? selectedID : nil
         state.narrow = narrow
         state.editing = list.state.editing.map { .init(id: $0.id, title: $0.title) }
-        state.failure = openFailure ?? list.state.failure.map(failureText) ?? state.failure
-        state.busy = state.busy || opening
+        state.failure = list.state.failure.map(failureText) ?? state.failure
+        state.busy = state.busy || list.state.opening
         return state
     }
 
     private func failureText(_ failure: CallsListMachineState.Failure) -> String {
         switch failure {
         case .retryFailed: listText(.summaryRetryFailed)
+        case let .openFailed(id): listText(.openFailed, id)
+        case let .locationFailed(id, reason): "«\(id)»: \(reason)"
         }
     }
 
@@ -193,7 +193,7 @@ public final class AudelinCalls {
 
     var recordingsState: RecordingsState { inputs.state() }
     /// No folder move, delete or rename is under way or waiting on an answer.
-    var idle: Bool { inputs.state().phase == .idle && list.state.editing == nil && !opening }
+    var idle: Bool { inputs.state().phase == .idle && list.state.editing == nil && !list.state.opening }
     func sendRecordings(_ event: RecordingsEvent) {
         recordingChanged(recordingState())
         inputs.send(event)
@@ -205,7 +205,6 @@ public final class AudelinCalls {
 
     public func show() {
         search(query)
-        openFailure = nil
         list.event(.shown)
         inputs.send(.refresh)
         present()
@@ -305,7 +304,6 @@ public final class AudelinCalls {
         let asked = list.state.asked
         list.event(event)
         guard list.state.asked > asked else { return }
-        openFailure = nil
         for request in list.state.requests {
             switch request {
             case let .rename(id, title): inputs.send(.rename(id: id, title: title))
@@ -314,6 +312,11 @@ public final class AudelinCalls {
                 let succeeded: Bool
                 do { try await retrySummary(id); succeeded = true } catch { succeeded = false }
                 await sendList(.retryFinished(id, succeeded: succeeded))
+            case let .openFolder(id):
+                let outcome: CallsListMachineState.OpenOutcome
+                do { outcome = openFolder(try await location(id)) ? .opened : .notOpened }
+                catch { outcome = .locationFailed(reason: describe(error)) }
+                await sendList(.openFinished(id, outcome))
             }
         }
     }
@@ -325,7 +328,7 @@ public final class AudelinCalls {
     }
 
     public func send(_ event: CallsListEvent) async {
-        guard !opening else { return }
+        guard !list.state.opening else { return }
         recordingChanged(recordingState())
         let snapshot = state
         await sendList(.rowsChanged(snapshot.rows.map { .init(id: $0.id, title: $0.title, editable: $0.editable, canRetry: $0.canRetrySummary) },
@@ -337,11 +340,9 @@ public final class AudelinCalls {
         case .submitRename: await sendList(.submitRename)
         case let .askDelete(id):
             await sendList(.askDelete(id))
-            openFailure = nil
             inputs.send(.askDelete(id))
         case .confirmDelete:
             await sendList(.confirmDelete)
-            openFailure = nil
             inputs.send(.confirmDelete)
         case .cancelDelete: inputs.send(.cancelDelete)
         case let .select(id):
@@ -371,18 +372,7 @@ public final class AudelinCalls {
             makeSummary(id)
         case let .retrySummary(id):
             await sendList(.retry(id))
-        case let .open(id):
-            guard !snapshot.busy else { return }
-            await sendList(.cancelRename)
-            await sendList(.dismissFailure)
-            openFailure = nil
-            inputs.send(.clearFailure)
-            opening = true
-            defer { opening = false }
-            do {
-                let url = try await location(id)
-                if !openFolder(url) { openFailure = listText(.openFailed, id) }
-            } catch { openFailure = "«\(id)»: \(describe(error))" }
+        case let .open(id): await sendList(.open(id))
         }
     }
 }

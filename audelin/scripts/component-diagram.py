@@ -67,7 +67,7 @@ TARGETS = {
     "TranscriptFinalization": ("machines", "turns a saved transcript\ninto its final form", 9),
     "Lifecycle": ("machines", "drains recording before termination", 3),
     "CallDetail": ("machines", "decides the selected call's\nnotes and summary display", 8),
-    "CallsList": ("machines", "owns selection, rename\nand summary retries", 10),
+    "CallsList": ("machines", "owns selection, rename,\nretries and opening a folder", 10),
     "RecordingConditions": ("machines", "decides recording availability", 11),
     "CallNames": ("machines", "names one recording's remote rows", 12),
     "CallAudioAccess": ("machines", "keeps reception evidence fresh", 4),
