@@ -3,6 +3,7 @@ import CallsStorage
 import Foundation
 import Recordings
 import TrackFile
+import TranscriptFile
 import TranscriptFormat
 
 /// The calls storage over the system disk, reading audio duration and transcript lines.
@@ -23,6 +24,8 @@ func transcriptLines(_ markdown: String) -> [Calls.Text.Line] {
 struct SummaryCalls: RecordingsCalls {
     let storage: CallsStorage
     let deleted: @Sendable (String) async -> Void
+    /// Writes a merged call's joined transcript.
+    var binding: any TranscriptFileBinding = DiskTranscriptBinding()
     func list() async throws -> [RecordedCall] {
         try await storage.list().map { .init(id: $0.id, title: $0.title, start: $0.start, duration: $0.duration) }
     }
@@ -33,8 +36,9 @@ struct SummaryCalls: RecordingsCalls {
     }
     func prepareMove(to destination: URL) async throws -> [MoveCall] { try await storage.prepareMove(to: destination) }
     func move(id: String, to destination: URL) async throws -> Int64 { try await storage.move(id: id, to: destination) }
-    func merge(ids: [String]) async throws -> String { throw MergeNotComposed() }
+    func merge(ids: [String]) async throws -> String {
+        let merged = try await mergeCalls(ids: ids, storage: storage, binding: binding)
+        for id in ids { await deleted(id) }
+        return merged
+    }
 }
-
-/// The merge chain is not composed yet; nothing opens merge mode until it is.
-struct MergeNotComposed: Error {}

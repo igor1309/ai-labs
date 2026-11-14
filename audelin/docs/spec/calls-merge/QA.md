@@ -54,7 +54,9 @@ With the final rename done, the merged call stays. A merge interrupted
 before any part moved leaves only the parts. Evidence:
 `CallsMergeTests.S7_anInterruptedMergeIsPutBack()`,
 `aMergeInPlaceStaysWhenCallsStarts()` and
-`anInterruptedMergeBeforeAnyPartMovedLeavesNothing()`.
+`anInterruptedMergeBeforeAnyPartMovedLeavesNothing()`. The app's storage puts it
+back as it restores, before its first listing:
+`CallsStorageMergeTests.restoringPutsBackAMergeInterruptedBeforeItWasInPlace()`.
 
 ## S-8 A merged call is deleted with its parts
 
