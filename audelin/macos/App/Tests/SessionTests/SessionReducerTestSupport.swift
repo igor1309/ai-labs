@@ -1,5 +1,6 @@
 import Foundation
 import Session
+import Testing
 
 extension SessionReducerTests {
 
@@ -44,6 +45,15 @@ extension SessionReducerTests {
             case .preference: .preferenceChanged(enabled)
             }
         }
+    }
+
+    /// One `(state, event)` a parameterised test checks.
+    struct Case: Sendable, CustomTestStringConvertible {
+
+        let state: SessionState
+        let event: SessionEvent
+
+        var testDescription: String { "\(event) in \(state.phase)" }
     }
 
     /// The phases and call text statuses in which a status from call text counts.
@@ -99,21 +109,27 @@ func unavailable(_ side: SessionSide) -> [[SessionState.Piece: SessionState.Heal
     [[.access(side): .accessLost], [.capture(side): .failed(anyError())]]
 }
 
-func unmatchedReplies() -> [(SessionState, SessionEvent)] {
+func unmatchedReplies() -> [SessionReducerTests.Case] {
 
-    let held = SessionState.LiveTextRequest(id: anyRequestID(), enabled: .random())
+    let held = SessionState.LiveTextRequest(id: anyRequestID(), enabled: true)
     let holding = makeRecording().with { $0.pendingLiveText = held }
-    let error = [nil, anyError()].randomElement()!
-    return [
-        (makeRecording(), .liveTextSet(request: held, error: error)),
-        (holding, .liveTextSet(request: .init(id: held.id + 1, enabled: held.enabled), error: error)),
-        (holding, .liveTextSet(request: .init(id: held.id, enabled: !held.enabled), error: error)),
-    ]
+    return results.flatMap { error in [
+        .init(state: makeRecording(), event: .liveTextSet(request: held, error: error)),
+        .init(state: holding, event: .liveTextSet(request: .init(id: held.id + 1, enabled: held.enabled), error: error)),
+        .init(state: holding, event: .liveTextSet(request: .init(id: held.id, enabled: !held.enabled), error: error)),
+    ] }
 }
 
-func resultsNotAwaited() -> [(SessionState, SessionEvent)] {
+func resultsNotAwaited() -> [SessionReducerTests.Case] {
 
-    let error = [nil, anyError()].randomElement()!
+    results.flatMap(resultsNotAwaited(error:)).enumerated().map { index, pair in
+        let (piece, status, event) = pair
+        return .init(state: makeScrambled(phases[index % phases.count]).with { $0[status: piece] = status }, event: event)
+    }
+}
+
+private func resultsNotAwaited(error: String?) -> [(SessionState.Piece, SessionState.PieceStatus, SessionEvent)] {
+
     var awaitingStart: [(SessionState.Piece, SessionEvent)] = [
         (.folder, .folderFinished(error: nil, folder: anyFolder())),
         (.folder, .folderFinished(error: anyError())),
@@ -135,18 +151,16 @@ func resultsNotAwaited() -> [(SessionState, SessionEvent)] {
     let cases = [(SessionState.PieceStatus.starting, awaitingStart), (.stopping, awaitingStop)]
     return cases.flatMap { awaited, events in
         events.flatMap { piece, event in
-            statuses.filter { $0 != awaited }.map { status in
-                (makeScrambled(phases.randomElement()!).with { $0[status: piece] = status }, event)
-            }
+            statuses.filter { $0 != awaited }.map { status in (piece, status, event) }
         }
     }
 }
 
-func eventsInTheWrongPhase() -> [(SessionState, SessionEvent)] {
+func eventsInTheWrongPhase() -> [SessionReducerTests.Case] {
 
     var cases: [(SessionState, SessionEvent)] = []
     for phase in phases where phase != .idle {
-        cases.append((makeScrambled(phase), .begin(liveText: .random())))
+        for liveText in [true, false] { cases.append((makeScrambled(phase), .begin(liveText: liveText))) }
     }
     for phase in phases where phase != .bringingUp {
         cases.append((makeScrambled(phase).with { $0.folder = .down }, .modelsChecked(missing: [])))
@@ -157,7 +171,7 @@ func eventsInTheWrongPhase() -> [(SessionState, SessionEvent)] {
     }
     for phase in phases where phase != .recording {
         for change in SessionReducerTests.LiveTextChange.allCases {
-            cases.append((makeScrambled(phase), change.event(.random())))
+            for enabled in [true, false] { cases.append((makeScrambled(phase), change.event(enabled))) }
         }
     }
     for phase in phases {
@@ -185,7 +199,7 @@ func eventsInTheWrongPhase() -> [(SessionState, SessionEvent)] {
             }
         }
     }
-    return cases
+    return cases.map { .init(state: $0.0, event: $0.1) }
 }
 
 // MARK: - States
@@ -193,10 +207,10 @@ func eventsInTheWrongPhase() -> [(SessionState, SessionEvent)] {
 func makeState(_ phase: SessionState.Phase) -> SessionState {
 
     SessionState(
-        wantedLiveText: .random(),
+        wantedLiveText: true,
         liveTextRequestID: anyRequestID(),
         phase: phase,
-        liveText: liveTexts.randomElement()!,
+        liveText: .on,
         recordedFolder: anyFolder(),
         processSelection: anySelection(),
         failures: [.init(piece: anyError(), message: anyError())]
@@ -233,7 +247,7 @@ func makeRecording(withDown down: [SessionState.Piece] = []) -> SessionState {
 func makeHoldingLiveText(stale: Bool = false) -> SessionState {
 
     makeRecording().with {
-        $0.pendingLiveText = .init(id: $0.liveTextRequestID - (stale ? 1 : 0), enabled: .random())
+        $0.pendingLiveText = .init(id: $0.liveTextRequestID - (stale ? 1 : 0), enabled: true)
     }
 }
 
@@ -252,11 +266,12 @@ func makeHosting(_ host: SessionReducerTests.LiveTextHost) -> SessionState {
     makeState(host.phase).with { $0.callText = host.callText }
 }
 
-/// Any phase and piece statuses: for events whose guard must decide on one field alone.
+/// Mixed piece statuses in any phase: for events whose guard must decide on one field alone.
 func makeScrambled(_ phase: SessionState.Phase) -> SessionState {
 
-    makeState(phase).with { state in
-        for piece in bringUpOrder { state[status: piece] = statuses.randomElement()! }
+    let offset = phases.firstIndex(of: phase)!
+    return makeState(phase).with { state in
+        for (index, piece) in bringUpOrder.enumerated() { state[status: piece] = statuses[(index + offset) % statuses.count] }
     }
 }
 
@@ -318,10 +333,10 @@ func stopEffect(_ piece: SessionState.Piece) -> SessionEffect {
 
 // MARK: - Any values
 
-func anyError() -> String { "error \(UUID().uuidString)" }
-func anyFolder() -> SessionCallFolder { .init(id: UUID().uuidString) }
-func anySelection() -> SessionProcessSelection { .init(id: UUID().uuidString) }
-func anyRequestID() -> UInt64 { .random(in: 1 ... 1_000) }
+func anyError() -> String { "any error" }
+func anyFolder() -> SessionCallFolder { .init(id: "any folder") }
+func anySelection() -> SessionProcessSelection { .init(id: "any selection") }
+func anyRequestID() -> UInt64 { 42 }
 
 // MARK: - State edits
 

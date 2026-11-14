@@ -116,14 +116,16 @@ extension SessionReducerTests {
         assert(state, .liveTextSet(request: state.pendingLiveText!, error: nil), delivers: nil)
     }
 
-    @Test func replyThatDoesNotMatchTheHeldRequestChangesNothing_state() {
+    @Test(arguments: unmatchedReplies())
+    func replyThatDoesNotMatchTheHeldRequestChangesNothing_state(_ ignored: Case) {
 
-        for (state, event) in unmatchedReplies() { assert(state, event) }
+        assert(ignored.state, ignored.event)
     }
 
-    @Test func replyThatDoesNotMatchTheHeldRequestChangesNothing_effect() {
+    @Test(arguments: unmatchedReplies())
+    func replyThatDoesNotMatchTheHeldRequestChangesNothing_effect(_ ignored: Case) {
 
-        for (state, event) in unmatchedReplies() { assert(state, event, delivers: nil) }
+        assert(ignored.state, ignored.event, delivers: nil)
     }
 
     @Test(arguments: liveTextHosts, liveTexts)
@@ -240,23 +242,27 @@ extension SessionReducerTests {
 
     // MARK: Ignored events
 
-    @Test func resultForAPieceNotInTheAwaitedStatusIsIgnored_state() {
+    @Test(arguments: resultsNotAwaited())
+    func resultForAPieceNotInTheAwaitedStatusIsIgnored_state(_ ignored: Case) {
 
-        for (state, event) in resultsNotAwaited() { assert(state, event) }
+        assert(ignored.state, ignored.event)
     }
 
-    @Test func resultForAPieceNotInTheAwaitedStatusIsIgnored_effect() {
+    @Test(arguments: resultsNotAwaited())
+    func resultForAPieceNotInTheAwaitedStatusIsIgnored_effect(_ ignored: Case) {
 
-        for (state, event) in resultsNotAwaited() { assert(state, event, delivers: nil) }
+        assert(ignored.state, ignored.event, delivers: nil)
     }
 
-    @Test func eventInTheWrongPhaseIsIgnored_state() {
+    @Test(arguments: eventsInTheWrongPhase())
+    func eventInTheWrongPhaseIsIgnored_state(_ ignored: Case) {
 
-        for (state, event) in eventsInTheWrongPhase() { assert(state, event) }
+        assert(ignored.state, ignored.event)
     }
 
-    @Test func eventInTheWrongPhaseIsIgnored_effect() {
+    @Test(arguments: eventsInTheWrongPhase())
+    func eventInTheWrongPhaseIsIgnored_effect(_ ignored: Case) {
 
-        for (state, event) in eventsInTheWrongPhase() { assert(state, event, delivers: nil) }
+        assert(ignored.state, ignored.event, delivers: nil)
     }
 }
