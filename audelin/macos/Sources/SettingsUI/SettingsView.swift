@@ -184,27 +184,23 @@ extension SettingsView {
 
     /// The tab bar is the same segmented track; each tab stays its own
     /// button to the keyboard and assistive apps.
+    /// The tab bar is the same segmented picker as Language and Appearance:
+    /// one Tab stop, arrow keys switch tabs, each tab a radio button.
     var tabs: some View {
 
         let all: [(String, SettingsState.Tab)] = [
             (text(.generalTab), .general), (text(.recordingTab), .recording), (text(.callNotesTab), .callNotes),
         ]
+        let titles = all.map(\.0)
+        let selected = all.firstIndex { $0.1 == state.selectedTab }
 
         return segmentTrack(
-            titles: all.map(\.0), enabled: all.map { _ in true },
-            selected: all.firstIndex { $0.1 == state.selectedTab },
-            ring: all.firstIndex { focusedControl == "tab-\($0.1.rawValue)" }
+            titles: titles, enabled: titles.map { _ in true }, selected: selected,
+            ring: focusedControl == "tabs" ? selected : nil
         )
         .overlay {
-            HStack(spacing: tokens.space2) {
-                ForEach(all, id: \.1) { title, tab in
-                    let id = "tab-\(tab.rawValue)"
-                    SettingsPressTarget(
-                        title: title, identifier: id, isEnabled: true, selected: state.selectedTab == tab,
-                        action: { event(.selectTab(tab)) }, focusChanged: { focusChanged(id, $0) })
-                }
-            }
-            .padding(tokens.space2)
+            segmentsTarget(titles: titles, enabled: titles.map { _ in true }, selected: selected, id: "tabs",
+                           segmentIDs: all.map { "tab-\($0.1.rawValue)" }) { event(.selectTab(all[$0].1)) }
         }
     }
 
