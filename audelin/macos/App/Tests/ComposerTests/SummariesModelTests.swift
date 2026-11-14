@@ -80,6 +80,20 @@ import Testing
         sut.drop(parts: ["call", "other"])
         try await waitUntil("the parts are dropped") { sut.state.calls.isEmpty }
     }
+    @Test func S15_aMergedCallsNotesAreMadeFromItsJoinedTranscript() async throws {
+        let files = FilesFake()
+        files.stored = try await record(phase: "succeeded")
+        let sut = makeSUT(files)
+        sut.recover(calls: ["call"])
+        sut.waiting(call: "other")
+        try await waitUntil("the parts are known") { sut.state.calls["call"]?.stage == .succeeded && sut.state.calls["other"] != nil }
+        sut.merged(call: "call", parts: ["call", "other"],
+                   entries: [.init(label: "A", time: "0", text: "first part"), .init(label: "1.A", time: "900", text: "second part")])
+        try await waitUntil("the merged call's notes are saved") { sut.state.calls["call"]?.stage == .succeeded && files.claimed.count == 1 }
+        #expect(sut.state.calls["other"] == nil)
+        let snapshot = String(decoding: try #require(files.claimed.first).snapshot, as: UTF8.self)
+        #expect(snapshot.contains("first part") && snapshot.contains("second part"))
+    }
     @Test func launchRecoversEachStoredCall() async throws {
         let files = FilesFake()
         files.stored = try await record(phase: "succeeded")

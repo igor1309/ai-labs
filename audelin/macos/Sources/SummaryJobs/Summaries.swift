@@ -228,6 +228,10 @@ public struct SummariesReducer: Sendable {
             // A submission waits for recovery; a saved job takes precedence over it.
             next.calls[submission.call]?.submission = submission
             return (next, nil)
+        case let .submit(submission) where state.lifecycle == .accepting && state.calls[submission.call]?.stage == .discarding
+                                        && state.calls[submission.call]?.submission == nil:
+            next.calls[submission.call]?.submission = submission
+            return (next, nil)
         case let .waiting(id) where state.lifecycle == .accepting && state.calls[id] == nil:
             call = id
             next.calls[id] = .init(stage: .waiting)
@@ -302,6 +306,10 @@ public struct SummariesReducer: Sendable {
         case let .saved(id) where state.calls[id]?.stage == .saving:
             call = id
             next.calls[id]?.stage = state.calls[id]?.terminal ?? .failed
+        case let .storageFailed(id) where state.lifecycle == .accepting && state.calls[id]?.stage == .discarding
+                                          && state.calls[id]?.submission != nil:
+            // The merged call's own job replaces the part's, so a part's job that cannot be discarded does not hold it up.
+            return reduce(state, .discarded(id))
         case let .storageFailed(id) where state.calls[id].map({ SummariesReducer.working.contains($0.stage) }) ?? false:
             call = id
             next.calls[id]?.stage = .failed; next.calls[id]?.cancelling = false
@@ -351,8 +359,14 @@ public struct SummariesReducer: Sendable {
             call = id
             next.calls[id]?.stage = .interrupted
         case let .discarded(id) where state.calls[id]?.stage == .discarding:
-            next.calls[id] = nil
-            return (next, nil)
+            // A merged call's joined transcript waits for its earliest part's job to be discarded.
+            guard let submission = state.calls[id]?.submission, state.lifecycle == .accepting else {
+                next.calls[id] = nil
+                return (next, nil)
+            }
+            call = id
+            next.calls[id] = .init(stage: .preparing, requested: submission.requested, submission: submission)
+            effect = .prepare(submission)
         case .shutdown where state.lifecycle == .accepting:
             next.lifecycle = .draining; next.dispatch = false
             var jobs: [Job] = []

@@ -73,4 +73,7 @@ both parts' text. Evidence, for the dropped jobs:
 `SummariesRetryReducerTests.S15_droppingAMergedPartsSettledCallDropsIt(stage:)`,
 `droppingARunningCallChangesNothing(stage:)` and
 `SummariesModelTests.S15_dropDropsEveryMergedPart()`; the joined request:
-Missing.
+`SummariesModelTests.S15_aMergedCallsNotesAreMadeFromItsJoinedTranscript()`,
+waiting for a part's stored job to be discarded:
+`SummariesCancelReducerTests.S15_aMergedCallsSubmissionWaitsForItsPartsDiscard()`
+and `S15_aMergedCallsSubmissionIsPreparedOnceThePartsJobIsGone(event:)`.
