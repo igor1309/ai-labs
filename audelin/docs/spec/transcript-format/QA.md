@@ -77,3 +77,11 @@ parts, read back by the reading tests: each part with words, with its label,
 whole-second start and words as written, blank lines and CRLF included,
 starts past 99 hours too; the header, text before the first part and the
 Speakers section are skipped.
+Rendering what was read gives the same bytes, for a transcript with named
+speakers, a gap, filled-in and wordless parts. Evidence: Missing.
+
+## S-12 A gap reads as the call cut off
+
+A rendering with a gap of 120 s at 480 s shows a row at 00:08:00 saying the
+call was cut off for two minutes; read back, it is a gap of 120 s at 480 s.
+Evidence: Missing.
