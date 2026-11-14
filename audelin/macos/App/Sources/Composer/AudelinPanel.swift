@@ -1,8 +1,12 @@
+import CallNames
 import Foundation
+import IMRxObservation
 import Observation
 import PanelUI
 import Reading
 import Session
+import SpeakerNaming
+import ZoomAccessibility
 
 /// One recording's reading model as the panel uses it; the app makes it on the main actor.
 struct ReadingInputs: Sendable {
@@ -81,11 +85,25 @@ actor AudelinPanel {
             await self?.receive(state, id: id)
         }, intervals: intervals)
         let made = await ReadingSubscription(reading: reading, text: text, speakers: speakers, now: now, ticks: ticks(), sink: sink,
-                                                  names: CallLiveNames(openBrowser: browser, monotonic: now, sleep: sleep)) { state in
+                                                  sources: callAppSources()) { state in
             await update(state)
         }
         if current?.id == id { subscription = (id, made) }
         return made
+    }
+
+    /// The call app's sources for one recording, timed by its call clock.
+    private func callAppSources() -> @Sendable (@escaping @Sendable () async -> Double?) -> [any CallAppObserver] {
+
+        let browser = browser, now = now, sleep = sleep
+        return { clock in
+            let windows = ZoomWindows()
+            return [
+                ZoomCallObserver(isPermitted: { windows.isPermitted }, windows: { windows.windows() }, clock: clock,
+                                 sleep: { try await Task.sleep(for: $0) }),
+                BrowserCallObserver(openBrowser: browser, clock: clock, monotonic: now, sleep: sleep),
+            ]
+        }
     }
 
     /// Takes the recording's reading feed to its end first, so its last text and speakers are shown;
@@ -146,19 +164,41 @@ final class ReadingSubscription {
     private let text: Task<Void, Never>
     private let timer: Task<Void, Never>
     private let observation: Task<Void, Never>
-    private let names: CallLiveNames
+    private let names: ObservableModel<CallNamesState, CallNamesEvent, CallNamesEffect>
+    private let naming: Task<Void, Never>
     private var ended = false
 
     init(
         reading: ReadingInputs, text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]>,
-        now: @escaping @Sendable () -> Double, ticks: AsyncStream<Void>, sink: any LogSink, names: CallLiveNames,
+        now: @escaping @Sendable () -> Double, ticks: AsyncStream<Void>, sink: any LogSink,
+        sources: @Sendable (@escaping @Sendable () async -> Double?) -> [any CallAppObserver],
         receive: @escaping @Sendable (ReadingState) async -> Void
     ) async {
 
-        self.names = names
         self.reading = reading
         let time = ReadingTime(reading: reading, now: now)
         self.time = time
+        let reducer = CallNamesReducer(
+            name: { LiveNames().match(start: $0, end: $1, roster: $2, activities: $3, through: $4) },
+            confirm: { rows, turns, evidence in
+                AfterCallNames.names(rows: rows.map { ($0.id, $0.start, $0.end) }, turns: turns, evidence: evidence)
+            })
+        let handler = CallNamesEffectHandler(sources: sources { await time.elapsed() })
+        let names = ObservableModel(initialState: CallNamesState(), reduce: reducer.reduce, handleEffect: handler.handle)
+        self.names = names
+        LiveNameBoard.shared.reset()
+        let shown = ShownText(reading: reading)
+        let published = Observations { names.state }
+        naming = Task {
+            for await state in published {
+                guard !Task.isCancelled else { return }
+                // The transcript writer and the after-call pass still read the board.
+                LiveNameBoard.shared.give(state.rowNames)
+                LiveNameBoard.shared.record(roster: state.roster, spoken: state.spoken.map { ($0.name, $0.start, $0.end) },
+                                            through: state.through)
+                shown.namesChanged(state.rowNames)
+            }
+        }
         let presenter = ReadingPresenter(sink: sink, receive: receive)
         self.presenter = presenter
         await receive(reading.state())
@@ -170,16 +210,15 @@ final class ReadingSubscription {
             }
         }
         LiveNameBoard.shared.listen { names in await reading.send(.namesConfirmed(names)) }
-        let names = self.names
-        await names.start { await time.elapsed() }
+        names.event(.start)
         self.text = Task {
             var mapped = 0
             for await state in text {
                 guard !Task.isCancelled else { return }
                 let remote = state.entries[mapped...].filter { $0.speaker != .mine }
-                    .map { (id: $0.text.id, start: $0.text.start, end: $0.text.end) }
-                let given = remote.isEmpty ? [:] : await names.names(for: remote)
-                reading.send(.textUpdated(readingText(state, from: mapped, names: given)))
+                    .map { Row(id: $0.text.id, start: $0.text.start, end: $0.text.end) }
+                if !remote.isEmpty, let now = await time.elapsed() { names.event(.rows(remote, now: now)) }
+                shown.show(state, from: mapped)
                 mapped = state.finalCount
             }
             // The speakers come after the call's last text, so every row they name is shown.
@@ -212,7 +251,9 @@ final class ReadingSubscription {
 
         guard !ended else { return }
         ended = true
-        await names.stop()
+        names.event(.stop)
+        for await state in Observations({ self.names.state }) where state.observation != .observing && state.observation != .stopping { break }
+        naming.cancel()
         await text.value
         timer.cancel()
         await timer.value
@@ -229,6 +270,32 @@ final class ReadingSubscription {
         text.cancel()
         timer.cancel()
         observation.cancel()
+        naming.cancel()
+    }
+}
+
+/// The text last shown and the names CallNames last published: new text shows the
+/// latest names, and new names show again the text last shown.
+@MainActor
+private final class ShownText {
+
+    private let reading: ReadingInputs
+    private var names: [Int: String] = [:]
+    private var last: (state: CallState, from: Int)?
+
+    init(reading: ReadingInputs) { self.reading = reading }
+
+    func show(_ state: CallState, from: Int) {
+
+        last = (state, from)
+        reading.send(.textUpdated(readingText(state, from: from, names: names)))
+    }
+
+    func namesChanged(_ names: [Int: String]) {
+
+        guard names != self.names else { return }
+        self.names = names
+        if let last { reading.send(.textUpdated(readingText(last.state, from: last.from, names: names))) }
     }
 }
 
