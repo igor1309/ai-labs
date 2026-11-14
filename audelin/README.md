@@ -124,3 +124,11 @@ folder it prints under `$TMPDIR`. It runs nightly on the self-hosted Mac.
   reach the login keychain and `codesign` fails with `errSecInternalComponent`.
   Reinstalling the runner with `svc.sh install` adds it back; remove it with
   `/usr/libexec/PlistBuddy -c "Delete :SessionCreate" <plist>` and reload the agent.
+- **Public releases:** the `Audelin Release` workflow runs on the same runner every
+  Monday at 04:00 UTC and on manual dispatch. `scripts/release.sh` builds the app
+  signed with the Developer ID Application certificate, notarizes and staples it,
+  and publishes the zip as a release of the public `igor1309/audelin` repository.
+  It publishes nothing when the latest release was built from the same app source.
+  It needs a notarytool profile in the login keychain, made once with
+  `xcrun notarytool store-credentials audelin-notary`, and the `PUBLIC_REPO_PAT`
+  secret with contents write on `igor1309/audelin`.

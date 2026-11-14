@@ -2,6 +2,7 @@
 
 ## 2026-11-14
 
+- LAB-1457: Every Monday a Developer ID signed, notarized Audelin is published to the releases of the public igor1309/audelin repository, when the app changed since the last one.
 - LAB-1458: The Settings tab bar is the same segmented picker as Language and Appearance: Tab reaches it with keyboard navigation off, the arrow keys switch tabs, and each tab is a radio button to assistive apps.
 - LAB-1423 (LAB-1421): Settings draws its tabs, Language, Appearance and the debug chunk size as one native-style segmented control. Keyboard focus rings the focused segment inside the control, so its border is no longer clipped.
 - LAB-1422: Design: Settings tabs, Language, Appearance and the debug chunk size share one native-style segmented control with full-contrast labels; keyboard focus rings the selected segment instead of the whole control, and the grey hint text is darker in light mode.
