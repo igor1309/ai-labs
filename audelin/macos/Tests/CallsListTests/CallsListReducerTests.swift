@@ -8,11 +8,10 @@ struct CallsListReducerTests {
                .rowsChanged(test.rows, busy: test.busy)) {
             $0.rows = test.rows
             $0.busy = test.busy
-            $0.selectedID = test.expectedSelection
         }
     }
     @Test(arguments: rowChanges)
-    fileprivate func rowsChanged_effect(test: RowChange) {
+    fileprivate func rowsChanged_request(test: RowChange) {
         assert(makeState(busy: !test.busy, selectedID: test.selectedID, editing: makeEditing()),
                .rowsChanged(test.rows, busy: test.busy), delivers: nil)
     }
@@ -22,10 +21,12 @@ struct CallsListReducerTests {
         assert(makeState(rows: [makeRow(id: "b", title: title)], selectedID: "b",
                          editing: alreadyEditing ? makeEditing() : nil), .beginRename("b")) {
             $0.editing = .init(id: "b", title: title)
+            $0.request = .clearFailure
+            $0.requests += 1
         }
     }
     @Test(arguments: [false, true], ["", "Row title"])
-    func beginRenameUsesRowTitle_effect(alreadyEditing: Bool, title: String) {
+    func beginRenameUsesRowTitle_request(alreadyEditing: Bool, title: String) {
         assert(makeState(rows: [makeRow(id: "b", title: title)], selectedID: "b",
                          editing: alreadyEditing ? makeEditing() : nil), .beginRename("b"), delivers: .clearFailure)
     }
@@ -36,7 +37,7 @@ struct CallsListReducerTests {
                .beginRename(test.id))
     }
     @Test(arguments: refusedRenames, [false, true])
-    fileprivate func beginRenameRefused_effect(test: RefusedRename, alreadyEditing: Bool) {
+    fileprivate func beginRenameRefused_request(test: RefusedRename, alreadyEditing: Bool) {
         assert(makeState(rows: test.rows, busy: test.busy, editing: alreadyEditing ? makeEditing() : nil),
                .beginRename(test.id), delivers: nil)
     }
@@ -46,16 +47,20 @@ struct CallsListReducerTests {
         assert(makeState(editing: makeEditing()), .editTitle(title)) { $0.editing?.title = title }
     }
     @Test(arguments: ["", "  New title  ", "Звонок 🐦"])
-    func editTitle_effect(title: String) {
+    func editTitle_request(title: String) {
         assert(makeState(editing: makeEditing()), .editTitle(title), delivers: nil)
     }
 
     @Test(arguments: ["", "  New title  ", "Звонок 🐦"])
     func submitRename_state(title: String) {
-        assert(makeState(editing: makeEditing(title: title)), .submitRename) { $0.editing = nil }
+        assert(makeState(editing: makeEditing(title: title)), .submitRename) {
+            $0.editing = nil
+            $0.request = .rename(id: "a", title: title)
+            $0.requests += 1
+        }
     }
     @Test(arguments: ["", "  New title  ", "Звонок 🐦"])
-    func submitRename_effect(title: String) {
+    func submitRename_request(title: String) {
         assert(makeState(editing: makeEditing(title: title)), .submitRename, delivers: .rename(id: "a", title: title))
     }
 
@@ -66,28 +71,28 @@ struct CallsListReducerTests {
     }
     @Test(arguments: [CallsListMachineEvent.cancelRename, .askDelete("a"), .askDelete("b"), .askDelete("missing")],
           [false, true])
-    func cancelOrAskDeleteEndsEditing_effect(event: CallsListMachineEvent, busy: Bool) {
+    func cancelOrAskDeleteEndsEditing_request(event: CallsListMachineEvent, busy: Bool) {
         assert(makeState(busy: busy, selectedID: "b", editing: makeEditing()), event, delivers: nil)
     }
 
     @Test(arguments: [CallsListMachineEvent.editTitle("ignored"), .cancelRename, .submitRename, .askDelete("a")])
     func renameEventWithoutEditing_state(event: CallsListMachineEvent) { assert(makeState(), event) }
     @Test(arguments: [CallsListMachineEvent.editTitle("ignored"), .cancelRename, .submitRename, .askDelete("a")])
-    func renameEventWithoutEditing_effect(event: CallsListMachineEvent) { assert(makeState(), event, delivers: nil) }
+    func renameEventWithoutEditing_request(event: CallsListMachineEvent) { assert(makeState(), event, delivers: nil) }
 
     @Test(arguments: ["a", "b", "missing"], [false, true])
     func selectWithoutEditing_state(id: String, busy: Bool) {
         assert(makeState(busy: busy), .select(id)) { $0.selectedID = id }
     }
     @Test(arguments: ["a", "b", "missing"], [false, true])
-    func selectWithoutEditing_effect(id: String, busy: Bool) {
+    func selectWithoutEditing_request(id: String, busy: Bool) {
         assert(makeState(busy: busy), .select(id), delivers: nil)
     }
 
     @Test func selectEditedCallKeepsEditing_state() {
         assert(makeState(selectedID: "b", editing: makeEditing()), .select("a")) { $0.selectedID = "a" }
     }
-    @Test func selectEditedCallKeepsEditing_effect() {
+    @Test func selectEditedCallKeepsEditing_request() {
         assert(makeState(selectedID: "b", editing: makeEditing()), .select("a"), delivers: nil)
     }
 
@@ -96,10 +101,12 @@ struct CallsListReducerTests {
         assert(makeState(busy: busy, selectedID: "a", editing: makeEditing()), .select(id)) {
             $0.editing = nil
             $0.selectedID = id
+            $0.request = .rename(id: "a", title: "Draft title")
+            $0.requests += 1
         }
     }
     @Test(arguments: ["b", "missing"], [false, true])
-    func selectAnotherCallCommitsRename_effect(id: String, busy: Bool) {
+    func selectAnotherCallCommitsRename_request(id: String, busy: Bool) {
         assert(makeState(busy: busy, selectedID: "a", editing: makeEditing()), .select(id),
                delivers: .rename(id: "a", title: "Draft title"))
     }
@@ -109,10 +116,14 @@ struct CallsListReducerTests {
         assert(makeState(rows: test.rows, selectedID: test.selection, editing: editing ? makeEditing() : nil), test.event) {
             $0.editing = nil
             $0.selectedID = test.expectedSelection
+            if editing {
+                $0.request = .rename(id: "a", title: "Draft title")
+                $0.requests += 1
+            }
         }
     }
     @Test(arguments: moves, [false, true])
-    fileprivate func navigation_effect(test: Move, editing: Bool) {
+    fileprivate func navigation_request(test: Move, editing: Bool) {
         assert(makeState(rows: test.rows, selectedID: test.selection, editing: editing ? makeEditing() : nil), test.event,
                delivers: editing ? .rename(id: "a", title: "Draft title") : nil)
     }
@@ -120,7 +131,7 @@ struct CallsListReducerTests {
     @Test func recordingTheEditedCallEndsEditing_state() {
         assert(makeState(selectedID: "b", editing: makeEditing()), .recordingChanged(id: "a")) { $0.editing = nil }
     }
-    @Test func recordingTheEditedCallEndsEditing_effect() {
+    @Test func recordingTheEditedCallEndsEditing_request() {
         assert(makeState(selectedID: "b", editing: makeEditing()), .recordingChanged(id: "a"), delivers: nil)
     }
 
@@ -129,7 +140,7 @@ struct CallsListReducerTests {
         assert(makeState(editing: editing ? makeEditing() : nil), .recordingChanged(id: id))
     }
     @Test(arguments: [String?.none, "b"], [false, true])
-    func otherRecordingChangesDoNothing_effect(id: String?, editing: Bool) {
+    func otherRecordingChangesDoNothing_request(id: String?, editing: Bool) {
         assert(makeState(editing: editing ? makeEditing() : nil), .recordingChanged(id: id), delivers: nil)
     }
 }
@@ -138,16 +149,15 @@ private struct RowChange: Sendable {
     let rows: [CallsListMachineState.Row]
     let busy: Bool
     let selectedID: String?
-    let expectedSelection: String?
 }
 
 private let rowChanges: [RowChange] = [false, true].flatMap { busy in
     [
         RowChange(rows: [makeRow(id: "b", title: "Renamed", editable: false)], busy: busy,
-                  selectedID: "b", expectedSelection: "b"),
-        RowChange(rows: [makeRow(id: "b")], busy: busy, selectedID: "a", expectedSelection: nil),
-        RowChange(rows: [], busy: busy, selectedID: "a", expectedSelection: nil),
-        RowChange(rows: [makeRow(id: "a")], busy: busy, selectedID: nil, expectedSelection: nil),
+                  selectedID: "b"),
+        RowChange(rows: [makeRow(id: "b")], busy: busy, selectedID: "a"),
+        RowChange(rows: [], busy: busy, selectedID: "a"),
+        RowChange(rows: [makeRow(id: "a")], busy: busy, selectedID: nil),
     ]
 }
 
@@ -210,10 +220,11 @@ private func assert(_ state: CallsListMachineState, _ event: CallsListMachineEve
                     mutation: (inout CallsListMachineState) -> Void = { _ in }) {
     var expected = state
     mutation(&expected)
-    #expect(CallsListReducer().reduce(state, event).0 == expected, sourceLocation: sourceLocation)
+    #expect(CallsListReducer().reduce(state, event) == expected, sourceLocation: sourceLocation)
 }
 
-private func assert(_ state: CallsListMachineState, _ event: CallsListMachineEvent, delivers effect: CallsListEffect?,
+private func assert(_ state: CallsListMachineState, _ event: CallsListMachineEvent, delivers request: CallsListMachineState.Request?,
                     sourceLocation: SourceLocation = #_sourceLocation) {
-    #expect(CallsListReducer().reduce(state, event).1 == effect, sourceLocation: sourceLocation)
+    let next = CallsListReducer().reduce(state, event)
+    #expect((next.requests > state.requests ? next.request : nil) == request, sourceLocation: sourceLocation)
 }

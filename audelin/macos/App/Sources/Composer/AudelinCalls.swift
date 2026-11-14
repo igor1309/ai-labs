@@ -2,6 +2,7 @@ import CallDetail
 import IMRxObservation
 import SettingsUI
 import Calls
+import CallsList
 import CallsListUI
 import CallsSearch
 import Foundation
@@ -36,7 +37,8 @@ public final class AudelinCalls {
     private let notes: (String) async throws -> (text: String, made: String?)?
     private let makeSummary: (String) -> Void
     private let cancelSummary: (String) async -> Void
-    private var selectedID: String?
+    /// The list's selection and rename editing.
+    private let list = SyncModel<CallsListMachineState, CallsListMachineEvent>(initialState: .init(), reduce: CallsListReducer().reduce)
     private var withNotes: Set<String> = []
     /// Each call's gist, read with its notes.
     private var gists: [String: String] = [:]
@@ -54,7 +56,6 @@ public final class AudelinCalls {
     private let timeZone: TimeZone
     private let now: () -> Date
     private let recordingState: () -> RecordingState
-    private var editing: CallsListState.Editing?
     private var openFailure: String?
     private var opening = false
     private let describe: (any Error) -> String
@@ -129,9 +130,10 @@ public final class AudelinCalls {
             state.rows[index].gist = gists[state.rows[index].id]
             state.rows[index].match = found[state.rows[index].id]
         }
+        let selectedID = list.state.selectedID
         state.selectedID = state.rows.contains { $0.id == selectedID } ? selectedID : nil
         state.narrow = narrow
-        state.editing = editing
+        state.editing = list.state.editing.map { .init(id: $0.id, title: $0.title) }
         state.failure = openFailure ?? state.failure
         state.busy = state.busy || opening
         return state
@@ -186,7 +188,7 @@ public final class AudelinCalls {
 
     var recordingsState: RecordingsState { inputs.state() }
     /// No folder move, delete or rename is under way or waiting on an answer.
-    var idle: Bool { inputs.state().phase == .idle && editing == nil && !opening }
+    var idle: Bool { inputs.state().phase == .idle && list.state.editing == nil && !opening }
     func sendRecordings(_ event: RecordingsEvent) {
         recordingChanged(recordingState())
         inputs.send(event)
@@ -199,7 +201,7 @@ public final class AudelinCalls {
     public func show() {
         search(query)
         openFailure = nil
-        editing = nil
+        list.event(.cancelRename)
         inputs.send(.refresh)
         present()
         scanNotes()
@@ -293,25 +295,21 @@ public final class AudelinCalls {
         }
     }
 
-    private func move(by step: Int, in rows: [CallsListState.Row]) {
-        guard !rows.isEmpty else { return }
-        let index = selectedID.flatMap { id in rows.firstIndex { $0.id == id } }
-        let next = index.map { min(max($0 + step, 0), rows.count - 1) } ?? (step > 0 ? 0 : rows.count - 1)
-        selectedID = rows[next].id
-        selectDetail()
-    }
-
-    /// Ends an inline rename by saving its title, as leaving the field does in Finder.
-    private func commitRename() {
-        guard let edit = editing else { return }
-        editing = nil
+    /// Sends the list an event and passes each request it makes on to Recordings.
+    private func sendList(_ event: CallsListMachineEvent) {
+        let made = list.state.requests
+        list.event(event)
+        guard list.state.requests > made, let request = list.state.request else { return }
         openFailure = nil
-        inputs.send(.rename(id: edit.id, title: edit.title))
+        switch request {
+        case let .rename(id, title): inputs.send(.rename(id: id, title: title))
+        case .clearFailure: inputs.send(.clearFailure)
+        }
     }
 
     func recordingChanged(_ state: RecordingState) {
         let id = recordedCallID(state)
-        if editing?.id == id { editing = nil }
+        sendList(.recordingChanged(id: id))
         inputs.send(.recordingChanged(id))
     }
 
@@ -319,17 +317,14 @@ public final class AudelinCalls {
         guard !opening else { return }
         recordingChanged(recordingState())
         let snapshot = state
+        sendList(.rowsChanged(snapshot.rows.map { .init(id: $0.id, title: $0.title, editable: $0.editable) }, busy: snapshot.busy))
         switch event {
-        case let .beginRename(id):
-            guard !snapshot.busy, let row = snapshot.rows.first(where: { $0.id == id }), row.editable else { return }
-            openFailure = nil
-            inputs.send(.clearFailure)
-            editing = .init(id: id, title: row.title)
-        case let .editTitle(title): editing?.title = title
-        case .cancelRename: editing = nil
-        case .submitRename: commitRename()
+        case let .beginRename(id): sendList(.beginRename(id))
+        case let .editTitle(title): sendList(.editTitle(title))
+        case .cancelRename: sendList(.cancelRename)
+        case .submitRename: sendList(.submitRename)
         case let .askDelete(id):
-            editing = nil
+            sendList(.askDelete(id))
             openFailure = nil
             inputs.send(.askDelete(id))
         case .confirmDelete:
@@ -337,16 +332,18 @@ public final class AudelinCalls {
             inputs.send(.confirmDelete)
         case .cancelDelete: inputs.send(.cancelDelete)
         case let .select(id):
-            if editing?.id != id { commitRename() }
-            selectedID = id
+            sendList(.select(id))
             selectDetail()
         case let .search(text): search(text)
-        case .selectNext: commitRename(); move(by: 1, in: snapshot.rows)
-        case .selectPrevious: commitRename(); move(by: -1, in: snapshot.rows)
+        case .selectNext:
+            sendList(.selectNext)
+            followSelection(snapshot.selectedID)
+        case .selectPrevious:
+            sendList(.selectPrevious)
+            followSelection(snapshot.selectedID)
         case let .read(id):
             guard snapshot.rows.contains(where: { $0.id == id }) else { return }
-            if editing?.id != id { commitRename() }
-            selectedID = id
+            sendList(.select(id))
             let revision = detailModel.state.revision
             selectDetail()
             // The selection event is asynchronous; open only after its latest read has answered.
@@ -354,7 +351,7 @@ public final class AudelinCalls {
                 guard visibleID == id else { return }
                 if detailState.revision > revision, detailState.selected?.id == id, detailState.notes != .notRead { break }
             }
-            guard selectedID == id, detail?.id == id else { return }
+            guard list.state.selectedID == id, detail?.id == id else { return }
             readCall()
         case let .makeSummary(id):
             guard !snapshot.busy, let row = snapshot.rows.first(where: { $0.id == id }), row.canMakeSummary else { return }
@@ -370,7 +367,7 @@ public final class AudelinCalls {
             catch { openFailure = listText(.summaryRetryFailed) }
         case let .open(id):
             guard !snapshot.busy else { return }
-            editing = nil
+            sendList(.cancelRename)
             openFailure = nil
             inputs.send(.clearFailure)
             opening = true
