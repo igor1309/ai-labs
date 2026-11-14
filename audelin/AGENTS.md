@@ -46,3 +46,11 @@ Issues are in the Multica project `Audelin`, in the `ai-labs` workspace (parent 
   it is.
 - To verify these tests, run each file once, on its own, and check `coreaudiod`'s memory after
   each. Stop at the first sign it grows.
+
+## Live tests
+
+- Live tests drive the running app through accessibility; what each proves and how to run it
+  is in `macos/scripts/live/README.md`. They need a logged-in session, so run them locally.
+- Run `sh macos/scripts/live-calls-merge.sh` when merging, the calls list or calls storage
+  changes, and `sh macos/scripts/live-calls-summary.sh` when making notes or the calls window
+  changes. Each prints `PASS:` only when every scenario passed.
