@@ -100,13 +100,13 @@ already holds. It owns one new port: merge these calls, reporting merged
 or why not. The calls list and the calls window's toolbar draw merge mode
 and send its events; they decide nothing.
 
-**Idleness reaches Recordings as an event,** as the recording call's id
-does now. The root maps the Recording machine's state (nothing recording,
-no transcript being finished) and Summaries' (no notes being made) into
-one fact and sends it whenever it changes. Recordings enters merge mode and
-accepts a confirm only while that fact says idle. Nothing has to be held
-back during the merge: a new recording makes a new folder, and no part's
-notes can start while the list is busy.
+**Idleness reaches Recordings as a dependency of its reducer:** an "is
+Audelin idle?" query, asked when merge mode is entered and when a merge is
+confirmed. The composition answers it from what it already knows: a call
+recording, a transcript being finished (bleed cleanup included) and notes
+being made. Idle is checked at those two moments, not held for the merge: a
+recording that starts during a merge goes to a new folder of its own and
+never touches the selected calls, so nothing is blocked or refused.
 
 **Transcript join** is a plain component and an operator in the sense of
 the transcript pipeline: given each part's start and rows, it puts them in
@@ -131,16 +131,15 @@ joined transcript's bytes, never over a file.
 part's transcript, Transcript format reads it back, Transcript join joins,
 Transcript format renders, Transcript file writes into a folder not yet
 listed, and Calls arranges the folders. Its storage integration, as for
-delete, drops what Summaries and the per-call Call notes machines hold for
-the parts.
+delete, drops what the notes side holds for the parts.
 
 **The merged call's notes are made as an ended call's are.** On the merge
-outcome the root, subscribed to Recordings, submits the joined transcript
-to Summaries and starts the merged call's Call notes machine in being made,
-as it does when a recording's transcript closes. Neither machine's effect
-reaches the other: Recordings' line ends with the merged call on disk, and
-the notes line starts from the root's submission. The parts' own notes stay
-inside their folders and are not shown.
+outcome the root submits the joined transcript to Summaries, as it does when
+a recording's transcript closes. Recordings selects the merged row, and that
+selection, as any other, tells the notes side what to show. Call notes and
+Summaries keep their own responsibilities and stay connected by
+subscription. The parts' own notes stay inside their folders and are not
+shown.
 
 The root constructs Transcript join and the merge port's chain with the
 rest of the calls window's composition, and holds them as long as it holds
