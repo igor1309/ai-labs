@@ -46,7 +46,7 @@ platform; anything else breaks rule 1. The lanes of
 
 | Kind | May import | Targets |
 |---|---|---|
-| Machine | nothing | Session, Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, TranscriptFinalization |
+| Machine | nothing | Session, Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, TranscriptFinalization, RecordingConditions |
 | Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch |
 | Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, Calls, CallsStorage, Preferences |
 | Shared helper | nothing | SplitRows, CallFolderName, AudioConversion, ModelLoading |
@@ -61,10 +61,31 @@ stands. MenuBar is UI that also holds the pure reducer for panel presence.
 ### Open
 
 The composer does not yet follow rule 4. It holds state across events
-(`RecordingConditions`, `NewestText`, `CallLiveNames`,
-`LiveNameBoard`). Each becomes a component or machine of its own, or is
+(`NewestText`, `CallLiveNames`, `LiveNameBoard`). Each becomes a component or machine of its own, or is
 shown to be only mapping. No check yet fails on an import that a target's
 kind does not allow.
+
+## Recording conditions
+
+RecordingConditions is the state machine that says which of the
+microphone, call-audio access, calls folder and room are available. Its
+state holds the latest readings, whether calls storage is moving, and the
+value last published for each condition; it publishes a condition only when
+that value changes. Readings carry the moment they were taken, and readings
+older than the latest are ignored. While storage moves, the calls folder is
+unavailable whatever the disk says; when the move ends, the latest readings
+decide it again. Room is a pure rule: at least 30 decimal gigabytes free in
+an existing folder.
+
+The composer reads the microphone permission and the disk (a disk readings
+adapter: whether the folder is a directory, writable, and its free capacity)
+at startup, after the microphone request, before a call starts and after a
+storage move, and sends them to the machine. It refreshes call-audio access
+at the same moments; the machine never refreshes or reads access and hears
+its results only through a subscription. Each changed condition is logged
+and sent to Recording in the order it was reduced, and a refresh returns
+once its readings are published, so a call never starts on readings older
+than its own.
 
 ## Optional call notes
 
@@ -78,6 +99,12 @@ publishing and saving, stopping dispatch and shutdown. Its state holds every
 call's stage; storage, generation and preferences are its collaborators. No
 coordinator, per-call job model or registry of models sits beside it. It
 owns its consumer-owned ports.
+It decides which calls get notes: a call the user asked for always does, a
+finished recording only while notes are on, which the preferences port
+reports with each prepared job. It holds made notes in a deferred stage while
+a calls-storage transaction runs and publishes them, one at a time, once it
+ends. After shutdown it publishes settled once nothing it started is in
+flight.
 SpeakerIdentification accepts supported identity evidence without rewriting the
 transcript. SummaryRuntime adapts one bounded process or compatible HTTP
 attempt; SummaryFiles owns durable job records and complete note publication.
@@ -86,7 +113,8 @@ validation/save/load outcomes and its preference/availability ports.
 
 The root maps those ports and decorates attempts with fallback and logging.
 It subscribes SummaryJobs to TranscriptFinalization's final transcripts
-(Transcript finalization), so a call's notes start from its final form.
+(Transcript finalization), so a call's notes start from its final form, and
+to CallsStorage's transaction state.
 On quit, SummaryJobs stops dispatch and shuts down once TranscriptFinalization
 has settled, so the last final transcripts reach it first (Shutdown).
 
@@ -116,7 +144,7 @@ folders, its validation, and recovery of a move a crash interrupted. Every
 operation runs one at a time, a note's publication included, so a note never
 lands in a folder that is moving. It refuses to delete, move or commit a
 folder while a move is half finished. It publishes whether a move or folder
-commit is running. SummaryFiles reaches a call's folder only through its
+commit is running, which SummaryJobs receives. SummaryFiles reaches a call's folder only through its
 location and transaction port, and keeps no journal. Recordings holds move
 and delete policy: it confirms each action, leaves out calls already in the
 destination, and reloads its list after a failed rename or delete.

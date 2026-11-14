@@ -21,10 +21,10 @@ import Testing
     func aRequestForABusyCallDeliversNothing(stage: SummariesState.Call.Stage) {
         assert(make(stage), .request("call"), delivers: nil)
     }
-    @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func aRequestAfterShutdownChangesNothing(lifecycle: SummariesState.Lifecycle) {
+    @Test(arguments: [SummariesState.Lifecycle.draining, .settled]) func aRequestAfterShutdownChangesNothing(lifecycle: SummariesState.Lifecycle) {
         assert(makeState(lifecycle: lifecycle), .request("call"))
     }
-    @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func aRequestAfterShutdownDeliversNothing(lifecycle: SummariesState.Lifecycle) {
+    @Test(arguments: [SummariesState.Lifecycle.draining, .settled]) func aRequestAfterShutdownDeliversNothing(lifecycle: SummariesState.Lifecycle) {
         assert(makeState(lifecycle: lifecycle), .request("call"), delivers: nil)
     }
     @Test func theReadTranscriptIsPrepared() {
@@ -38,7 +38,7 @@ import Testing
     }
     @Test func aTranscriptReadDuringShutdownDropsTheCall() {
         var state = makeReading(); state.lifecycle = .draining
-        assert(state, .submit(makeSubmission(requested: true))) { $0.calls["call"] = nil; $0.lifecycle = .ended }
+        assert(state, .submit(makeSubmission(requested: true))) { $0.calls["call"] = nil; $0.lifecycle = .settled }
     }
     @Test func aTranscriptReadDuringShutdownDeliversNothing() {
         var state = makeReading(); state.lifecycle = .draining
@@ -85,20 +85,20 @@ import Testing
 
 @Suite struct SummariesRequestEffectHandlerTests {
     @Test func readAsksForTheCallsTranscript() async {
-        let preparation = PreparationSpy(job: nil)
+        let preparation = PreparationSpy()
         _ = await makeSUT(preparation).handle(.read("call"))
         #expect(preparation.reads == ["call"])
     }
     @Test func readDeliversTheSubmission() async {
-        let event = await makeSUT(PreparationSpy(job: nil)).handle(.read("call"))
+        let event = await makeSUT(PreparationSpy()).handle(.read("call"))
         #expect(event == .submit(makeSubmission(requested: true)))
     }
     @Test func aFailedReadDeliversReadFailed() async {
-        let event = await makeSUT(PreparationSpy(job: nil, submission: .failure(SpyFailure()))).handle(.read("call"))
+        let event = await makeSUT(PreparationSpy(submission: .failure(SpyFailure()))).handle(.read("call"))
         #expect(event == .readFailed("call"))
     }
     @Test func readDoesNothingElse() async {
-        let preparation = PreparationSpy(job: nil), claims = ClaimsSpy(), records = RecordsSpy(), starts = StartsSpy()
+        let preparation = PreparationSpy(), claims = ClaimsSpy(), records = RecordsSpy(), starts = StartsSpy()
         let storage = StorageSpy(), generation = GenerationsSpy()
         _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: records, starts: starts,
                                          storage: storage, generation: generation).handle(.read("call"))

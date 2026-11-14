@@ -88,6 +88,7 @@ let package = Package(
         .target(
             name: "Composer",
             dependencies: [
+                .product(name: "RecordingConditions", package: "macos"),
                 .product(name: "CallDetail", package: "macos"),
                 .product(name: "BleedCleanup", package: "macos"),
                 .product(name: "SummarySettings", package: "macos"),
@@ -155,6 +156,7 @@ let package = Package(
         .testTarget(
             name: "ComposerTests",
             dependencies: [
+                .product(name: "RecordingConditions", package: "macos"),
                 .product(name: "CallDetail", package: "macos"),
                 "Composer", "Audelin",
                 .product(name: "CallAudioAccess", package: "macos"),
