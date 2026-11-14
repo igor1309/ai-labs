@@ -36,29 +36,10 @@ does. The frames are in Screen 6, "General — light" and "General — dark".
   тёмное / dark under Dark.
 - Only System is drawn selected; Light and Dark selected are not drawn.
 
-## Segmented control
-
-Settings has one segmented control in one size; the tab bar, Language,
-Appearance and the debug chunk size are all drawn with it.
-
-- A `track` with a 1 pt `edge` outline holds equal segments, 2 pt apart and
-  2 pt in from the outline.
-- The selected segment is a raised `segSel` chip with a 1 pt `edge` outline
-  and a semibold `text` label; the others have a regular `sub` label. The
-  chip is lighter than the track in both modes.
-- Corners nest: the track uses `radius-control`, the chip `radius-segment`.
-- Hover tints an unselected segment with `hover`; a press with `pressed`.
-  The selected segment does not change on hover.
-- Keyboard focus outlines the selected chip in 2 pt `me`. There is no ring
-  around the whole control.
-- Contrast: the track and chip outlines reach 3:1 against what is behind
-  them; labels and the grey hint line reach 4.5:1.
-
 ## Input
 
 - Mouse: a click on a segment selects it.
-- Keyboard: Tab reaches the picker and shows focus on its selected chip;
-  the arrow keys move between segments.
+- Keyboard: Tab reaches the picker; the arrow keys move between segments.
 - macOS only; there is no phone or tablet layout.
 
 ## States
