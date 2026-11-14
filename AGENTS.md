@@ -158,17 +158,25 @@ modules are machines; an app composes them.
   reads another machine through a closure, no wait or join that only syncs
   two machines, and no doer, wrapper or adapter that remembers work outside
   the state.
-- These bans are about splitting one line, not about machines meeting. A
-  separate concern, such as a screen, may have its own machine that takes
-  another machine's state as input: the app sends that state to it as an
-  event, and its pure reducer decides what the screen shows. It must not
-  start, cancel, retry or wait on the other machine's work; those stay
-  events sent to the machine that owns the line.
-- Before adding a machine, name the line it runs. If its work is a stage of
-  a line another machine already runs, it is not a machine: make it that
-  machine's stage. A machine that only renders another's state for a
-  screen is fine. When a machine needs a stage another machine owns, merge
-  them into one; do not connect them.
+- Split by responsibility: each machine has one responsibility and one
+  reason to change. These bans are about cutting one responsibility into
+  pieces, not about machines meeting. Machines with their own
+  responsibilities are connected, not stacked. The app subscribes one
+  machine's output and sends it to another's event endpoint. The receiver
+  takes only the value it needs, never the sender's inner details, and
+  never drives the sender's work.
+- A screen can be a composition of such machines. In the iOS payment
+  screen, product selection and a card or phone input each have their own
+  machine, however complex: expanded or collapsed options, editing,
+  validation. The payment machine does not care about any of that. It gets
+  an optional valid value through its event endpoint, by a subscription
+  set up outside both machines.
+- Before adding a machine, name its responsibility and its reason to
+  change. If it is a stage of work another machine already runs, so that
+  the two change for the same reason, make it that machine's stage. If a
+  machine has to start, cancel, retry or wait on another's work, or read
+  its internals to do its own, they share one responsibility: merge them,
+  do not connect them.
 - **Async** (`ObservableModel`): `event(_:)` returns before the event is
   reduced. Use it unless a caller needs the sync order below.
 - **Sync** (`SyncModel`): `event(_:)` reduces before it returns, so a read
