@@ -93,4 +93,9 @@ Feature: Coordinate notes and recording
     Given parts whose notes are done, merged into a call with the earliest part's id
     When the merge outcome arrives
     Then I can dispatch notes for the joined transcript of every part
+
+  Scenario: S-16 A part's waiting notes do not run
+    Given a part whose notes are waiting to start, merged into a call
+    When the merge outcome arrives
+    Then the part's waiting notes never run, and I can dispatch notes for the joined transcript
 ```
