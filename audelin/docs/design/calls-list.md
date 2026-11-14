@@ -153,3 +153,18 @@ cannot bind `space-8`) and 640–300 wide, time 40, duration 48, icons 14 and
 - Frames: «Calls — merge mode», «… one marked», «… narrow», with dark
   instances.
 - Open: whether the row actions stay visible, disabled, in merge mode.
+
+## Merge outcomes
+
+- **Far apart.** When an unselected call lies between selected ones, a
+  sheet asks «Объединить звонки не подряд?». «Объединить всё равно» merges;
+  «Назад» returns to merge mode with the selection kept.
+- **Busy.** Entering merge mode or confirming while Audelin records,
+  transcribes or summarises shows the error banner at the foot of the list
+  with the busy sentence. On entry the list keeps its normal bar; on
+  confirm, merge mode and the selection stay.
+- **Merging.** The merge bar shows «Объединяю…» disabled and hides
+  «Готово»; rows take no clicks. When it ends, the list returns with the
+  merged call selected.
+- **Failed.** Merge mode stays with the selection, and the banner names the
+  reason. The calls are left as they were.
