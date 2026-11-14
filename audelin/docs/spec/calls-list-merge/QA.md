@@ -35,7 +35,9 @@ Preview: merging, with its progress mark and the button disabled.
 
 ## S-7 A merged call is shown
 
-Preview: the list out of merge mode with the merged row selected.
+Preview: the list out of merge mode with the merged row selected, in a wide
+window with the merged call read beside the list and in a narrow one with
+the list alone, as the calls window shows any selected call.
 
 ## S-8 A failed merge reads why
 

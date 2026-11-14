@@ -54,7 +54,7 @@ Feature: Merging calls in the calls list
   Scenario: S-7 A merged call is shown
     Given a merge under way
     When it is done
-    Then I can see the merged call selected in the list and read it beside the list
+    Then I can see the merged call selected and read it as any selected call
 
   Scenario: S-8 A failed merge reads why
     Given a merge under way
