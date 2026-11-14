@@ -168,35 +168,86 @@ public struct TranscriptFormat: Sendable {
     /// Lines before the first part, and the Speakers section, are skipped.
     public static func entries(_ markdown: String) -> [Entry] {
 
-        var entries: [Entry] = []
-        var current: (label: String, start: Double, lines: [Substring])?
+        parts(markdown).parts.map { Entry(label: $0.label, start: $0.start, words: $0.words) }
+    }
+
+    /// A saved transcript read back as fully as it was rendered: each part with words and
+    /// the speakers' current names, so rendering it again gives the same transcript.
+    public struct Saved: Sendable, Equatable {
+
+        public let segments: [Segment]
+        public let speakers: [Speaker]
+
+        public init(segments: [Segment], speakers: [Speaker]) { self.segments = segments; self.speakers = speakers }
+    }
+
+    /// Reads back what rendering needs to render a saved transcript again. A `Them N`
+    /// row is given the Nth listed speaker's ID; a plain `Them` row the only listed
+    /// speaker's, or none. Words come back settled, as final text was rendered.
+    public static func read(_ markdown: String) -> Saved {
+
+        let (parts, speakers) = parts(markdown)
+        let ids = speakers.map(\.id)
+        let segments = parts.map { part -> Segment in
+            guard part.label != "Me" else {
+                return Segment(side: .mine, start: part.start, settled: part.words, pending: "", filledInLater: part.later)
+            }
+            let speaker: String?
+            if part.label == "Them" { speaker = ids.count == 1 ? ids[0] : nil } else {
+                let index = Int(part.label.dropFirst("Them ".count)).map { $0 - 1 }
+                speaker = index.flatMap { ids.indices.contains($0) ? ids[$0] : nil }
+            }
+            return Segment(side: .theirs, start: part.start, settled: part.words, pending: "", filledInLater: part.later, speaker: speaker)
+        }
+        return Saved(segments: segments, speakers: speakers)
+    }
+
+    private struct Part { let label: String; let start: Double; let later: Bool; let words: String }
+
+    private static func parts(_ markdown: String) -> (parts: [Part], speakers: [Speaker]) {
+
+        var parts: [Part] = []
+        var speakers: [Speaker] = []
+        var current: (label: String, start: Double, later: Bool, lines: [Substring])?
         func close() {
             guard let part = current else { return }
             let words = part.lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-            if !words.isEmpty { entries.append(Entry(label: part.label, start: part.start, words: words)) }
+            if !words.isEmpty { parts.append(Part(label: part.label, start: part.start, later: part.later, words: words)) }
             current = nil
         }
         let normalized = markdown.replacingOccurrences(of: "\r\n", with: "\n")
+        var inSpeakers = false
         for line in normalized.split(separator: "\n", omittingEmptySubsequences: false) {
-            if let header = header(line) {
+            if inSpeakers {
+                if let block = speakerList(line) { speakers = block }
+            } else if let header = header(line) {
                 close()
-                current = (header.label, header.start, [])
+                current = (header.label, header.start, header.later, [])
             } else if line == "## Speakers" {
                 close()
-                break
+                inSpeakers = true
             } else {
                 current?.lines.append(line)
             }
         }
         close()
-        return entries
+        return (parts, speakers)
     }
 
-    private static func header(_ line: Substring) -> (label: String, start: Double)? {
+    private static func speakerList(_ line: Substring) -> [Speaker]? {
+
+        let prefix = "<!-- audelin-speakers ", suffix = " -->"
+        guard line.hasPrefix(prefix), line.hasSuffix(suffix) else { return nil }
+        struct Metadata: Decodable { let speakers: [Speaker] }
+        let json = line.dropFirst(prefix.count).dropLast(suffix.count)
+        return try? JSONDecoder().decode(Metadata.self, from: Data(json.utf8)).speakers
+    }
+
+    private static func header(_ line: Substring) -> (label: String, start: Double, later: Bool)? {
 
         guard let match = line.wholeMatch(of: /\*\*(Me|Them|Them [1-9][0-9]*)\*\* ([0-9]{2,}):([0-5][0-9]):([0-5][0-9])( \(filled in later\))?/),
               let h = Double(match.2), let m = Double(match.3), let s = Double(match.4) else { return nil }
-        return (String(match.1), h * 3_600 + m * 60 + s)
+        return (String(match.1), h * 3_600 + m * 60 + s, match.5 != nil)
     }
 
     /// A readable Speakers section and one versioned machine-readable block after it.

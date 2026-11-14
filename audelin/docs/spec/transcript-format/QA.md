@@ -80,7 +80,10 @@ Speakers section are skipped.
 Rendering what was read gives the same parts, times, gaps, filled-in marks,
 speakers and names as the saved transcript, the names block's revision
 aside, for a transcript with named speakers, a gap, filled-in and wordless
-parts. Evidence: Missing.
+parts. Evidence: `TranscriptReadingTests.aRenderedTranscriptReadsBackAndRendersTheSame()`,
+`TranscriptReadingTests.aLoneSpeakerAndPartsWithoutWordsReadBack()` and
+`TranscriptReadingTests.aTranscriptWithoutSpeakersReadsWithNone()`; the gap
+reads back with S-12.
 
 ## S-12 A gap reads as the call cut off
 

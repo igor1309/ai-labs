@@ -91,6 +91,45 @@ struct TranscriptReadingTests {
         let text = try rendered([.init(side: .mine, start: 360_005, settled: "late", pending: "")])
         #expect(TranscriptFormat.entries(text) == [.init(label: "Me", start: 360_005, words: "late")])
     }
+
+    @Test func aRenderedTranscriptReadsBackAndRendersTheSame() throws {
+
+        let speakers: [TranscriptFormat.Speaker] = [.init(id: "a", name: "Ann", state: "named"), .init(id: "b", name: nil, state: "unknown")]
+        let text = try rendered([
+            .init(side: .mine, start: 1, settled: "hello", pending: ""),
+            .init(side: .theirs, start: 5, settled: "hi from Ann", pending: "", speaker: "a"),
+            .init(side: .theirs, start: 9, settled: "late words", pending: "", filledInLater: true, speaker: "b"),
+            .init(side: .mine, start: 12, settled: "first\n\nsecond", pending: ""),
+        ], speakers: speakers)
+        let saved = TranscriptFormat.read(text)
+        #expect(saved.speakers == speakers)
+        #expect(saved.segments == [
+            .init(side: .mine, start: 1, settled: "hello", pending: ""),
+            .init(side: .theirs, start: 5, settled: "hi from Ann", pending: "", speaker: "a"),
+            .init(side: .theirs, start: 9, settled: "late words", pending: "", filledInLater: true, speaker: "b"),
+            .init(side: .mine, start: 12, settled: "first\n\nsecond", pending: ""),
+        ])
+        #expect(try rendered(saved.segments, speakers: saved.speakers) == text)
+    }
+
+    @Test func aLoneSpeakerAndPartsWithoutWordsReadBack() throws {
+
+        let speakers: [TranscriptFormat.Speaker] = [.init(id: "a", name: "Ann", state: "named")]
+        let text = try rendered([
+            .init(side: .mine, start: 1, settled: "", pending: ""),
+            .init(side: .theirs, start: 2, settled: "only them", pending: "", speaker: "a"),
+        ], speakers: speakers)
+        let saved = TranscriptFormat.read(text)
+        #expect(saved.segments == [.init(side: .theirs, start: 2, settled: "only them", pending: "", speaker: "a")])
+        #expect(saved.speakers == speakers)
+        #expect(TranscriptFormat.entries(try rendered(saved.segments, speakers: saved.speakers)) == TranscriptFormat.entries(text))
+    }
+
+    @Test func aTranscriptWithoutSpeakersReadsWithNone() throws {
+
+        let saved = TranscriptFormat.read(try rendered([.init(side: .theirs, start: 3, settled: "them", pending: "")]))
+        #expect(saved == .init(segments: [.init(side: .theirs, start: 3, settled: "them", pending: "")], speakers: []))
+    }
 }
 
 private func rendered(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker] = []) throws -> String {
