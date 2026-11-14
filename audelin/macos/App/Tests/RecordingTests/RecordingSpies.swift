@@ -1,29 +1,5 @@
 import Recording
 
-/// Keeps each sent event until the test takes it; taking waits for one.
-actor SendSpy {
-
-    private var events: [RecordingEvent] = []
-    private let changed = AsyncStream<Void>.makeStream()
-
-    var count: Int { events.count }
-
-    func send(_ event: RecordingEvent) {
-
-        events.append(event)
-        changed.continuation.yield(())
-    }
-
-    func next() async -> RecordingEvent {
-
-        while events.isEmpty {
-            var iterator = changed.stream.makeAsyncIterator()
-            guard await iterator.next() != nil else { return .sessionReported(id: 0, .ended) }
-        }
-        return events.removeFirst()
-    }
-}
-
 /// Holds each call until the test completes it; completing waits for the call.
 actor SessionSpy: RecordingSession {
 

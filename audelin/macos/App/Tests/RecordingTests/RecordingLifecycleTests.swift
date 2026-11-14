@@ -42,7 +42,7 @@ struct RecordingLifecycleTests {
         }
     }
 
-    @Test func aWaitingCallWithoutCallAudioBeginsForTheDoerToRecheck() {
+    @Test func aWaitingCallWithoutCallAudioBeginsToRecheckCallAudio() {
         assert(makeState(makePending()) { $0.missing = [.callAudioAccess] }, .sessionReported(id: 1, .ended)) {
             $0.phase = .beginning; $0.stage = .preparing; $0.pendingCall = false; $0.lastSessionID = 2
             $0.session = .init(id: 2, origin: .call); $0.sessionBeganDuringCall = true

@@ -33,7 +33,7 @@ func oneEvent<Event: Sendable>(_ handle: @escaping @Sendable () async -> Event) 
     }
 }
 
-/// Recording's model, reducing on the main actor, and the doer that makes the Session follow it.
+/// Recording's async model on the main actor; its effect handler drives the Session and call audio.
 @MainActor
 func makeRecording(
     initial: RecordingState, session: any RecordingSession, log: @escaping @Sendable (RecordingState) -> Void,
@@ -41,40 +41,39 @@ func makeRecording(
     callAudioReleased: @escaping @Sendable () async -> Void
 ) -> RecordingInputs {
 
-    let model = RecordingModel(initial: initial, log: log)
-    let doer = RecordingDoer(session: session, callAudioReady: callAudioReady,
-                             callAudioReleased: callAudioReleased, send: { await model.send($0) })
-    let acting = Task { for await state in model.states() { doer.act(on: state) } }
+    let handler = RecordingEffectHandler(session: session, prepareCallAudio: callAudioReady,
+                                         releaseCallAudio: callAudioReleased)
+    let model = RecordingModel(initial: initial, handler: handler, log: log)
     var inputs = RecordingInputs(
         send: { await model.send($0) },
         state: { await model.state },
         states: { await model.states() },
-        end: { acting.cancel(); await model.end() }
+        end: { await model.end() }
     )
     inputs.reserveStorage = { await model.reserveStorage() }
     inputs.releaseStorage = { await model.send(.releaseStorage) }
     return inputs
 }
 
-/// Holds the sync model on the main actor; callers elsewhere await the hop.
+/// Holds the async model on the main actor; callers elsewhere await the hop.
 @MainActor
 final class RecordingModel {
 
-    private let model: SyncModel<RecordingState, RecordingEvent>
+    private let model: ObservableModel<RecordingState, RecordingEvent, RecordingEffect>
     private let feed = StateFeed<RecordingState>()
 
-    init(initial: RecordingState, log: @escaping @Sendable (RecordingState) -> Void) {
+    init(initial: RecordingState, handler: RecordingEffectHandler, log: @escaping @Sendable (RecordingState) -> Void) {
 
         let feed = feed
-        model = SyncModel(initialState: initial, reduce: { state, event in
-            guard !feed.finished else { return state }
-            let next = RecordingReducer.reduce(state, event).0
+        model = ObservableModel(initialState: initial, reduce: { state, event in
+            guard !feed.finished else { return (state, nil) }
+            let (next, effect) = RecordingReducer.reduce(state, event)
             if next != state {
                 log(next)
                 feed.publish(next)
             }
-            return next
-        })
+            return (next, effect)
+        }, handleEffect: { effect in oneEvent { await handler.handle(effect) } })
     }
 
     var state: RecordingState { model.state }

@@ -17,7 +17,10 @@ func composeRecording(
     let destination = Mutex<RecordingInputs?>(nil)
     let sessions = RecordingSessions(preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: callApp, processes: processes, boundary: boundary, report: { id, report in
         guard let recording = destination.withLock({ $0 }) else { return }
-        await recording.send(.sessionReported(id: id, report))
+        // A session that ended on its own still releases call audio before Recording settles.
+        switch report {
+        case .ended: await recording.send(.sessionFinished(id: id))
+        }
     }, status: { id, status in
         guard let recording = destination.withLock({ $0 }) else { return }
         await recording.send(.sessionChanged(id: id, status))
