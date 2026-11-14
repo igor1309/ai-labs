@@ -2,6 +2,7 @@
 
 ## 2026-11-14
 
+- LAB-1418: The calls window can merge calls: a toolbar control enters merge mode, the user marks calls and confirms, and their transcripts join into one call whose notes are made again; audio stays as it was, calls far apart ask first, and merging waits until Audelin is idle.
 - LAB-1465: One state machine decides which recording conditions are met, from the microphone permission, call-audio access, the calls folder and its free room; readings that arrive late no longer overwrite newer ones, and the calls folder stays unavailable while storage moves.
 - LAB-1464: Quit and an update relaunch wait until recording, transcript finalization, notes and calls storage have each finished their own shutdown; quitting after call watching failed to start takes the same path.
 - LAB-1463: A finished call's notes wait while a calls folder move or commit runs and are saved once it ends; the notes machine itself decides which calls get notes and reports when shutdown has settled.

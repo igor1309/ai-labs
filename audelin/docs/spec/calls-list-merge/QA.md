@@ -13,13 +13,17 @@ Behaviour: the toolbar control sends enter merge mode. Evidence:
 `CallsListPreviews` «merge» shows the marks and the disabled button;
 `CallsToolbarTests.onlyAToolbarGivenMergeHasTheMergeButtonBeforeTheActions()`
 and `theMergeButtonReportsItsActionAndNamesWhatItDoes()` show the control
-and its action. What that action sends: Missing.
+and its action. What that action sends: enter merge mode while not merging,
+`MergeSelectionWiringTests.theToolbarControlEntersAndLeavesMergeModeAndActsOnlyWhenItCan()`;
+in the running app, `scripts/live-calls-merge.sh` presses `calls.merge` and marks rows.
 
 ## S-2 Merge mode is unavailable while busy
 
 Preview: the busy reason shown in the window. Evidence: the control
 disabled, `CallsToolbarTests.theMergeButtonReportsItsActionAndNamesWhatItDoes()`;
-the busy reason: Missing.
+the busy reason, put in the window's failure line when merge mode is asked for
+while Audelin is busy, `RecordingsMergeTests.S2_mergeModeIsRefusedWhileBusy()`,
+and that line shown, `CallsWiringTests.mappingShowsMergeModeItsMarksTheWarningAndARunningMerge()`.
 
 ## S-3 Marking rows
 
@@ -63,7 +67,8 @@ Evidence: a click then reads a call,
 `CallsListMergeTests.S9_afterMergeModeAClickReadsACallAgain()`; Escape,
 `CallsListMergeBarTests.S9_escapeLeavesMergeMode()`; the control while
 merging is named «Готово», `CallsToolbarTests.theMergeButtonReportsItsActionAndNamesWhatItDoes()`.
-What its action sends: Missing.
+What its action sends: leave merge mode while merging,
+`MergeSelectionWiringTests.theToolbarControlEntersAndLeavesMergeModeAndActsOnlyWhenItCan()`.
 
 ## S-10 Confirming a merge
 

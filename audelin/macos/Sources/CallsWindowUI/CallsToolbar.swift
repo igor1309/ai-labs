@@ -94,8 +94,12 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
         copy.target = self
         copy.action = #selector(copied)
         if let mergeButton {
-            mergeButton.image = NSImage(systemSymbolName: "arrow.triangle.merge", accessibilityDescription: nil)
-            mergeButton.isBordered = true
+            // A button view, not a bordered item: only a view carries the identifier a live test finds it by.
+            let button = NSButton(image: NSImage(systemSymbolName: "arrow.triangle.merge", accessibilityDescription: nil)!,
+                                  target: self, action: #selector(merged))
+            button.bezelStyle = .toolbar
+            button.setAccessibilityIdentifier(Self.mergeItem.rawValue)
+            mergeButton.view = button
             mergeButton.target = self
             mergeButton.action = #selector(merged)
         }
@@ -125,8 +129,10 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
         if let mergeButton {
             mergeButton.isEnabled = enabled.merge
             name(mergeButton, text(enabled.merging ? .mergeDone : .mergeCalls))
-            mergeButton.image = NSImage(systemSymbolName: enabled.merging ? "checkmark" : "arrow.triangle.merge",
-                                        accessibilityDescription: mergeButton.label)
+            let button = mergeButton.view as? NSButton
+            button?.isEnabled = enabled.merge
+            button?.image = NSImage(systemSymbolName: enabled.merging ? "checkmark" : "arrow.triangle.merge",
+                                    accessibilityDescription: mergeButton.label)
         }
         toolbar.validateVisibleItems()
     }
@@ -144,6 +150,8 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
         item.label = title
         item.toolTip = title
         item.image?.accessibilityDescription = title
+        (item.view as? NSButton)?.setAccessibilityLabel(title)
+        (item.view as? NSButton)?.toolTip = title
     }
 
     @objc private func acted(_ item: NSToolbarItem) { act(Self.grouped[item.tag].event) }

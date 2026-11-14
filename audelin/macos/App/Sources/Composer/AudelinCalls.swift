@@ -188,6 +188,15 @@ public final class AudelinCalls {
     var recordingsState: RecordingsState { inputs.state() }
     /// No folder move, delete or rename is under way or waiting on an answer.
     var idle: Bool { inputs.state().phase == .idle && editing == nil && !opening }
+    /// The toolbar's merge control: enters merge mode, or leaves it while choosing.
+    public func toggleMergeMode() {
+        if inputs.state().phase == .merging { inputs.send(.leaveMergeMode) } else { sendRecordings(.enterMergeMode) }
+    }
+    /// Whether the toolbar's merge control acts now, and whether it reads as leaving merge mode.
+    public var mergeControl: (enabled: Bool, merging: Bool) {
+        let phase = inputs.state().phase
+        return (phase == .idle || phase == .merging, phase == .merging || phase == .warnedFarApart || phase == .runningMerge)
+    }
     func sendRecordings(_ event: RecordingsEvent) {
         recordingChanged(recordingState())
         inputs.send(event)
@@ -419,9 +428,22 @@ func callsListState(_ state: RecordingsState, timeZone: TimeZone, now: Date, tex
     switch state.phase {
     case .idle: busy = false; deleteID = nil
     case let .askingDelete(id): busy = false; deleteID = id
+    case .merging, .warnedFarApart, .runningMerge: busy = false; deleteID = nil
     default: busy = true; deleteID = nil
     }
     let format = CallsListFormat(timeZone: timeZone, text: text)
+    let merge: CallsListState.Merge?
+    switch state.phase {
+    case .merging: merge = .init(marked: state.mergeSelection)
+    case .runningMerge: merge = .init(marked: state.mergeSelection, running: true)
+    case .warnedFarApart:
+        // The calls arrive newest first, so the earliest marked call is the last one.
+        let marked = state.calls.filter { state.mergeSelection.contains($0.id) }
+        let name = { (call: RecordedCall) in call.title.isEmpty ? format.stamp(call.start) : call.title }
+        merge = .init(marked: state.mergeSelection,
+                      warning: marked.last.flatMap { earliest in marked.first.map { latest in text(.mergeWarningBody, name(earliest), name(latest)) } })
+    default: merge = nil
+    }
     let days = state.calls.map { format.day($0.start, now: now) }
     return CallsListState(rows: state.calls.indices.map { index in
         let call = state.calls[index], day = days[index]
@@ -433,5 +455,5 @@ func callsListState(_ state: RecordingsState, timeZone: TimeZone, now: Date, tex
         text(.deleteBody, call.id + (call.title.isEmpty ? "" : " " + call.title))
     }, busy: busy || state.isListing, failure: state.failure.map { failure in
         (failure.id.map { "«\($0)»: " } ?? "") + failure.reason
-    })
+    }, merge: merge)
 }

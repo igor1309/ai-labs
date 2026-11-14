@@ -119,15 +119,19 @@ struct CallsToolbarTests {
         sut.show(.init(call: false, copy: false, merge: true))
         #expect(merge.isEnabled)
         #expect(merge.toolTip == "Объединить звонки…")
+        let button = try #require(merge.view as? NSButton)
+        #expect(button.isEnabled && button.accessibilityIdentifier() == "calls.merge")
+        #expect(button.accessibilityLabel() == "Объединить звонки…")
+        button.performClick(nil)
+        #expect(merges == 1)
         sut.show(.init(call: false, copy: false, merge: true, merging: true))
         #expect(merge.toolTip == "Готово")
         sut.retitle(text: .init(language: .english))
         #expect(merge.toolTip == "Done")
         sut.show(.init(call: false, copy: false, merge: false))
-        #expect(!merge.isEnabled)
-
+        #expect(!merge.isEnabled && !button.isEnabled)
         _ = (merge.target as? NSObject)?.perform(merge.action, with: merge)
-        #expect(merges == 1)
+        #expect(merges == 2)
     }
 
     private func makeSUT(act: @escaping (SummaryPreviewEvent) -> Void = { _ in }) -> CallsToolbar {

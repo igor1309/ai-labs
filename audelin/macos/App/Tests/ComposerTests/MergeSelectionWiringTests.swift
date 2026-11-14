@@ -12,10 +12,32 @@ import Testing
     ], phase: .runningMerge)
 }
 
-/// The call a merge made is selected, and the detail reads it as any selected call.
+/// The toolbar's merge control, and the call a merge made selected for the detail to read.
 @MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct MergeSelectionWiringTests {
+    @Test func theToolbarControlEntersAndLeavesMergeModeAndActsOnlyWhenItCan() {
+        let listing = Listing()
+        var sent: [RecordingsEvent] = []
+        let sut = AudelinCalls(inputs: RecordingsInputs(state: { listing.state }, send: { sent.append($0) }),
+                               timeZone: .gmt, now: Date.init, recordingState: { .init() },
+                               location: { URL(fileURLWithPath: "/calls/\($0)") }, openFolder: { _ in true }, present: {})
+        let control = { (sut.mergeControl.enabled, sut.mergeControl.merging) }
+        listing.state.phase = .idle
+        #expect(control() == (true, false))
+        sut.toggleMergeMode()
+        listing.state.phase = .merging
+        #expect(control() == (true, true))
+        sut.toggleMergeMode()
+        #expect(sent.suffix(2) == [.enterMergeMode, .leaveMergeMode])
+        for phase: RecordingsState.Phase in [.warnedFarApart, .runningMerge] {
+            listing.state.phase = phase
+            #expect(control() == (false, true))
+        }
+        listing.state.phase = .renaming("1970.01.01-1000")
+        #expect(control() == (false, false))
+    }
+
     @Test func aMergedCallIsSelectedAndItsNotesAreRead() async throws {
         let listing = Listing()
         let sut = AudelinCalls(inputs: RecordingsInputs(state: { listing.state }, send: { _ in }),
