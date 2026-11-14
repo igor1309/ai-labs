@@ -174,6 +174,15 @@ Live text keeps each segment's words with their times, as the recogniser
 reports them, instead of joining them into strings: they are what the call
 said and when, which a reader may need word by word.
 
+Live text's recognition stream hears a track interval by interval. It loads
+the recogniser once for every prepare, applies each recogniser update to the
+text once, and keeps an interval it accepted, with that interval's update,
+when the hear waiting for it is cancelled: a replay of the interval returns
+that update, and a replay overlapping accepted audio hears only what follows
+it. Cancelling hearing ends the hear in flight and returns once it has ended.
+The composer only converts the stream's updates into `TranscriptSegment` for
+Fill-in and Side text.
+
 ## Transcript finalization
 
 A recording's transcript is written live; once the recording closes, it is
