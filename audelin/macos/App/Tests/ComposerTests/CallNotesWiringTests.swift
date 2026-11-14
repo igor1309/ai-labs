@@ -1,6 +1,7 @@
 import CallDetail
 import BlockingTestWork
 import CallsListUI
+import CallsStorage
 import Foundation
 import Observation
 import Preferences
@@ -71,7 +72,7 @@ struct CallNotesWiringTests {
         try await withComposeFolder { root in
             try savedCall(a, in: root)
             if previousNotes { try Data("earlier complete notes".utf8).write(to: root.appendingPathComponent(a + "/summary.md")) }
-            let storage = SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
+            let storage = callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
             let locations = HeldNotesLocation(storage: storage)
             let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let http = NotesHTTP()
@@ -141,7 +142,7 @@ struct CallNotesWiringTests {
     func storageFailureCanRecoverOnRetry(stage: String) async throws {
         try await withComposeFolder { root in
             try savedCall(a, in: root)
-            let storage = SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
+            let storage = callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
             let disk = RecoveringNotesDisk()
             let files = Files(locations: storage, disk: disk, ownershipDirectory: root.appendingPathComponent("leases"))
             let http = NotesHTTP()
@@ -176,7 +177,7 @@ struct CallNotesWiringTests {
             try savedCall(a, in: root)
             let broken = Data("{broken".utf8)
             try broken.write(to: job(a, in: root))
-            let storage = SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
+            let storage = callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
             let files = Files(locations: storage, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let http = NotesHTTP()
             let sut = makeSummaries(files: files, storage: storage, http: http, enabled: false)
@@ -197,7 +198,7 @@ struct CallNotesWiringTests {
     func requestedAndAutomaticJobsPublishTheNotes(automatic: Bool) async throws {
         try await withComposeFolder { root in
             try savedCall(a, in: root)
-            let storage = SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
+            let storage = callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
             let files = Files(locations: storage, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let http = NotesHTTP()
             let sut = makeSummaries(files: files, storage: storage, http: http, enabled: automatic)
@@ -218,7 +219,7 @@ struct CallNotesWiringTests {
     @Test func skippingAutomaticSubmissionKeepsAnIndependentRequest() async throws {
         try await withComposeFolder { root in
             try savedCall(a, in: root)
-            let storage = SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
+            let storage = callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
             let files = Files(locations: storage, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let http = NotesHTTP()
             let sut = makeSummaries(files: files, storage: storage, http: http, enabled: true)
@@ -240,7 +241,7 @@ struct CallNotesWiringTests {
     @Test func cancellingBeforeDispatchDiscardsThePendingRecord() async throws {
         try await withComposeFolder { root in
             try savedCall(a, in: root)
-            let storage = SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
+            let storage = callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
             let files = Files(locations: storage, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let sut = makeSummaries(files: files, storage: storage, http: NotesHTTP(), enabled: false)
             sut.stopDispatch()
@@ -273,7 +274,7 @@ private func savedCall(_ id: String, in root: URL) throws {
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
     try Data("# Transcript\n\n**Me** 00:00:03\n\nsaved words\n".utf8).write(to: folder.appendingPathComponent("transcript.md"))
 }
-@MainActor private func makeSummaries(files: Files, storage: SummaryStorage, http: NotesHTTP, enabled: Bool) -> SummariesModel {
+@MainActor private func makeSummaries(files: Files, storage: CallsStorage, http: NotesHTTP, enabled: Bool) -> SummariesModel {
     SummariesModel(text: { CallsListText(language: .russian) },
                    preparation: SummariesPreparationPort(notes: { .init(enabled: enabled, speakers: false, primary: notesRuntime) },
                                                          makeID: { UUID().uuidString }, callText: { try await storage.text(id: $0) }),
@@ -282,7 +283,7 @@ private func savedCall(_ id: String, in root: URL) throws {
 }
 private func job(_ id: String, in root: URL) -> URL { root.appendingPathComponent(id).appendingPathComponent(".summary-job.json") }
 private func phase(_ id: String, in root: URL) async throws -> String? {
-    let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
+    let files = Files(locations: callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
     return try await files.load(call: id)?.phase
 }
 @MainActor private func rows(_ calls: AudelinCalls, count: Int) async {
@@ -352,11 +353,11 @@ private final class RecoveringNotesDisk: Disk, Sendable {
 }
 
 private actor HeldNotesLocation: Locations {
-    let storage: SummaryStorage
+    let storage: CallsStorage
     nonisolated let entered = Signal()
     private var held = false
     private var waiter: CheckedContinuation<Void, Never>?
-    init(storage: SummaryStorage) { self.storage = storage }
+    init(storage: CallsStorage) { self.storage = storage }
     func hold() { held = true }
     func release() { held = false; waiter?.resume(); waiter = nil }
     func withFolder<Value: Sendable>(call: String, _ work: @Sendable (URL) throws -> Value) async throws -> Value {

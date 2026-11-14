@@ -58,6 +58,7 @@ TARGETS = {
     "CallsWindowUI": ("ui", "the calls window's split and toolbar", 7),
     "Recordings": ("machines", "confirms and serialises call actions", 5),
     "Calls": ("storage", "lists and manages recorded folders", 7),
+    "CallsStorage": ("storage", "journals call moves; one\ntransaction for calls and notes", 12),
     "CallsSearch": ("text", "finds a query in a call's\ntitle, transcript and notes", 15),
     "PanelUI": ("ui", "the live panel and its transcript", 0),
     "SettingsUI": ("ui", "the Settings window", 1),

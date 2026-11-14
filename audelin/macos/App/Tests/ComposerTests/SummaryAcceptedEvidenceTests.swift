@@ -1,3 +1,4 @@
+import CallsStorage
 import Foundation
 import SummaryFiles
 import SummaryJobs
@@ -11,7 +12,7 @@ struct SummaryAcceptedEvidenceTests {
             let job = evidenceJob(), identities = acceptedIdentities()
             let folder = root.appendingPathComponent(job.call)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
+            let files = Files(locations: callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let store = SummariesFilesPort(files: files, makeID: { "fresh" })
             #expect(try await store.claim(job).owned)
             #expect(try await store.start(job))

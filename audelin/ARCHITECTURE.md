@@ -48,7 +48,7 @@ platform; anything else breaks rule 1. The lanes of
 |---|---|---|
 | Machine | nothing | Session, Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, TranscriptFinalization |
 | Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch |
-| Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, Calls, Preferences |
+| Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, Calls, CallsStorage, Preferences |
 | Shared helper | nothing | SplitRows, CallFolderName, AudioConversion, ModelLoading |
 | UI | GlassLedger, NotesMarkdown, other UI | PanelUI, SettingsUI, MenuBar, CallsListUI, CallsWindowUI, SummaryPreviewUI, NotesMarkdown, GlassLedger |
 | Composition | anything | Composer, LiveAudio, RecordedCapture, CallsWindowShell, Audelin |
@@ -61,9 +61,7 @@ stands. MenuBar is UI that also holds the pure reducer for panel presence.
 ### Open
 
 The composer does not yet follow rule 4. It holds decisions the sections
-below give to the root: submitting notes only after a closed transcript with
-the shutdown order, and coordinating note publication with
-rename, delete and calls-folder moves. It also holds state across events
+below give to the root: the shutdown order. It also holds state across events
 (`RecordingConditions`, `NewestText`, `CallLiveNames`,
 `LiveNameBoard`). Each becomes a component or machine of its own, or is
 shown to be only mapping. No check yet fails on an import that a target's
@@ -92,8 +90,20 @@ It subscribes SummaryJobs to TranscriptFinalization's final transcripts
 (Transcript finalization), so a call's notes start from its final form.
 Root lifecycle integration stops dispatch, drains recording, shuts
 TranscriptFinalization down and waits for it to settle, cancels and joins
-active summary resources, then allows termination. Root storage integration coordinates
-publication with call rename, deletion and calls-folder moves.
+active summary resources, then allows termination.
+
+### Calls storage
+
+CallsStorage is the transaction adapter for the calls on disk. It owns the
+calls journal: its format, the migration from the older list of retained
+folders, its validation, and recovery of a move a crash interrupted. Every
+operation runs one at a time, a note's publication included, so a note never
+lands in a folder that is moving. It refuses to delete, move or commit a
+folder while a move is half finished. It publishes whether a move or folder
+commit is running. SummaryFiles reaches a call's folder only through its
+location and transaction port, and keeps no journal. Recordings holds move
+and delete policy: it confirms each action, leaves out calls already in the
+destination, and reloads its list after a failed rename or delete.
 
 SummaryFiles is also the one reader of published notes: it gives a call's
 notes text and made date, none, or why they cannot be read. CallDetail is the

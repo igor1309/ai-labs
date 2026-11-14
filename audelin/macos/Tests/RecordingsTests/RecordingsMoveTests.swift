@@ -80,6 +80,20 @@ struct RecordingsMoveTests {
         assert(retrying, .movePrepared([newer, older]), delivers: .storeFolder(destination)) { $0.phase = .storingFolder }
     }
 
+    @Test func callsAlreadyInTheDestinationAreNotMoved() {
+        let here = MoveCall(id: "C", title: "Here", bytes: 5, inDestination: true)
+        let counting = makeState { $0.phase = .countingMove; $0.move = .init(destination: destination) }
+        assert(counting, .movePrepared([newer, here, older]), delivers: nil) { $0.phase = .askingMove; $0.move = plan() }
+        assert(counting, .movePrepared([here]), delivers: nil) {
+            $0.phase = .askingMove; $0.move = rendered(.init(destination: destination))
+        }
+        let preparing = makeState { $0.phase = .preparingMove; $0.move = plan(); $0.callsFolderAvailable = false }
+        assert(preparing, .movePrepared([here]), delivers: .storeFolder(destination)) {
+            $0.phase = .storingFolder; $0.move = rendered(.init(destination: destination))
+        }
+        assert(preparing, .movePrepared([here, older, newer]), delivers: .moveCall(id: older.id, to: destination)) { $0.phase = .moving }
+    }
+
     @Test func recordingRefusesBothTheChoiceAndALateConfirmationAndReservationCanRefuse() {
         let recording = makeState { $0.recordingID = "A" }
         assert(recording, .chooseFolder(destination), delivers: nil) { $0.phase = .refusedMove }
