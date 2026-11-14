@@ -9,7 +9,9 @@ typealias Reducer = TranscriptFinalizationReducer<String, String, String, String
 
 let callID = "call"
 
-func makeState(_ call: State.Call? = nil) -> State { State(calls: call.map { [callID: $0] } ?? [:]) }
+func makeState(_ call: State.Call? = nil, shuttingDown: Bool = false) -> State {
+    State(calls: call.map { [callID: $0] } ?? [:], shuttingDown: shuttingDown)
+}
 
 func makeCall(
     _ stage: State.Stage = .writing, saved: Bool = true, raw: String? = "raw", far: String? = nil, heard: String? = nil
@@ -54,5 +56,5 @@ func assert(_ state: State, _ event: Event, delivers expected: Effect?, sourceLo
 }
 
 func published(_ entries: [String] = ["entry"], finalWrite: Bool = true) -> Effect {
-    .publish(call: callID, .init(entries: entries, usable: !entries.isEmpty, finalWrite: finalWrite))
+    .publish([callID: .init(entries: entries, usable: !entries.isEmpty, finalWrite: finalWrite)])
 }

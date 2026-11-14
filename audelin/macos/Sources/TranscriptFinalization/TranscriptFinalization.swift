@@ -5,8 +5,14 @@
 public struct TranscriptFinalizationState<Raw: Equatable & Sendable, Far: Equatable & Sendable, Heard: Equatable & Sendable>: Equatable, Sendable {
 
     public var calls: [String: Call]
+    /// After shutdown no new model work starts: each call becomes final as soon as its file is.
+    public var shuttingDown: Bool
+    /// Shut down with no call's file still being replaced.
+    public var settled: Bool
 
-    public init(calls: [String: Call] = [:]) { self.calls = calls }
+    public init(calls: [String: Call] = [:], shuttingDown: Bool = false, settled: Bool = false) {
+        self.calls = calls; self.shuttingDown = shuttingDown; self.settled = settled
+    }
 
     public struct Call: Equatable, Sendable {
 
@@ -65,6 +71,7 @@ public enum TranscriptFinalizationEvent<Raw: Equatable & Sendable, Far: Equatabl
     /// Nil when cleanup kept the microphone side as written.
     case cleaned(call: String, Heard?)
     case committed(call: String, succeeded: Bool)
+    case shutdown
 }
 
 public enum TranscriptFinalizationEffect<Raw: Equatable & Sendable, Far: Equatable & Sendable, Heard: Equatable & Sendable, Entry: Equatable & Sendable>: Equatable, Sendable {
@@ -72,7 +79,8 @@ public enum TranscriptFinalizationEffect<Raw: Equatable & Sendable, Far: Equatab
     case diarize(call: String, Raw)
     case clean(call: String, Raw, Far?)
     case commit(call: String, Raw, Far?, Heard)
-    case publish(call: String, FinalTranscript<Entry>)
+    /// Each call's final form, published once.
+    case publish([String: FinalTranscript<Entry>])
 }
 
 public struct TranscriptFinalizationReducer<Raw: Equatable & Sendable, Far: Equatable & Sendable, Heard: Equatable & Sendable, Entry: Equatable & Sendable>: Sendable {
@@ -87,6 +95,16 @@ public struct TranscriptFinalizationReducer<Raw: Equatable & Sendable, Far: Equa
     public init(entries: @escaping @Sendable (Raw, Far?, Heard?) -> [Entry]) { self.entries = entries }
 
     public func reduce(_ state: State, _ event: Event) -> (State, Effect?) {
+
+        let (stepped, effect) = step(state, event)
+        var next = stepped
+        if next.shuttingDown {
+            next.settled = !next.calls.values.contains { $0.stage == .diarizing || $0.stage == .committing }
+        }
+        return (next, effect)
+    }
+
+    private func step(_ state: State, _ event: Event) -> (State, Effect?) {
 
         var next = state
         switch event {
@@ -111,7 +129,12 @@ public struct TranscriptFinalizationReducer<Raw: Equatable & Sendable, Far: Equa
             guard call.latestWriteSucceeded, let raw = call.raw else {
                 call.stage = .failed
                 next.calls[id] = call
-                return (next, .publish(call: id, final(call, finalWrite: false)))
+                return (next, publish(id, call, finalWrite: false))
+            }
+            guard !state.shuttingDown else {
+                call.stage = .finalized
+                next.calls[id] = call
+                return (next, publish(id, call, finalWrite: true))
             }
             call.stage = .diarizing
             next.calls[id] = call
@@ -119,7 +142,13 @@ public struct TranscriptFinalizationReducer<Raw: Equatable & Sendable, Far: Equa
 
         case let .diarized(id, far):
             guard var call = state.calls[id], call.stage == .diarizing, let raw = call.raw else { return (state, nil) }
-            call.far = far; call.stage = .cleaning
+            call.far = far
+            guard !state.shuttingDown else {
+                call.stage = .finalized
+                next.calls[id] = call
+                return (next, publish(id, call, finalWrite: true))
+            }
+            call.stage = .cleaning
             next.calls[id] = call
             return (next, .clean(call: id, raw, far))
 
@@ -128,7 +157,7 @@ public struct TranscriptFinalizationReducer<Raw: Equatable & Sendable, Far: Equa
             guard let heard else {
                 call.stage = .finalized
                 next.calls[id] = call
-                return (next, .publish(call: id, final(call, finalWrite: true)))
+                return (next, publish(id, call, finalWrite: true))
             }
             call.heard = heard; call.stage = .committing
             next.calls[id] = call
@@ -140,8 +169,23 @@ public struct TranscriptFinalizationReducer<Raw: Equatable & Sendable, Far: Equa
             if !succeeded { call.heard = nil }
             call.stage = .finalized
             next.calls[id] = call
-            return (next, .publish(call: id, final(call, finalWrite: true)))
+            return (next, publish(id, call, finalWrite: true))
+
+        case .shutdown:
+            guard !state.shuttingDown else { return (state, nil) }
+            next.shuttingDown = true
+            // Cleaning is model work only; the file still holds the written text, which is final.
+            var finals: [String: FinalTranscript<Entry>] = [:]
+            for (id, call) in state.calls where call.stage == .cleaning {
+                next.calls[id]?.stage = .finalized
+                finals[id] = final(call, finalWrite: true)
+            }
+            return (next, finals.isEmpty ? nil : .publish(finals))
         }
+    }
+
+    private func publish(_ id: String, _ call: State.Call, finalWrite: Bool) -> Effect {
+        .publish([id: final(call, finalWrite: finalWrite)])
     }
 
     private func final(_ call: State.Call, finalWrite: Bool) -> FinalTranscript<Entry> {
