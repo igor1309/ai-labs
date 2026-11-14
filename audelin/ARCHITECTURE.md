@@ -99,6 +99,12 @@ publishing and saving, stopping dispatch and shutdown. Its state holds every
 call's stage; storage, generation and preferences are its collaborators. No
 coordinator, per-call job model or registry of models sits beside it. It
 owns its consumer-owned ports.
+It decides which calls get notes: a call the user asked for always does, a
+finished recording only while notes are on, which the preferences port
+reports with each prepared job. It holds made notes in a deferred stage while
+a calls-storage transaction runs and publishes them, one at a time, once it
+ends. After shutdown it publishes settled once nothing it started is in
+flight.
 SpeakerIdentification accepts supported identity evidence without rewriting the
 transcript. SummaryRuntime adapts one bounded process or compatible HTTP
 attempt; SummaryFiles owns durable job records and complete note publication.
@@ -107,7 +113,8 @@ validation/save/load outcomes and its preference/availability ports.
 
 The root maps those ports and decorates attempts with fallback and logging.
 It subscribes SummaryJobs to TranscriptFinalization's final transcripts
-(Transcript finalization), so a call's notes start from its final form.
+(Transcript finalization), so a call's notes start from its final form, and
+to CallsStorage's transaction state.
 On quit, SummaryJobs stops dispatch and shuts down once TranscriptFinalization
 has settled, so the last final transcripts reach it first (Shutdown).
 
@@ -137,7 +144,7 @@ folders, its validation, and recovery of a move a crash interrupted. Every
 operation runs one at a time, a note's publication included, so a note never
 lands in a folder that is moving. It refuses to delete, move or commit a
 folder while a move is half finished. It publishes whether a move or folder
-commit is running. SummaryFiles reaches a call's folder only through its
+commit is running, which SummaryJobs receives. SummaryFiles reaches a call's folder only through its
 location and transaction port, and keeps no journal. Recordings holds move
 and delete policy: it confirms each action, leaves out calls already in the
 destination, and reloads its list after a failed rename or delete.

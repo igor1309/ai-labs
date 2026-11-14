@@ -24,11 +24,11 @@ import Testing
     func aRetryOfACallNotFailedOrInterruptedDeliversNothing(stage: SummariesState.Call.Stage) {
         assert(make(stage), .retry("call"), delivers: nil)
     }
-    @Test(arguments: [(SummariesState.Lifecycle.accepting, false), (.draining, true), (.ended, true)])
+    @Test(arguments: [(SummariesState.Lifecycle.accepting, false), (.draining, true), (.settled, true)])
     func aRetryWithoutDispatchOrAfterShutdownChangesNothing(lifecycle: SummariesState.Lifecycle, dispatch: Bool) {
         assert(make(.failed, lifecycle: lifecycle, dispatch: dispatch), .retry("call"))
     }
-    @Test(arguments: [(SummariesState.Lifecycle.accepting, false), (.draining, true), (.ended, true)])
+    @Test(arguments: [(SummariesState.Lifecycle.accepting, false), (.draining, true), (.settled, true)])
     func aRetryWithoutDispatchOrAfterShutdownDeliversNothing(lifecycle: SummariesState.Lifecycle, dispatch: Bool) {
         assert(make(.failed, lifecycle: lifecycle, dispatch: dispatch), .retry("call"), delivers: nil)
     }
@@ -128,7 +128,7 @@ import Testing
         #expect(event == .retryFailed("call") && storage.payloads.isEmpty)
     }
     @Test func retryDoesNothingElse() async {
-        let preparation = PreparationSpy(job: nil), claims = ClaimsSpy(), starts = StartsSpy(), storage = StorageSpy(), generation = GenerationsSpy()
+        let preparation = PreparationSpy(), claims = ClaimsSpy(), starts = StartsSpy(), storage = StorageSpy(), generation = GenerationsSpy()
         _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: RecordsSpy(), starts: starts,
                                          storage: storage, generation: generation).handle(.retry(makeJob()))
         #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && starts.payloads.isEmpty
@@ -141,7 +141,7 @@ import Testing
         #expect(!records.payloads.contains("retry:job"))
     }
     private func makeSUT(_ records: RecordsSpy, _ storage: StorageSpy = StorageSpy()) -> SummariesEffectHandler {
-        .init(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: records, starts: StartsSpy(),
+        .init(preparation: PreparationSpy(), claims: ClaimsSpy(), records: records, starts: StartsSpy(),
               storage: storage, generation: GenerationsSpy())
     }
 }
