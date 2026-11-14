@@ -68,7 +68,8 @@ public func compose(
             await resources.showSpeakers(finalization.state)
             if let call = Calls.id(in: URL(fileURLWithPath: final.call).lastPathComponent, timeZone: timeZone) {
                 summaries.send(.finalized(call, entries: final.transcript.entries,
-                                          finalWrite: final.transcript.finalWrite, usable: final.transcript.usable))
+                                          finalWrite: final.transcript.finalWrite, usable: final.transcript.usable,
+                                          notesOn: preferences.read().notes.enabled))
             }
             await resources.published(call: final.call)
         }

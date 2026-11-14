@@ -87,8 +87,9 @@ public enum SummariesEvent: Equatable, Sendable {
     /// The call's saved job, or none when storage holds no job for it.
     case recovered(String, SummariesSaved?)
     case loadFailed(String)
-    /// A recording's finalized transcript, offered for automatic notes.
-    case finalized(String, entries: [Job.Entry], finalWrite: Bool, usable: Bool)
+    /// A recording's finalized transcript, offered for automatic notes, and whether notes are on; while they are
+    /// off the call is dropped at once.
+    case finalized(String, entries: [Job.Entry], finalWrite: Bool, usable: Bool, notesOn: Bool)
     /// The stored transcript a request read.
     case submit(SummariesSubmission)
     /// The submission's job, and whether notes are on; the reducer drops an automatic call while they are off.
@@ -236,7 +237,7 @@ public struct SummariesReducer: Sendable {
         case let .loadFailed(id) where state.calls[id]?.stage == .recovering:
             call = id
             next.calls[id] = .init(stage: .failed)
-        case let .finalized(id, entries, finalWrite, usable) where state.lifecycle == .accepting && state.calls[id]?.stage == .recovering
+        case let .finalized(id, entries, finalWrite, usable, notesOn: true) where state.lifecycle == .accepting && state.calls[id]?.stage == .recovering
                                                               && state.calls[id]?.submission == nil:
             // A finalized transcript waits for recovery; a saved job takes precedence over it.
             next.calls[id]?.submission = .init(call: id, entries: entries, finalWrite: finalWrite, usable: usable)
@@ -259,7 +260,10 @@ public struct SummariesReducer: Sendable {
             call = submission.call
             next.calls[call] = .init(stage: .preparing, requested: submission.requested, submission: submission)
             effect = .prepare(submission)
-        case let .finalized(id, entries, finalWrite, usable) where state.lifecycle == .accepting
+        case let .finalized(id, _, _, _, notesOn: false) where state.calls[id]?.stage == .waiting:
+            next.calls[id] = nil
+            return (next, nil)
+        case let .finalized(id, entries, finalWrite, usable, notesOn: true) where state.lifecycle == .accepting
                                                               && (state.calls[id] == nil || state.calls[id]?.stage == .waiting):
             call = id
             let submission = SummariesSubmission(call: id, entries: entries, finalWrite: finalWrite, usable: usable)

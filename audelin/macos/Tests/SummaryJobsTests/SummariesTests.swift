@@ -26,6 +26,21 @@ import Testing
     @Test func aFinalizedTranscriptForANewCallDeliversPrepare() {
         assert(makeState(), makeFinalized(), delivers: .prepare(makeSubmission()))
     }
+    @Test func aFinalizedTranscriptWithNotesOffDropsAWaitingCall() {
+        assert(makeState(calls: ["call": .init(stage: .waiting)]), makeFinalized(notesOn: false)) { $0.calls["call"] = nil }
+        #expect(format.payloads.isEmpty)
+    }
+    @Test func aFinalizedTranscriptWithNotesOffForAWaitingCallDeliversNothing() {
+        assert(makeState(calls: ["call": .init(stage: .waiting)]), makeFinalized(notesOn: false), delivers: nil)
+    }
+    @Test(arguments: [nil, SummariesState.Call.Stage.recovering, .succeeded])
+    func aFinalizedTranscriptWithNotesOffChangesNothingElse(stage: SummariesState.Call.Stage?) {
+        assert(makeState(calls: stage.map { ["call": .init(stage: $0)] } ?? [:]), makeFinalized(notesOn: false))
+    }
+    @Test(arguments: [nil, SummariesState.Call.Stage.recovering, .succeeded])
+    func aFinalizedTranscriptWithNotesOffDeliversNothingElse(stage: SummariesState.Call.Stage?) {
+        assert(makeState(calls: stage.map { ["call": .init(stage: $0)] } ?? [:]), makeFinalized(notesOn: false), delivers: nil)
+    }
     @Test func aStoredTranscriptForANewCallChangesNothing() {
         assert(makeState(), .submit(makeSubmission(requested: true)))
     }
@@ -251,7 +266,7 @@ import Testing
         assert(makeRecovering(), makeFinalized(), delivers: nil)
     }
     @Test func aSecondFinalizedTranscriptWhileRecoveringChangesNothing() {
-        assert(makeRecovering(submission: makeSubmission()), .finalized("call", entries: [], finalWrite: false, usable: false))
+        assert(makeRecovering(submission: makeSubmission()), .finalized("call", entries: [], finalWrite: false, usable: false, notesOn: true))
     }
 
     @Test(arguments: [false, true]) func aSavedJobIsInstalled(queued: Bool) {
@@ -493,8 +508,8 @@ func makeJob(call: String = "call", entries: [Job.Entry] = makeEntries()) -> Job
           primary: .init(kind: "cli", model: "m", program: "p", endpoint: "", credentialVariable: ""))
 }
 func makeIdentity() -> Identity { .init(label: "A", name: "Ann", time: "0", quote: "I am Ann") }
-func makeFinalized() -> SummariesEvent {
-    .finalized("call", entries: makeEntries(), finalWrite: true, usable: true)
+func makeFinalized(notesOn: Bool = true) -> SummariesEvent {
+    .finalized("call", entries: makeEntries(), finalWrite: true, usable: true, notesOn: notesOn)
 }
 func makeSubmission(finalWrite: Bool = true, usable: Bool = true, requested: Bool = false) -> SummariesSubmission {
     .init(call: "call", entries: makeEntries(), finalWrite: finalWrite, usable: usable, requested: requested)
