@@ -91,16 +91,10 @@ struct LoggingRecordingSession: RecordingSession {
     let base: any RecordingSession
     let sink: any LogSink
 
-    func begin(id: UInt64) async -> RecordingSessionReport {
+    func begin(id: UInt64) async {
         sink.write(.init(category: .recording, message: "begin id=\(id) called"))
-        let report = await base.begin(id: id)
-        switch report {
-        case .ready, .ended:
-            sink.write(.init(category: .recording, message: "begin id=\(id) report=\(report)"))
-        case let .cannotRecord(error):
-            sink.write(.init(category: .recording, message: "begin id=\(id) report=cannotRecord", error: error))
-        }
-        return report
+        await base.begin(id: id)
+        sink.write(.init(category: .recording, message: "begin id=\(id) accepted"))
     }
 
     func end(id: UInt64) async {

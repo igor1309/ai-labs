@@ -14,13 +14,13 @@ struct RecordingDoerTests {
     }
 
     @Test(arguments: [makeBeginning(), makeCall(), makeDeferredCall()])
-    func readyBeginningBeginsThatSessionAndSendsItsReport(_ state: RecordingState) async {
+    func readyBeginningBeginsThatSession(_ state: RecordingState) async {
 
         let (sut, spies) = makeSUT()
         sut.act(on: state)
         await spies.ready.complete(with: true)
-        await spies.session.completeBegin(with: .ready)
-        #expect(await spies.sent.next() == .sessionReported(id: state.lastSessionID, .ready))
+        await spies.session.completeBegin()
+        #expect(await spies.sent.count == 0)
         #expect(await spies.session.beginIDs == [state.lastSessionID])
         #expect(await spies.session.endIDs.isEmpty)
     }
@@ -32,8 +32,8 @@ struct RecordingDoerTests {
         sut.act(on: state)
         sut.act(on: state)
         await spies.ready.complete(with: true)
-        await spies.session.completeBegin(with: .ready)
-        #expect(await spies.sent.next() == .sessionReported(id: state.lastSessionID, .ready))
+        await spies.session.completeBegin()
+        #expect(await spies.sent.count == 0)
         #expect(await spies.ready.count == 1)
         #expect(await spies.session.beginIDs == [state.lastSessionID])
     }
@@ -83,8 +83,8 @@ struct RecordingDoerTests {
         let (sut, spies) = makeSUT()
         sut.act(on: makeRunning(id: 4))
         await spies.ready.complete(with: true)
-        await spies.session.completeBegin(with: .ready)
-        #expect(await spies.sent.next() == .sessionReported(id: 4, .ready))
+        await spies.session.completeBegin()
+        #expect(await spies.sent.count == 0)
         #expect(await spies.session.beginIDs == [4])
         #expect(await spies.session.endIDs.isEmpty)
     }
@@ -95,8 +95,8 @@ struct RecordingDoerTests {
         sut.act(on: makeRunning(id: 4))
         sut.act(on: makeRunning(id: 4))
         await spies.ready.complete(with: true)
-        await spies.session.completeBegin(with: .ready)
-        #expect(await spies.sent.next() == .sessionReported(id: 4, .ready))
+        await spies.session.completeBegin()
+        #expect(await spies.sent.count == 0)
         #expect(await spies.session.beginIDs == [4])
     }
 
@@ -106,10 +106,9 @@ struct RecordingDoerTests {
         sut.act(on: makeEnding(id: 5))
         await spies.ready.complete(with: true)
         await spies.session.waitForEnd()
-        await spies.session.completeBegin(with: .ended)
-        await spies.released.complete()
-        #expect(await spies.sent.next() == .sessionReported(id: 5, .ended))
+        await spies.session.completeBegin()
         await spies.session.completeEnd()
+        await spies.released.complete()
         #expect(await spies.sent.next() == .sessionReported(id: 5, .ended))
         #expect(await spies.session.beginIDs == [5])
         #expect(await spies.session.endIDs == [5])
@@ -122,10 +121,9 @@ struct RecordingDoerTests {
         sut.act(on: makeEnding(id: 5))
         await spies.ready.complete(with: true)
         await spies.session.waitForEnd()
-        await spies.session.completeBegin(with: .ended)
-        await spies.released.complete()
+        await spies.session.completeBegin()
         await spies.session.completeEnd()
-        #expect(await spies.sent.next() == .sessionReported(id: 5, .ended))
+        await spies.released.complete()
         #expect(await spies.sent.next() == .sessionReported(id: 5, .ended))
         #expect(await spies.session.beginIDs == [5])
         #expect(await spies.session.endIDs == [5])
@@ -165,8 +163,7 @@ struct RecordingDoerTests {
         sut.act(on: makeBeginning(id: 2))
         sut.act(on: makeBeginning(id: 2))
         await spies.ready.complete(with: true)
-        await spies.session.completeBegin(with: .cannotRecord("no mic"))
-        #expect(await spies.sent.next() == .sessionReported(id: 2, .cannotRecord("no mic")))
+        await spies.session.completeBegin()
         sut.act(on: makeEnding(id: 2))
         sut.act(on: makeEnding(id: 2))
         await spies.session.completeEnd()
@@ -239,8 +236,7 @@ private func makeBegun() async -> (RecordingDoer, Spies) {
     let (sut, spies) = makeSUT()
     sut.act(on: makeBeginning())
     await spies.ready.complete(with: true)
-    await spies.session.completeBegin(with: .ready)
-    _ = await spies.sent.next()
+    await spies.session.completeBegin()
     sut.act(on: makeRunning())
     return (sut, spies)
 }

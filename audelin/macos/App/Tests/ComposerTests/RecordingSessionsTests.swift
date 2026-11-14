@@ -22,14 +22,14 @@ struct RecordingSessionsTests {
 
         try await withSessions { rig in
             await rig.sessions.end(id: 5)
-            #expect(await rig.sessions.begin(id: 5) == .ended)
+            await rig.sessions.begin(id: 5)
             #expect(rig.microphones.count == 0)
 
             // Only that id is spent: the next begins, and the same id's next begin too.
-            #expect(await rig.sessions.begin(id: 6) == .ready)
+            await rig.recording(6)
             #expect(rig.microphones.count == 1)
             await rig.sessions.end(id: 6)
-            #expect(await rig.sessions.begin(id: 5) == .ready)
+            await rig.recording(5)
             #expect(rig.microphones.count == 2)
             await rig.sessions.end(id: 5)
         }
@@ -40,7 +40,7 @@ struct RecordingSessionsTests {
         try await withSessions { rig in
             await rig.sessions.end(id: 99)
             #expect(rig.microphones.count == 0)
-            #expect(await rig.sessions.begin(id: 1) == .ready)
+            await rig.recording(1)
             await rig.sessions.end(id: 1)
             let stops = rig.microphones.stops
             await rig.sessions.end(id: 1)
@@ -53,7 +53,7 @@ struct RecordingSessionsTests {
     @Test func aRecordingWhoseTranscriptNeverOpenedStillEnds() async throws {
 
         try await withSessions(folderFails: true) { rig in
-            #expect(await rig.sessions.begin(id: 3) != .ready)
+            await rig.sessions.begin(id: 3)
             await rig.sessions.end(id: 3)
             #expect(await rig.panel.states().first(where: { _ in true })?.recording == .off)
         }
@@ -62,7 +62,7 @@ struct RecordingSessionsTests {
     @Test func endingARecordingTellsNotesItsCallIsWaitingOnce() async throws {
 
         try await withSessions { rig in
-            #expect(await rig.sessions.begin(id: 4) == .ready)
+            await rig.recording(4)
             #expect(rig.waiting.all.isEmpty)
             await rig.sessions.end(id: 4)
             let created = Set(rig.statuses.all.compactMap(\.status.callID))
@@ -75,8 +75,8 @@ struct RecordingSessionsTests {
     @Test func repeatingABeginAnswersFromTheSameSession() async throws {
 
         try await withSessions { rig in
-            #expect(await rig.sessions.begin(id: 12) == .ready)
-            #expect(await rig.sessions.begin(id: 12) == .ready)
+            await rig.recording(12)
+            await rig.recording(12)
             #expect(rig.microphones.count == 1)
             await rig.sessions.end(id: 12)
         }
@@ -85,7 +85,7 @@ struct RecordingSessionsTests {
     @Test func cannotRecordAndFaultsReachRecordingAsStatus() async throws {
 
         try await withSessions { rig in
-            #expect(await rig.sessions.begin(id: 7) == .ready)
+            await rig.recording(7)
             rig.microphones.capture(0).end(throwing: ScriptFailure.failed)
             rig.calls.capture(0).end(throwing: ScriptFailure.failed)
             await rig.statuses.wait { $0.id == 7 && $0.status.cannotRecord == "no track can record" }
@@ -98,11 +98,11 @@ struct RecordingSessionsTests {
     @Test func overlappingSessionsKeepTheirReportsAndSwitchesToThemselves() async throws {
 
         try await withSessions { rig in
-            #expect(await rig.sessions.begin(id: 1) == .ready)
+            await rig.recording(1)
             await rig.panel.send(.switchLiveTextOn)
             await rig.log.wait { wants($0, id: 1) }
 
-            #expect(await rig.sessions.begin(id: 2) == .ready)
+            await rig.recording(2)
             rig.microphones.capture(0).end(throwing: ScriptFailure.failed)
             await rig.statuses.wait { $0.id == 1 && $0.status.faults.contains(.microphone) }
             #expect(!rig.log.entries.all.contains { wants($0, id: 2) })
@@ -208,6 +208,14 @@ private struct SessionsRig: Sendable {
     let waiting: Values<URL>
     let statuses: Statuses
     let log: FixtureLog
+}
+
+private extension SessionsRig {
+    /// Begins the session and waits until it records.
+    func recording(_ id: UInt64) async {
+        await sessions.begin(id: id)
+        await statuses.wait { $0.id == id && $0.status.recording }
+    }
 }
 
 private func withSessions(folderFails: Bool = false, _ body: @Sendable (SessionsRig) async throws -> Void) async throws {

@@ -13,9 +13,9 @@ struct RecordingLifecycleTests {
         assert(makeState(manual) { $0.automatic = automatic; $0.callOn = true }, .callEnded) { $0.callOn = false }
     }
 
-    @Test(arguments: [RecordingSessionReport.ready, .cannotRecord("late failure"), .ended])
-    func aLateReportOfTheLastSessionLeavesTheNextOneAlone(_ report: RecordingSessionReport) {
-        assert(makeRunning(id: 2), .sessionReported(id: 1, report))
+    @Test(arguments: [RecordingEvent.sessionChanged(id: 1, .init(recording: true)), .sessionChanged(id: 1, .init(cannotRecord: "late failure")), .sessionReported(id: 1, .ended)])
+    func aLateReportOfTheLastSessionLeavesTheNextOneAlone(_ event: RecordingEvent) {
+        assert(makeRunning(id: 2), event)
     }
 
     @Test func userStartWhileEndingChangesNothing() { assert(makeEnding(), .userStart) }

@@ -55,7 +55,7 @@ struct RecordingReducerTests {
 
     @Test func automaticOffIsKept() { assert(makeIdle(), .automaticChanged(false)) { $0.automatic = false } }
 
-    @Test func readySessionStartsRecording() { assert(makeBeginning(), .sessionReported(id: 1, .ready)) { $0.phase = .recording } }
+    @Test func readySessionStartsRecording() { assert(makeBeginning(), .sessionChanged(id: 1, .init(recording: true))) { $0.phase = .recording } }
 
     @Test func userStartWhileBeginningChangesNothing() { assert(makeBeginning(), .userStart) }
 
@@ -69,15 +69,15 @@ struct RecordingReducerTests {
 
     @Test func userStopWhileEndingChangesNothing() { assert(makeEnding(), .userStop) }
 
-    @Test func readySessionWhileEndingChangesNothing() { assert(makeEnding(), .sessionReported(id: 1, .ready)) }
+    @Test func readySessionWhileEndingChangesNothing() { assert(makeEnding(), .sessionChanged(id: 1, .init(recording: true))) }
 
     @Test func callStartedWhileEndingIsKeptPending() { assert(makeEnding(), .callStarted) { $0.callOn = true; $0.pendingCall = true } }
 
     @Test func callEndedWhilePendingDropsThePendingCall() { assert(makePending(), .callEnded) { $0.callOn = false; $0.pendingCall = false } }
 
-    @Test func cannotRecordWhileRecordingKeepsTheFailureAndEnds() { assert(makeRunning(), .sessionReported(id: 1, .cannotRecord("cannot keep audio"))) { $0.phase = .ending; $0.cannotRecord = "cannot keep audio" } }
+    @Test func cannotRecordWhileRecordingKeepsTheFailureAndEnds() { assert(makeRunning(), .sessionChanged(id: 1, .init(cannotRecord: "cannot keep audio"))) { $0.phase = .ending; $0.cannotRecord = "cannot keep audio" } }
 
-    @Test func cannotRecordWhileBeginningKeepsTheFailureAndEnds() { assert(makeBeginning(), .sessionReported(id: 1, .cannotRecord("cannot keep audio"))) { $0.phase = .ending; $0.cannotRecord = "cannot keep audio" } }
+    @Test func cannotRecordWhileBeginningKeepsTheFailureAndEnds() { assert(makeBeginning(), .sessionChanged(id: 1, .init(cannotRecord: "cannot keep audio"))) { $0.phase = .ending; $0.cannotRecord = "cannot keep audio" } }
 
     @Test func endedFailedSessionGoesIdleKeepingTheFailure() { assert(makeFailed(), .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.session = nil } }
 
@@ -87,9 +87,9 @@ struct RecordingReducerTests {
 
     @Test func endedReportOfAnotherSessionChangesNothing() { assert(makeRunning(), .sessionReported(id: 99, .ended)) }
 
-    @Test func failureOfAnotherSessionChangesNothing() { assert(makeRunning(), .sessionReported(id: 99, .cannotRecord("old failure"))) }
+    @Test func failureOfAnotherSessionChangesNothing() { assert(makeRunning(), .sessionChanged(id: 99, .init(cannotRecord: "old failure"))) }
 
-    @Test func readyReportWhileIdleChangesNothing() { assert(makeIdle(), .sessionReported(id: 1, .ready)) }
+    @Test func readyReportWhileIdleChangesNothing() { assert(makeIdle(), .sessionChanged(id: 1, .init(recording: true))) }
 
     @Test(arguments: RecordingCondition.allCases.filter { $0 != .callAudioAccess })
     func userStartWhileBlockedChangesNothing(_ c: RecordingCondition) { assert(makeBlocked(c), .userStart) }
@@ -131,21 +131,21 @@ struct RecordingReducerTests {
     @Test func userStartBeforeConditionsAreReportedChangesNothing() { assert(makeUnknown(), .userStart) }
 
     @Test(arguments: sessionIDs)
-    func failureOfLatestSessionWhileIdleIsKept(_ id: UInt64) { assert(makeIdleAfter(id), .sessionReported(id: id, .cannotRecord("cannot keep audio"))) { $0.cannotRecord = "cannot keep audio" } }
+    func failureOfLatestSessionWhileIdleIsKept(_ id: UInt64) { assert(makeIdleAfter(id), .sessionChanged(id: id, .init(cannotRecord: "cannot keep audio"))) { $0.cannotRecord = "cannot keep audio" } }
 
     @Test(arguments: sessionIDs)
-    func readyOfLatestSessionWhileIdleChangesNothing(_ id: UInt64) { assert(makeIdleAfter(id), .sessionReported(id: id, .ready)) }
+    func readyOfLatestSessionWhileIdleChangesNothing(_ id: UInt64) { assert(makeIdleAfter(id), .sessionChanged(id: id, .init(recording: true))) }
 
     @Test(arguments: sessionIDs)
     func endedOfLatestSessionWhileIdleKeepsTheFailure(_ id: UInt64) { assert(makeFailedAfter(id), .sessionReported(id: id, .ended)) }
 
     @Test(arguments: sessionIDs)
-    func failureOfEarlierSessionWhileIdleChangesNothing(_ id: UInt64) { assert(makeIdleAfter(id), .sessionReported(id: id - 1, .cannotRecord("old failure"))) }
+    func failureOfEarlierSessionWhileIdleChangesNothing(_ id: UInt64) { assert(makeIdleAfter(id), .sessionChanged(id: id - 1, .init(cannotRecord: "old failure"))) }
 
     @Test(arguments: sessionIDs)
-    func failureOfUnknownSessionWhileIdleChangesNothing(_ id: UInt64) { assert(makeIdleAfter(id), .sessionReported(id: id + 1, .cannotRecord("unknown failure"))) }
+    func failureOfUnknownSessionWhileIdleChangesNothing(_ id: UInt64) { assert(makeIdleAfter(id), .sessionChanged(id: id + 1, .init(cannotRecord: "unknown failure"))) }
 
-    @Test func failureBeforeAnySessionChangesNothing() { assert(makeUnknown(), .sessionReported(id: 0, .cannotRecord("no Session"))) }
+    @Test func failureBeforeAnySessionChangesNothing() { assert(makeUnknown(), .sessionChanged(id: 0, .init(cannotRecord: "no Session"))) }
 
     @Test(arguments: conditionPairs)
     func partialRecoveryKeepsTheOtherConditionMissing(_ p: ConditionPair) { assert(makeBlockedByTwo(p), .conditionChanged(p.recovered, available: true)) { $0.missing.remove(p.recovered) } }

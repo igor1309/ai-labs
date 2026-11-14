@@ -14,8 +14,7 @@ actor RecordingSessions: RecordingSession {
         let subscription: Task<Void, Never>
         let pieces: SessionPieces
         var observation: Task<Void, Never>?
-        var first: RecordingSessionReport?
-        var beginners: [CheckedContinuation<RecordingSessionReport, Never>] = []
+        var beginners: [CheckedContinuation<Void, Never>] = []
         var enders: [CheckedContinuation<Void, Never>] = []
         var started = false
         var endRequested = false
@@ -53,9 +52,9 @@ actor RecordingSessions: RecordingSession {
         self.sink = boundary.log
     }
 
-    func begin(id: UInt64) async -> RecordingSessionReport {
+    func begin(id: UInt64) async {
 
-        if endedBeforeBegin.remove(id) != nil { return .ended }
+        if endedBeforeBegin.remove(id) != nil { return }
         if running[id] == nil {
             let pieces = makePieces(id)
             let handler = pieces.handler()
@@ -85,8 +84,8 @@ actor RecordingSessions: RecordingSession {
                 }
             }
         }
-        return await withCheckedContinuation { answer in
-            if let first = running[id]?.first { answer.resume(returning: first) }
+        await withCheckedContinuation { answer in
+            if running[id]?.started != false { answer.resume() }
             else { running[id]?.beginners.append(answer) }
         }
     }
@@ -111,6 +110,8 @@ actor RecordingSessions: RecordingSession {
         send(.begin(liveText: liveText), to: &entry)
         entry.started = true
         if entry.endRequested { send(.end, to: &entry) }
+        for answer in entry.beginners { answer.resume() }
+        entry.beginners.removeAll()
         running[id] = entry
     }
 
@@ -136,15 +137,9 @@ actor RecordingSessions: RecordingSession {
             running[id]?.announcedEnding = true
             await summaries.waiting(URL(fileURLWithPath: folder.id))
         }
-        guard var entry = running[id] else { return true }
-        // Begin answers with the first of ready, cannot record or ended; later news travels as status.
-        if entry.first == nil {
-            if let reason = state.cannotRecord { answer(.cannotRecord(reason), entry: &entry) }
-            else if state.phase == .recording { answer(.ready, entry: &entry) }
-        }
+        guard let entry = running[id] else { return true }
         if state.phase == .ended {
-            if entry.first == nil { answer(.ended, entry: &entry) }
-            else if !entry.endRequested { await report(id, .ended) }
+            if !entry.endRequested { await report(id, .ended) }
             let subscription = entry.subscription, observation = entry.observation, session = entry.session
             let pieces = entry.pieces
             Task {
@@ -158,15 +153,7 @@ actor RecordingSessions: RecordingSession {
                 self.forget(id: id)
             }
         }
-        running[id] = entry
         return state.phase == .ended
-    }
-
-    private func answer(_ value: RecordingSessionReport, entry: inout Running) {
-
-        entry.first = value
-        for answer in entry.beginners { answer.resume(returning: value) }
-        entry.beginners.removeAll()
     }
 
     private func forget(id: UInt64) {

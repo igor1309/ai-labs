@@ -237,7 +237,7 @@ struct CallsWiringTests {
         let session = state.session!.id
         state = RecordingReducer.reduce(state, .sessionChanged(id: session, .init(callID: "A")))
         #expect(recordedCallID(state) == "A")
-        state = RecordingReducer.reduce(state, .sessionReported(id: session, .ready))
+        state = RecordingReducer.reduce(state, .sessionChanged(id: session, .init(recording: true)))
         #expect(recordedCallID(state) == "A")
         state = RecordingReducer.reduce(state, .userStop)
         #expect(recordedCallID(state) == "A")

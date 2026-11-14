@@ -15,8 +15,6 @@ public enum RecordingFault: CaseIterable, Hashable, Sendable {
 
 public enum RecordingSessionReport: Equatable, Sendable {
 
-    case ready
-    case cannotRecord(String)
     case ended
 }
 
@@ -45,7 +43,8 @@ public struct RecordingSessionStatus: Equatable, Sendable {
 /// Compose begins and ends Sessions and translates their later reports into events.
 public protocol RecordingSession: Sendable {
 
-    func begin(id: UInt64) async -> RecordingSessionReport
+    /// Returns once the Session exists and its begin is queued; how it goes arrives as status.
+    func begin(id: UInt64) async
 
     /// Returns only when this Session has ended, including any pending bring-up.
     func end(id: UInt64) async
@@ -207,7 +206,13 @@ public enum RecordingReducer {
             return state
 
         case let .sessionChanged(id, status):
-            guard state.session?.id == id, state.phase != .idle else { return state }
+            guard state.session?.id == id, state.phase != .idle else {
+                // A session that ended before Recording heard why still names the reason.
+                if state.phase == .idle, id != 0, id == state.lastSessionID, let reason = status.cannotRecord {
+                    state.cannotRecord = reason
+                }
+                return state
+            }
             if let callID = status.callID { state.callID = callID }
             if let reason = status.cannotRecord, state.cannotRecord == nil {
                 state.cannotRecord = reason
@@ -221,20 +226,8 @@ public enum RecordingReducer {
             return state
 
         case let .sessionReported(id, report):
-            guard state.session?.id == id else {
-                if state.phase == .idle, id != 0, id == state.lastSessionID,
-                   case let .cannotRecord(reason) = report {
-                    state.cannotRecord = reason
-                }
-                return state
-            }
+            guard state.session?.id == id else { return state }
             switch report {
-            case .ready:
-                if state.phase == .beginning { state.phase = .recording }
-                return state
-            case let .cannotRecord(reason):
-                state.cannotRecord = reason
-                return end(&state)
             case .ended:
                 state.phase = .idle
                 state.callSilent = false
@@ -333,11 +326,7 @@ public final class RecordingDoer: Sendable {
                         return false
                     }
                     // End may run while Session is still coming up.
-                    Task { [self] in
-                        let report = await session.begin(id: id)
-                        if report == .ended { await release(id) }
-                        await send(.sessionReported(id: id, report))
-                    }
+                    Task { [session] in await session.begin(id: id) }
                     return true
                 }
                 memory.preparation = preparation
