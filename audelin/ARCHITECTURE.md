@@ -136,9 +136,9 @@ delete, drops what the notes side holds for the parts.
 **The merged call's notes are made as an ended call's are.** On the merge
 outcome the root submits the joined transcript to Summaries, as it does when
 a recording's transcript closes. Recordings selects the merged row, and that
-selection, as any other, tells the notes side what to show. Call notes and
-Summaries keep their own responsibilities and stay connected by
-subscription. The parts' own notes stay inside their folders and are not
+selection, as any other, tells CallDetail what to show; CallDetail and
+Summaries keep their own responsibilities and stay connected by the app's
+subscriptions. The parts' own notes stay inside their folders and are not
 shown.
 
 The root constructs Transcript join and the merge port's chain with the
