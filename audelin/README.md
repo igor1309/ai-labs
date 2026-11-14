@@ -78,7 +78,8 @@ The script builds `CallsRehearsal`, an executable that shows the app's calls win
 with no audio devices, and launches it twice on a temporary folder:
 `--calls <folder>` holds one call with a transcript and no notes, and
 `--state <folder>` holds its preferences and the fake summary service's control
-files. The fake writes `control/started-N`, waits for `control/finish-N`, then
+files, and `--trash <folder>` takes what the app would move to the Trash, so a
+run never reaches the user's Trash. The fake writes `control/started-N`, waits for `control/finish-N`, then
 returns fixed notes; a cancelled request writes `control/cancelled-N` and returns none.
 
 The script drives the row, Сделать and Отменить by accessibility identifier, waits
@@ -87,13 +88,9 @@ leaves no `summary.md` or `.summary-job.json`, saves screenshots of the making,
 completed and cancelled states (and of any failed wait), and quits each run. The
 folder it prints under `$TMPDIR` keeps the fixtures and screenshots.
 
-`sh scripts/live-calls-merge.sh` runs the same way for merging calls. Its first
-launch holds four calls with one-second tracks: it merges two neighbouring
-parts, then merges the result with a call past an unmarked one, going back from
-the warning once before merging anyway. It checks the merged folder, the joined
-transcript and that every track is byte for byte as written. Its second launch
-makes the calls folder read-only before confirming and checks that the failure
-shows and both parts stay.
+`sh scripts/live-calls-merge.sh` runs the same way for merging calls, on calls
+seeded through the app's own writers. What each live test proves, its fixtures
+and its output are in `macos/scripts/live/README.md`.
 
 ## Browser extension
 

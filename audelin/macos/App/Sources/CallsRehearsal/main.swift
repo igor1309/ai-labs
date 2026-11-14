@@ -21,6 +21,10 @@ final class CallsRehearsalDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func start() async {
+        do { try await options.seedCalls() } catch {
+            FileHandle.standardError.write(Data("Seeding calls failed: \(error)\n".utf8))
+            exit(70)
+        }
         startWithDefaultLayout()
         let nsWindow = NSWindow(contentRect: NSRect(origin: .zero, size: CallsWindow.firstSize),
                                 styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
@@ -29,12 +33,13 @@ final class CallsRehearsalDelegate: NSObject, NSApplicationDelegate {
                                  activate: { NSApplication.shared.activate(ignoringOtherApps: true) })
         self.window = window
         let callWindow = CallWindowSlot()
-        let boundary = rehearsalBoundary(
+        var boundary = rehearsalBoundary(
             capturePersistence: .recorded,
             microphone: { throw RehearsalInput.unavailable }, call: { _ in throw RehearsalInput.unavailable },
             mine: UnusedRecognizer(), theirs: UnusedRecognizer(),
             now: { Date() }, timeZone: { .current }, sleep: { try await Task.sleep(for: $0) },
             intervals: rehearsalIntervals())
+        boundary.trash = options.trash
         let model = await compose(
             boundary: boundary, preferencesURL: options.preferencesURL,
             openCallsFolder: { NSWorkspace.shared.open($0) }, presentCalls: { window.show() },

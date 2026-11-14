@@ -166,7 +166,7 @@ private func descendants(_ root: AXUIElement) -> [AXUIElement] {
         try "# Transcript\n\n**Me** 00:00:03\n\nОбсудили выпуск Audelin.\n".write(to: call.appendingPathComponent("transcript.md"), atomically: true, encoding: .utf8)
         let application = Process()
         application.executableURL = app
-        application.arguments = ["--calls", calls.path, "--state", state.path]
+        application.arguments = ["--calls", calls.path, "--state", state.path, "--trash", fixture.appendingPathComponent("trash").path]
         try application.run()
         defer { if application.isRunning { application.terminate() } }
         let driver = try Driver(process: application, folders: [control, call])

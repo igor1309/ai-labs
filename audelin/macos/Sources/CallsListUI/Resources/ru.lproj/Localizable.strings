@@ -44,6 +44,7 @@
 "merge.done" = "Готово";
 "merge.confirm" = "Объединить %d";
 "merge.running" = "Объединяю…";
+"merge.needsTwo" = "Отметьте хотя бы два звонка";
 "merge.warningTitle" = "Объединить звонки не подряд?";
 "merge.anyway" = "Объединить всё равно";
 "merge.back" = "Назад";

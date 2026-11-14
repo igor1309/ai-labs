@@ -75,11 +75,13 @@ let package = Package(
             dependencies: [
                 .product(name: "Preferences", package: "macos"),
                 .product(name: "SummaryRuntime", package: "macos"),
+                .product(name: "TrackFile", package: "macos"),
+                .product(name: "TranscriptFormat", package: "macos"),
             ]
         ),
         .testTarget(
             name: "CallsRehearsalSupportTests",
-            dependencies: ["CallsRehearsalSupport"]
+            dependencies: ["CallsRehearsalSupport", .product(name: "TranscriptFormat", package: "macos"), .product(name: "TrackFile", package: "macos")]
         ),
         .target(
             name: "SessionRehearsal",

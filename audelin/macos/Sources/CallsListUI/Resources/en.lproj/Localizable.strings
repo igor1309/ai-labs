@@ -44,6 +44,7 @@
 "merge.done" = "Done";
 "merge.confirm" = "Merge %d";
 "merge.running" = "Merging…";
+"merge.needsTwo" = "Mark at least two calls to merge";
 "merge.warningTitle" = "Merge calls that are not next to each other?";
 "merge.anyway" = "Merge anyway";
 "merge.back" = "Go back";

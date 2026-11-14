@@ -63,6 +63,8 @@ public enum CallsListPhrase: String, CaseIterable, Sendable {
     /// Takes the number of marked calls.
     case mergeConfirm = "merge.confirm"
     case mergeRunning = "merge.running"
+    /// Why Merge is disabled with fewer than two calls marked.
+    case mergeNeedsTwo = "merge.needsTwo"
     case mergeWarningTitle = "merge.warningTitle"
     case mergeAnyway = "merge.anyway"
     /// Takes the first and last marked calls' titles.

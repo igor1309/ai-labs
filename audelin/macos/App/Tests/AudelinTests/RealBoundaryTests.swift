@@ -34,3 +34,21 @@ struct RealBoundaryTests {
         #expect(await states.next() == false)
     }
 }
+
+struct DiskCapacityTests {
+    @Test(arguments: [
+        (Int64?(5), Int?(9), Int64?(5)),
+        (Int64?(0), Int?(9), Int64?(9)),
+        (Int64?.none, Int?(9), Int64?(9)),
+        (Int64?(0), Int?.none, Int64?(0)),
+        (Int64?.none, Int?.none, Int64?.none),
+    ])
+    func importantUsageReadAsZeroFallsBackToPlainFreeSpace(important: Int64?, plain: Int?, expected: Int64?) {
+        let capacity = DiskCapacity(read: { _ in (important, plain) })
+        #expect(capacity.available(at: URL(fileURLWithPath: "/tmp")) == expected)
+    }
+
+    @Test func anUnreadableFolderHasNoCapacity() {
+        #expect(DiskCapacity(read: { _ in nil }).available(at: URL(fileURLWithPath: "/tmp")) == nil)
+    }
+}

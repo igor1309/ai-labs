@@ -335,7 +335,7 @@ public struct CallsListView: View {
             } else {
                 barButton(text(.mergeDone), primary: false, enabled: true, id: "calls.merge.done") { event(.leaveMerge) }
                 barButton(text(.mergeConfirm, merge.marked.count), primary: true, enabled: merge.marked.count >= 2,
-                          id: "calls.merge.confirm") { event(.confirmMerge) }
+                          id: "calls.merge.confirm", value: merge.marked.count >= 2 ? "" : text(.mergeNeedsTwo)) { event(.confirmMerge) }
                     .keyboardShortcut(merge.warning == nil ? .defaultAction : nil)
             }
         }
@@ -343,7 +343,9 @@ public struct CallsListView: View {
         .background(tokens.win)
     }
 
-    private func barButton(_ title: String, primary: Bool, enabled: Bool, id: String, action: @escaping () -> Void) -> some View {
+    /// `value` is what accessibility reads beside the title: why a disabled button cannot be pressed.
+    private func barButton(_ title: String, primary: Bool, enabled: Bool, id: String, value: String = "",
+                           action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title).font(tokens.ui(tokens.typeSmall, .semibold))
                 .foregroundStyle(!enabled ? tokens.disText : primary ? tokens.selText : tokens.text)
@@ -351,7 +353,7 @@ public struct CallsListView: View {
                 .background(!enabled ? tokens.dis : primary ? tokens.me : tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
         }
         .buttonStyle(.plain).disabled(!enabled)
-        .accessibilityIdentifier(id).accessibilityLabel(title)
+        .accessibilityIdentifier(id).accessibilityLabel(title).accessibilityValue(value)
     }
 
     /// Asks again before merging calls with an unmarked call between them.
