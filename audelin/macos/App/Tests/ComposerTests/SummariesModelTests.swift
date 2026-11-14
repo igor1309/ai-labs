@@ -70,6 +70,16 @@ import Testing
         sut.forget(call: "call")
         try await waitUntil("the call is dropped") { sut.state.calls["call"] == nil }
     }
+    @Test func S15_dropDropsEveryMergedPart() async throws {
+        let files = FilesFake()
+        files.stored = try await record(phase: "succeeded")
+        let sut = makeSUT(files)
+        sut.recover(calls: ["call"])
+        sut.waiting(call: "other")
+        try await waitUntil("the calls are known") { sut.state.calls["call"]?.stage == .succeeded && sut.state.calls["other"] != nil }
+        sut.drop(parts: ["call", "other"])
+        try await waitUntil("the parts are dropped") { sut.state.calls.isEmpty }
+    }
     @Test func launchRecoversEachStoredCall() async throws {
         let files = FilesFake()
         files.stored = try await record(phase: "succeeded")

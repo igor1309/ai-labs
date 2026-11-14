@@ -84,6 +84,23 @@ import Testing
     func forgettingASettledCallDeliversNothing(stage: SummariesState.Call.Stage) {
         assert(make(stage), .forget("call"), delivers: nil)
     }
+    @Test(arguments: [SummariesState.Call.Stage.succeeded, .failed, .interrupted, .unavailable, .waiting])
+    func S15_droppingAMergedPartsSettledCallDropsIt(stage: SummariesState.Call.Stage) {
+        assert(make(stage), .drop("call")) { $0.calls["call"] = nil }
+        #expect(format.payloads.isEmpty)
+    }
+    @Test(arguments: [SummariesState.Call.Stage.succeeded, .waiting])
+    func S15_droppingAMergedPartsSettledCallDeliversNothing(stage: SummariesState.Call.Stage) {
+        assert(make(stage), .drop("call"), delivers: nil)
+    }
+    @Test(arguments: [SummariesState.Call.Stage.recovering, .preparing, .claiming, .starting, .noting, .saving, .retrying, .observed])
+    func droppingARunningCallChangesNothing(stage: SummariesState.Call.Stage) {
+        assert(make(stage), .drop("call"))
+        assert(make(stage), .drop("call"), delivers: nil)
+    }
+    @Test func droppingAnUnknownCallChangesNothing() {
+        assert(make(.succeeded), .drop("other"))
+    }
     @Test(arguments: [SummariesState.Call.Stage.recovering, .preparing, .claiming, .pending, .starting, .noting, .saving, .retrying, .observed])
     func forgettingAnUnsettledCallChangesNothing(stage: SummariesState.Call.Stage) {
         assert(make(stage), .forget("call"))

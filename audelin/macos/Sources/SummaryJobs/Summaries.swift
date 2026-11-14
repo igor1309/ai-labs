@@ -106,6 +106,8 @@ public enum SummariesEvent: Equatable, Sendable {
     case retryFailed(String)
     /// Drops a settled call from the machine.
     case forget(String)
+    /// Drops a merged part's job: a settled one as `forget` does, a stored one not started yet by discarding it.
+    case drop(String)
     /// The user's wish to stop a call's notes; a running stage is discarded when its result arrives.
     case cancel(String)
     case discarded(String)
@@ -180,6 +182,7 @@ public struct SummariesReducer: Sendable {
     static let inFlight: Set<SummariesState.Call.Stage> = [.reading, .recovering, .preparing, .claiming, .retrying]
     static let working: Set<SummariesState.Call.Stage> = [.claiming, .starting, .identifying, .checkpointing, .noting, .publishing, .saving, .discarding]
     public func reduce(_ state: SummariesState, _ event: SummariesEvent) -> (SummariesState, SummariesEffect?) {
+        if case let .drop(id) = event { return reduce(state, state.calls[id]?.stage == .pending ? .cancel(id) : .forget(id)) }
         var (next, effect) = step(state, event)
         if next == state && effect == nil { return (state, nil) }
         for (id, work) in next.calls where work != state.calls[id] {

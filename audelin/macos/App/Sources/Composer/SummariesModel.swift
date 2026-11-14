@@ -88,6 +88,9 @@ public final class SummariesModel {
     }
     /// Drops a deleted call once its notes have settled.
     public func forget(call: String) { model.event(.forget(call)) }
+
+    /// Drops the merged parts' jobs, done or stored, so none of them runs.
+    public func drop(parts: [String]) { parts.forEach { model.event(.drop($0)) } }
     /// Picks up each stored call's job at launch.
     public func recover(calls: [String]) { calls.forEach { model.event(.recover($0)) } }
     /// Reads again the calls whose jobs another process runs or may run again, and returns once they are read.

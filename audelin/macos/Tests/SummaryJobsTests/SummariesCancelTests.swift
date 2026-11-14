@@ -33,6 +33,14 @@ import Testing
     @Test func aCancelOnAStoredJobNotStartedDeliversDiscard() {
         assert(make(.pending), .cancel("call"), delivers: .discard(makeJob()))
     }
+    @Test func S15_droppingAMergedPartsStoredJobDiscardsIt() {
+        assert(make(.pending), .drop("call")) {
+            $0.calls["call"]?.stage = .discarding; $0.calls["call"]?.cancelling = true; $0.calls["call"]?.status = "discarding:false"
+        }
+    }
+    @Test func S15_droppingAMergedPartsStoredJobDeliversDiscard() {
+        assert(make(.pending), .drop("call"), delivers: .discard(makeJob()))
+    }
     @Test func aSecondCancelChangesNothing() {
         assert(make(.noting, cancelling: true), .cancel("call"))
         #expect(format.payloads.isEmpty)

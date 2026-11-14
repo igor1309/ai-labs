@@ -67,4 +67,10 @@ A refresh that cannot read the call, or reads an unknown phase or a corrupt reco
 
 Parts A pending and B done, merged as A: both jobs are dropped, the fake
 runtime never gets A's own transcript, and the one request for A holds
-both parts' text. Evidence: Missing.
+both parts' text. Evidence, for the dropped jobs:
+`SummariesCancelReducerTests.S15_droppingAMergedPartsStoredJobDiscardsIt()`,
+`S15_droppingAMergedPartsStoredJobDeliversDiscard()`,
+`SummariesRetryReducerTests.S15_droppingAMergedPartsSettledCallDropsIt(stage:)`,
+`droppingARunningCallChangesNothing(stage:)` and
+`SummariesModelTests.S15_dropDropsEveryMergedPart()`; the joined request:
+Missing.
