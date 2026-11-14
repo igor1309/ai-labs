@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-import Calls
+@testable import Calls
 
 /// Merged calls on disk, with track lengths given by a fake reader keyed on a call's
 /// folder name, so a span is exact.
@@ -156,7 +156,70 @@ struct CallsMergeTests {
             try call(root, "2026.10.24-1010", seconds: 60)
             let sut = sut(root, lengths: [:])
             #expect(try sut.savedTranscript(id: "2026.10.24-1000") == Data("# Transcript\r\n\r\nwords".utf8))
-            #expect(throws: (any Error).self) { try sut.savedTranscript(id: "2026.10.24-1010") }
+        }
+    }
+
+    @Test func S6_aMergeFailingAfterAPartMovedLeavesTheParts() throws {
+        try withRoot { root in
+            try call(root, "2026.10.24-1000", seconds: 60, transcript: "a")
+            try call(root, "2026.10.24-1010", seconds: 60, transcript: "b")
+            let before = try files(root)
+            var disk = CallsDisk.system
+            disk.rename = { source, target in
+                if source.lastPathComponent == "2026.10.24-1010" { throw POSIXError(.EIO) }
+                try CallsDisk.system.rename(source, target)
+            }
+            let sut = Calls(folder: root, timeZone: utc, duration: { _ in 60 }, transcript: { _ in [] }, disk: disk)
+            #expect(throws: CallsFailure.mergeFailed(step: .movingPart(folder: "2026.10.24-1010"), reason: POSIXError(.EIO).localizedDescription)) {
+                try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { folder in
+                    try Data("joined".utf8).write(to: folder.appendingPathComponent("transcript.md"))
+                }
+            }
+            #expect(try sut.list().map(\.id) == ["2026.10.24-1010", "2026.10.24-1000"])
+            #expect(try names(root) == ["2026.10.24-1000", "2026.10.24-1010"])
+            #expect(try files(root) == before)
+        }
+    }
+
+    @Test func aMergeFailingToWriteTheTranscriptLeavesTheParts() throws {
+        try withRoot { root in
+            try call(root, "2026.10.24-1000", seconds: 60)
+            try call(root, "2026.10.24-1010", seconds: 60)
+            let before = try files(root)
+            let sut = sut(root, lengths: ["2026.10.24-1000": 60, "2026.10.24-1010": 60])
+            #expect(throws: CallsFailure.mergeFailed(step: .writingTranscript, reason: POSIXError(.ENOSPC).localizedDescription)) {
+                try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { _ in throw POSIXError(.ENOSPC) }
+            }
+            #expect(try names(root) == ["2026.10.24-1000", "2026.10.24-1010"])
+            #expect(try files(root) == before)
+        }
+    }
+
+    @Test func S10_aPartWithoutAKnownLengthIsNotMerged() throws {
+        try withRoot { root in
+            try call(root, "2026.10.24-1000", seconds: 60)
+            try call(root, "2026.10.24-1010", seconds: 60)
+            let before = try files(root)
+            var wrote = false
+            let sut = sut(root, lengths: ["2026.10.24-1000": 60])
+            #expect(throws: CallsFailure.unknownLength(id: "2026.10.24-1010")) {
+                try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { _ in wrote = true }
+            }
+            #expect(!wrote)
+            #expect(try names(root) == ["2026.10.24-1000", "2026.10.24-1010"])
+            #expect(try files(root) == before)
+        }
+    }
+
+    @Test func S11_anUnreadableTranscriptNamesItsCall() throws {
+        try withRoot { root in
+            try call(root, "2026.10.24-1010", seconds: 60)
+            let before = try files(root)
+            let sut = sut(root, lengths: [:])
+            #expect(throws: CallsFailure.unreadableTranscript(id: "2026.10.24-1010", reason: CocoaError(.fileReadNoSuchFile).localizedDescription)) {
+                try sut.savedTranscript(id: "2026.10.24-1010")
+            }
+            #expect(try files(root) == before)
         }
     }
 }

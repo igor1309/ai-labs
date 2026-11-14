@@ -60,6 +60,10 @@ extension SettingsText {
         case .invalidTitle: self(.callInvalidTitle)
         case let .trashFailed(folder, reason): self(.callTrashFailed, folder, reason)
         case .sizeMismatch: self(.callSizeMismatch)
+        case let .unknownLength(id): self(.callUnknownLength, id)
+        case let .unreadableTranscript(id, reason): self(.callUnreadableTranscript, id, reason)
+        case let .mergeFailed(.movingPart(folder), reason): self(.callMergeMoveFailed, folder, reason)
+        case let .mergeFailed(_, reason): self(.callMergeFailed, reason)
         case nil: error.localizedDescription
         }
     }

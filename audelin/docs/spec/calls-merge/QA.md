@@ -42,7 +42,9 @@ Evidence: `CallsMergeTests.S5_theFolderBeingPreparedIsNotListed()`.
 
 Fail the rename of B into the prepared folder after A moved: A and B list
 at their places with their files, no prepared folder is left, and the
-error names the step.
+error names the step. A failed transcript write leaves them too.
+Evidence: `CallsMergeTests.S6_aMergeFailingAfterAPartMovedLeavesTheParts()`
+and `aMergeFailingToWriteTheTranscriptLeavesTheParts()`.
 
 ## S-7 An interrupted merge is put back
 
@@ -64,11 +66,13 @@ the target gives one call. Evidence:
 ## S-10 A part without a known length is not merged
 
 Merge A and B with B's tracks unreadable: the error names B, and every
-file is where it was. Evidence: Missing.
+file is where it was; nothing is written. Evidence:
+`CallsMergeTests.S10_aPartWithoutAKnownLengthIsNotMerged()`.
 
 ## S-11 Each part's transcript is read whole
 
 A part's transcript with named speakers, a gap and filled-in text reads
 back byte for byte (Evidence:
 `CallsMergeTests.S11_eachPartsTranscriptIsReadAsWritten()`); with B's
-unreadable the error names B and every file is where it was: Missing.
+unreadable the error names B and every file is where it was (Evidence:
+`CallsMergeTests.S11_anUnreadableTranscriptNamesItsCall()`).

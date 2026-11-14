@@ -134,24 +134,52 @@ public struct Calls: Sendable {
     /// A call's saved `transcript.md` as written, for a merge to read back.
     public func savedTranscript(id: String) throws -> Data {
         let url = try location(id: id).appendingPathComponent("transcript.md")
-        guard let data = try disk.read(url) else { throw CocoaError(.fileReadNoSuchFile) }
-        return data
+        do {
+            guard let data = try disk.read(url) else { throw CocoaError(.fileReadNoSuchFile) }
+            return data
+        } catch { throw CallsFailure.unreadableTranscript(id: id, reason: error.localizedDescription) }
     }
 
     /// Merges calls into one call folder named as the earliest part, holding each part's
     /// folder whole and the joined transcript `write` puts in the folder it is given.
     /// The folder is prepared under a name no listing shows, then renamed into place.
-    /// Returns the merged call's id, the earliest part's.
+    /// Returns the merged call's id, the earliest part's. Every part needs a known
+    /// length, checked before anything moves. A failure moves every part back out and
+    /// removes the prepared folder, so a merge is whole or not at all.
     @discardableResult
     public func merge(ids: [String], write: (URL) throws -> Void) throws -> String {
         let parts = try ids.map { try location(id: $0) }
         guard parts.count > 1, let earliest = zip(ids, parts).min(by: { $0.0 < $1.0 }) else { throw POSIXError(.EINVAL) }
+        for (id, part) in zip(ids, parts) {
+            guard let name = CallFolderName(part.lastPathComponent, timeZone: timeZone),
+                  try length(part, start: name.start) != nil else { throw CallsFailure.unknownLength(id: id) }
+        }
         let prepared = folder.appendingPathComponent(".audelin-merge-" + UUID().uuidString, isDirectory: true)
         try disk.makeFolder(prepared)
-        try write(prepared)
-        for part in parts { try rename(part, prepared.appendingPathComponent(part.lastPathComponent, isDirectory: true)) }
-        try rename(prepared, folder.appendingPathComponent(earliest.1.lastPathComponent, isDirectory: true))
-        return earliest.0
+        var step = CallsFailure.MergeStep.writingTranscript
+        do {
+            try write(prepared)
+            for part in parts {
+                step = .movingPart(folder: part.lastPathComponent)
+                try rename(part, prepared.appendingPathComponent(part.lastPathComponent, isDirectory: true))
+            }
+            step = .publishing
+            try rename(prepared, folder.appendingPathComponent(earliest.1.lastPathComponent, isDirectory: true))
+            return earliest.0
+        } catch {
+            let failure = CallsFailure.mergeFailed(step: step, reason: error.localizedDescription)
+            try putBack(parts, from: prepared)
+            throw failure
+        }
+    }
+
+    /// Moves every part found in `prepared` back to its place and removes `prepared`.
+    private func putBack(_ parts: [URL], from prepared: URL) throws {
+        for part in parts {
+            let inside = prepared.appendingPathComponent(part.lastPathComponent, isDirectory: true)
+            if try exists(inside) { try rename(inside, part) }
+        }
+        try removeIfPresent(prepared)
     }
 
     public func bytes(id: String) throws -> Int64 { try size(location(id: id)) }
@@ -372,6 +400,18 @@ public enum CallsFailure: Error, Equatable, Sendable {
     case trashFailed(folder: String, reason: String)
     /// The copy's file sizes differ from the source's.
     case sizeMismatch
+    /// A call to merge has no known length, so its place in the merged call is unknown.
+    case unknownLength(id: String)
+    /// A call's saved transcript cannot be read.
+    case unreadableTranscript(id: String, reason: String)
+    /// A merge stopped at `step`; its parts were put back.
+    case mergeFailed(step: MergeStep, reason: String)
+
+    public enum MergeStep: Equatable, Sendable {
+        case writingTranscript
+        case movingPart(folder: String)
+        case publishing
+    }
 }
 
 /// The file system as `Calls` lists, renames, copies, trashes and removes folders.
