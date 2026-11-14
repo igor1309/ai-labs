@@ -138,14 +138,14 @@ actor SessionModel {
     }
 }
 
-/// Returns once the lifecycle has terminated: every begun session has ended first.
+/// The termination machine: publishes the quit intention and terminates once every participant settled.
 @MainActor
-func quit(_ handler: LifecycleEffectHandler) async {
+func makeTermination(relaunch: @escaping @Sendable () async -> Bool, unsettled: Set<TerminationParticipant>,
+                     terminate: @escaping @Sendable () async -> Void) -> ObservableModel<TerminationState, TerminationEvent, TerminationEffect> {
 
-    let model = ObservableModel(initialState: LifecycleState.running, reduce: LifecycleReducer.reduce,
-                                handleEffect: { effect in oneEvent { await handler.handle(effect) } })
-    model.event(.quit)
-    for await state in Observations({ model.state }) where state == .terminated { break }
+    let handler = TerminationEffectHandler(relaunch: relaunch, terminate: terminate)
+    return ObservableModel(initialState: TerminationState(unsettled: unsettled), reduce: TerminationReducer.reduce,
+                           handleEffect: { effect in oneEvent { await handler.handle(effect) } })
 }
 
 @MainActor
