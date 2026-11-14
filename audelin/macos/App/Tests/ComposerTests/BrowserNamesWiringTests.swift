@@ -1,9 +1,11 @@
 import BrowserBridge
+import CallNames
 import Foundation
 import Synchronization
 import LiveText
 import PanelUI
 import Session
+import SpeakerNaming
 import Testing
 @testable import CallText
 @testable import Composer
@@ -46,6 +48,51 @@ struct BrowserNamesWiringTests {
         await reading.end()
         await panel.end(id: 1)
         #expect(channel.stopped)
+        clock.finish()
+    }
+
+    /// The after-call pass's speaker turns reach the recording's CallNames through its
+    /// `RecordingNames`, and the panel shows the names it confirms as confirmed.
+    @MainActor
+    @Test func diarizedTurnsConfirmTheShownNames() async throws {
+        let clock = FixtureClock(), channel = FakeChannel(), names = RecordingNames()
+        let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals,
+                                 browser: { channel.open() }, sleep: { try await Task.sleep(for: $0 * 10_000) })
+        let text = AsyncStream<CallState>.makeStream()
+        let reading = await panel.begin(id: 1, text: text.stream, names: names, enableLiveText: {})
+        reading.sessionChanged(SessionState(phase: .recording))
+        clock.advance(20)
+
+        // The browser's clock reads 100 s at call time 20 s. Анна and Борис take turns every 4 s from 0 s.
+        let peer = channel.connect()
+        var sent = peer.sent.makeAsyncIterator()
+        #expect(await sent.next() == BrowserClockReply.ping(0))
+        peer.send(#"{"version":1,"ping":0,"at":100000}"#)
+        peer.send(message(0, #"{"type":"roster","at":79000,"participants":[{"id":"a","name":"Анна","isSelf":false},{"id":"b","name":"Борис","isSelf":false}]}"#))
+        for (index, start) in [80, 84, 88, 92].enumerated() {
+            let id = index % 2 == 0 ? "a" : "b"
+            peer.send(message(1 + 2 * index, #"{"type":"speakingStarted","at":\#(start * 1000),"participantId":"\#(id)"}"#))
+            peer.send(message(2 + 2 * index, #"{"type":"speakingStopped","at":\#((start + 4) * 1000),"participantId":"\#(id)"}"#))
+        }
+
+        // Once the evidence has reached CallNames, the pass's turns confirm the row at 11–12 s, in Анна's turn from 8 s.
+        var round = 0, diarized = false
+        text.continuation.yield(remote(round))
+        for await shown in await panel.states() {
+            guard case let .lines(lines) = shown.log, let row = lines.entries.first else { continue }
+            if row.label == "Анна" && !row.labelIsTentative { break }
+            if names.snapshot().spoken.count == 4, !diarized {
+                diarized = true
+                let turns = [0, 4, 8, 12].enumerated().map { DiarizedTurn(speaker: $0.offset % 2, start: Double($0.element), end: Double($0.element + 4)) }
+                await names.diarized(turns, rows: [Row(id: 1, start: 11, end: 12)])
+            } else if !diarized {
+                round += 1
+                text.continuation.yield(remote(round))
+            }
+        }
+        text.continuation.finish()
+        await reading.end()
+        await panel.end(id: 1)
         clock.finish()
     }
 
