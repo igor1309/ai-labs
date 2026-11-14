@@ -2,6 +2,7 @@
 
 ## 2026-11-14
 
+- LAB-1461: A calls-storage component keeps the record of call moves and folder ownership and refuses to touch a call while a move is half finished; the calls list reloads after a failed rename or delete and skips calls already in a chosen folder.
 - LAB-1457: Every Monday a Developer ID signed, notarized Audelin is published to the releases of the public igor1309/audelin repository, when the app changed since the last one.
 - LAB-1458: The Settings tab bar is the same segmented picker as Language and Appearance: Tab reaches it with keyboard navigation off, the arrow keys switch tabs, and each tab is a radio button to assistive apps.
 - LAB-1423 (LAB-1421): Settings draws its tabs, Language, Appearance and the debug chunk size as one native-style segmented control. Keyboard focus rings the focused segment inside the control, so its border is no longer clipped.
