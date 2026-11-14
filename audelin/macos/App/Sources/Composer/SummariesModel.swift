@@ -110,7 +110,7 @@ extension CallsListText {
         switch stage {
         case .waiting, .recovering, .preparing: self(.summaryWaiting)
         case .claiming, .pending, .observed, .retrying, .discarding: self(.summaryPending)
-        case .reading, .starting, .identifying, .checkpointing, .noting, .publishing, .saving: self(.summaryRunning)
+        case .reading, .starting, .identifying, .checkpointing, .noting, .deferred, .publishing, .saving: self(.summaryRunning)
         case .succeeded: warning ? self(.summaryReadyUnnamed) : self(.summaryReady)
         case .failed: self(.summaryFailed)
         case .interrupted: self(.summaryInterrupted)

@@ -488,8 +488,8 @@ func makeState(lifecycle: SummariesState.Lifecycle = .accepting, dispatch: Bool 
     .init(lifecycle: lifecycle, dispatch: dispatch, calls: calls)
 }
 func makeEntries() -> [Job.Entry] { [.init(label: "A", time: "0", text: "spoken")] }
-func makeJob(entries: [Job.Entry] = makeEntries()) -> Job {
-    .init(id: "job", call: "call", input: "input", entries: entries, speakers: true,
+func makeJob(call: String = "call", entries: [Job.Entry] = makeEntries()) -> Job {
+    .init(id: "job", call: call, input: "input", entries: entries, speakers: true,
           primary: .init(kind: "cli", model: "m", program: "p", endpoint: "", credentialVariable: ""))
 }
 func makeIdentity() -> Identity { .init(label: "A", name: "Ann", time: "0", quote: "I am Ann") }
