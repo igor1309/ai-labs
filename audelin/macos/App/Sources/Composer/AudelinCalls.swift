@@ -342,6 +342,10 @@ public final class AudelinCalls {
             selectDetail()
         case let .search(text): search(text)
         case let .toggleMark(id): inputs.send(.toggleMergeSelection(id))
+        case .confirmMerge: inputs.send(.confirmMerge)
+        case .leaveMerge: inputs.send(.leaveMergeMode)
+        case .mergeAnyway: inputs.send(.mergeAnyway)
+        case .goBackFromWarning: inputs.send(.goBackFromWarning)
         case .selectNext: commitRename(); move(by: 1, in: snapshot.rows)
         case .selectPrevious: commitRename(); move(by: -1, in: snapshot.rows)
         case let .read(id):

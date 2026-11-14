@@ -40,3 +40,11 @@
 "row.failed" = "Couldn’t prepare the summary";
 "merge.marked" = "Marked";
 "merge.unmarked" = "Not marked";
+"merge.title" = "Merging";
+"merge.done" = "Done";
+"merge.confirm" = "Merge %d";
+"merge.running" = "Merging…";
+"merge.warningTitle" = "Merge calls that are not next to each other?";
+"merge.anyway" = "Merge anyway";
+"merge.back" = "Go back";
+"merge.warningBody" = "There are unmarked calls between “%@” and “%@”. They will stay separate.";

@@ -58,6 +58,16 @@ public enum CallsListPhrase: String, CaseIterable, Sendable {
     case noMatchesHint = "search.noMatchesHint"
     case markOn = "merge.marked"
     case markOff = "merge.unmarked"
+    case mergeTitle = "merge.title"
+    case mergeDone = "merge.done"
+    /// Takes the number of marked calls.
+    case mergeConfirm = "merge.confirm"
+    case mergeRunning = "merge.running"
+    case mergeWarningTitle = "merge.warningTitle"
+    case mergeAnyway = "merge.anyway"
+    /// Takes the first and last marked calls' titles.
+    case mergeWarningBody = "merge.warningBody"
+    case mergeBack = "merge.back"
 }
 
 /// Looks up calls list text in a given language, whatever the process locale.

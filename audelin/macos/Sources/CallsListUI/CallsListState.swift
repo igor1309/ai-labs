@@ -89,7 +89,11 @@ public struct CallsListState: Equatable, Sendable {
         public var marked: Set<String>
         /// The marked calls are being merged; rows take no clicks.
         public var running: Bool
-        public init(marked: Set<String> = [], running: Bool = false) { self.marked = marked; self.running = running }
+        /// The far-apart warning's text while it asks again; nil otherwise.
+        public var warning: String?
+        public init(marked: Set<String> = [], running: Bool = false, warning: String? = nil) {
+            self.marked = marked; self.running = running; self.warning = warning
+        }
     }
 
     public var rows: [Row]
@@ -130,4 +134,8 @@ public enum CallsListEvent: Equatable, Sendable {
     case search(String)
     /// A click on a row in merge mode: mark it, or unmark a marked one.
     case toggleMark(String)
+    /// The merge bar: merge the marked calls, or leave merge mode (also Escape).
+    case confirmMerge, leaveMerge
+    /// The far-apart warning's two choices.
+    case mergeAnyway, goBackFromWarning
 }

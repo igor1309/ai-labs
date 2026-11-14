@@ -40,3 +40,11 @@
 "row.failed" = "Не удалось подготовить итоги";
 "merge.marked" = "Отмечен";
 "merge.unmarked" = "Не отмечен";
+"merge.title" = "Объединение";
+"merge.done" = "Готово";
+"merge.confirm" = "Объединить %d";
+"merge.running" = "Объединяю…";
+"merge.warningTitle" = "Объединить звонки не подряд?";
+"merge.anyway" = "Объединить всё равно";
+"merge.back" = "Назад";
+"merge.warningBody" = "Между «%@» и «%@» есть звонки, которые не выбраны. Они останутся отдельными.";

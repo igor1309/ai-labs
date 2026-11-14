@@ -103,6 +103,33 @@ struct CallsToolbarTests {
         while !shows(CallsToolbar.copySymbol) { await Task.yield() }
     }
 
+    @Test func onlyAToolbarGivenMergeHasTheMergeButtonBeforeTheActions() {
+        let merging = CallsToolbar(identifier: "test", text: .init(language: .russian), act: { _ in }, merge: {})
+
+        #expect(!makeSUT().toolbarDefaultItemIdentifiers(makeSUT().toolbar).contains(CallsToolbar.mergeItem))
+        #expect(merging.toolbarDefaultItemIdentifiers(merging.toolbar)
+                == [CallsToolbar.mergeItem, CallsToolbar.actionsItem, CallsToolbar.deleteItem, .flexibleSpace, CallsToolbar.copyItem])
+    }
+
+    @Test func theMergeButtonReportsItsActionAndNamesWhatItDoes() throws {
+        var merges = 0
+        let sut = CallsToolbar(identifier: "test", text: .init(language: .russian), act: { _ in }, merge: { merges += 1 })
+        let merge = try #require(item(sut, CallsToolbar.mergeItem))
+
+        sut.show(.init(call: false, copy: false, merge: true))
+        #expect(merge.isEnabled)
+        #expect(merge.toolTip == "Объединить звонки…")
+        sut.show(.init(call: false, copy: false, merge: true, merging: true))
+        #expect(merge.toolTip == "Готово")
+        sut.retitle(text: .init(language: .english))
+        #expect(merge.toolTip == "Done")
+        sut.show(.init(call: false, copy: false, merge: false))
+        #expect(!merge.isEnabled)
+
+        _ = (merge.target as? NSObject)?.perform(merge.action, with: merge)
+        #expect(merges == 1)
+    }
+
     private func makeSUT(act: @escaping (SummaryPreviewEvent) -> Void = { _ in }) -> CallsToolbar {
         CallsToolbar(identifier: "test", text: .init(language: .russian), act: act)
     }

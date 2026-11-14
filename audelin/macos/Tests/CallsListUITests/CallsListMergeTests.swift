@@ -46,3 +46,44 @@ struct CallsListMergeTests {
         var state = CallsListPreviews.state("calls"); state.merge = merge; return state
     }
 }
+
+/// The merge bar's keys: Return merges and Escape leaves; in the far-apart
+/// warning Return merges anyway and Escape goes back.
+@MainActor
+struct CallsListMergeBarTests {
+
+    @Test func S10_withTwoMarkedTheButtonConfirms() throws {
+        let shown = CallsListNotesTests.Shown(marked(["2026.10.21-1230", "2026.10.20-1600"]))
+        defer { shown.close() }
+        shown.type("\r", code: 36)
+        #expect(shown.sent == [.confirmMerge])
+    }
+
+    @Test func S10_withOneMarkedTheButtonSendsNothing() throws {
+        let shown = CallsListNotesTests.Shown(marked(["2026.10.21-1230"]))
+        defer { shown.close() }
+        shown.type("\r", code: 36)
+        #expect(shown.sent.isEmpty)
+    }
+
+    @Test func S9_escapeLeavesMergeMode() throws {
+        let shown = CallsListNotesTests.Shown(marked(["2026.10.21-1230"]))
+        defer { shown.close() }
+        shown.type("\u{1B}", code: 53)
+        #expect(shown.sent == [.leaveMerge])
+    }
+
+    @Test func S5_eachWarningChoiceSendsItsEvent() throws {
+        var state = marked(["2026.10.21-1230", "2026.10.17-1100"])
+        state.merge?.warning = "between"
+        let shown = CallsListNotesTests.Shown(state)
+        defer { shown.close() }
+        shown.type("\r", code: 36)
+        shown.type("\u{1B}", code: 53)
+        #expect(shown.sent == [.mergeAnyway, .goBackFromWarning])
+    }
+
+    private func marked(_ ids: Set<String>) -> CallsListState {
+        var state = CallsListPreviews.state("calls"); state.merge = .init(marked: ids); return state
+    }
+}

@@ -21,6 +21,7 @@ public struct CallsListView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
+            if let merge = state.merge { mergeBar(merge) }
             CallsSearchField(text: state.searchText, placeholder: text(.searchPlaceholder),
                              searching: state.search?.searching == true, focusRequest: searchFocusRequest,
                              changed: { event(.search($0)) }, focusDetail: focusDetail)
@@ -59,7 +60,12 @@ public struct CallsListView: View {
             guard state.editing == nil else { return .ignored }
             return focusDetail?() == true ? .handled : .ignored
         }
-        .onExitCommand { if state.editing != nil { event(.cancelRename) } }
+        .onExitCommand {
+            if state.editing != nil { event(.cancelRename) }
+            else if let merge = state.merge, !merge.running {
+                event(merge.warning == nil ? .leaveMerge : .goBackFromWarning)
+            }
+        }
         .onKeyPress(keys: [.downArrow, .upArrow]) { press in
             guard state.editing == nil else { return .ignored }
             event(press.key == .downArrow ? .selectNext : .selectPrevious)
@@ -72,6 +78,7 @@ public struct CallsListView: View {
             return .handled
         }
         .overlay { if let body = state.deleteBody { deleteAlert(body) } }
+        .overlay { if let warning = state.merge?.warning { mergeWarning(warning) } }
         .onChange(of: state.editing?.id) { _, id in editing = id != nil }
         .onAppear { GlassLedger.registerFonts(); editing = state.editing != nil }
     }
@@ -315,6 +322,62 @@ public struct CallsListView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, tokens.space16).padding(.vertical, tokens.space12)
         .accessibilityIdentifier("calls.searching")
+    }
+
+    /// Over the list in merge mode: its name, Done, and Merge counting the
+    /// marked calls, disabled below two; while merging, only that it is under way.
+    private func mergeBar(_ merge: CallsListState.Merge) -> some View {
+        HStack(spacing: tokens.space8) {
+            Text(text(.mergeTitle)).font(tokens.ui(tokens.typeSmall, .semibold)).foregroundStyle(tokens.text)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if merge.running {
+                barButton(text(.mergeRunning), primary: false, enabled: false, id: "calls.merge.confirm") {}
+            } else {
+                barButton(text(.mergeDone), primary: false, enabled: true, id: "calls.merge.done") { event(.leaveMerge) }
+                barButton(text(.mergeConfirm, merge.marked.count), primary: true, enabled: merge.marked.count >= 2,
+                          id: "calls.merge.confirm") { event(.confirmMerge) }
+                    .keyboardShortcut(merge.warning == nil ? .defaultAction : nil)
+            }
+        }
+        .padding(.horizontal, tokens.space12).padding(.vertical, tokens.space8)
+        .background(tokens.win)
+    }
+
+    private func barButton(_ title: String, primary: Bool, enabled: Bool, id: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title).font(tokens.ui(tokens.typeSmall, .semibold))
+                .foregroundStyle(!enabled ? tokens.disText : primary ? tokens.selText : tokens.text)
+                .padding(.vertical, tokens.space4).padding(.horizontal, tokens.space8)
+                .background(!enabled ? tokens.dis : primary ? tokens.me : tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
+        }
+        .buttonStyle(.plain).disabled(!enabled)
+        .accessibilityIdentifier(id).accessibilityLabel(title)
+    }
+
+    /// Asks again before merging calls with an unmarked call between them.
+    private func mergeWarning(_ body: String) -> some View {
+        ZStack {
+            tokens.shadow
+            VStack(alignment: .leading, spacing: tokens.space12) {
+                Text(text(.mergeWarningTitle)).font(tokens.ui(tokens.typeTitle, .semibold)).foregroundStyle(tokens.text)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(body).font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.sub).fixedSize(horizontal: false, vertical: true)
+                VStack(spacing: tokens.space8) {
+                    Button { event(.mergeAnyway) } label: {
+                        Text(text(.mergeAnyway)).font(tokens.ui(tokens.typeSmall, .semibold)).foregroundStyle(tokens.selText)
+                            .padding(.vertical, tokens.space6).padding(.horizontal, tokens.space12).frame(maxWidth: .infinity)
+                            .background(tokens.me, in: .rect(cornerRadius: tokens.radiusControl))
+                    }
+                    .buttonStyle(.plain).keyboardShortcut(.defaultAction).accessibilityIdentifier("calls.merge.anyway")
+                    button(text(.mergeBack), destructive: false) { event(.goBackFromWarning) }
+                        .keyboardShortcut(.cancelAction).accessibilityIdentifier("calls.merge.back")
+                }
+            }
+            .padding(tokens.space24).frame(width: 340)
+            .background(tokens.win, in: .rect(cornerRadius: tokens.radiusCard))
+            .shadow(color: tokens.shadow, radius: 16, y: 12)
+            .onExitCommand { event(.goBackFromWarning) }
+        }
     }
 
     private func deleteAlert(_ body: String) -> some View {
