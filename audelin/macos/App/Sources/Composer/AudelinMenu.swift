@@ -194,8 +194,9 @@ public final class AudelinMenu {
         }
     }
 
-    func installFinalizationSubscriptions(speakers: Task<Void, Never>, publication: Task<Void, Never>, finish: @escaping () -> Void) {
-        finalizationSubscriptions = [speakers, publication]
+    func installFinalizationSubscriptions(speakers: Task<Void, Never>, publication: Task<Void, Never>, transactions: Task<Void, Never>,
+                                          finish: @escaping () -> Void) {
+        finalizationSubscriptions = [speakers, publication, transactions]
         finishFinalTranscripts = finish
     }
 
