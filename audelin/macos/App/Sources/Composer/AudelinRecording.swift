@@ -13,7 +13,7 @@ final class AudelinRecording: Sendable {
     let inputs: RecordingInputs
     let panel: AudelinPanel
     let detectionFailures: AsyncStream<any Error>
-    private let conditions: RecordingConditions
+    private let conditions: RecordingConditionsModel
     private let refresh: @Sendable () async -> Void
     private let delivery: ApplicationDelivery
 

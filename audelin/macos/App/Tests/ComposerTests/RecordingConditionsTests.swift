@@ -7,8 +7,9 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingConditionsTests {
-    @Test(arguments: [nil, Int64(0), 29_999_999_999, 30_000_000_000, 30_000_000_001])
-    func roomRequiresAtLeastThirtyDecimalGigabytes(bytes: Int64?) async throws {
+    /// The room rule's boundaries are the module's; this shows the composer reads the calls folder's capacity.
+    @Test(arguments: [nil, Int64(29_999_999_999), 30_000_000_000])
+    func roomReadsTheCallsFolderCapacity(bytes: Int64?) async throws {
         let reads = Values<URL>()
         try await withComposition(configure: { boundary in
             boundary.capacity = FixtureCapacity(read: { url in reads.append(url); return bytes })
