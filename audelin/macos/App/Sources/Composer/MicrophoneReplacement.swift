@@ -1,9 +1,10 @@
+import CallNames
 import TranscriptFormat
 
 extension Transcript {
     /// The supplied far side and names belong to the call being replaced.
     static func microphoneReplacement(
-        in state: CallState, far: Attributed?, names: LiveNameBoard.Names, heard: [TranscriptSegment]
+        in state: CallState, far: Attributed?, names: CallNamesState, heard: [TranscriptSegment]
     ) -> (segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) {
         if let far {
             let microphone = heard.map {

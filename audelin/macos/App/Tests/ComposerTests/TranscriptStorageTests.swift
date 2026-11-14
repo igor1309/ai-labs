@@ -14,7 +14,7 @@ struct TranscriptStorageTests {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
 
-        let file = try await storage.open(at: directory.appendingPathComponent("transcript.md"), sink: TestLogSink())
+        let file = try await storage.open(at: directory.appendingPathComponent("transcript.md"), names: RecordingNames(), sink: TestLogSink())
 
         var iterator = loads.stream.makeAsyncIterator()
         await iterator.next()

@@ -1,5 +1,7 @@
 import CallDiarizer
+import CallNames
 import Foundation
+import SpeakerNaming
 import TranscriptFormat
 
 protocol WholeTranscriptReplacing: Sendable {
@@ -10,11 +12,11 @@ protocol WholeTranscriptReplacing: Sendable {
 struct AfterCallPass: Sendable {
     private let writer: any WholeTranscriptReplacing
     private let track: URL?
-    private let names: LiveNameBoard
+    private let names: RecordingNames
     private let diarizer: any TranscriptDiarizer
     private let sink: any LogSink
 
-    init(writer: any WholeTranscriptReplacing, track: URL?, names: LiveNameBoard, diarizer: any TranscriptDiarizer, sink: any LogSink) {
+    init(writer: any WholeTranscriptReplacing, track: URL?, names: RecordingNames, diarizer: any TranscriptDiarizer, sink: any LogSink) {
         self.writer = writer; self.track = track; self.names = names; self.diarizer = diarizer; self.sink = sink
     }
 
@@ -28,13 +30,15 @@ struct AfterCallPass: Sendable {
         guard let result = await RemoteSpeakers(diarizer: diarizer, sink: sink).attribute(state, track: track, speakers: nil) else { return nil }
         // A pass that heard no one has nothing to confirm or attribute: the live names stay tentative.
         guard !result.turns.isEmpty else { return nil }
-        var clusters: [Int: String] = [:]
+        var clusters: [Int: String] = [:], confirmed: [Int: String] = [:]
         if zoom {
             let rows = state.entries.filter { $0.speaker != .mine }.map { (id: $0.text.id, start: $0.text.start, end: $0.text.end) }
-            let confirmed = AfterCallNames.names(rows: rows, turns: result.turns, board: board)
-            names.confirm(confirmed)
-            await names.announce(confirmed)
-            clusters = AfterCallNames.clusterNames(turns: result.turns, board: board)
+            let turns = result.turns.map { DiarizedTurn(speaker: $0.speaker, start: $0.start, end: $0.end) }
+            let evidence = CallEvidence(roster: board.roster, spoken: board.spoken.map { .init(name: $0.name, start: $0.start, end: $0.end) },
+                                        through: board.through)
+            confirmed = AfterCallNames.names(rows: rows, turns: turns, evidence: evidence)
+            await names.diarized(turns, rows: rows.map { Row(id: $0.id, start: $0.start, end: $0.end) })
+            clusters = AfterCallNames.clusterNames(turns: turns, evidence: evidence)
             sink.write(.init(category: .session, message: "after-call names confirmed=\(clusters.count) turns=\(result.turns.count)"))
         }
         var attributed = Composer.Transcript.attributed(result.pieces, in: state, names: clusters)
@@ -47,18 +51,17 @@ struct AfterCallPass: Sendable {
             return attributed
         } catch {
             sink.write(.init(category: .session, message: "remote speakers not saved: \(error)"))
-            return zoom ? await saveConfirmedNames(state) : nil
+            return zoom ? await saveConfirmedNames(state, names: board.confirming(confirmed)) : nil
         }
     }
 
     /// Without the attributed far side, the confirmed names still reach the file on the
     /// call's own rows, rendered afresh so rows already final take their corrected names.
     /// Once saved, those rows are the far side the pass returns.
-    private func saveConfirmedNames(_ state: CallState) async -> Composer.Transcript.Attributed? {
+    private func saveConfirmedNames(_ state: CallState, names board: CallNamesState) async -> Composer.Transcript.Attributed? {
 
-        let board = names.snapshot()
         let rows = state.entries.map { entry in
-            Composer.Transcript.segment(from: entry, speaker: board.rows[entry.text.id].flatMap { board.ids[$0] })
+            Composer.Transcript.segment(from: entry, speaker: board.rowNames[entry.text.id].flatMap { board.participantIDs[$0] })
         }
         let speakers = Composer.Transcript.speakers(board)
         do {

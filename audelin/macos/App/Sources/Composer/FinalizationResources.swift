@@ -1,3 +1,4 @@
+import CallNames
 import Foundation
 
 /// Per-call handles only. The machine holds every stage and every transcript value.
@@ -6,7 +7,7 @@ final class FinalizationResources {
     struct Resource: Sendable {
         let transcript: OpenedTranscript
         let cleanup: TranscriptCleanup
-        var names: LiveNameBoard.Names
+        var names: CallNamesState
         let speakers: @Sendable ([Int: Int]) async -> Void
         let finishReading: @Sendable () async -> Void
     }

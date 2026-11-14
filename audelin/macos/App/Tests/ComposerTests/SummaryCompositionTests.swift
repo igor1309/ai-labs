@@ -401,8 +401,8 @@ private final class ControlledTranscripts: TranscriptStorage, Sendable {
     init(holdFinal: Bool = false, failEarly: Bool = false, failFinal: Bool = false) {
         self.holdFinal = holdFinal; self.failEarly = failEarly; self.failFinal = failFinal
     }
-    func open(at url: URL, sink: any LogSink) async throws -> OpenedTranscript {
-        let opened = try await FileTranscriptStorage(diarizer: CallDiarizer.unavailable).open(at: url, sink: sink)
+    func open(at url: URL, names: RecordingNames, sink: any LogSink) async throws -> OpenedTranscript {
+        let opened = try await FileTranscriptStorage(diarizer: CallDiarizer.unavailable).open(at: url, names: names, sink: sink)
         return OpenedTranscript(writer: ControlledTranscript(base: opened.writer, controls: self), pass: opened.pass, names: opened.names)
     }
 }

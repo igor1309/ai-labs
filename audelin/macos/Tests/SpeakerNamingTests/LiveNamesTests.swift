@@ -27,4 +27,13 @@ import Testing
         _ = names.name(row: "1", start: 0, end: 2, roster: roster, activities: [.init(participantID: "a", start: 0, end: 2)], through: 2)
         #expect(names.name(row: "1", start: 0, end: 10, roster: roster, activities: [.init(participantID: "b", start: 0, end: 10)], through: 10) == "Anna")
     }
+    @Test func matchingUsesOnlyCurrentEvidenceEvenWhenARowWasAlreadyNamed() {
+        var names = LiveNames()
+        let anna = [Activity(participantID: "a", start: 0, end: 4)]
+        let boris = [Activity(participantID: "b", start: 0, end: 4)]
+        #expect(names.name(row: "1", start: 0, end: 4, roster: roster, activities: anna, through: 4) == "Anna")
+        #expect(names.match(start: 0, end: 4, roster: roster, activities: boris, through: 4) == "Boris")
+        #expect(names.match(start: 0, end: 4, roster: roster, activities: [], through: 4) == nil)
+        #expect(names.name(row: "1", start: 0, end: 4, roster: roster, activities: boris, through: 4) == "Anna")
+    }
 }

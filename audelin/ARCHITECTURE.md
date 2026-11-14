@@ -46,7 +46,7 @@ platform; anything else breaks rule 1. The lanes of
 
 | Kind | May import | Targets |
 |---|---|---|
-| Machine | nothing | Session, Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, TranscriptFinalization, RecordingConditions |
+| Machine | nothing | Session, Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, TranscriptFinalization, RecordingConditions, CallNames |
 | Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch |
 | Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, Calls, CallsStorage, Preferences |
 | Shared helper | nothing | SplitRows, CallFolderName, AudioConversion, ModelLoading |
@@ -61,7 +61,7 @@ stands. MenuBar is UI that also holds the pure reducer for panel presence.
 ### Open
 
 The composer does not yet follow rule 4. It holds state across events
-(`NewestText`, `CallLiveNames`, `LiveNameBoard`). Each becomes a component or machine of its own, or is
+(`NewestText`). Each becomes a component or machine of its own, or is
 shown to be only mapping. No check yet fails on an import that a target's
 kind does not allow.
 
@@ -234,7 +234,7 @@ returns, since both replace the file; a call closing afterwards is final as
 last saved. The machine publishes settled once no file write is pending.
 
 Its collaborators are ports it owns: the diarizer (the root's after-call
-pass, which also confirms live names), microphone cleanup, transcript
+pass, which also hands its speaker turns to CallNames), microphone cleanup, transcript
 replacement, and the receiver of final transcripts. The transcript writer
 only renders and saves: live writes and whole replacements. The root keeps
 each call's writer and cleanup inputs as resource handles until its final
@@ -290,3 +290,28 @@ maps the turns, attributes the far side's segments and logs the outcome; a
 failed diarization leaves the far side as one "Them". When the pass runs
 in the app's flow, and how the speakers are labelled and shown, belong to
 the transcript, summary and panel.
+
+## Call names
+
+CallNames is a machine with one responsibility: the names of one
+recording's far-side rows. Its reason to change is how call-app evidence
+becomes a name. Its state holds the evidence it kept from Zoom and the
+browser extension, each row's name, the participant IDs the transcript
+uses, whether the names are confirmed, and whether the call app is being
+watched. The reducer names a row through an injected matcher
+(`LiveNames.match`) and confirms names through an injected after-call
+rule (`AfterCallNames.names`), both in SpeakerNaming.
+
+Its effect handler watches and closes the call-app sources. Two adapters in
+the composer answer that port: the Zoom observer reports the Talking
+indicator from Zoom's accessibility tree, and the browser observer reports
+the extension's events and connections. The recording's start and end
+start and stop the watch; the names stay after it.
+
+The panel's reading subscription composes one instance per recording. It
+sends each new remote row to it, and subscribes its state: the panel shows
+the row names, tentative until confirmed, and the recording's names port
+keeps the state last published. The transcript writer and the after-call
+pass read that port; they never wait for the machine. The pass gives the
+speaker turns it diarized back through the same port, and CallNames
+confirms the names from them and its kept evidence.
