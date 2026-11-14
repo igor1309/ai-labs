@@ -35,6 +35,7 @@ TARGETS = {
     "SpeakerIdentification": ("text", "validates self-introduction evidence", 10),
     "SpeakerAttribution": ("text", "gives the far side's text\nto remote speakers", 11),
     "CallDiarizer": ("text", "the call track's speakers,\nafter the call", 12),
+    "TranscriptJoin": ("text", "joins merged calls'\ntranscripts", 13),
     "ZoomAccessibility": ("capture", "who Zoom shows talking,\nthrough Accessibility", 7),
     "BrowserBridge": ("capture", "call observations from\nthe browser extension", 8),
     "AudelinNativeHost": ("capture", "native host the browser\nstarts; relays to the app", 9),
