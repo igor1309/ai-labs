@@ -28311,16 +28311,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -28705,16 +28718,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -29029,128 +29055,77 @@
                                           "children": [
                                             {
                                               "type": "frame",
-                                              "id": "fHGTK",
+                                              "id": "FvlrC",
                                               "name": "Segments",
-                                              "fill": "$btn",
+                                              "fill": "$segTrack",
                                               "cornerRadius": "$radius-control",
                                               "gap": "$space-2",
                                               "padding": "$space-2",
                                               "children": [
                                                 {
-                                                  "type": "frame",
-                                                  "id": "slvFJ",
+                                                  "id": "tAHrE",
+                                                  "type": "ref",
+                                                  "ref": "Eem0I",
                                                   "name": "Seg 2 с",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "sTFDa",
-                                                      "name": "T",
-                                                      "fill": "$text",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "OdXwE": {
                                                       "content": "2 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 },
                                                 {
-                                                  "type": "frame",
-                                                  "id": "wbxYA",
+                                                  "id": "kunnW",
+                                                  "type": "ref",
+                                                  "ref": "Eem0I",
                                                   "name": "Seg 3 с",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "X7aiZr",
-                                                      "name": "T",
-                                                      "fill": "$text",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "OdXwE": {
                                                       "content": "3 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 },
                                                 {
-                                                  "type": "frame",
-                                                  "id": "riomU",
+                                                  "id": "JtQ4f",
+                                                  "type": "ref",
+                                                  "ref": "D900EE",
                                                   "name": "Seg 4 с",
-                                                  "fill": "$selBg",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "tDJcs",
-                                                      "name": "T",
-                                                      "fill": "$selText",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "uluhv": {
                                                       "content": "4 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 },
                                                 {
-                                                  "type": "frame",
-                                                  "id": "pDMNj",
+                                                  "id": "z6ntF",
+                                                  "type": "ref",
+                                                  "ref": "Eem0I",
                                                   "name": "Seg 6 с",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "QpfHf",
-                                                      "name": "T",
-                                                      "fill": "$text",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "OdXwE": {
                                                       "content": "6 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 },
                                                 {
-                                                  "type": "frame",
-                                                  "id": "HvRWT",
+                                                  "id": "KTcZD",
+                                                  "type": "ref",
+                                                  "ref": "Eem0I",
                                                   "name": "Seg 8 с",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "wtaLj",
-                                                      "name": "T",
-                                                      "fill": "$text",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "OdXwE": {
                                                       "content": "8 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 }
                                               ]
                                             },
@@ -29296,16 +29271,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -29723,16 +29711,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -30137,16 +30138,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -30555,16 +30569,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -30977,16 +31004,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -31371,16 +31411,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -31695,128 +31748,77 @@
                                           "children": [
                                             {
                                               "type": "frame",
-                                              "id": "Sk92r",
+                                              "id": "u0t59O",
                                               "name": "Segments",
-                                              "fill": "$btn",
+                                              "fill": "$segTrack",
                                               "cornerRadius": "$radius-control",
                                               "gap": "$space-2",
                                               "padding": "$space-2",
                                               "children": [
                                                 {
-                                                  "type": "frame",
-                                                  "id": "cYjSz",
+                                                  "id": "TfwVd",
+                                                  "type": "ref",
+                                                  "ref": "Eem0I",
                                                   "name": "Seg 2 с",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "YH7fA",
-                                                      "name": "T",
-                                                      "fill": "$text",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "OdXwE": {
                                                       "content": "2 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 },
                                                 {
-                                                  "type": "frame",
-                                                  "id": "hhUjE",
+                                                  "id": "R6V3b",
+                                                  "type": "ref",
+                                                  "ref": "Eem0I",
                                                   "name": "Seg 3 с",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "G993m",
-                                                      "name": "T",
-                                                      "fill": "$text",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "OdXwE": {
                                                       "content": "3 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 },
                                                 {
-                                                  "type": "frame",
-                                                  "id": "M9MKl",
+                                                  "id": "u9Ti3",
+                                                  "type": "ref",
+                                                  "ref": "D900EE",
                                                   "name": "Seg 4 с",
-                                                  "fill": "$selBg",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "mXwgE",
-                                                      "name": "T",
-                                                      "fill": "$selText",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "uluhv": {
                                                       "content": "4 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 },
                                                 {
-                                                  "type": "frame",
-                                                  "id": "QxOVy",
+                                                  "id": "wc2od",
+                                                  "type": "ref",
+                                                  "ref": "Eem0I",
                                                   "name": "Seg 6 с",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "VcpIC",
-                                                      "name": "T",
-                                                      "fill": "$text",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "OdXwE": {
                                                       "content": "6 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 },
                                                 {
-                                                  "type": "frame",
-                                                  "id": "YnGyo",
+                                                  "id": "FCPJD",
+                                                  "type": "ref",
+                                                  "ref": "Eem0I",
                                                   "name": "Seg 8 с",
-                                                  "cornerRadius": "$radius-control",
-                                                  "padding": [
-                                                    "$space-4",
-                                                    "$space-12"
-                                                  ],
-                                                  "children": [
-                                                    {
-                                                      "type": "text",
-                                                      "id": "GD9vK",
-                                                      "name": "T",
-                                                      "fill": "$text",
+                                                  "width": "fit_content",
+                                                  "descendants": {
+                                                    "OdXwE": {
                                                       "content": "8 с",
-                                                      "lineHeight": 1.45,
-                                                      "fontFamily": "$font-data",
-                                                      "fontSize": "$type-small",
-                                                      "fontWeight": "normal"
+                                                      "fontFamily": "$font-data"
                                                     }
-                                                  ]
+                                                  }
                                                 }
                                               ]
                                             },
@@ -31962,16 +31964,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -32389,16 +32404,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -32803,16 +32831,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -33221,16 +33262,29 @@
                                   "width": "fill_container",
                                   "descendants": {
                                     "nor3c": {
-                                      "fill": "$selBg"
+                                      "fill": "$segThumb",
+                                      "effect": {
+                                        "type": "shadow",
+                                        "shadowType": "outer",
+                                        "color": "$segShadow",
+                                        "offset": {
+                                          "x": 0,
+                                          "y": 1
+                                        },
+                                        "blur": 2
+                                      }
                                     },
                                     "nor3c/EWsWH": {
-                                      "fill": "$selText"
+                                      "fill": "$text",
+                                      "fontWeight": "500"
                                     },
                                     "cUhH9": {
-                                      "fill": "$btn"
+                                      "fill": "#00000000",
+                                      "effect": []
                                     },
                                     "cUhH9/EWsWH": {
-                                      "fill": "$text"
+                                      "fill": "$text",
+                                      "fontWeight": "normal"
                                     }
                                   }
                                 },
@@ -35258,25 +35312,40 @@
                       "width": "fill_container",
                       "descendants": {
                         "ctTw8": {
-                          "fill": "$selBg"
+                          "fill": "$segThumb",
+                          "effect": {
+                            "type": "shadow",
+                            "shadowType": "outer",
+                            "color": "$segShadow",
+                            "offset": {
+                              "x": 0,
+                              "y": 1
+                            },
+                            "blur": 2
+                          }
                         },
                         "ctTw8/EWsWH": {
                           "content": "Основные",
-                          "fill": "$selText"
+                          "fill": "$text",
+                          "fontWeight": "500"
                         },
                         "nor3c": {
-                          "fill": "$btn"
+                          "fill": "#00000000",
+                          "effect": []
                         },
                         "nor3c/EWsWH": {
                           "content": "Запись",
-                          "fill": "$text"
+                          "fill": "$text",
+                          "fontWeight": "normal"
                         },
                         "cUhH9": {
-                          "fill": "$btn"
+                          "fill": "#00000000",
+                          "effect": []
                         },
                         "cUhH9/EWsWH": {
                           "content": "Итоги звонков",
-                          "fill": "$text"
+                          "fill": "$text",
+                          "fontWeight": "normal"
                         }
                       }
                     },
@@ -35421,25 +35490,40 @@
                       "width": "fill_container",
                       "descendants": {
                         "ctTw8": {
-                          "fill": "$selBg"
+                          "fill": "$segThumb",
+                          "effect": {
+                            "type": "shadow",
+                            "shadowType": "outer",
+                            "color": "$segShadow",
+                            "offset": {
+                              "x": 0,
+                              "y": 1
+                            },
+                            "blur": 2
+                          }
                         },
                         "ctTw8/EWsWH": {
                           "content": "General",
-                          "fill": "$selText"
+                          "fill": "$text",
+                          "fontWeight": "500"
                         },
                         "nor3c": {
-                          "fill": "$btn"
+                          "fill": "#00000000",
+                          "effect": []
                         },
                         "nor3c/EWsWH": {
                           "content": "Recording",
-                          "fill": "$text"
+                          "fill": "$text",
+                          "fontWeight": "normal"
                         },
                         "cUhH9": {
-                          "fill": "$btn"
+                          "fill": "#00000000",
+                          "effect": []
                         },
                         "cUhH9/EWsWH": {
                           "content": "Call summaries",
-                          "fill": "$text"
+                          "fill": "$text",
+                          "fontWeight": "normal"
                         }
                       }
                     },
@@ -35584,25 +35668,40 @@
                       "width": "fill_container",
                       "descendants": {
                         "ctTw8": {
-                          "fill": "$selBg"
+                          "fill": "$segThumb",
+                          "effect": {
+                            "type": "shadow",
+                            "shadowType": "outer",
+                            "color": "$segShadow",
+                            "offset": {
+                              "x": 0,
+                              "y": 1
+                            },
+                            "blur": 2
+                          }
                         },
                         "ctTw8/EWsWH": {
                           "content": "General",
-                          "fill": "$selText"
+                          "fill": "$text",
+                          "fontWeight": "500"
                         },
                         "nor3c": {
-                          "fill": "$btn"
+                          "fill": "#00000000",
+                          "effect": []
                         },
                         "nor3c/EWsWH": {
                           "content": "Recording",
-                          "fill": "$text"
+                          "fill": "$text",
+                          "fontWeight": "normal"
                         },
                         "cUhH9": {
-                          "fill": "$btn"
+                          "fill": "#00000000",
+                          "effect": []
                         },
                         "cUhH9/EWsWH": {
                           "content": "Call summaries",
-                          "fill": "$text"
+                          "fill": "$text",
+                          "fontWeight": "normal"
                         }
                       }
                     },
@@ -35747,25 +35846,40 @@
                       "width": "fill_container",
                       "descendants": {
                         "ctTw8": {
-                          "fill": "$selBg"
+                          "fill": "$segThumb",
+                          "effect": {
+                            "type": "shadow",
+                            "shadowType": "outer",
+                            "color": "$segShadow",
+                            "offset": {
+                              "x": 0,
+                              "y": 1
+                            },
+                            "blur": 2
+                          }
                         },
                         "ctTw8/EWsWH": {
                           "content": "Основные",
-                          "fill": "$selText"
+                          "fill": "$text",
+                          "fontWeight": "500"
                         },
                         "nor3c": {
-                          "fill": "$btn"
+                          "fill": "#00000000",
+                          "effect": []
                         },
                         "nor3c/EWsWH": {
                           "content": "Запись",
-                          "fill": "$text"
+                          "fill": "$text",
+                          "fontWeight": "normal"
                         },
                         "cUhH9": {
-                          "fill": "$btn"
+                          "fill": "#00000000",
+                          "effect": []
                         },
                         "cUhH9/EWsWH": {
                           "content": "Итоги звонков",
-                          "fill": "$text"
+                          "fill": "$text",
+                          "fontWeight": "normal"
                         }
                       }
                     },
@@ -35934,7 +36048,7 @@
           "name": "General behavior",
           "width": 1100,
           "height": 200,
-          "content": "General. Window content only; the native title bar is not drawn. The first tab holds Language (System / Русский / English) and Appearance (System / Light / Dark), each a three-part segmented control across the row; language names are written in their own language. System language uses the first macOS preferred language Audelin supports and English otherwise. A change applies at once to every window, the panel and the menu bar, with no relaunch and no confirmation. The grey line under Language names the language System gives, or the macOS language when one is forced. Language covers UI text only: transcription, summaries and call folders do not change. Mouse clicks a segment; keyboard moves between segments with the arrow keys after Tab. macOS only; no phone or tablet layout."
+          "content": "General. Window content only; the native title bar is not drawn. The first tab holds Language (System / Русский / English) and Appearance (System / Light / Dark), each a three-part segmented control across the row; language names are written in their own language. System language uses the first macOS preferred language Audelin supports and English otherwise. A change applies at once to every window, the panel and the menu bar, with no relaunch and no confirmation. The grey line under Language names the language System gives, or the macOS language when one is forced. Language covers UI text only: transcription, summaries and call folders do not change. Tabs, Language, Appearance and the debug chunk size are one native-style segmented control in one size. Mouse clicks a segment; Tab focuses the control and rings its selected segment in the accent colour, with no ring around the control; the arrow keys move between segments. macOS only; no phone or tablet layout."
         }
       ]
     },
@@ -46825,7 +46939,10 @@
           "name": "Settings navigation",
           "reusable": true,
           "width": 572,
-          "gap": "$space-4",
+          "fill": "$segTrack",
+          "cornerRadius": "$radius-control",
+          "gap": "$space-2",
+          "padding": "$space-2",
           "children": [
             {
               "id": "ctTw8",
@@ -46833,9 +46950,18 @@
               "ref": "wmGeO",
               "name": "General tab",
               "width": "fill_container",
+              "fill": "#00000000",
+              "cornerRadius": "$radius-thumb",
+              "padding": [
+                "$space-2",
+                "$space-12"
+              ],
+              "effect": [],
               "descendants": {
                 "EWsWH": {
-                  "content": "Основные"
+                  "content": "Основные",
+                  "fill": "$text",
+                  "fontWeight": "normal"
                 }
               }
             },
@@ -46845,9 +46971,18 @@
               "ref": "wmGeO",
               "name": "Recording tab",
               "width": "fill_container",
+              "fill": "#00000000",
+              "cornerRadius": "$radius-thumb",
+              "padding": [
+                "$space-2",
+                "$space-12"
+              ],
+              "effect": [],
               "descendants": {
                 "EWsWH": {
-                  "content": "Запись"
+                  "content": "Запись",
+                  "fill": "$text",
+                  "fontWeight": "normal"
                 }
               }
             },
@@ -46857,11 +46992,27 @@
               "ref": "wmGeO",
               "name": "Summaries tab",
               "width": "fill_container",
-              "fill": "$selBg",
+              "fill": "$segThumb",
+              "cornerRadius": "$radius-thumb",
+              "padding": [
+                "$space-2",
+                "$space-12"
+              ],
+              "effect": {
+                "type": "shadow",
+                "shadowType": "outer",
+                "color": "$segShadow",
+                "offset": {
+                  "x": 0,
+                  "y": 1
+                },
+                "blur": 2
+              },
               "descendants": {
                 "EWsWH": {
                   "content": "Итоги звонков",
-                  "fill": "$selText"
+                  "fill": "$text",
+                  "fontWeight": "500"
                 }
               }
             }
@@ -47156,12 +47307,20 @@
           "name": "Segment/Selected",
           "reusable": true,
           "width": "fill_container",
-          "fill": "$surface",
-          "cornerRadius": "$radius-control",
-          "stroke": "$rule",
-          "strokeWidth": 1,
+          "fill": "$segThumb",
+          "cornerRadius": "$radius-thumb",
+          "effect": {
+            "type": "shadow",
+            "shadowType": "outer",
+            "color": "$segShadow",
+            "offset": {
+              "x": 0,
+              "y": 1
+            },
+            "blur": 2
+          },
           "padding": [
-            "$space-4",
+            "$space-2",
             "$space-12"
           ],
           "justifyContent": "center",
@@ -47176,7 +47335,7 @@
               "lineHeight": 1.45,
               "fontFamily": "$font-ui",
               "fontSize": "$type-small",
-              "fontWeight": "600"
+              "fontWeight": "500"
             }
           ]
         },
@@ -47187,9 +47346,9 @@
           "reusable": true,
           "width": "fill_container",
           "fill": "#00000000",
-          "cornerRadius": "$radius-control",
+          "cornerRadius": "$radius-thumb",
           "padding": [
-            "$space-4",
+            "$space-2",
             "$space-12"
           ],
           "justifyContent": "center",
@@ -47199,7 +47358,7 @@
               "type": "text",
               "id": "OdXwE",
               "name": "Label",
-              "fill": "$sub",
+              "fill": "$text",
               "content": "Русский",
               "lineHeight": 1.45,
               "fontFamily": "$font-ui",
@@ -47214,7 +47373,7 @@
           "name": "Segmented/First",
           "reusable": true,
           "width": 400,
-          "fill": "$btn",
+          "fill": "$segTrack",
           "cornerRadius": "$radius-control",
           "gap": "$space-2",
           "padding": "$space-2",
@@ -47248,7 +47407,7 @@
           "name": "Segmented/Second",
           "reusable": true,
           "width": 400,
-          "fill": "$btn",
+          "fill": "$segTrack",
           "cornerRadius": "$radius-control",
           "gap": "$space-2",
           "padding": "$space-2",
@@ -47282,7 +47441,7 @@
           "name": "Segmented/Third",
           "reusable": true,
           "width": 400,
-          "fill": "$btn",
+          "fill": "$segTrack",
           "cornerRadius": "$radius-control",
           "gap": "$space-2",
           "padding": "$space-2",
@@ -47307,6 +47466,134 @@
               "ref": "D900EE",
               "name": "Segment 3",
               "width": "fill_container"
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "b4kyHC",
+          "name": "Segment/Selected focused",
+          "reusable": true,
+          "width": "fill_container",
+          "fill": "$segThumb",
+          "cornerRadius": "$radius-thumb",
+          "stroke": "$me",
+          "strokeWidth": 2,
+          "strokeAlignment": "outer",
+          "effect": {
+            "type": "shadow",
+            "shadowType": "outer",
+            "color": "$segShadow",
+            "offset": {
+              "x": 0,
+              "y": 1
+            },
+            "blur": 2
+          },
+          "padding": [
+            "$space-2",
+            "$space-12"
+          ],
+          "justifyContent": "center",
+          "alignItems": "center",
+          "children": [
+            {
+              "type": "text",
+              "id": "jsYhw",
+              "name": "Label",
+              "fill": "$text",
+              "content": "Системный",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-small",
+              "fontWeight": "500"
+            }
+          ]
+        },
+        {
+          "type": "note",
+          "id": "qx4DE",
+          "name": "Segmented control",
+          "width": "fill_container",
+          "height": 0,
+          "content": "One segmented control for every segmented choice in Settings: tabs, Language, Appearance, debug chunk size. Track: segTrack, radius-control, 2 pt padding. Selected: segThumb with segShadow, radius-thumb, medium label. All labels use text. No outlines. Focus: 2 pt accent ring outside the selected segment, never around the control."
+        },
+        {
+          "type": "frame",
+          "id": "UoYgT",
+          "name": "Segmented focused",
+          "width": "fill_container",
+          "layout": "vertical",
+          "gap": "$space-8",
+          "children": [
+            {
+              "type": "text",
+              "id": "C9K6E",
+              "name": "State label",
+              "fill": "$sub",
+              "content": "Keyboard focus: the selected segment takes an accent ring; no ring around the control",
+              "lineHeight": 1.45,
+              "fontFamily": "$font-ui",
+              "fontSize": "$type-small",
+              "fontWeight": "normal"
+            },
+            {
+              "id": "uk54k",
+              "type": "ref",
+              "ref": "rT0HO",
+              "name": "Focused",
+              "width": "fill_container",
+              "descendants": {
+                "JMakE": {
+                  "id": "QCrzM",
+                  "type": "ref",
+                  "ref": "b4kyHC",
+                  "name": "Segment 1",
+                  "width": "fill_container"
+                },
+                "tQ8hK/OdXwE": {
+                  "content": "Русский"
+                },
+                "sni1W/OdXwE": {
+                  "content": "English"
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "frame",
+          "id": "s01J3J",
+          "name": "Segmented focused — dark",
+          "theme": {
+            "mode": "dark"
+          },
+          "width": "fill_container",
+          "fill": "$win",
+          "layout": "vertical",
+          "padding": "$space-12",
+          "children": [
+            {
+              "id": "f2mrR",
+              "type": "ref",
+              "ref": "rT0HO",
+              "width": "fill_container",
+              "name": "Focused",
+              "descendants": {
+                "JMakE": {
+                  "id": "Bvcsk",
+                  "type": "ref",
+                  "ref": "b4kyHC",
+                  "name": "Segment 1",
+                  "width": "fill_container"
+                },
+                "tQ8hK/OdXwE": {
+                  "content": "Русский"
+                },
+                "sni1W/OdXwE": {
+                  "content": "English"
+                }
+              }
             }
           ]
         }
@@ -59586,7 +59873,7 @@
       "type": "color",
       "value": [
         {
-          "value": "#8A909A",
+          "value": "#686E78",
           "theme": {
             "mode": "light"
           }
@@ -60077,6 +60364,61 @@
     "space-32": {
       "type": "number",
       "value": 32
+    },
+    "segTrack": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#0000000F",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#FFFFFF14",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "segThumb": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#FFFFFF38",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "segShadow": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#00000033",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#00000066",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
+    },
+    "radius-thumb": {
+      "type": "number",
+      "value": 5
     }
   },
   "fileToken": "11d61027-99ea-4c6c-bc5c-f6eff236c8bd"
