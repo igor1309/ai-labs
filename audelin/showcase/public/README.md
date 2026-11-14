@@ -16,8 +16,10 @@ the transcript is designed for Russian conversations with English terms.
 ![Held passage and paused transcript](screenshots/held.png)
 
 The screenshots show the actual panel rendered with synthetic conversation
-text, without recording a real call. This is an experimental app built from
-source; there is no signed installer.
+text, without recording a real call. This is an experimental app. A signed,
+notarized build is published weekly on the
+[Releases](https://github.com/igor1309/audelin/releases/latest) page; it needs
+macOS 26 or later. You can also build it from source.
 
 ## Speaker names in Telemost
 

@@ -54,11 +54,15 @@ public struct GlassLedger: Equatable, Sendable {
     public let space28: CGFloat
     public let space40: CGFloat
     public let lineBody: CGFloat
+    public let hit: Color
     public let them2: Color
     public let them3: Color
     public let them4: Color
-    public let hit: Color
     public let space32: CGFloat
+    public let segTrack: Color
+    public let segThumb: Color
+    public let segShadow: Color
+    public let radiusThumb: CGFloat
 
     public static let light = GlassLedger(
         glass: .hex(0xFFFFFF, 0xE6),
@@ -67,7 +71,7 @@ public struct GlassLedger: Equatable, Sendable {
         surface: .hex(0xFFFFFF, 0xFF),
         text: .hex(0x16181D, 0xFF),
         sub: .hex(0x5A606A, 0xFF),
-        gutter: .hex(0x8A909A, 0xFF),
+        gutter: .hex(0x686E78, 0xFF),
         them: .hex(0xC27A06, 0xFF),
         me: .hex(0x0E9F92, 0xFF),
         selBg: .hex(0x0E9F92, 0xFF),
@@ -108,11 +112,15 @@ public struct GlassLedger: Equatable, Sendable {
         space28: 28,
         space40: 40,
         lineBody: 20,
+        hit: .hex(0xFFD84D, 0x8C),
         them2: .hex(0x6E56CF, 0xFF),
         them3: .hex(0x2F6FDB, 0xFF),
         them4: .hex(0xC2417F, 0xFF),
-        hit: .hex(0xFFD84D, 0x8C),
-        space32: 32
+        space32: 32,
+        segTrack: .hex(0x000000, 0x0F),
+        segThumb: .hex(0xFFFFFF, 0xFF),
+        segShadow: .hex(0x000000, 0x33),
+        radiusThumb: 5
     )
 
     public static let dark = GlassLedger(
@@ -163,10 +171,14 @@ public struct GlassLedger: Equatable, Sendable {
         space28: 28,
         space40: 40,
         lineBody: 20,
+        hit: .hex(0xE0B020, 0x7A),
         them2: .hex(0xB4A2FF, 0xFF),
         them3: .hex(0x82AAFF, 0xFF),
         them4: .hex(0xF28CC0, 0xFF),
-        hit: .hex(0xE0B020, 0x7A),
-        space32: 32
+        space32: 32,
+        segTrack: .hex(0xFFFFFF, 0x14),
+        segThumb: .hex(0xFFFFFF, 0x38),
+        segShadow: .hex(0x000000, 0x66),
+        radiusThumb: 5
     )
 }

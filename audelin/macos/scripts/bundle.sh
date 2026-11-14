@@ -61,7 +61,10 @@ for key in CFBundleIconName CFBundleIconFile; do
     /usr/libexec/PlistBuddy -c "Add :$key string $value" "$app/Contents/Info.plist"
 done
 identity=${AUDELIN_SIGN_IDENTITY:-Apple Development: Igor Malyarov (W78EER96YQ)}
-codesign --force --options runtime --sign "$identity" "$app/Contents/MacOS/audelin-browser-host"
-codesign --force --options runtime --entitlements App/Audelin.entitlements \
+# Notarization requires a secure timestamp on Developer ID signatures.
+timestamp=--timestamp=none
+case "$identity" in "Developer ID"*) timestamp=--timestamp ;; esac
+codesign --force --options runtime $timestamp --sign "$identity" "$app/Contents/MacOS/audelin-browser-host"
+codesign --force --options runtime $timestamp --entitlements App/Audelin.entitlements \
     --sign "$identity" "$app"
 echo "$app"

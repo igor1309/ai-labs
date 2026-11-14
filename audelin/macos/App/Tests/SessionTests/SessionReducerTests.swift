@@ -298,18 +298,16 @@ struct SessionReducerTests {
         assert(makeRecording(withDown: stopOrder), .end, delivers: nil)
     }
 
-    @Test func endBeforeAnythingIsUpEnds_state() {
+    @Test(arguments: [SessionState.Phase.idle, .bringingUp])
+    func endBeforeAnythingIsUpEnds_state(_ phase: SessionState.Phase) {
 
-        for state in [makeIdle(), makeCheckingModels()] {
-            assert(state, .end) { $0.phase = .ended }
-        }
+        assert(makeState(phase), .end) { $0.phase = .ended }
     }
 
-    @Test func endBeforeAnythingIsUpEnds_effect() {
+    @Test(arguments: [SessionState.Phase.idle, .bringingUp])
+    func endBeforeAnythingIsUpEnds_effect(_ phase: SessionState.Phase) {
 
-        for state in [makeIdle(), makeCheckingModels()] {
-            assert(state, .end, delivers: nil)
-        }
+        assert(makeState(phase), .end, delivers: nil)
     }
 
     @Test(arguments: stopOrder, results)

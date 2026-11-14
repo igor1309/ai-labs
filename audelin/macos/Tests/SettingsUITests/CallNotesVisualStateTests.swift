@@ -37,7 +37,7 @@ struct CallNotesVisualStateTests {
         let host = Offscreen.host(SettingsPreview(state: state, scheme: scheme), scheme: scheme)
         let blank = try #require(Offscreen.snapshot(host))
         let colors: [(SettingsState.NotesTone, UInt32)] = scheme == .light
-            ? [(.secondary, 0x8A909A), (.success, 0x0E9F92), (.error, 0xE5484D)]
+            ? [(.secondary, 0x686E78), (.success, 0x0E9F92), (.error, 0xE5484D)]
             : [(.secondary, 0x7C828D), (.success, 0x4FD1C5), (.error, 0xF2555A)]
         for (tone, rgb) in colors {
             draft.status = "MMMM STATUS MMMM"

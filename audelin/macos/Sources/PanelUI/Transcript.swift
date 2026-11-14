@@ -245,7 +245,7 @@ private extension Transcript {
             let paragraph = paragraph(
                 size: size,
                 indent: Self.symbolSlot + tokens.space4 + timeWidth(size) + tokens.space12,
-                timeAt: Self.symbolSlot + tokens.space4,
+                timeAt: timeWidth(size),
                 spacing: spacing
             )
             current = paragraph
@@ -258,15 +258,16 @@ private extension Transcript {
                 ]
             }
 
-            // The speaker's symbol and the time, both in the speaker's colour,
-            // mark who spoke.
+            // The time, then the speaker's symbol, both in the speaker's colour,
+            // mark who spoke. Times end flush so the symbols line up.
             var time = attributes(font(size), entry.speaker == .me ? tokens.me : tokens.remoteSpeaker(place))
             time[Transcript.gutter] = true
 
             let symbol = NSMutableAttributedString(attachment: symbol(entry.speaker, place: place, alpha: alpha, size: size))
             symbol.addAttributes(time, range: NSRange(location: 0, length: symbol.length))
-            result.append(symbol)
             result.append(.init(string: "\t" + entry.time + "\t", attributes: time))
+            result.append(symbol)
+            result.append(.init(string: "\t", attributes: time))
 
             let start = result.length
             result.append(.init(string: entry.settled, attributes: attributes(font(size), tokens.text)))
@@ -404,7 +405,12 @@ private extension Transcript {
             // Keep wrapped text and the live caret clear of overlay scrollbars.
             style.tailIndent = -tokens.space24
 
-            style.tabStops = ([timeAt, indent] as [CGFloat?]).compactMap { $0 }.map { NSTextTab(textAlignment: .left, location: $0) }
+            // An entry's time ends at `timeAt`, its symbol follows, and its text starts at `indent`.
+            style.tabStops = timeAt.map { [
+                NSTextTab(textAlignment: .right, location: $0),
+                NSTextTab(textAlignment: .left, location: $0 + tokens.space4),
+            ] } ?? []
+            style.tabStops.append(NSTextTab(textAlignment: .left, location: indent))
             paragraphs[key] = style
             return style
         }

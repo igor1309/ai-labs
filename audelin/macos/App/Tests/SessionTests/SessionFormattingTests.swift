@@ -194,14 +194,19 @@ struct SessionFormattingTests {
         #expect(spy.calls == calls + calls)
     }
 
-    @Test func ignoredEventsDoNotFormat() {
+    @Test(arguments: eventsInTheWrongPhase() + resultsNotAwaited() + unmatchedReplies())
+    func ignoredEventsDoNotFormat_state(_ ignored: SessionReducerTests.Case) {
 
         let (sut, spy) = makeSUT()
-        let cases = eventsInTheWrongPhase() + resultsNotAwaited() + unmatchedReplies()
-        for (state, event) in cases {
-            assert(state, event, reducer: sut)
-            assert(state, event, delivers: nil, reducer: sut)
-        }
+        assert(ignored.state, ignored.event, reducer: sut)
+        #expect(spy.calls == [])
+    }
+
+    @Test(arguments: eventsInTheWrongPhase() + resultsNotAwaited() + unmatchedReplies())
+    func ignoredEventsDoNotFormat_effect(_ ignored: SessionReducerTests.Case) {
+
+        let (sut, spy) = makeSUT()
+        assert(ignored.state, ignored.event, delivers: nil, reducer: sut)
         #expect(spy.calls == [])
     }
 

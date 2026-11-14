@@ -67,7 +67,7 @@ public struct RecordingsState: Equatable, Sendable {
 
 public enum RecordingsEvent: Equatable, Sendable {
     case stopActions
-    case refresh, reloadAfterFailure, clearFailure, listed([RecordedCall]), listFailed(String)
+    case refresh, clearFailure, listed([RecordedCall]), listFailed(String)
     case recordingChanged(String?)
     case rename(id: String, title: String), renamed(String), renameFailed(id: String, reason: String)
     case chooseFolder(URL), movePrepared([MoveCall]), movePreparationFailed(String)
@@ -116,10 +116,10 @@ public struct RecordingsReducer: Sendable {
             case .idle, .askingDelete: state.failure = nil
             default: return (state, nil)
             }
-        case .refresh, .reloadAfterFailure:
+        case .refresh:
             guard state.phase == .idle, !state.isListing else { return (state, nil) }
             state.isListing = true
-            if event == .refresh { state.failure = nil }
+            state.failure = nil
             return (state, .list)
         case let .listed(calls):
             guard state.isListing else { return (state, nil) }
@@ -145,8 +145,12 @@ public struct RecordingsReducer: Sendable {
             return (state, .list)
         case let .renameFailed(id, reason):
             guard state.phase == .renaming(id) else { return (state, nil) }
+            // The disk can differ from the list after a failed mutation: reload it,
+            // keeping the reason until the next action.
             state.phase = .idle
             state.failure = .init(id: id, reason: reason)
+            state.isListing = true
+            return (state, .list)
         case let .askDelete(id):
             guard Self.acceptsAction(state), id != state.recordingID else { return (state, nil) }
             state.phase = .askingDelete(id)
@@ -166,8 +170,12 @@ public struct RecordingsReducer: Sendable {
             return (state, .list)
         case let .deleteFailed(id, reason):
             guard state.phase == .deleting(id) else { return (state, nil) }
+            // The disk can differ from the list after a failed mutation: reload it,
+            // keeping the reason until the next action.
             state.phase = .idle
             state.failure = .init(id: id, reason: reason)
+            state.isListing = true
+            return (state, .list)
         case .enterMergeMode:
             guard Self.acceptsAction(state) else { return (state, nil) }
             guard isIdle() else {

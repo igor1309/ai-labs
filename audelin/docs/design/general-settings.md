@@ -36,10 +36,24 @@ does. The frames are in Screen 6, "General — light" and "General — dark".
   тёмное / dark under Dark.
 - Only System is drawn selected; Light and Dark selected are not drawn.
 
+## Segmented control
+
+Settings has one segmented control, in the native macOS style and one
+size: the tab bar, Language, Appearance and the debug chunk size use it.
+
+- A `segTrack` track with `radius-control` holds equal segments, 2 pt
+  apart and 2 pt in from its edge.
+- The selected segment is a `segThumb` chip with `radius-thumb` and a
+  `segShadow` shadow; its label is medium weight. Every label is `text`.
+- No outlines and no ring around the control. Keyboard focus is a 2 pt
+  `me` ring outside the selected segment.
+- The grey hint line under a picker reaches 4.5:1 on the window.
+
 ## Input
 
 - Mouse: a click on a segment selects it.
-- Keyboard: Tab reaches the picker; the arrow keys move between segments.
+- Keyboard: Tab reaches the picker and rings its selected segment; the
+  arrow keys move between segments.
 - macOS only; there is no phone or tablet layout.
 
 ## States
