@@ -1,47 +1,22 @@
 import Recording
 
-/// Keeps each sent event until the test takes it; taking waits for one.
-actor SendSpy {
-
-    private var events: [RecordingEvent] = []
-    private let changed = AsyncStream<Void>.makeStream()
-
-    var count: Int { events.count }
-
-    func send(_ event: RecordingEvent) {
-
-        events.append(event)
-        changed.continuation.yield(())
-    }
-
-    func next() async -> RecordingEvent {
-
-        while events.isEmpty {
-            var iterator = changed.stream.makeAsyncIterator()
-            guard await iterator.next() != nil else { return .sessionReported(id: 0, .ended) }
-        }
-        return events.removeFirst()
-    }
-}
-
 /// Holds each call until the test completes it; completing waits for the call.
 actor SessionSpy: RecordingSession {
 
     private(set) var beginIDs: [UInt64] = []
     private(set) var endIDs: [UInt64] = []
     private(set) var endReturned = false
-    private var pendingBegins: [AsyncStream<RecordingSessionReport>.Continuation] = []
+    private var pendingBegins: [AsyncStream<Void>.Continuation] = []
     private var pendingEnds: [AsyncStream<Void>.Continuation] = []
     private let changed = AsyncStream<Void>.makeStream()
 
-    func begin(id: UInt64) async -> RecordingSessionReport {
+    func begin(id: UInt64) async {
 
         beginIDs.append(id)
-        let (stream, continuation) = AsyncStream<RecordingSessionReport>.makeStream()
+        let (stream, continuation) = AsyncStream<Void>.makeStream()
         pendingBegins.append(continuation)
         wakeWaiters()
-        for await report in stream { return report }
-        return .ended
+        for await _ in stream { break }
     }
 
     func end(id: UInt64) async {
@@ -54,14 +29,14 @@ actor SessionSpy: RecordingSession {
         endReturned = true
     }
 
-    func completeBegin(with report: RecordingSessionReport) async {
+    func completeBegin() async {
 
         while pendingBegins.isEmpty {
             var iterator = changed.stream.makeAsyncIterator()
             guard await iterator.next() != nil else { return }
         }
         let continuation = pendingBegins.removeFirst()
-        continuation.yield(report)
+        continuation.yield(())
         continuation.finish()
     }
 

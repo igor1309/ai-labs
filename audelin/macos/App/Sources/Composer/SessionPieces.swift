@@ -32,7 +32,6 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     nonisolated let transcriptFailures: TranscriptFailureReport
     let finalization: TranscriptFinalizationModel
     let finalizationResources: FinalizationResources
-    let summaries: SummaryCallbacks
     let folder: CallFolder
     let folderTitle: String?
     let processes: CallAppProcesses
@@ -64,12 +63,10 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         return (output.stream, speakers.stream)
     }
 
-    /// A session without a transcript has no finalization publication to end its reading feed.
-    func finishReading() {
-        if transcriptFile == nil { endReading() }
-    }
+    /// Ends the events this session's pieces send it, so its forwarding finishes.
+    func release() { news.continuation.finish() }
 
-    private func endReading() {
+    func endReading() {
         readingOutput?.finish()
         readingSpeakers?.finish()
     }
@@ -77,10 +74,9 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     /// A long call's transcript is saved at most this often, and at once when its text stops.
     static let transcriptInterval: Duration = .seconds(5)
 
-    init(folder: CallFolder, folderTitle: String?, processes: CallAppProcesses, boundary: ComposerBoundary, finalization: TranscriptFinalizationModel, finalizationResources: FinalizationResources, summaries: SummaryCallbacks = .disabled) {
+    init(folder: CallFolder, folderTitle: String?, processes: CallAppProcesses, boundary: ComposerBoundary, finalization: TranscriptFinalizationModel, finalizationResources: FinalizationResources) {
         self.finalization = finalization
         self.finalizationResources = finalizationResources
-        self.summaries = summaries
         self.folder = folder
         self.folderTitle = folderTitle
         self.processes = processes
@@ -167,7 +163,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     func closeTranscript() async throws {
         defer { news.continuation.finish() }
         await transcriptFile?.close()
-        guard let made, transcriptFile != nil else { endReading(); return }
+        guard let made, transcriptFile != nil else { return }
         await finalizationResources.captureNames(call: made.url.path)
         await finalization.send(.closed(call: made.url.path))
     }
@@ -208,7 +204,6 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
 
     func stop() async throws {
 
-        if let made { await summaries.waiting(made.url) }
         await writing?.stop()
         await readingObservation?.value
         // Saving calls back into these pieces; release the stopped reader's destination.

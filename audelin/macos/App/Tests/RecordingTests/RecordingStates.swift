@@ -10,13 +10,14 @@ func makeUnknown() -> RecordingState { RecordingState() }
 func makeIdle() -> RecordingState { RecordingState(automatic: true, missing: []) }
 func makeBeginning(id: UInt64 = 1) -> RecordingState {
     makeState(makeIdle()) {
-        $0.phase = .beginning
+        $0.phase = .beginning; $0.stage = .preparing
         $0.session = .init(id: id, origin: .hand)
         $0.lastSessionID = id
+        $0.stage = .preparing
     }
 }
-func makeRunning(id: UInt64 = 1) -> RecordingState { makeState(makeBeginning(id: id)) { $0.phase = .recording } }
-func makeEnding(id: UInt64 = 1) -> RecordingState { makeState(makeRunning(id: id)) { $0.phase = .ending } }
+func makeRunning(id: UInt64 = 1) -> RecordingState { makeState(makeBeginning(id: id)) { $0.phase = .recording; $0.stage = .begun } }
+func makeEnding(id: UInt64 = 1) -> RecordingState { makeState(makeRunning(id: id)) { $0.phase = .ending; $0.stage = .ending } }
 func makePending() -> RecordingState { makeState(makeEnding()) { $0.callOn = true; $0.pendingCall = true } }
 func makeCall() -> RecordingState {
     makeState(makeBeginning()) {

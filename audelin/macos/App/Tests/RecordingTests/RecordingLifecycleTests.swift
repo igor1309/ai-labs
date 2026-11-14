@@ -13,9 +13,9 @@ struct RecordingLifecycleTests {
         assert(makeState(manual) { $0.automatic = automatic; $0.callOn = true }, .callEnded) { $0.callOn = false }
     }
 
-    @Test(arguments: [RecordingSessionReport.ready, .cannotRecord("late failure"), .ended])
-    func aLateReportOfTheLastSessionLeavesTheNextOneAlone(_ report: RecordingSessionReport) {
-        assert(makeRunning(id: 2), .sessionReported(id: 1, report))
+    @Test(arguments: [RecordingEvent.sessionChanged(id: 1, .init(recording: true)), .sessionChanged(id: 1, .init(cannotRecord: "late failure")), .sessionReported(id: 1, .ended)])
+    func aLateReportOfTheLastSessionLeavesTheNextOneAlone(_ event: RecordingEvent) {
+        assert(makeRunning(id: 2), event)
     }
 
     @Test func userStartWhileEndingChangesNothing() { assert(makeEnding(), .userStart) }
@@ -38,13 +38,13 @@ struct RecordingLifecycleTests {
     @Test(arguments: RecordingCondition.allCases.filter { $0 != .callAudioAccess })
     func aWaitingCallIsDroppedWhenAConditionIsMissing(_ condition: RecordingCondition) {
         assert(makeState(makePending()) { $0.missing = [condition] }, .sessionReported(id: 1, .ended)) {
-            $0.phase = .idle; $0.session = nil; $0.pendingCall = false
+            $0.phase = .idle; $0.stage = nil; $0.session = nil; $0.pendingCall = false
         }
     }
 
-    @Test func aWaitingCallWithoutCallAudioBeginsForTheDoerToRecheck() {
+    @Test func aWaitingCallWithoutCallAudioBeginsToRecheckCallAudio() {
         assert(makeState(makePending()) { $0.missing = [.callAudioAccess] }, .sessionReported(id: 1, .ended)) {
-            $0.phase = .beginning; $0.pendingCall = false; $0.lastSessionID = 2
+            $0.phase = .beginning; $0.stage = .preparing; $0.pendingCall = false; $0.lastSessionID = 2
             $0.session = .init(id: 2, origin: .call); $0.sessionBeganDuringCall = true
         }
     }
@@ -52,13 +52,13 @@ struct RecordingLifecycleTests {
     @Test func automaticOffDropsTheWaitingCall() { assert(makePending(), .automaticChanged(false)) { $0.automatic = false; $0.pendingCall = false } }
 
     @Test func endingWithAutomaticOffKeepsTheCallOn() {
-        assert(makeState(makeEnding()) { $0.automatic = false; $0.callOn = true }, .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.session = nil }
+        assert(makeState(makeEnding()) { $0.automatic = false; $0.callOn = true }, .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.stage = nil; $0.session = nil }
     }
 
     @Test func userStopHoldsTheWaitingCallUntilItEnds() { assert(makePending(), .userStop) { $0.pendingCall = false; $0.heldForCall = true } }
 
     @Test func aHeldCallEndingIsNotBegun() {
-        assert(makeState(makeEnding()) { $0.callOn = true; $0.heldForCall = true }, .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.session = nil }
+        assert(makeState(makeEnding()) { $0.callOn = true; $0.heldForCall = true }, .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.stage = nil; $0.session = nil }
     }
 
     @Test func callStartWhileHeldChangesNothing() { assert(makeState(makeIdleAfter(1)) { $0.automatic = true; $0.callOn = true; $0.heldForCall = true }, .callStarted) }
@@ -72,13 +72,13 @@ struct RecordingLifecycleTests {
 
     @Test func aFailedCallSessionEndingWhileTheCallStaysOnGoesIdle() {
         assert(makeState(makeCall()) { $0.phase = .ending; $0.cannotRecord = "no recording possible" }, .sessionReported(id: 1, .ended)) {
-            $0.phase = .idle; $0.session = nil; $0.sessionBeganDuringCall = false
+            $0.phase = .idle; $0.stage = nil; $0.session = nil; $0.sessionBeganDuringCall = false
         }
     }
 
     @Test func aDeferredCallWithoutCallAudioEndingGoesIdle() {
         assert(makeState(makeDeferredCall()) { $0.missing = [.callAudioAccess] }, .sessionReported(id: 2, .ended)) {
-            $0.phase = .idle; $0.session = nil; $0.sessionBeganDuringCall = false
+            $0.phase = .idle; $0.stage = nil; $0.session = nil; $0.sessionBeganDuringCall = false
         }
     }
 
