@@ -118,14 +118,14 @@ struct RecordingsTests {
 
     @Test func constructionDoesNotComposeFailure() {
         let spy = FailureMessageSpy(result: "unused")
-        _ = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText)
+        _ = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, isIdle: { true }, busyMessage: { "busy" })
         #expect(spy.calls == [])
     }
 
     @Test(arguments: [nil, "A"] as [String?])
     func refreshFailureUsesInjectedMessageAndKeepsFailureID(_ id: String?) {
         let spy = FailureMessageSpy(result: "composed message")
-        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText)
+        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, isIdle: { true }, busyMessage: { "busy" })
         let state = makeState {
             $0.isListing = true
             $0.failure = .init(id: id, reason: " prior failure ")
@@ -142,7 +142,7 @@ struct RecordingsTests {
     @Test func listFailureWithoutPriorFailureDoesNotComposeMessage() {
         let spy = FailureMessageSpy(result: "unused")
         let state = makeState { $0.isListing = true }
-        assert(state, .listFailed("denied"), delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText)) {
+        assert(state, .listFailed("denied"), delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, isIdle: { true }, busyMessage: { "busy" })) {
             $0.isListing = false
             $0.failure = .init(id: nil, reason: "denied")
         }
@@ -173,7 +173,7 @@ struct RecordingsTests {
         for (state, events) in cases {
             for event in events {
                 let spy = FailureMessageSpy(result: "unused")
-                assert(state, event, delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText))
+                assert(state, event, delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, isIdle: { true }, busyMessage: { "busy" }))
                 #expect(spy.calls == [])
             }
         }
@@ -181,7 +181,7 @@ struct RecordingsTests {
 
     @Test func unrelatedTransitionsDoNotComposeFailure() {
         let spy = FailureMessageSpy(result: "unused")
-        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText)
+        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, isIdle: { true }, busyMessage: { "busy" })
         let failed = makeState { $0.failure = .init(id: "A", reason: "prior") }
         let asking = makeState { $0.phase = .askingDelete("A"); $0.failure = failed.failure }
         let renaming = makeState { $0.phase = .renaming("A"); $0.failure = failed.failure }
@@ -230,6 +230,22 @@ struct RecordingsTests {
             $0.isListing = true
         }
         #expect(spy.calls == [])
+    }
+}
+
+struct RecordingsMergeEffectTests {
+    @Test func S5_theHandlerAsksThePortForTheCallsAndDeliversTheMergedCall() async {
+        let spy = CallsSpy()
+        let merged = RecordedCall(id: "A", title: "", start: .distantPast, duration: 60)
+        await expect(RecordingsEffectHandler(calls: spy, reserve: { true }, release: {}, storeFolder: { _ in }, describe: { _ in "disk" }),
+                     with: .merge(["A", "B"]), toDeliver: .merged("A"), on: { await spy.complete(.success([merged])) })
+        #expect(await spy.received == [.merge(["A", "B"])])
+    }
+
+    @Test func S11_theHandlerDeliversWhyAMergeFailed() async {
+        let spy = CallsSpy()
+        await expect(RecordingsEffectHandler(calls: spy, reserve: { true }, release: {}, storeFolder: { _ in }, describe: { $0 is DiskFailure ? "disk" : "other" }),
+                     with: .merge(["A", "B"]), toDeliver: .mergeFailed("disk"), on: { await spy.complete(.failure(DiskFailure())) })
     }
 }
 
@@ -296,6 +312,8 @@ private actor CallsSpy: RecordingsCalls {
     func delete(id: String) async throws { _ = try await call(.delete(id)) }
     func prepareMove(to destination: URL) async throws -> [MoveCall] { _ = try await call(.prepareMove(destination)); return [] }
     func move(id: String, to destination: URL) async throws -> Int64 { _ = try await call(.moveCall(id: id, to: destination)); return 0 }
+    /// Answers with the first listed call's id as the merged call.
+    func merge(ids: [String]) async throws -> String { try await call(.merge(ids)).first?.id ?? "" }
 }
 
 /// Move text that names every value it is given, so a test sees which move it came from.
@@ -306,4 +324,4 @@ private actor CallsSpy: RecordingsCalls {
 
 let defaultReducer = RecordingsReducer(failureMessage: { prior, refreshError in
     prior + " Не удалось обновить список: " + refreshError
-}, moveText: stubMoveText)
+}, moveText: stubMoveText, isIdle: { true }, busyMessage: { "busy" })

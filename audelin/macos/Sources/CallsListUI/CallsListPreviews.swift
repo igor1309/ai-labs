@@ -42,6 +42,14 @@ public enum CallsListPreviews {
             ("rename", with(sample) { $0.editing = .init(id: $0.rows[0].id, title: $0.rows[0].title) }),
             ("search", search(words, text, searching: false)),
             ("searching", with(search(words, text, searching: true)) { $0.rows.removeLast() }),
+            ("merge", with(notes) { $0.merge = .init() }),
+            ("merge-marked", with(notes) { $0.selectedID = $0.rows[0].id; $0.merge = .init(marked: [$0.rows[0].id, $0.rows[1].id]) }),
+            ("merge-running", with(notes) { $0.selectedID = $0.rows[0].id; $0.merge = .init(marked: [$0.rows[0].id, $0.rows[1].id], running: true) }),
+            ("merge-one", with(notes) { $0.merge = .init(marked: [$0.rows[0].id]) }),
+            ("merge-warning", with(notes) {
+                $0.merge = .init(marked: [$0.rows[0].id, $0.rows[2].id], warning: text(.mergeWarningBody, $0.rows[0].displayTitle, $0.rows[2].displayTitle))
+            }),
+            ("merge-failed", with(notes) { $0.merge = .init(marked: [$0.rows[0].id, $0.rows[1].id]); $0.failure = words.diskFull }),
             ("search-none", CallsListState(search: .init(query: "Kubernetes", searching: false), searchText: "Kubernetes")),
         ]
     }
@@ -52,9 +60,11 @@ public enum CallsListPreviews {
 
     /// The sample calls' titles and day headers in the list's language.
     private struct Words {
+        let diskFull: String
         let launch, okr, retro, long, friday, olderDay, one, today, yesterday, launchGist, okrGist, untitledGist: String
         init(_ text: CallsListText) {
             let english = text.language == .english
+            diskFull = english ? "Not enough disk space. The calls were left as they were." : "Нет места на диске. Звонки остались как были."
             launch = english ? "Launch: roles and SLA" : "Запуск: роли и SLA"
             okr = english ? "Quarterly OKR sync" : "Синк по OKR на квартал"
             retro = english ? "Year in review" : "Ретро за год"

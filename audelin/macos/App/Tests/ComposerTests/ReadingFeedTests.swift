@@ -3,10 +3,10 @@ import LiveText
 import Testing
 @testable import Composer
 
-struct NewestTextTests {
+struct ReadingFeedTests {
     @Test(arguments: [20, 60])
     func textWaitingForAStalledPanelStaysSmall(states: Int) async {
-        let text = NewestText()
+        let text = SessionPieces.readingFeed()
         for count in 1...states {
             let entries = (1...count).map { index in
                 let word = Word("word\(index)", start: Double(index), end: Double(index + 1))
@@ -23,7 +23,7 @@ struct NewestTextTests {
     }
 
     @Test func aHeldReadingConsumerSkipsStatesButNotTheListeningOneThatWithdrewAnEntry() async {
-        let text = NewestText()
+        let text = SessionPieces.readingFeed()
         let first = CallState.Entry(speaker: .mine, text: .init(id: 1, start: 0, end: 1, words: [.init("withdrawn", start: 0, end: 1)], settledCount: 1), writtenLater: false)
         let other = CallState.Entry(speaker: .theirs, text: .init(id: 1, start: 2, end: 3, words: [.init("kept", start: 2, end: 3)], settledCount: 1), writtenLater: false)
         text.yield(.init(status: .listening, entries: [first, other]))
