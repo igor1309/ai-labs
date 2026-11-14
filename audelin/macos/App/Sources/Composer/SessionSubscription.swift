@@ -8,7 +8,7 @@ func subscribe(_ pieces: SessionPieces, to session: SessionInputs) -> Task<Void,
     // Enqueue before stop returns; once forwarding ends the pieces no longer retain their Session.
     let delivery = Mutex<SessionInputs?>(session)
     pieces.transcriptFailures.connect(deliver: { event in
-        if let session = delivery.withLock({ $0 }) { await session.send(event) }
+        if let session = delivery.withLock({ $0 }) { session.send(event) }
         else { news.yield(event) }
     })
     let events = pieces.events
@@ -16,7 +16,7 @@ func subscribe(_ pieces: SessionPieces, to session: SessionInputs) -> Task<Void,
         defer { delivery.withLock { $0 = nil } }
         for await event in events {
             guard !Task.isCancelled else { return }
-            await session.send(event)
+            session.send(event)
         }
     }
 }

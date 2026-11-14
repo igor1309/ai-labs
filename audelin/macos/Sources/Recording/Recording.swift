@@ -15,18 +15,36 @@ public enum RecordingFault: CaseIterable, Hashable, Sendable {
 
 public enum RecordingSessionReport: Equatable, Sendable {
 
-    case ready
-    case callCreated(id: String)
-    case cannotRecord(String)
-    case failed(RecordingFault)
-    case callSilent(Bool)
     case ended
+}
+
+/// What a running Session currently shows, translated for Recording.
+public struct RecordingSessionStatus: Equatable, Sendable {
+
+    /// The call the Session created, once its folder exists.
+    public var callID: String?
+    /// The Session records both sides.
+    public var recording: Bool
+    public var cannotRecord: String?
+    public var faults: Set<RecordingFault>
+    public var callSilent: Bool
+
+    public init(callID: String? = nil, recording: Bool = false, cannotRecord: String? = nil,
+                faults: Set<RecordingFault> = [], callSilent: Bool = false) {
+
+        self.callID = callID
+        self.recording = recording
+        self.cannotRecord = cannotRecord
+        self.faults = faults
+        self.callSilent = callSilent
+    }
 }
 
 /// Compose begins and ends Sessions and translates their later reports into events.
 public protocol RecordingSession: Sendable {
 
-    func begin(id: UInt64) async -> RecordingSessionReport
+    /// Returns once the Session exists and its begin is queued; how it goes arrives as status.
+    func begin(id: UInt64) async
 
     /// Returns only when this Session has ended, including any pending bring-up.
     func end(id: UInt64) async
@@ -61,6 +79,8 @@ public struct RecordingState: Equatable, Sendable {
     }
 
     public var storageReserved = false
+    /// Each storage reservation request's decision, kept until its caller has read it.
+    public var reservations: [UInt64: Bool] = [:]
     public var pendingStart: Origin?
     public var automatic: Bool
     public var missing: Set<RecordingCondition>
@@ -77,6 +97,18 @@ public struct RecordingState: Equatable, Sendable {
     public var callSilent = false
     /// Set by a shutdown; `settled` once no session runs, and no session begins after it.
     public var shutdown: Shutdown?
+    /// The work running for the current session, if any.
+    public var stage: Stage?
+
+    /// One session's line of work: get call audio, begin the Session, end it, release call audio.
+    public enum Stage: Equatable, Sendable {
+
+        case preparing
+        case beginning
+        case begun
+        case ending
+        case releasing
+    }
 
     public enum Shutdown: Equatable, Sendable {
 
@@ -99,20 +131,91 @@ public enum RecordingEvent: Equatable, Sendable {
     case callStarted
     case callEnded
     case userStart
-    case reserveStorage, releaseStorage
+    case reserveStorage(request: UInt64), reservationAnswered(request: UInt64)
+    case releaseStorage
     case userStop
     case automaticChanged(Bool)
     case conditionChanged(RecordingCondition, available: Bool)
     case sessionReported(id: UInt64, RecordingSessionReport)
+    case sessionChanged(id: UInt64, RecordingSessionStatus)
     case shutdown
+    /// Call audio was checked and reserved for the session, or could not be.
+    case callAudioPrepared(id: UInt64, ready: Bool)
+    /// The Session exists and its begin is queued.
+    case sessionAccepted(id: UInt64)
+    /// The Session has finished, asked to or on its own.
+    case sessionFinished(id: UInt64)
+}
+
+public enum RecordingEffect: Equatable, Sendable {
+
+    case prepareCallAudio(id: UInt64)
+    case begin(id: UInt64)
+    case end(id: UInt64)
+    case releaseCallAudio(id: UInt64)
 }
 
 public enum RecordingReducer {
 
-    public static func reduce(_ state: RecordingState, _ event: RecordingEvent) -> RecordingState {
+    public static func reduce(_ state: RecordingState, _ event: RecordingEvent) -> (RecordingState, RecordingEffect?) {
+
+        var state = state
+        if let id = state.session?.id {
+            switch event {
+            case let .callAudioPrepared(reported, ready) where reported == id && state.stage == .preparing:
+                if !ready { state.missing.insert(.callAudioAccess) }
+                guard ready, state.phase != .ending else { return release(&state, id) }
+                state.stage = .beginning
+                return (state, .begin(id: id))
+            case let .sessionAccepted(reported) where reported == id && state.stage == .beginning:
+                state.stage = .begun
+                return advance(state)
+            case let .sessionFinished(reported) where reported == id
+                && (state.stage == .beginning || state.stage == .begun || state.stage == .ending):
+                return release(&state, id)
+            case .callAudioPrepared, .sessionAccepted, .sessionFinished:
+                return (state, nil)
+            default:
+                break
+            }
+        } else if case .callAudioPrepared = event { return (state, nil) }
+        else if case .sessionAccepted = event { return (state, nil) }
+        else if case .sessionFinished = event { return (state, nil) }
+        return advance(policy(state, event))
+    }
+
+    /// Starts the next piece of the current session's work, one at a time.
+    private static func advance(_ state: RecordingState) -> (RecordingState, RecordingEffect?) {
+
+        var state = state
+        guard let id = state.session?.id else { return (state, nil) }
+        switch state.stage {
+        case nil where state.phase == .ending:
+            // Ended before any work started: nothing to end or release.
+            return advance(policy(state, .sessionReported(id: id, .ended)))
+        case nil where state.phase == .beginning || state.phase == .recording:
+            state.stage = .preparing
+            return (state, .prepareCallAudio(id: id))
+        case .begun? where state.phase == .ending:
+            state.stage = .ending
+            return (state, .end(id: id))
+        default:
+            return (state, nil)
+        }
+    }
+
+    private static func release(_ state: inout RecordingState, _ id: UInt64) -> (RecordingState, RecordingEffect?) {
+
+        state.stage = .releasing
+        return (state, .releaseCallAudio(id: id))
+    }
+
+    private static func policy(_ state: RecordingState, _ event: RecordingEvent) -> RecordingState {
 
         var state = state
         switch event {
+        case .callAudioPrepared, .sessionAccepted, .sessionFinished:
+            return state
         case .shutdown:
             guard state.shutdown == nil else { return state }
             state.pendingStart = nil
@@ -120,9 +223,14 @@ public enum RecordingReducer {
             state = end(&state)
             state.shutdown = state.phase == .idle ? .settled : .requested
             return state
-        case .reserveStorage:
-            guard state.phase == .idle else { return state }
-            state.storageReserved = true
+        case let .reserveStorage(request):
+            guard state.reservations[request] == nil else { return state }
+            let granted = state.phase == .idle && !state.storageReserved
+            if granted { state.storageReserved = true }
+            state.reservations[request] = granted
+            return state
+        case let .reservationAnswered(request):
+            state.reservations[request] = nil
             return state
         case .releaseStorage:
             state.storageReserved = false
@@ -178,35 +286,31 @@ public enum RecordingReducer {
             if let origin = state.pendingStart { return begin(&state, origin: origin) }
             return state
 
-        case let .sessionReported(id, report):
-            guard state.session?.id == id else {
-                if state.phase == .idle, id != 0, id == state.lastSessionID,
-                   case let .cannotRecord(reason) = report {
+        case let .sessionChanged(id, status):
+            guard state.session?.id == id, state.phase != .idle else {
+                // A session that ended before Recording heard why still names the reason.
+                if state.phase == .idle, id != 0, id == state.lastSessionID, let reason = status.cannotRecord {
                     state.cannotRecord = reason
                 }
                 return state
             }
-            switch report {
-            case let .callCreated(id):
-                state.callID = id
-                return state
-            case let .failed(fault):
-                if state.phase == .beginning || state.phase == .recording || state.phase == .ending {
-                    state.faults.insert(fault)
-                }
-                return state
-            case let .callSilent(value):
-                if state.phase == .beginning || state.phase == .recording || state.phase == .ending {
-                    state.callSilent = value
-                }
-                return state
-            case .ready:
-                if state.phase == .beginning { state.phase = .recording }
-                return state
-            case let .cannotRecord(reason):
+            if let callID = status.callID { state.callID = callID }
+            if let reason = status.cannotRecord, state.cannotRecord == nil {
                 state.cannotRecord = reason
                 return end(&state)
+            }
+            if status.recording, state.phase == .beginning { state.phase = .recording }
+            // Faults and silence count once the Session records; a fault stays until the session ends.
+            guard state.phase == .recording || state.phase == .ending else { return state }
+            state.faults.formUnion(status.faults)
+            state.callSilent = status.callSilent
+            return state
+
+        case let .sessionReported(id, report):
+            guard state.session?.id == id else { return state }
+            switch report {
             case .ended:
+                state.stage = nil
                 state.phase = .idle
                 state.callSilent = false
                 state.callID = nil
@@ -247,99 +351,36 @@ public enum RecordingReducer {
     }
 }
 
-/// Makes the Session follow Recording's state: begins each session it sees once and ends it once
-/// its phase is `.ending`, sending each Session report back.
-public final class RecordingDoer: Sendable {
-
-    private struct Memory {
-
-        var lastBegun: UInt64 = 0
-        var lastEnded: UInt64 = 0
-        var current: RecordingState?
-        var preparation: Task<Bool, Never>?
-        var release: Task<Void, Never>?
-        var released: UInt64 = 0
-    }
+/// Dispatches each Recording effect to its collaborator and answers with the event it ends in.
+public final class RecordingEffectHandler: Sendable {
 
     private let session: any RecordingSession
-    private let send: @Sendable (RecordingEvent) async -> Void
-    private let callAudioReady: @Sendable () async -> Bool
-    private let callAudioReleased: @Sendable () async -> Void
-    private let memory = Mutex(Memory())
+    private let prepareCallAudio: @Sendable () async -> Bool
+    private let releaseCallAudio: @Sendable () async -> Void
 
     public init(session: any RecordingSession,
-                callAudioReady: @escaping @Sendable () async -> Bool,
-                callAudioReleased: @escaping @Sendable () async -> Void,
-                send: @escaping @Sendable (RecordingEvent) async -> Void) {
+                prepareCallAudio: @escaping @Sendable () async -> Bool,
+                releaseCallAudio: @escaping @Sendable () async -> Void) {
 
         self.session = session
-        self.send = send
-        self.callAudioReady = callAudioReady
-        self.callAudioReleased = callAudioReleased
+        self.prepareCallAudio = prepareCallAudio
+        self.releaseCallAudio = releaseCallAudio
     }
 
-    /// Observations may merge changes, so a session first seen recording or ending is still begun.
-    public func act(on state: RecordingState) {
+    public func handle(_ effect: RecordingEffect) async -> RecordingEvent {
 
-        memory.withLock { memory in
-            if let previous = memory.current?.session?.id, previous != state.session?.id {
-                release(previous, memory: &memory)
-            }
-            memory.current = state
-            guard let id = state.session?.id else { return }
-            if id > memory.lastBegun {
-                memory.lastBegun = id
-                let previousRelease = memory.release
-                let initiallyEnding = state.phase == .ending
-                let preparation = Task { [self] in
-                    await previousRelease?.value
-                    let ready = await callAudioReady()
-                    if !ready { await send(.conditionChanged(.callAudioAccess, available: false)) }
-                    let stillWanted = self.memory.withLock {
-                        $0.current?.session?.id == id && ($0.current?.phase != .ending || initiallyEnding)
-                    }
-                    guard ready && stillWanted else {
-                        await release(id)
-                        await send(.sessionReported(id: id, .ended))
-                        return false
-                    }
-                    // End may run while Session is still coming up.
-                    Task { [self] in
-                        let report = await session.begin(id: id)
-                        if report == .ended { await release(id) }
-                        await send(.sessionReported(id: id, report))
-                    }
-                    return true
-                }
-                memory.preparation = preparation
-            }
-            if state.phase == .ending, id > memory.lastEnded {
-                memory.lastEnded = id
-                let preparation = memory.preparation
-                Task { [self] in
-                    if await preparation?.value == true { await session.end(id: id) }
-                    await release(id)
-                    await send(.sessionReported(id: id, .ended))
-                }
-            }
+        switch effect {
+        case let .prepareCallAudio(id):
+            return .callAudioPrepared(id: id, ready: await prepareCallAudio())
+        case let .begin(id):
+            await session.begin(id: id)
+            return .sessionAccepted(id: id)
+        case let .end(id):
+            await session.end(id: id)
+            return .sessionFinished(id: id)
+        case let .releaseCallAudio(id):
+            await releaseCallAudio()
+            return .sessionReported(id: id, .ended)
         }
-    }
-
-    private func release(_ id: UInt64, memory: inout Memory) {
-        guard id > memory.released else { return }
-        memory.released = id
-        let previous = memory.release
-        memory.release = Task { [callAudioReleased] in
-            await previous?.value
-            await callAudioReleased()
-        }
-    }
-
-    private func release(_ id: UInt64) async {
-        let task = memory.withLock { memory in
-            release(id, memory: &memory)
-            return memory.release
-        }
-        await task?.value
     }
 }

@@ -250,18 +250,18 @@ struct CallsWiringTests {
 
     @Test func recordingIDStaysProtectedUntilCleanupEnds() {
         var state = RecordingState(missing: [])
-        state = RecordingReducer.reduce(state, .userStart)
+        state = RecordingReducer.reduce(state, .userStart).0
         let session = state.session!.id
-        state = RecordingReducer.reduce(state, .sessionReported(id: session, .callCreated(id: "A")))
+        state = RecordingReducer.reduce(state, .sessionChanged(id: session, .init(callID: "A"))).0
         #expect(recordedCallID(state) == "A")
-        state = RecordingReducer.reduce(state, .sessionReported(id: session, .ready))
+        state = RecordingReducer.reduce(state, .sessionChanged(id: session, .init(recording: true))).0
         #expect(recordedCallID(state) == "A")
-        state = RecordingReducer.reduce(state, .userStop)
+        state = RecordingReducer.reduce(state, .userStop).0
         #expect(recordedCallID(state) == "A")
-        state = RecordingReducer.reduce(state, .sessionReported(id: session, .ended))
+        state = RecordingReducer.reduce(state, .sessionReported(id: session, .ended)).0
         #expect(recordedCallID(state) == nil)
         #expect(state.callID == nil)
-        state = RecordingReducer.reduce(state, .sessionReported(id: session, .callCreated(id: "stale")))
+        state = RecordingReducer.reduce(state, .sessionChanged(id: session, .init(callID: "stale"))).0
         #expect(state.callID == nil)
     }
 }

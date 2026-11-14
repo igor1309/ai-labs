@@ -6,7 +6,7 @@ struct RecordingShutdownTests {
 
     @Test func shutdownWhileIdleSettles() { assert(makeIdle(), .shutdown) { $0.shutdown = .settled } }
 
-    @Test func shutdownWhileRecordingEndsTheSession() { assert(makeRunning(), .shutdown) { $0.phase = .ending; $0.shutdown = .requested } }
+    @Test func shutdownWhileRecordingEndsTheSession() { assert(makeRunning(), .shutdown) { $0.phase = .ending; $0.stage = .ending; $0.shutdown = .requested } }
 
     @Test func shutdownWhileBeginningEndsTheSession() { assert(makeBeginning(), .shutdown) { $0.phase = .ending; $0.shutdown = .requested } }
 
@@ -18,7 +18,7 @@ struct RecordingShutdownTests {
 
     @Test func secondShutdownChangesNothing() { assert(makeShuttingDown(), .shutdown) }
 
-    @Test func theEndedSessionSettles() { assert(makeShuttingDown(), .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.session = nil; $0.shutdown = .settled } }
+    @Test func theEndedSessionSettles() { assert(makeShuttingDown(), .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.stage = nil; $0.session = nil; $0.shutdown = .settled } }
 
     @Test func anotherSessionsEndDoesNotSettle() { assert(makeShuttingDown(), .sessionReported(id: 99, .ended)) }
 
