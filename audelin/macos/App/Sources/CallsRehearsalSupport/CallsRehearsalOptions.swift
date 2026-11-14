@@ -5,23 +5,26 @@ import SummaryRuntime
 public struct CallsRehearsalOptions: Equatable, Sendable {
     public let callsFolder: URL
     public let stateFolder: URL
+    /// Where the rehearsal's Trash port moves items, so a run never reaches the user's Trash.
+    public let trashFolder: URL
     public var preferencesURL: URL { stateFolder.appendingPathComponent("preferences.json") }
     public var controlFolder: URL { stateFolder.appendingPathComponent("control", isDirectory: true) }
 
     public enum Failure: Error { case invalidArguments }
-    public static let usage = "CallsRehearsal --calls <absolute directory> --state <absolute directory>"
+    public static let usage = "CallsRehearsal --calls <absolute directory> --state <absolute directory> --trash <absolute directory>"
 
     public static func parse(_ arguments: [String]) throws -> Self {
-        guard arguments.count == 4 else { throw Failure.invalidArguments }
+        guard arguments.count == 6 else { throw Failure.invalidArguments }
         var paths: [String: URL] = [:]
         for index in stride(from: 0, to: arguments.count, by: 2) {
             let flag = arguments[index], path = arguments[index + 1]
-            guard ["--calls", "--state"].contains(flag), paths[flag] == nil,
+            guard ["--calls", "--state", "--trash"].contains(flag), paths[flag] == nil,
                   path.hasPrefix("/"), !path.contains("\0") else { throw Failure.invalidArguments }
             paths[flag] = URL(fileURLWithPath: path, isDirectory: true)
         }
-        guard let calls = paths["--calls"], let state = paths["--state"] else { throw Failure.invalidArguments }
-        return Self(callsFolder: calls, stateFolder: state)
+        guard let calls = paths["--calls"], let state = paths["--state"],
+              let trash = paths["--trash"] else { throw Failure.invalidArguments }
+        return Self(callsFolder: calls, stateFolder: state, trashFolder: trash)
     }
 
     /// Settings are written before composition, so no automatic work can start on launch.
@@ -33,6 +36,22 @@ public struct CallsRehearsalOptions: Equatable, Sendable {
                                         endpoint: "http://127.0.0.1:1", credentialVariable: "")),
             automaticRecording: false, liveText: false, callsFolder: callsFolder,
             language: .russian, appearance: .light))
+    }
+
+    /// Moves an item into the trash folder under a name no earlier item took, as the Trash does.
+    public var trash: @Sendable (URL) throws -> Void {
+        { [trashFolder] item in
+            let files = FileManager.default
+            try files.createDirectory(at: trashFolder, withIntermediateDirectories: true)
+            let name = item.lastPathComponent
+            var target = trashFolder.appendingPathComponent(name)
+            var copy = 2
+            while files.fileExists(atPath: target.path) {
+                target = trashFolder.appendingPathComponent("\(name) \(copy)")
+                copy += 1
+            }
+            try files.moveItem(at: item, to: target)
+        }
     }
 
     public func runtime() -> SummaryRuntime.Runtime {

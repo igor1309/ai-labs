@@ -8,7 +8,7 @@ struct LiveSummaryServiceTests {
     /// Contract test: the launch runtime consumes its real file control channel without a model or network.
     @Test func launchRuntimeReturnsTheControlledNotes() async throws {
         try await withRehearsalFolder { root in
-            let launch = try CallsRehearsalOptions.parse(["--calls", root.appendingPathComponent("calls").path, "--state", root.appendingPathComponent("state").path])
+            let launch = try CallsRehearsalOptions.parse(["--calls", root.appendingPathComponent("calls").path, "--state", root.appendingPathComponent("state").path, "--trash", root.appendingPathComponent("trash").path])
             try launch.prepare()
             try Data().write(to: launch.controlFolder.appendingPathComponent("finish-1"))
             let runtime = launch.runtime()

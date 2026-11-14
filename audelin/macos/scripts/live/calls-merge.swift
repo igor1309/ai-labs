@@ -205,7 +205,7 @@ private func makeCall(_ name: String, in calls: URL, saying words: String) throw
         for folder in [calls, state] { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
         let application = Process()
         application.executableURL = app
-        application.arguments = ["--calls", calls.path, "--state", state.path]
+        application.arguments = ["--calls", calls.path, "--state", state.path, "--trash", fixture.appendingPathComponent("trash").path]
         defer {
             try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: calls.path)
             if application.isRunning { application.terminate() }

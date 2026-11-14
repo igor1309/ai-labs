@@ -78,7 +78,8 @@ The script builds `CallsRehearsal`, an executable that shows the app's calls win
 with no audio devices, and launches it twice on a temporary folder:
 `--calls <folder>` holds one call with a transcript and no notes, and
 `--state <folder>` holds its preferences and the fake summary service's control
-files. The fake writes `control/started-N`, waits for `control/finish-N`, then
+files, and `--trash <folder>` takes what the app would move to the Trash, so a
+run never reaches the user's Trash. The fake writes `control/started-N`, waits for `control/finish-N`, then
 returns fixed notes; a cancelled request writes `control/cancelled-N` and returns none.
 
 The script drives the row, Сделать and Отменить by accessibility identifier, waits
