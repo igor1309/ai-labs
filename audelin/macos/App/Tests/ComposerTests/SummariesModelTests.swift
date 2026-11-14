@@ -11,7 +11,7 @@ import Testing
     @Test func aSubmissionRunsThroughFilesAndGenerationToPublishedNotes() async throws {
         let files = FilesFake()
         let sut = makeSUT(files)
-        sut.completed(call: "call", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)
+        await sut.completed(call: "call", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)
         try await waitUntil("notes are saved") { sut.state.calls["call"]?.stage == .succeeded }
         #expect(files.claimed.map(\.job) == ["job"])
         #expect(files.writes.contains { if case .publish(_, "notes") = $0 { true } else { false } })
@@ -37,7 +37,7 @@ import Testing
         let files = FilesFake()
         files.stored = try await record(phase: "failed")
         let sut = makeSUT(files)
-        sut.recover(calls: ["call"])
+        await sut.recover(calls: ["call"])
         try await waitUntil("the call is recovered") { sut.state.calls["call"]?.retryable == true }
         try await sut.retry(call: "call")
         try await waitUntil("the retry succeeds") { sut.state.calls["call"]?.stage == .succeeded }
@@ -47,7 +47,7 @@ import Testing
         let files = FilesFake()
         files.stored = try await record(phase: "failed")
         let sut = makeSUT(files)
-        sut.recover(calls: ["call"])
+        await sut.recover(calls: ["call"])
         try await waitUntil("the call is recovered") { sut.state.calls["call"]?.stage == .failed }
         #expect(sut.statuses == ["call": CallsListText(language: .english)(.summaryFailed)])
         #expect(sut.badges == ["call": .failed])
@@ -58,14 +58,14 @@ import Testing
         sut.waiting(call: "call")
         try await waitUntil("the call waits") { sut.statuses == ["call": CallsListText(language: .english)(.summaryWaiting)] }
         #expect(sut.badges == ["call": .pending])
-        sut.completed(call: "call", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)
+        await sut.completed(call: "call", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)
         try await waitUntil("notes are saved") { sut.state.calls["call"]?.stage == .succeeded }
     }
     @Test func forgetDropsASettledCall() async throws {
         let files = FilesFake()
         files.stored = try await record(phase: "succeeded")
         let sut = makeSUT(files)
-        sut.recover(calls: ["call"])
+        await sut.recover(calls: ["call"])
         try await waitUntil("the call is recovered") { sut.state.calls["call"]?.stage == .succeeded }
         sut.forget(call: "call")
         try await waitUntil("the call is dropped") { sut.state.calls["call"] == nil }
@@ -74,7 +74,7 @@ import Testing
         let files = FilesFake()
         files.stored = try await record(phase: "succeeded")
         let sut = makeSUT(files)
-        sut.recover(calls: ["call"])
+        await sut.recover(calls: ["call"])
         try await waitUntil("the call is recovered") { sut.state.calls["call"]?.stage == .succeeded }
         #expect(files.loaded == ["call"])
     }
@@ -82,7 +82,7 @@ import Testing
         let files = FilesFake()
         files.stored = try await record(phase: "running")
         let sut = makeSUT(files)
-        sut.recover(calls: ["call"])
+        await sut.recover(calls: ["call"])
         try await waitUntil("the call is observed") { sut.state.calls["call"]?.stage == .observed }
         files.stored = try await record(phase: "succeeded")
         await sut.refresh()

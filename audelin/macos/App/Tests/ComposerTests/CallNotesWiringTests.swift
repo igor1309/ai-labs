@@ -73,21 +73,17 @@ struct CallNotesWiringTests {
             let storage = SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
             let locations = HeldNotesLocation(storage: storage)
             let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
-            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
-            try preferences.updateNotes(.init(enabled: true, speakers: false, primary: notesRuntime))
             let http = NotesHTTP()
-            let sut = AudelinSummaries(files: files, runtime: controlledRuntime(http), preferences: preferences,
-                sink: TestLogSink(), callText: { try await storage.text(id: $0) }, date: { _ in "made" })
+            let sut = makeSummaries(files: files, storage: storage, http: http, enabled: true)
             do {
-                await sut.submit(call: a, input: "saved words", entries: [.init(label: "Me", time: "3.0", text: "saved words")], finalWrite: true, usable: true)
+                await sut.completed(call: a, entries: [.init(label: "Me", time: "3.0", text: "saved words")], finalWrite: true, usable: true)
                 await http.started.next()
                 await locations.hold(); try await http.succeed()
                 await locations.entered.next()
                 let cancelling = Task { await sut.cancel(call: a) }
-                for await state in Observations({ sut.notesState(call: a) }) where state == .pending { break }
+                try await waitUntil("the cancel is taken") { sut.state.calls[a]?.cancelling == true }
                 await locations.release(); await cancelling.value
-                #expect(sut.notesState(call: a) == .pending)
-                #expect(sut.badges[a] == nil)
+                #expect(sut.state.calls[a] == nil && sut.badges[a] == nil)
                 #expect(try await files.load(call: a) == nil)
                 #expect(try await files.notes(call: a)?.text == (previousNotes ? "earlier complete notes" : nil))
                 #expect(try String(contentsOf: root.appendingPathComponent(a + "/transcript.md"), encoding: .utf8).contains("saved words"))
@@ -147,11 +143,8 @@ struct CallNotesWiringTests {
             let storage = SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
             let disk = RecoveringNotesDisk()
             let files = Files(locations: storage, disk: disk, ownershipDirectory: root.appendingPathComponent("leases"))
-            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
-            try preferences.updateNotes(.init(enabled: false, speakers: false, primary: notesRuntime))
             let http = NotesHTTP()
-            let sut = AudelinSummaries(files: files, runtime: controlledRuntime(http), preferences: preferences,
-                sink: TestLogSink(), callText: { try await storage.text(id: $0) }, date: { _ in "made" })
+            let sut = makeSummaries(files: files, storage: storage, http: http, enabled: false)
             do {
                 disk.failure.withLock { $0 = stage }
                 sut.make(call: a)
@@ -159,26 +152,17 @@ struct CallNotesWiringTests {
                     await http.started.next()
                     await sut.cancel(call: a)
                 }
-                for await state in Observations({ sut.notesState(call: a) }) {
-                    if case .failure = state { break }
-                }
+                try await waitUntil("the call fails") { sut.state.calls[a]?.stage == .failed }
                 #expect(sut.badges[a] == .failed)
                 try #require(sut.retryable.contains(a))
                 if stage == "claim" { #expect(try await files.load(call: a) == nil) }
-                else {
-                    await #expect(throws: (any Error).self) { try await sut.retry(call: a) }
-                    #expect(sut.badges[a] == .failed)
-                    #expect(sut.retryable.contains(a))
-                }
                 disk.failure.withLock { $0 = nil }
 
                 try await sut.retry(call: a)
 
                 await http.started.next()
                 try await http.succeed()
-                for await state in Observations({ sut.notesState(call: a) }) {
-                    if case .completed = state { break }
-                }
+                try await waitUntil("notes are made") { sut.state.calls[a]?.stage == .succeeded }
                 #expect(try await files.notes(call: a)?.text == generatedNotes)
                 #expect(await http.bodies.count == (stage == "claim" ? 1 : 2))
                 await sut.shutdown()
@@ -194,14 +178,10 @@ struct CallNotesWiringTests {
             let storage = SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
             let files = Files(locations: storage, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
             let http = NotesHTTP()
-            let sut = AudelinSummaries(files: files, runtime: controlledRuntime(http),
-                preferences: PreferencesStore(fileURL: root.appendingPathComponent("preferences.json")),
-                sink: TestLogSink(), callText: { try await storage.text(id: $0) }, date: { _ in "made" })
+            let sut = makeSummaries(files: files, storage: storage, http: http, enabled: false)
             do {
                 await sut.recover(calls: [a])
-                for await state in Observations({ sut.notesState(call: a) }) {
-                    if case .failure = state { break }
-                }
+                try await waitUntil("the call fails") { sut.state.calls[a]?.stage == .failed }
 
                 await #expect(throws: (any Error).self) { try await sut.retry(call: a) }
 
@@ -213,30 +193,22 @@ struct CallNotesWiringTests {
     }
 
     @Test(arguments: [false, true])
-    func requestedAndAutomaticJobsCompleteTheCallNotesMachine(automatic: Bool) async throws {
+    func requestedAndAutomaticJobsPublishTheNotes(automatic: Bool) async throws {
         try await withComposeFolder { root in
             try savedCall(a, in: root)
             let storage = SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
             let files = Files(locations: storage, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
-            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
-            try preferences.updateNotes(.init(enabled: automatic, speakers: false, primary: notesRuntime))
-            let http = NotesHTTP(), dates = Values<Date>()
-            let runtime = controlledRuntime(http)
-            let sut = AudelinSummaries(files: files, runtime: runtime, preferences: preferences, sink: TestLogSink(),
-                callText: { try await storage.text(id: $0) }, date: { dates.append($0); return "when made" })
+            let http = NotesHTTP()
+            let sut = makeSummaries(files: files, storage: storage, http: http, enabled: automatic)
             do {
                 if automatic {
-                    await sut.submit(call: a, input: "input", entries: [.init(label: "Me", time: "3.0", text: "saved words")], finalWrite: true, usable: true)
+                    await sut.completed(call: a, entries: [.init(label: "Me", time: "3.0", text: "saved words")], finalWrite: true, usable: true)
                 } else { sut.make(call: a) }
                 await http.started.next()
-                #expect(sut.notesState(call: a) == .loading)
+                #expect(sut.badges[a] == .pending)
                 try await http.succeed()
-                for await state in Observations({ sut.notesState(call: a) }) {
-                    if case .completed = state { break }
-                }
-                #expect(sut.notesState(call: a) == .completed(.init(text: generatedNotes, date: "when made")))
-                let notes = try #require(try await files.notes(call: a))
-                #expect(dates.all == [notes.made])
+                try await waitUntil("notes are made") { sut.state.calls[a]?.stage == .succeeded }
+                #expect(try await files.notes(call: a)?.text == generatedNotes)
                 await sut.shutdown()
             } catch { await sut.shutdown(); throw error }
         }
@@ -247,22 +219,17 @@ struct CallNotesWiringTests {
             try savedCall(a, in: root)
             let storage = SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
             let files = Files(locations: storage, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
-            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
-            try preferences.updateNotes(.init(enabled: true, speakers: false, primary: notesRuntime))
-            let http = NotesHTTP()
-            let sut = AudelinSummaries(files: files, runtime: controlledRuntime(http), preferences: preferences,
-                sink: TestLogSink(), callText: { try await storage.text(id: $0) }, date: { _ in "made" })
+            let http = NotesHTTP(), notesOn = Mutex(true)
+            let sut = makeSummaries(files: files, storage: storage, http: http, enabled: true)
+            let callbacks = sut.callbacks(timeZone: .gmt, notesOn: { notesOn.withLock { $0 } })
             do {
-                sut.waiting(call: a)
+                await callbacks.waiting(root.appendingPathComponent(a))
                 sut.make(call: a); await http.started.next()
-                try preferences.updateNotes(.init(enabled: false, speakers: false, primary: notesRuntime))
-                await sut.submit(call: a, input: "automatic", entries: [], finalWrite: true, usable: true)
-                #expect(sut.notesState(call: a) == .loading)
+                notesOn.withLock { $0 = false }
+                await callbacks.completed(root.appendingPathComponent(a), [], true, true)
                 #expect(sut.badges[a] == .pending)
                 try await http.succeed()
-                for await state in Observations({ sut.notesState(call: a) }) {
-                    if case .completed = state { break }
-                }
+                try await waitUntil("notes are made") { sut.state.calls[a]?.stage == .succeeded }
                 #expect(try await files.notes(call: a)?.text == generatedNotes)
                 #expect(await http.bodies.count == 1)
                 await sut.shutdown()
@@ -275,14 +242,12 @@ struct CallNotesWiringTests {
             try savedCall(a, in: root)
             let storage = SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
             let files = Files(locations: storage, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
-            let runtime = Runtime(process: NotesProcess(), http: NotesHTTP(), credential: { _ in nil }, resolveProgram: { $0 }, deadline: { throw Failure.timeout })
-            let sut = AudelinSummaries(files: files, runtime: runtime, preferences: PreferencesStore(fileURL: root.appendingPathComponent("preferences.json")), sink: TestLogSink(), callText: { try await storage.text(id: $0) }, date: { _ in "made" })
+            let sut = makeSummaries(files: files, storage: storage, http: NotesHTTP(), enabled: false)
             sut.stopDispatch()
             sut.make(call: a)
             for await status in sut.updates() where status[a] == "Итоги ожидают запуска" { break }
-            #expect(sut.notesState(call: a) == .loading)
             await sut.cancel(call: a)
-            #expect(sut.notesState(call: a) == .pending)
+            #expect(sut.state.calls[a] == nil)
             #expect(try await files.load(call: a) == nil)
             await sut.shutdown()
         }
@@ -307,6 +272,13 @@ private func savedCall(_ id: String, in root: URL) throws {
     let folder = root.appendingPathComponent(id)
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
     try Data("# Transcript\n\n**Me** 00:00:03\n\nsaved words\n".utf8).write(to: folder.appendingPathComponent("transcript.md"))
+}
+@MainActor private func makeSummaries(files: Files, storage: SummaryStorage, http: NotesHTTP, enabled: Bool) -> SummariesModel {
+    SummariesModel(text: { CallsListText(language: .russian) },
+                   preparation: SummariesPreparationPort(notes: { .init(enabled: enabled, speakers: false, primary: notesRuntime) },
+                                                         makeID: { UUID().uuidString }, callText: { try await storage.text(id: $0) }),
+                   files: SummariesFilesPort(files: files, makeID: { UUID().uuidString }),
+                   generation: SummaryGeneration(runtime: controlledRuntime(http), sink: TestLogSink()))
 }
 private func job(_ id: String, in root: URL) -> URL { root.appendingPathComponent(id).appendingPathComponent(".summary-job.json") }
 private func phase(_ id: String, in root: URL) async throws -> String? {

@@ -36,7 +36,14 @@ public struct SummariesFilesPort: SummariesClaims, SummariesRecords, SummariesSt
         try await files.load(call: call).map(Self.saved)
     }
     public func retry(_ job: Job) async throws -> SummariesSaved {
-        guard let record = try await files.load(call: job.call), record.job == job.id else { throw CocoaError(.fileReadNoSuchFile) }
+        guard let record = try await files.load(call: job.call) else {
+            // A failed claim stored nothing; the retry stores the job anew.
+            var fresh = job; fresh.id = makeID()
+            let result = try await files.claim(try Self.record(fresh, phase: "pending"))
+            guard result.owned else { throw CocoaError(.fileWriteFileExists) }
+            return try Self.saved(result.record)
+        }
+        guard record.job == job.id else { throw CocoaError(.fileReadNoSuchFile) }
         return try Self.saved(try await files.retry(record, job: makeID()))
     }
 

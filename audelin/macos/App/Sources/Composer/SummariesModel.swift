@@ -9,11 +9,13 @@ import SummaryJobs
 @MainActor @Observable
 public final class SummariesModel {
     private let model: ObservableModel<SummariesState, SummariesEvent, SummariesEffect>
+    private let reducer: SummariesReducer
     private var listText: CallsListText
     public init(text: @escaping @Sendable () -> CallsListText, preparation: any SummariesPreparation, files: SummariesFilesPort,
          generation: any SummariesGeneration) {
         listText = text()
         let reducer = SummariesReducer(format: { text().summariesStatus($0, $1) }, badge: summariesBadge)
+        self.reducer = reducer
         let handler = SummariesEffectHandler(preparation: preparation, claims: files, records: files, starts: files,
                                              storage: files, generation: generation)
         model = ObservableModel(initialState: .init(), reduce: reducer.reduce,
@@ -65,15 +67,21 @@ public final class SummariesModel {
     /// Shows a just-ended recording as waiting for its transcript.
     public func waiting(call: String) { model.event(.waiting(call)) }
     /// Hands a finished recording's transcript to the machine.
-    public func completed(call: String, entries: [Job.Entry], finalWrite: Bool, usable: Bool) {
-        model.event(.submit(.init(call: call, input: summaryInput(entries), entries: entries, finalWrite: finalWrite, usable: usable)))
+    /// Returns once the transcript is stored as a job, or dropped.
+    public func completed(call: String, entries: [Job.Entry], finalWrite: Bool, usable: Bool) async {
+        let submission = SummariesSubmission(call: call, input: summaryInput(entries), entries: entries, finalWrite: finalWrite, usable: usable)
+        model.event(.submit(submission))
+        await taken(.submit(submission), call: call)
     }
     /// Makes notes the user asked for from the call's stored transcript, even when notes are off.
     public func make(call: String) { model.event(.request(call)) }
     /// Stops the call's notes and returns once the attempt is discarded or has settled.
     public func cancel(call: String) async {
         model.event(.cancel(call))
-        while let work = model.state.calls[call], work.cancelling || work.stage == .discarding { await changed() }
+        // The event is reduced later; until then a cancel would still act. It is done once another
+        // cancel would change nothing and no discard is left.
+        while reducer.reduce(model.state, .cancel(call)).0 != model.state
+                || model.state.calls[call].map({ $0.cancelling || $0.stage == .discarding }) == true { await changed() }
     }
     /// Runs a failed or interrupted call's job again; throws when there is none to run or storage refuses it.
     public func retry(call: String) async throws {
@@ -86,7 +94,17 @@ public final class SummariesModel {
     /// Drops a deleted call once its notes have settled.
     public func forget(call: String) { model.event(.forget(call)) }
     /// Picks up each stored call's job at launch.
-    public func recover(calls: [String]) { calls.forEach { model.event(.recover($0)) } }
+    /// Returns once each call's stored job is read.
+    public func recover(calls: [String]) async {
+        for call in calls { model.event(.recover(call)) }
+        for call in calls { await taken(.recover(call), call: call) }
+    }
+    /// Waits until the event is reduced and the call has left the stages that wait on storage.
+    private func taken(_ event: SummariesEvent, call: String) async {
+        let storing: Set<SummariesState.Call.Stage> = [.recovering, .preparing, .claiming]
+        while reducer.reduce(model.state, event).0 != model.state
+                || model.state.calls[call].map({ storing.contains($0.stage) }) == true { await changed() }
+    }
     /// Reads again the calls whose jobs another process runs, and returns once they are read.
     public func refresh() async {
         let before = model.state

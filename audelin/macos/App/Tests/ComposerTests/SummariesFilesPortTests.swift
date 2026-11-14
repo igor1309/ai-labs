@@ -59,6 +59,16 @@ import Testing
         var fresh = job; fresh.id = "fresh"
         #expect(files.retried.map(\.1) == ["fresh"] && saved == .init(stage: .pending, job: fresh))
     }
+    @Test func retryOfAJobStorageNeverHeldClaimsItUnderAFreshID() async throws {
+        let files = FilesFake()
+        let saved = try await makeSUT(files).retry(job)
+        var fresh = job; fresh.id = "fresh"
+        #expect(files.claimed.map(\.job) == ["fresh"] && files.retried.isEmpty && saved == .init(stage: .pending, job: fresh))
+    }
+    @Test func retryThatFindsAnotherJobClaimedMeanwhileThrows() async {
+        let files = FilesFake(); files.claimAnswer = { (false, $0) }
+        await #expect(throws: (any Error).self) { try await makeSUT(files).retry(job) }
+    }
     @Test func retryOfAnAttemptStorageNoLongerHoldsThrows() async throws {
         let files = FilesFake(); var other = try await record(phase: "failed"); other.job = "other"; files.stored = other
         await #expect(throws: (any Error).self) { try await makeSUT(files).retry(job) }

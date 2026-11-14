@@ -158,6 +158,7 @@ public struct SummariesReducer: Sendable {
     /// The call and stage a result answers, for the results a cancel turns into a discard.
     static func answered(_ event: SummariesEvent) -> (String, SummariesState.Call.Stage)? {
         switch event {
+        case let .claimed(id, owned: true, _): (id, .claiming)
         case let .started(id, owned: true): (id, .starting)
         case let .identified(id, _), let .identificationFailed(id): (id, .identifying)
         case let .checkpointed(id): (id, .checkpointing)
@@ -252,7 +253,8 @@ public struct SummariesReducer: Sendable {
             if stage == .pending && state.dispatch { next.calls[id]?.stage = .starting; effect = .start(saved.job) }
         case let .started(id, owned) where state.calls[id]?.stage == .starting:
             call = id
-            guard owned else { next.calls[id]?.stage = .observed; break }
+            // Another process runs the job, so a cancel here has nothing left to stop.
+            guard owned else { next.calls[id]?.stage = .observed; next.calls[id]?.cancelling = false; break }
             guard let job = state.calls[id]?.job else { return (state, nil) }
             if job.speakers { next.calls[id]?.stage = .identifying; effect = .identify(job) }
             else { next.calls[id]?.stage = .noting; effect = .notes(job, []) }
@@ -291,7 +293,7 @@ public struct SummariesReducer: Sendable {
             next.calls[id]?.stage = state.calls[id]?.terminal ?? .failed
         case let .storageFailed(id) where state.calls[id].map({ SummariesReducer.working.contains($0.stage) }) ?? false:
             call = id
-            next.calls[id]?.stage = .failed
+            next.calls[id]?.stage = .failed; next.calls[id]?.cancelling = false
         case .stopDispatch where state.dispatch:
             next.dispatch = false
             for (id, work) in state.calls where work.stage == .starting {
@@ -323,10 +325,17 @@ public struct SummariesReducer: Sendable {
         case let .forget(id) where state.calls[id].map({ SummariesReducer.settled.contains($0.stage) || $0.stage == .waiting }) ?? false:
             next.calls[id] = nil
             return (next, nil)
-        case let .cancel(id) where state.calls[id].map({ SummariesReducer.running.contains($0.stage) && !$0.cancelling }) ?? false:
+        case let .cancel(id) where state.calls[id].map({ (SummariesReducer.running.contains($0.stage) || $0.stage == .claiming)
+                                                         && !$0.cancelling }) ?? false:
             call = id
             next.calls[id]?.cancelling = true
             effect = state.calls[id]?.job.map(SummariesEffect.abort)
+        case let .cancel(id) where state.calls[id]?.stage == .pending:
+            // A job stored but not started yet has nothing running to wait for.
+            guard let job = state.calls[id]?.job else { return (state, nil) }
+            call = id
+            next.calls[id]?.stage = .discarding; next.calls[id]?.cancelling = true
+            effect = .discard(job)
         case let .cancel(id) where state.calls[id]?.stage == .observed || state.calls[id]?.stage == .unavailable:
             call = id
             next.calls[id]?.stage = .interrupted

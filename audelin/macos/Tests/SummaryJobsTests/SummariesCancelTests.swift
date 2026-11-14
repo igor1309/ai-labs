@@ -3,10 +3,10 @@ import Testing
 
 @Suite struct SummariesCancelReducerTests {
     let format = FormatSpy()
-    static let running: [SummariesState.Call.Stage] = [.starting, .identifying, .checkpointing, .noting, .publishing, .saving]
+    static let running: [SummariesState.Call.Stage] = [.claiming, .starting, .identifying, .checkpointing, .noting, .publishing, .saving]
     /// Each running stage with a result that answers it.
     static let answers: [(SummariesState.Call.Stage, SummariesEvent)] = [
-        (.starting, .started("call", owned: true)), (.identifying, .identified("call", [])), (.identifying, .identificationFailed("call")),
+        (.claiming, .claimed("call", owned: true, .init(stage: .pending, job: makeJob()))), (.starting, .started("call", owned: true)), (.identifying, .identified("call", [])), (.identifying, .identificationFailed("call")),
         (.checkpointing, .checkpointed("call")), (.noting, .noted("call", "n")), (.noting, .notesFailed("call")),
         (.publishing, .published("call")), (.saving, .saved("call")),
     ]
@@ -25,6 +25,14 @@ import Testing
     @Test func anAbortDeliversNothing() {
         assert(make(.noting, cancelling: true), .aborted("call"), delivers: nil)
     }
+    @Test func aCancelOnAStoredJobNotStartedDiscardsIt() {
+        assert(make(.pending), .cancel("call")) {
+            $0.calls["call"]?.stage = .discarding; $0.calls["call"]?.cancelling = true; $0.calls["call"]?.status = "discarding:false"
+        }
+    }
+    @Test func aCancelOnAStoredJobNotStartedDeliversDiscard() {
+        assert(make(.pending), .cancel("call"), delivers: .discard(makeJob()))
+    }
     @Test func aSecondCancelChangesNothing() {
         assert(make(.noting, cancelling: true), .cancel("call"))
         #expect(format.payloads.isEmpty)
@@ -35,12 +43,12 @@ import Testing
     @Test(arguments: [SummariesState.Call.Stage.observed, .unavailable]) func aCancelOnAnUnrunJobDeliversNothing(stage: SummariesState.Call.Stage) {
         assert(make(stage), .cancel("call"), delivers: nil)
     }
-    @Test(arguments: [SummariesState.Call.Stage.succeeded, .failed, .interrupted, .pending, .retrying, .discarding])
+    @Test(arguments: [SummariesState.Call.Stage.succeeded, .failed, .interrupted, .retrying, .discarding])
     func aCancelOnAnotherStageChangesNothing(stage: SummariesState.Call.Stage) {
         assert(make(stage), .cancel("call"))
         #expect(format.payloads.isEmpty)
     }
-    @Test(arguments: [SummariesState.Call.Stage.succeeded, .failed, .interrupted, .pending, .retrying, .discarding])
+    @Test(arguments: [SummariesState.Call.Stage.succeeded, .failed, .interrupted, .retrying, .discarding])
     func aCancelOnAnotherStageDeliversNothing(stage: SummariesState.Call.Stage) {
         assert(make(stage), .cancel("call"), delivers: nil)
     }
@@ -54,14 +62,19 @@ import Testing
     }
     @Test func anObservedStartAfterACancelIsObserved() {
         assert(make(.starting, cancelling: true), .started("call", owned: false)) {
-            $0.calls["call"]?.stage = .observed; $0.calls["call"]?.status = "observed:false"
+            $0.calls["call"]?.stage = .observed; $0.calls["call"]?.cancelling = false; $0.calls["call"]?.status = "observed:false"
+        }
+    }
+    @Test func anUnownedClaimAfterACancelIsObservedWithoutTheCancel() {
+        assert(make(.claiming, cancelling: true), .claimed("call", owned: false, .init(stage: .pending, job: makeJob()))) {
+            $0.calls["call"] = .init(stage: .observed, job: makeJob(), status: "observed:false")
         }
     }
     @Test func anObservedStartAfterACancelDeliversNothing() {
         assert(make(.starting, cancelling: true), .started("call", owned: false), delivers: nil)
     }
     @Test func aStorageFailureAfterACancelFailsTheCall() {
-        assert(make(.noting, cancelling: true), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false"; $0.calls["call"]?.retryable = true }
+        assert(make(.noting, cancelling: true), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.cancelling = false; $0.calls["call"]?.status = "failed:false"; $0.calls["call"]?.retryable = true }
     }
     @Test func aResultForAnotherStageAfterACancelChangesNothing() {
         assert(make(.noting, cancelling: true), .published("call"))
@@ -78,7 +91,7 @@ import Testing
         assert(make(.noting, cancelling: true), .discarded("call"))
     }
     @Test func aFailedDiscardFailsTheCall() {
-        assert(make(.discarding, cancelling: true), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false"; $0.calls["call"]?.retryable = true }
+        assert(make(.discarding, cancelling: true), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.cancelling = false; $0.calls["call"]?.status = "failed:false"; $0.calls["call"]?.retryable = true }
     }
     @Test func aFailedDiscardDeliversNothing() {
         assert(make(.discarding, cancelling: true), .storageFailed("call"), delivers: nil)
