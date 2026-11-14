@@ -83,10 +83,12 @@ aside, for a transcript with named speakers, a gap, filled-in and wordless
 parts. Evidence: `TranscriptReadingTests.aRenderedTranscriptReadsBackAndRendersTheSame()`,
 `TranscriptReadingTests.aLoneSpeakerAndPartsWithoutWordsReadBack()` and
 `TranscriptReadingTests.aTranscriptWithoutSpeakersReadsWithNone()`; the gap
-reads back with S-12.
+reads back in `aGapRendersAsTheCallCutOffAndReadsBack()`.
 
 ## S-12 A gap reads as the call cut off
 
 A rendering with a gap of 120 s at 480 s shows a row at 00:08:00 saying the
 call was cut off for two minutes; read back, it is a gap of 120 s at 480 s.
-Evidence: Missing.
+Evidence: `TranscriptReadingTests.aGapRendersAsTheCallCutOffAndReadsBack()`,
+`aGapOfNoLengthRenders()`, `onlyAGapSaysNoTextWasHeard()` and
+`aGapOfNoUsableLengthFails(length:)`.

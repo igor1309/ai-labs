@@ -130,6 +130,42 @@ struct TranscriptReadingTests {
         let saved = TranscriptFormat.read(try rendered([.init(side: .theirs, start: 3, settled: "them", pending: "")]))
         #expect(saved == .init(segments: [.init(side: .theirs, start: 3, settled: "them", pending: "")], speakers: []))
     }
+
+    @Test func aGapRendersAsTheCallCutOffAndReadsBack() throws {
+
+        let segments: [TranscriptFormat.Segment] = [
+            .init(side: .mine, start: 400, settled: "before", pending: ""),
+            .gap(at: 480, length: 120),
+            .init(side: .theirs, start: 600, settled: "after", pending: ""),
+        ]
+        let text = try rendered(segments)
+        #expect(text.contains("**Gap** 00:08:00\nCut off for 00:02:00.\n"))
+        let saved = TranscriptFormat.read(text)
+        #expect(saved.segments == segments)
+        #expect(saved.segments[1].gapLength == 120)
+        #expect(try rendered(saved.segments) == text)
+        #expect(TranscriptFormat.entries(text).map(\.words) == ["before", "after"])
+    }
+
+    @Test func onlyAGapSaysNoTextWasHeard() throws {
+
+        #expect(try rendered([.gap(at: 0, length: 5)]) == "# Transcript\n\nNo text was heard.\n")
+    }
+
+    @Test func aGapOfNoLengthRenders() throws {
+
+        let text = try rendered([.init(side: .mine, start: 1, settled: "a", pending: ""), .gap(at: 2, length: 0)])
+        #expect(TranscriptFormat.read(text).segments.last == .gap(at: 2, length: 0))
+    }
+
+    @Test(arguments: [-1.0, .infinity, .nan])
+    func aGapOfNoUsableLengthFails(length: Double) {
+
+        var format = TranscriptFormat()
+        #expect(throws: TranscriptFormat.Failure.invalidGap) {
+            try format.render([.init(side: .mine, start: 1, settled: "a", pending: ""), .gap(at: 2, length: length)])
+        }
+    }
 }
 
 private func rendered(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker] = []) throws -> String {
