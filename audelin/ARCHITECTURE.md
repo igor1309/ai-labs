@@ -112,7 +112,7 @@ Each keeps its own types. SummarySettings owns editable configuration, rendered
 validation/save/load outcomes and its preference/availability ports.
 
 The root maps those ports and decorates attempts with fallback and logging.
-It subscribes SummaryJobs to TranscriptFinalization's final transcripts
+It hands SummaryJobs TranscriptFinalization's final transcripts
 (Transcript finalization), so a call's notes start from its final form, and
 to CallsStorage's transaction state.
 On quit, SummaryJobs stops dispatch and shuts down once TranscriptFinalization
@@ -216,30 +216,40 @@ Fill-in and Side text.
 A recording's transcript is written live; once the recording closes, it is
 made final. TranscriptFinalization is the state machine for that line. Its
 state holds each call's stage, writing, diarizing, cleaning, committing,
-then finalized or failed, with the call's last saved text, its attributed
-far side and its cleaned microphone side; whether the latest write
-succeeded; and whether a shutdown has settled. Its events are each live
-write's success or failure, the close, each stage's result and shutdown.
+then finalized or failed, with the call's last saved text, the speaker
+names taken when its transcript closed, its attributed far side and its
+cleaned microphone side; whether the latest write succeeded; whether its
+final transcript has been published; and whether a shutdown has settled.
+Its events are the transcript's opening, each live write's success or
+failure, the close with the call's names, each stage's result, each
+publication and shutdown.
 
 A call whose latest write failed is final as last saved, without further
 work. A saved call is diarized (Remote speakers), then cleaned (Bleed
 cleanup); cleaned microphone text is committed to the file, and a failed
-commit keeps the text as written. Each call's final transcript, its entries,
-whether they hold words, and whether the file holds the latest text, is
-published once. Entries come from an injected pure mapping.
+commit keeps the text as written. A commit renders with the names taken at
+close, read once, so a name published later cannot race it. Each call's
+final transcript, its entries, whether they hold words, and whether the file
+holds the latest text, is published once, and is published when its
+receiver has taken it. Entries come from an injected pure mapping.
 
 On shutdown no new model work starts. A call being cleaned is final at once
-as written; a call being diarized or committed is final when that file write
-returns, since both replace the file; a call closing afterwards is final as
-last saved. The machine publishes settled once no file write is pending.
+as written, and the machine stops its cleanup; a call being diarized or
+committed is final when that file write returns, since both replace the
+file; a call still being written is final as last saved once it closes.
+The machine publishes settled once every opened call's final transcript is
+published, so quit waits on settled alone.
 
 Its collaborators are ports it owns: the diarizer (the root's after-call
-pass, which also hands its speaker turns to CallNames), microphone cleanup, transcript
-replacement, and the receiver of final transcripts. The transcript writer
-only renders and saves: live writes and whole replacements. The root keeps
-each call's writer and cleanup inputs as resource handles until its final
-transcript is published, sends the session's writes and close as events,
-and subscribes SummaryJobs and the panel's speaker rows to the machine.
+pass, which also hands its speaker turns to CallNames), microphone cleanup
+and its stop, transcript replacement, and the receiver of final
+transcripts. The transcript writer only renders and saves: live writes and
+whole replacements. The root keeps each call's writer, cleanup inputs and
+running cleanup as resource handles until its final transcript is
+published, sends the session's opening, writes and close as events, and
+answers the receiver port by handing each final transcript to SummaryJobs
+before it releases the call's handles; it subscribes the panel's speaker
+rows to the machine.
 
 ## Bleed cleanup
 
