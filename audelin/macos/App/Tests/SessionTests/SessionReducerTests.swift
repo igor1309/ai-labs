@@ -595,3 +595,67 @@ struct SessionReducerTextFeedTests {
         assert(makeRecording(), .textFeedFinished, delivers: nil)
     }
 }
+
+struct SessionReducerOutputTests {
+
+    private func makeStoppingCallTextWithOutput() -> SessionState {
+        makeStopping(.callText).with { $0.transcript = .closed; $0.output = .up }
+    }
+
+    private func makeReleasing() -> SessionState {
+        makeStoppingCallTextWithOutput().with { $0.callText = .closed; $0.output = .stopping }
+    }
+
+    @Test func lastPieceDownReleasesTheOutput_state() {
+
+        assert(makeStoppingCallTextWithOutput(), .callTextStopped(error: nil)) {
+            $0.callText = .closed
+            $0.output = .stopping
+        }
+    }
+
+    @Test func lastPieceDownReleasesTheOutput_effect() {
+
+        assert(makeStoppingCallTextWithOutput(), .callTextStopped(error: nil), delivers: .releaseOutput)
+    }
+
+    @Test func feedFinishesBeforeTheOutputIsReleased_state() {
+
+        let state = makeStoppingCallTextWithOutput().with { $0.transcript = .down; $0.textFeed = .up }
+        assert(state, .callTextStopped(error: nil)) {
+            $0.callText = .closed
+            $0.textFeed = .stopping
+        }
+    }
+
+    @Test func feedFinishesBeforeTheOutputIsReleased_effect() {
+
+        let state = makeStoppingCallTextWithOutput().with { $0.transcript = .down; $0.textFeed = .up }
+        assert(state, .callTextStopped(error: nil), delivers: .finishTextFeed)
+    }
+
+    @Test func outputReleasedEndsTheSession_state() {
+
+        assert(makeReleasing(), .outputReleased) {
+            $0.output = .closed
+            $0.folder = .closed
+            $0.processes = .closed
+            $0.phase = .ended
+        }
+    }
+
+    @Test func outputReleasedEndsTheSession_effect() {
+
+        assert(makeReleasing(), .outputReleased, delivers: nil)
+    }
+
+    @Test func outputReleasedWhileNotReleasingIsIgnored_state() {
+
+        assert(makeRecording(), .outputReleased)
+    }
+
+    @Test func outputReleasedWhileNotReleasingIsIgnored_effect() {
+
+        assert(makeRecording(), .outputReleased, delivers: nil)
+    }
+}

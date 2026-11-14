@@ -288,6 +288,15 @@ struct SessionEffectHandlerTests {
         #expect(spies.calls == [.finishTextFeed])
     }
 
+    @Test func releaseOutputReleasesIt() async {
+
+        let (sut, spies) = makeSUT()
+        await expect(sut, with: .releaseOutput, toDeliver: .outputReleased, on: {
+            await spies.outputRelease.complete()
+        })
+        #expect(spies.calls == [.releaseOutput])
+    }
+
     @Test(arguments: [true, false])
     func setLiveTextPassesEnabledAndDeliversItsRequest(_ enabled: Bool) async {
 
@@ -356,7 +365,8 @@ private func makeSUT() -> (SessionEffectHandler, Spies) {
         microphoneTrack: TrackSpy(side: .microphone, spies: spies),
         callTrack: TrackSpy(side: .call, spies: spies),
         callText: CallTextSpy(spies: spies),
-        transcript: TranscriptSpy(spies: spies)
+        transcript: TranscriptSpy(spies: spies),
+        output: OutputSpy(spies: spies)
     )
     return (sut, spies)
 }
@@ -377,6 +387,7 @@ private enum Call: Equatable, Sendable {
     case openTranscript(in: SessionCallFolder)
     case closeTranscript
     case finishTextFeed
+    case releaseOutput
 }
 
 private typealias OperationSpy = Spy<Void, any Error>
@@ -396,7 +407,7 @@ private struct Spies {
     let callStart = OperationSpy(), callStop = OperationSpy()
     let microphoneTrack = TrackSpies(), callTrack = TrackSpies()
     let callTextStart = OperationSpy(), callTextSetEnabled = OperationSpy(), callTextStop = OperationSpy()
-    let transcriptOpen = OperationSpy(), transcriptClose = OperationSpy(), feedFinish = OperationSpy()
+    let transcriptOpen = OperationSpy(), transcriptClose = OperationSpy(), feedFinish = OperationSpy(), outputRelease = OperationSpy()
 
     var calls: [Call] { log.values }
     var callCount: Int { log.values.count }
@@ -533,6 +544,17 @@ private struct TranscriptSpy: SessionTranscript {
 
         spies.log.append(.finishTextFeed)
         try? await spies.feedFinish.call()
+    }
+}
+
+private struct OutputSpy: SessionOutput {
+
+    let spies: Spies
+
+    func release() async {
+
+        spies.log.append(.releaseOutput)
+        try? await spies.outputRelease.call()
     }
 }
 

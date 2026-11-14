@@ -57,6 +57,9 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         return (output.stream, speakers.stream)
     }
 
+    /// Ends the events this session's pieces send it, so its forwarding finishes.
+    func release() { news.continuation.finish() }
+
     func endReading() {
         readingOutput?.finish()
         readingSpeakers?.finish()

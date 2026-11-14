@@ -110,8 +110,8 @@ actor RecordingSessions: RecordingSession {
             await report(id, .ended)
             let subscription = entry.subscription, observation = entry.observation, session = entry.session
             Task {
+                // Session released its pieces' events as its last stage, so forwarding has finished.
                 Task { await self.panel.end(id: id) }
-                subscription.cancel()
                 await subscription.value
                 await session.end()
                 await observation?.value

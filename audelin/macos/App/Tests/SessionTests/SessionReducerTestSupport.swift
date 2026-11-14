@@ -204,7 +204,7 @@ func eventsInTheWrongPhase() -> [SessionReducerTests.Case] {
 
 // MARK: - States
 
-/// The reading feed starts closed here so other pieces' bring-down ends the session; the feed's own tests open it.
+/// The reading feed and the pieces' output start closed here so other pieces' bring-down ends the session; their own tests open them.
 func makeState(_ phase: SessionState.Phase) -> SessionState {
 
     SessionState(
@@ -214,6 +214,7 @@ func makeState(_ phase: SessionState.Phase) -> SessionState {
         liveText: .on,
         recordedFolder: anyFolder(),
         textFeed: .closed,
+        output: .closed,
         processSelection: anySelection(),
         failures: [.init(piece: anyError(), message: anyError())]
     )

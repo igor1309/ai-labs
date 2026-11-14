@@ -88,6 +88,13 @@ struct LoggingTranscript: SessionTranscript {
     func finishFeed() async { try? await log.call("finishFeed") { await base.finishFeed() } }
 }
 
+struct LoggingOutput: SessionOutput {
+    let base: SessionPieces
+    let log: PortLog
+
+    func release() async { try? await log.call("release") { await base.release() } }
+}
+
 struct LoggingRecordingSession: RecordingSession {
     let base: any RecordingSession
     let sink: any LogSink
