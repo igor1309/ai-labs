@@ -7,26 +7,38 @@ public enum RecordingCondition: CaseIterable, Hashable, Sendable {
     case room
 }
 
+/// The microphone permission and the disk, read together at one moment.
+public struct ConditionReadings: Equatable, Sendable {
+
+    public var microphoneAccess: Bool
+    public var disk: DiskReadings
+    /// When the readings were taken, on a monotonic clock.
+    public var takenAt: Double
+
+    public init(microphoneAccess: Bool, disk: DiskReadings, takenAt: Double) {
+        self.microphoneAccess = microphoneAccess
+        self.disk = disk
+        self.takenAt = takenAt
+    }
+}
+
 public struct RecordingConditionsState: Equatable, Sendable {
 
-    /// The latest microphone permission answer; nil until one arrives.
-    public var microphoneAccess: Bool?
+    /// The latest readings; nil until one arrives.
+    public var readings: ConditionReadings?
     /// The latest published call-audio access; nil until one arrives.
     public var callAudioAccess: Bool?
-    /// The latest disk readings; nil until one arrives.
-    public var disk: DiskReadings?
     /// While calls storage moves, the calls folder is unavailable.
     public var storageMoving: Bool
     /// The value last published for each condition.
     public var published: [RecordingCondition: Bool]
 
     public init(
-        microphoneAccess: Bool? = nil, callAudioAccess: Bool? = nil, disk: DiskReadings? = nil,
+        readings: ConditionReadings? = nil, callAudioAccess: Bool? = nil,
         storageMoving: Bool = false, published: [RecordingCondition: Bool] = [:]
     ) {
-        self.microphoneAccess = microphoneAccess
+        self.readings = readings
         self.callAudioAccess = callAudioAccess
-        self.disk = disk
         self.storageMoving = storageMoving
         self.published = published
     }
@@ -34,8 +46,8 @@ public struct RecordingConditionsState: Equatable, Sendable {
 
 public enum RecordingConditionsEvent: Equatable, Sendable {
 
-    case microphoneRead(Bool)
-    case diskRead(DiskReadings)
+    /// Readings taken before the latest ones are stale and change nothing.
+    case read(ConditionReadings)
     case callAudioAccess(Bool)
     case storageMoving(Bool)
 }
@@ -54,8 +66,9 @@ public struct RecordingConditionsReducer: Sendable {
 
         var state = state
         switch event {
-        case let .microphoneRead(authorized): state.microphoneAccess = authorized
-        case let .diskRead(readings): state.disk = readings
+        case let .read(readings):
+            if let latest = state.readings, readings.takenAt < latest.takenAt { return (state, nil) }
+            state.readings = readings
         case let .callAudioAccess(published): state.callAudioAccess = published
         case let .storageMoving(moving): state.storageMoving = moving
         }
@@ -68,9 +81,9 @@ public struct RecordingConditionsReducer: Sendable {
     private func values(of state: RecordingConditionsState) -> [RecordingCondition: Bool] {
 
         var values: [RecordingCondition: Bool] = [:]
-        values[.microphoneAccess] = state.microphoneAccess
+        values[.microphoneAccess] = state.readings?.microphoneAccess
         values[.callAudioAccess] = state.callAudioAccess
-        if let disk = state.disk {
+        if let disk = state.readings?.disk {
             values[.callsFolder] = disk.folderExists && disk.writable && !state.storageMoving
             values[.room] = hasRoom(disk)
         } else if state.storageMoving {

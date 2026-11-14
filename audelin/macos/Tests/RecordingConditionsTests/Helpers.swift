@@ -9,16 +9,19 @@ let roomy = DiskReadings(folderExists: true, writable: true, availableCapacity: 
 let full = DiskReadings(folderExists: true, writable: true, availableCapacity: 1)
 let missing = DiskReadings(folderExists: false, writable: false, availableCapacity: nil)
 
-func makeState(
-    disk: DiskReadings? = nil, microphone: Bool? = nil, access: Bool? = nil, moving: Bool = false,
-    published: [RecordingCondition: Bool] = [:]
-) -> State {
-    State(microphoneAccess: microphone, callAudioAccess: access, disk: disk, storageMoving: moving, published: published)
+func makeReadings(_ disk: DiskReadings = roomy, microphone: Bool = true, at takenAt: Double = 1) -> ConditionReadings {
+    ConditionReadings(microphoneAccess: microphone, disk: disk, takenAt: takenAt)
 }
 
-/// Every condition read and published as available.
+func makeState(
+    readings: ConditionReadings? = nil, access: Bool? = nil, moving: Bool = false, published: [RecordingCondition: Bool] = [:]
+) -> State {
+    State(readings: readings, callAudioAccess: access, storageMoving: moving, published: published)
+}
+
+/// Every condition read at time 1 and published as available.
 func makeAvailableState(moving: Bool = false) -> State {
-    makeState(disk: roomy, microphone: true, access: true, moving: moving, published: [
+    makeState(readings: makeReadings(), access: true, moving: moving, published: [
         .microphoneAccess: true, .callAudioAccess: true, .callsFolder: !moving, .room: true,
     ])
 }
