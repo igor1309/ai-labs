@@ -238,6 +238,26 @@ modules are machines; an app composes them.
   ("ADR-001 decision 4", "S-14", "`spec/x/QA.md`"). Each such pointer ties
   the text to the other document's layout and turns false when it changes.
 
+## Building a feature
+
+A feature, work that changes what the user can see or do, passes three
+gates in order before any design or implementation starts. Each gate's
+result is reviewed by the owner before the next begins.
+
+1. **User spec.** What the user, as observer, can see and do, including
+   every wait and failure they can see. Nothing about components.
+2. **Architecture.** The architect designs from the user spec: the
+   `architecture` skill, or agister's `architect` process run on a brief
+   that names the spec and the architecture document. Its output changes
+   the project's architecture document.
+3. **Component specs.** One spec for each component the architecture adds
+   or changes, written for that component's client.
+
+The three land together in one PR, which opens the gate for design and
+implementation. A feature's parent issue gets one sub-issue per gate and
+one for the build. A fix that changes no user-visible behaviour starts at
+the component spec.
+
 ## Implementing with Codex
 
 - Size the process to the task. A small task (one test or a few lines in
@@ -296,7 +316,9 @@ modules are machines; an app composes them.
   to accept or change. Make technical choices yourself (where a setting is
   stored, how data is laid out) and state them in the plan.
 - Before building a large issue, present a top-level plan, including any
-  restructuring of its issues, and wait for the owner's answer.
+  restructuring of its issues, and wait for the owner's answer. For a
+  feature, the plan comes after its component specs (Building a feature)
+  and is made from them.
 
 ## Adding a project
 
