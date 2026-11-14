@@ -7,6 +7,8 @@ public protocol RecordingsCalls: Sendable {
     func delete(id: String) async throws
     func prepareMove(to destination: URL) async throws -> [MoveCall]
     func move(id: String, to: URL) async throws -> Int64
+    /// Merges the calls into one and returns the merged call's id, or throws why not.
+    func merge(ids: [String]) async throws -> String
 }
 
 public struct RecordedCall: Equatable, Sendable {
@@ -28,6 +30,8 @@ public struct RecordingsState: Equatable, Sendable {
         case merging
         /// Asking again before merging calls with an unselected call between them.
         case warnedFarApart
+        /// The merge port is merging the selected calls.
+        case runningMerge
     }
 
     public struct Failure: Equatable, Sendable {
@@ -48,14 +52,16 @@ public struct RecordingsState: Equatable, Sendable {
     public var move: CallsFolderMove?
     /// The calls chosen to merge, while merging.
     public var mergeSelection: Set<String> = []
+    /// The call the last merge made, to be selected in the list.
+    public var mergedCallID: String?
 
     public init(calls: [RecordedCall] = [], isListing: Bool = false, phase: Phase = .idle,
                 recordingID: String? = nil, failure: Failure? = nil, callsFolder: URL? = nil,
                 callsFolderAvailable: Bool = true, stopping: Bool = false, move: CallsFolderMove? = nil,
-                mergeSelection: Set<String> = []) {
+                mergeSelection: Set<String> = [], mergedCallID: String? = nil) {
         self.calls = calls; self.isListing = isListing; self.phase = phase; self.recordingID = recordingID
         self.failure = failure; self.callsFolder = callsFolder; self.callsFolderAvailable = callsFolderAvailable; self.stopping = stopping; self.move = move
-        self.mergeSelection = mergeSelection
+        self.mergeSelection = mergeSelection; self.mergedCallID = mergedCallID
     }
 }
 
@@ -70,12 +76,14 @@ public enum RecordingsEvent: Equatable, Sendable {
     case folderStored, folderStoreFailed(String)
     case askDelete(String), confirmDelete, cancelDelete, deleted(String), deleteFailed(id: String, reason: String)
     case enterMergeMode, leaveMergeMode, toggleMergeSelection(String)
-    case confirmMerge, mergeAnyway, goBackFromWarning
+    case confirmMerge, mergeAnyway, goBackFromWarning, merged(String), mergeFailed(String)
 }
 
 public enum RecordingsEffect: Equatable, Sendable {
     case prepareMove(URL), reserveMove, releaseMove, moveCall(id: String, to: URL), storeFolder(URL)
     case list, rename(id: String, title: String), delete(String)
+    /// The calls to merge, in list order.
+    case merge([String])
 }
 
 public struct RecordingsReducer: Sendable {
@@ -168,6 +176,7 @@ public struct RecordingsReducer: Sendable {
             }
             state.phase = .merging
             state.mergeSelection = []
+            state.mergedCallID = nil
             state.failure = nil
         case .leaveMergeMode:
             guard state.phase == .merging else { return (state, nil) }
@@ -178,13 +187,43 @@ public struct RecordingsReducer: Sendable {
             if state.mergeSelection.remove(id) == nil { state.mergeSelection.insert(id) }
         case .confirmMerge:
             guard state.phase == .merging, state.mergeSelection.count >= 2 else { return (state, nil) }
-            if Self.farApart(state.calls, selected: state.mergeSelection) { state.phase = .warnedFarApart }
+            if Self.farApart(state.calls, selected: state.mergeSelection) {
+                state.phase = .warnedFarApart
+                return (state, nil)
+            }
+            return startMerge(state)
+        case .mergeAnyway:
+            guard state.phase == .warnedFarApart else { return (state, nil) }
+            return startMerge(state)
         case .goBackFromWarning:
             guard state.phase == .warnedFarApart else { return (state, nil) }
             state.phase = .merging
+        case let .merged(id):
+            guard state.phase == .runningMerge else { return (state, nil) }
+            state.phase = .idle
+            state.mergeSelection = []
+            state.mergedCallID = id
+            state.isListing = true
+            return (state, .list)
+        case let .mergeFailed(reason):
+            guard state.phase == .runningMerge else { return (state, nil) }
+            state.phase = .merging
+            state.failure = .init(id: nil, reason: reason)
         default: break
         }
         return (state, nil)
+    }
+
+    private func startMerge(_ state: RecordingsState) -> (RecordingsState, RecordingsEffect?) {
+        var state = state
+        guard !state.stopping, isIdle() else {
+            state.phase = .merging
+            state.failure = .init(id: nil, reason: busyMessage())
+            return (state, nil)
+        }
+        state.phase = .runningMerge
+        state.failure = nil
+        return (state, .merge(state.calls.map(\.id).filter(state.mergeSelection.contains)))
     }
 
     /// Selected calls are far apart when an unselected call of the whole list lies between two of them.
@@ -248,6 +287,9 @@ public struct RecordingsEffectHandler: Sendable {
         case let .delete(id):
             do { try await calls.delete(id: id); return .deleted(id) }
             catch { return .deleteFailed(id: id, reason: describe(error)) }
+        case let .merge(ids):
+            do { return .merged(try await calls.merge(ids: ids)) }
+            catch { return .mergeFailed(describe(error)) }
         }
     }
 }

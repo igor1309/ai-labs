@@ -279,4 +279,8 @@ struct SummaryCalls: RecordingsCalls {
     }
     func prepareMove(to destination: URL) async throws -> [MoveCall] { try await storage.prepareMove(to: destination) }
     func move(id: String, to destination: URL) async throws -> Int64 { try await storage.move(id: id, to: destination) }
+    func merge(ids: [String]) async throws -> String { throw MergeNotComposed() }
 }
+
+/// The merge chain is not composed yet; nothing opens merge mode until it is.
+struct MergeNotComposed: Error {}

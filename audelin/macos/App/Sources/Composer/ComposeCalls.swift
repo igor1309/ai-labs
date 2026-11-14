@@ -28,6 +28,7 @@ actor ComposeCalls: RecordingsCalls {
     }
     func move(id: String, to destination: URL) async throws -> Int64 { try perform { try $0.move(id: id, to: destination) } }
     func location(id: String) async throws -> URL { try perform { try $0.location(id: id) } }
+    func merge(ids: [String]) async throws -> String { throw MergeNotComposed() }
 
     private func perform<Value: Sendable>(_ work: (Calls) throws -> Value) throws -> Value {
         try work(disk)

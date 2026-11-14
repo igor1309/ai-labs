@@ -231,6 +231,22 @@ struct RecordingsTests {
     }
 }
 
+struct RecordingsMergeEffectTests {
+    @Test func S5_theHandlerAsksThePortForTheCallsAndDeliversTheMergedCall() async {
+        let spy = CallsSpy()
+        let merged = RecordedCall(id: "A", title: "", start: .distantPast, duration: 60)
+        await expect(RecordingsEffectHandler(calls: spy, reserve: { true }, release: {}, storeFolder: { _ in }, describe: { _ in "disk" }),
+                     with: .merge(["A", "B"]), toDeliver: .merged("A"), on: { await spy.complete(.success([merged])) })
+        #expect(await spy.received == [.merge(["A", "B"])])
+    }
+
+    @Test func S11_theHandlerDeliversWhyAMergeFailed() async {
+        let spy = CallsSpy()
+        await expect(RecordingsEffectHandler(calls: spy, reserve: { true }, release: {}, storeFolder: { _ in }, describe: { $0 is DiskFailure ? "disk" : "other" }),
+                     with: .merge(["A", "B"]), toDeliver: .mergeFailed("disk"), on: { await spy.complete(.failure(DiskFailure())) })
+    }
+}
+
 private func makeState(_ change: (inout RecordingsState) -> Void = { _ in }) -> RecordingsState {
     var state = RecordingsState()
     change(&state)
@@ -294,6 +310,8 @@ private actor CallsSpy: RecordingsCalls {
     func delete(id: String) async throws { _ = try await call(.delete(id)) }
     func prepareMove(to destination: URL) async throws -> [MoveCall] { _ = try await call(.prepareMove(destination)); return [] }
     func move(id: String, to destination: URL) async throws -> Int64 { _ = try await call(.moveCall(id: id, to: destination)); return 0 }
+    /// Answers with the first listed call's id as the merged call.
+    func merge(ids: [String]) async throws -> String { try await call(.merge(ids)).first?.id ?? "" }
 }
 
 /// Move text that names every value it is given, so a test sees which move it came from.

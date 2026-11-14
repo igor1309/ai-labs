@@ -100,6 +100,90 @@ struct RecordingsMergeTests {
         assert(listed { $0.phase = .warnedFarApart; $0.mergeSelection = ["A", "C"] }, .toggleMergeSelection("B"), delivers: nil)
     }
 
+    @Test func S5_neighbouringCallsMerge() {
+        let idle = IdleSpy(answer: true)
+        assert(listed { $0.phase = .merging; $0.mergeSelection = ["A", "B"]; $0.failure = .init(id: nil, reason: "busy") },
+               .confirmMerge, delivers: .merge(["B", "A"]), using: idle.reducer) {
+            $0.phase = .runningMerge
+            $0.failure = nil
+        }
+        #expect(idle.asked == 1)
+    }
+
+    @Test func S7_mergingAnywayAfterTheWarning() {
+        let idle = IdleSpy(answer: true)
+        assert(listed { $0.phase = .warnedFarApart; $0.mergeSelection = ["A", "C"] }, .mergeAnyway, delivers: .merge(["C", "A"]), using: idle.reducer) {
+            $0.phase = .runningMerge
+        }
+        #expect(idle.asked == 1)
+        assert(listed { $0.phase = .merging; $0.mergeSelection = ["A", "C"] }, .mergeAnyway, delivers: nil, using: idle.reducer)
+        #expect(idle.asked == 1)
+    }
+
+    @Test func S6_theWarningDoesNotAskTheIdleQuery() {
+        let idle = IdleSpy(answer: true)
+        assert(listed { $0.phase = .merging; $0.mergeSelection = ["A", "C"] }, .confirmMerge, delivers: nil, using: idle.reducer) {
+            $0.phase = .warnedFarApart
+        }
+        #expect(idle.asked == 0)
+    }
+
+    @Test func S9_confirmingWhileBusyIsRefused() {
+        let idle = IdleSpy(answer: false)
+        assert(listed { $0.phase = .merging; $0.mergeSelection = ["A", "B"] }, .confirmMerge, delivers: nil, using: idle.reducer) {
+            $0.failure = .init(id: nil, reason: "Audelin is busy")
+        }
+        #expect(idle.asked == 1)
+        #expect(idle.busyAsked == 1)
+    }
+
+    @Test func S13_mergingAnywayWhileBusyIsRefused() {
+        let idle = IdleSpy(answer: false)
+        assert(listed { $0.phase = .warnedFarApart; $0.mergeSelection = ["A", "C"] }, .mergeAnyway, delivers: nil, using: idle.reducer) {
+            $0.phase = .merging
+            $0.failure = .init(id: nil, reason: "Audelin is busy")
+        }
+        #expect(idle.asked == 1)
+    }
+
+    @Test func aMergeDoesNotStartWhileStopping() {
+        assert(listed { $0.phase = .merging; $0.mergeSelection = ["A", "B"]; $0.stopping = true }, .confirmMerge, delivers: nil) {
+            $0.failure = .init(id: nil, reason: "busy")
+        }
+    }
+
+    @Test func S10_aMergedCallIsSelected() {
+        assert(listed { $0.phase = .runningMerge; $0.mergeSelection = ["A", "B"] }, .merged("A"), delivers: .list) {
+            $0.phase = .idle
+            $0.mergeSelection = []
+            $0.mergedCallID = "A"
+            $0.isListing = true
+        }
+        assert(listed { $0.phase = .merging }, .merged("A"), delivers: nil)
+    }
+
+    @Test func S11_aFailedMergeIsNamed() {
+        assert(listed { $0.phase = .runningMerge; $0.mergeSelection = ["A", "B"] }, .mergeFailed("disk full"), delivers: nil) {
+            $0.phase = .merging
+            $0.failure = .init(id: nil, reason: "disk full")
+        }
+        assert(listed { $0.phase = .merging }, .mergeFailed("disk full"), delivers: nil)
+    }
+
+    @Test func enteringMergeModeForgetsTheLastMergedCall() {
+        assert(listed { $0.mergedCallID = "A" }, .enterMergeMode, delivers: nil) {
+            $0.phase = .merging
+            $0.mergedCallID = nil
+        }
+    }
+
+    @Test func nothingElseStartsWhileAMergeRuns() {
+        let running = listed { $0.phase = .runningMerge; $0.mergeSelection = ["A", "B"] }
+        for event: RecordingsEvent in [.enterMergeMode, .leaveMergeMode, .toggleMergeSelection("C"), .confirmMerge, .refresh, .askDelete("C")] {
+            assert(running, event, delivers: nil)
+        }
+    }
+
     @Test(arguments: [
         (["A", "B"], false), (["A", "C"], true), (["C", "B", "A"], false), (["A"], false), ([], false), (["A", "Z"], false),
     ] as [([String], Bool)])

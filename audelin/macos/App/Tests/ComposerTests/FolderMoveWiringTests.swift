@@ -282,6 +282,7 @@ private actor CallsMoveSpy: RecordingsCalls {
     func list() -> [RecordedCall] { listings += 1; return [.init(id: "fresh", title: "Fresh", start: .distantPast, duration: nil)] }
     func rename(id: String, title: String) { Issue.record("Unexpected rename") }
     func delete(id: String) { Issue.record("Unexpected delete") }
+    func merge(ids: [String]) -> String { Issue.record("Unexpected merge"); return "" }
 }
 
 private struct MoveFailure: LocalizedError { var errorDescription: String? { "disk" } }

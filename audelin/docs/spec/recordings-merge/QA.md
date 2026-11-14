@@ -35,7 +35,9 @@ not called. Evidence: `RecordingsMergeTests.S4_fewerThanTwoCallsDoNotMerge()`.
 ## S-5 Neighbouring calls merge
 
 Merge mode with neighbours A and B, confirm, idle: merging A and B, effect
-merge. The handler asks the port for A and B.
+merge. The handler asks the port for A and B. Evidence:
+`RecordingsMergeTests.S5_neighbouringCallsMerge()` and
+`RecordingsMergeEffectTests.S5_theHandlerAsksThePortForTheCallsAndDeliversTheMergedCall()`.
 
 ## S-6 Far-apart calls ask again
 
@@ -43,12 +45,13 @@ Merge mode with A and C, B between them in the full list, confirm: warned,
 no effect. With a search hiding B the result is the same. Evidence:
 `RecordingsMergeTests.S6_farApartCallsAskAgain()`; the rule reads only the
 whole list, which a search does not change:
-`callsAreFarApartWhenAnUnselectedCallLiesBetween(_:_:)`.
+`callsAreFarApartWhenAnUnselectedCallLiesBetween(_:_:)`; the query is not
+asked: `S6_theWarningDoesNotAskTheIdleQuery()`.
 
 ## S-7 Merging anyway after the warning
 
 Warned about A and C, merge anyway with the query answering idle: merging A
-and C, effect merge.
+and C, effect merge. Evidence: `RecordingsMergeTests.S7_mergingAnywayAfterTheWarning()`.
 
 ## S-8 Going back after the warning
 
@@ -59,16 +62,21 @@ and `theWarningTakesNoSelectionChange()`.
 ## S-9 Confirming while busy is refused
 
 Merge mode with A and B, confirm, query answering busy: merge mode with the
-busy reason, no effect.
+busy reason, no effect. Evidence:
+`RecordingsMergeTests.S9_confirmingWhileBusyIsRefused()`.
 
 ## S-10 A merged call is selected
 
-Merging A and B, merged as M: idle with M selected, effect list.
+Merging A and B, merged as M: idle with M selected, effect list. Evidence:
+`RecordingsMergeTests.S10_aMergedCallIsSelected()`,
+`enteringMergeModeForgetsTheLastMergedCall()` and
+`nothingElseStartsWhileAMergeRuns()`.
 
 ## S-11 A failed merge is named
 
 Merging A and B, failed with a reason: merge mode with A and B and the
-reason, no effect.
+reason, no effect. Evidence: `RecordingsMergeTests.S11_aFailedMergeIsNamed()`
+and `RecordingsMergeEffectTests.S11_theHandlerDeliversWhyAMergeFailed()`.
 
 ## S-12 Leaving merge mode
 
@@ -80,4 +88,5 @@ action starts in merge mode: `noOtherActionStartsInMergeMode()`.
 ## S-13 Merging anyway while busy is refused
 
 Warned about A and C, merge anyway with the query answering busy: merge
-mode with A and C and the busy reason, no effect. Evidence: Missing.
+mode with A and C and the busy reason, no effect. Evidence:
+`RecordingsMergeTests.S13_mergingAnywayWhileBusyIsRefused()`.
