@@ -1,7 +1,7 @@
 # Transcript join — QA
 
 Unit tests over rows of a test type carrying a marker, so pass-through is
-read back exactly. A row without evidence is Missing.
+read back exactly.
 
 ## S-1 Parts join in time order
 
@@ -36,4 +36,5 @@ A at 10:00 lasting 12 min, B at 10:10: a gap of 0 s at 720 s. Evidence:
 
 A and B each with speaker 1, named Anna and Boris: the joined rows carry
 two distinct keys, and the joined names give Anna for A's and Boris for
-B's. Evidence: Missing.
+B's; a row without a speaker keeps none. Evidence:
+`TranscriptJoinTests.theSameSpeakerKeyInTwoPartsIsTwoSpeakers()`.
