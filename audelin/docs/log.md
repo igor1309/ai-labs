@@ -2,6 +2,7 @@
 
 ## 2026-11-14
 
+- LAB-1466: One state machine per recording names the far-side rows from Zoom's Talking indicator or the browser extension and confirms them after the call; the panel and the transcript take their names from it.
 - LAB-1462: One state machine makes each recording's transcript final: diarized, cleaned and committed, or kept as written. On quit, a call still being cleaned gets its notes from the transcript as written, and quit waits only for transcript files still being replaced.
 - LAB-1461: A calls-storage component keeps the record of call moves and folder ownership and refuses to touch a call while a move is half finished; the calls list reloads after a failed rename or delete and skips calls already in a chosen folder.
 - LAB-1457: Every Monday a Developer ID signed, notarized Audelin is published to the releases of the public igor1309/audelin repository, when the app changed since the last one.
