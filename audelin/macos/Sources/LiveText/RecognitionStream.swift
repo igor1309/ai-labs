@@ -166,11 +166,20 @@ public actor RecognitionStream {
     }
 
     private let recognizerSource: @Sendable () async throws -> any Recognizer
+    /// The last interval sent to the recogniser, with the reply it is owed.
+    private struct Accepted {
+
+        let audio: Audio
+        let reply: Reply
+    }
+
     private var loading: (load: Load, task: Task<Void, Never>)?
     private var listening: Listening?
     private var finalText: [Segment] = []
     private var tail: [Segment] = []
     private var noTextBefore: Double?
+    private var accepted: Accepted?
+    private var appliedReply: Reply?
 
     public init(recognizerSource: @escaping @Sendable () async throws -> any Recognizer) {
 
@@ -198,10 +207,13 @@ public actor RecognitionStream {
         finalText = []
         tail = []
         noTextBefore = nil
+        appliedReply = nil
         let live = LiveText(recognizer: recognizer)
         let source = AsyncStream<AudioChunk>.makeStream()
         let task = Task { @concurrent in await live.listen(to: Source(stream: source.stream)) }
         let requests = AsyncStream<Reply>.makeStream()
+        // The session owns replies: cancelling a caller leaves its accepted
+        // interval's update for the replay of that interval.
         let reading = Task { @concurrent in
             var updates = live.updates.makeAsyncIterator()
             for await reply in requests.stream {
@@ -214,14 +226,29 @@ public actor RecognitionStream {
         )
     }
 
-    /// Hears the next interval and returns the text so far.
+    /// Hears the next interval and returns the text so far. An interval
+    /// may repeat audio already accepted, as a replay after a cancelled hear
+    /// does: only the part after the accepted audio is heard.
     public func hear(_ audio: Audio) async throws -> Update {
 
         try Task.checkCancellation()
         guard let listening else { throw Failure.notPrepared }
+        var lower = 0
+        if let accepted {
+            let text = try await nextUpdate(accepted.reply)
+            lower = Int(min(Double(audio.samples.count), max(
+                0, ((accepted.audio.end - audio.start) * audio.sampleRate).rounded()
+            )))
+            if lower == audio.samples.count { return text }
+        }
+        let unheard = Audio(
+            start: audio.start + Double(lower) / audio.sampleRate,
+            samples: Array(audio.samples[lower...]), sampleRate: audio.sampleRate
+        )
         let reply = Reply()
+        accepted = Accepted(audio: unheard, reply: reply)
         listening.requests.yield(reply)
-        listening.source.yield(AudioChunk(samples: audio.samples, sampleRate: audio.sampleRate))
+        listening.source.yield(AudioChunk(samples: unheard.samples, sampleRate: unheard.sampleRate))
         return try await nextUpdate(reply)
     }
 
@@ -231,9 +258,10 @@ public actor RecognitionStream {
         try Task.checkCancellation()
         guard let session = listening else { throw Failure.notPrepared }
         session.source.finish()
-        defer { listening = nil }
+        defer { listening = nil; accepted = nil }
         return try await withTaskCancellationHandler {
             do {
+                if let accepted { _ = try await nextUpdate(accepted.reply) }
                 let reply = Reply()
                 session.requests.yield(reply)
                 let text = try await nextUpdate(reply)
@@ -255,6 +283,7 @@ public actor RecognitionStream {
 
         guard let session = listening else { return }
         listening = nil
+        accepted = nil
         await session.stop().value
         await session.join()
     }
@@ -267,12 +296,18 @@ public actor RecognitionStream {
         do {
             guard let update else { throw Failure.updatesEnded }
             guard update.ending != .failed else { throw Failure.updateFailed }
-            try apply(update)
+            // An accepted interval is read again before the next one and
+            // after a cancelled wait; its update is applied only once.
+            if appliedReply !== reply {
+                try apply(update)
+                appliedReply = reply
+            }
             return Update(final: finalText, tail: tail, noTextBefore: noTextBefore)
         } catch {
             session.stop()
             await session.join()
             listening = nil
+            accepted = nil
             throw error
         }
     }

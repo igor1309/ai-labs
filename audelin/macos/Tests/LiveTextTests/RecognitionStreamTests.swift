@@ -106,6 +106,55 @@ struct RecognitionStreamTests {
         #expect(source.loads == 1)
     }
 
+    @Test func aReplayAfterACancelledHearReturnsTheAcceptedUpdate() async throws {
+
+        let recognizer = HeldRecognizer(ScriptRecognizer([.init(words: [first])]))
+        let stream = RecognitionStream(recognizerSource: { recognizer })
+        try await stream.prepare()
+        let cancelled = Task { try await stream.hear(audio(0)) }
+        await recognizer.heard()
+
+        cancelled.cancel()
+        await #expect(throws: CancellationError.self) { try await cancelled.value }
+        recognizer.release()
+        let replay = try await stream.hear(audio(0))
+
+        #expect(replay.tail.map(\.words) == [[first]])
+        #expect(await recognizer.base.chunks == [[0]])
+    }
+
+    @Test func aReplayHearsOnlyAudioAfterTheAccepted() async throws {
+
+        let recognizer = ScriptRecognizer([.init(words: [first]), .init(words: [first, draft])])
+        let stream = RecognitionStream(recognizerSource: { recognizer })
+        try await stream.prepare()
+        _ = try await stream.hear(.init(start: 0, samples: [0, 1], sampleRate: 1))
+
+        let inside = try await stream.hear(.init(start: 0, samples: [0, 1], sampleRate: 1))
+        let overlapping = try await stream.hear(.init(start: 1, samples: [1, 2, 3], sampleRate: 1))
+
+        #expect(inside.tail.map(\.words) == [[first]])
+        #expect(overlapping.tail.map(\.words) == [[first], [draft]])
+        #expect(await recognizer.chunks == [[0, 1], [2, 3]])
+    }
+
+    @Test func finishAfterACancelledHearKeepsItsText() async throws {
+
+        let recognizer = HeldRecognizer(ScriptRecognizer([.init(words: [first])], finishing: .init(words: [first])))
+        let stream = RecognitionStream(recognizerSource: { recognizer })
+        try await stream.prepare()
+        let cancelled = Task { try await stream.hear(audio(0)) }
+        await recognizer.heard()
+        cancelled.cancel()
+        _ = try? await cancelled.value
+        recognizer.release()
+
+        let ending = try await stream.finish()
+
+        #expect(ending.final.map(\.words) == [[first]])
+        #expect(await recognizer.base.chunks == [[0]])
+    }
+
     @Test func shutdownEndsTheSessionWithoutAnotherUpdate() async throws {
 
         let recognizer = ScriptRecognizer([.init(words: [first])])
@@ -204,6 +253,30 @@ private final class GatedSource: Sendable {
     }
 
     func started() async { for await _ in calls.stream { break } }
+
+    func release() { gate.continuation.yield(); gate.continuation.finish() }
+}
+
+/// Holds its first hearing until released.
+private final class HeldRecognizer: Recognizer {
+
+    let base: ScriptRecognizer
+    private let gate = AsyncStream<Void>.makeStream()
+    private let calls = AsyncStream<Void>.makeStream()
+
+    init(_ base: ScriptRecognizer) { self.base = base }
+
+    func hear(_ chunk: AudioChunk) async throws -> Hearing {
+
+        let hearing = try await base.hear(chunk)
+        calls.continuation.yield()
+        for await _ in gate.stream { break }
+        return hearing
+    }
+
+    func finish() async throws -> Hearing { await base.finish() }
+
+    func heard() async { for await _ in calls.stream { break } }
 
     func release() { gate.continuation.yield(); gate.continuation.finish() }
 }
