@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createSecretScanner } from '../secret-scanner.js';
@@ -52,3 +53,27 @@ for (const stage of ['success', 'missing scanner', 'secret']) {
     assert.equal(readFileSync(join(directory, '.gitleaksignore'), 'utf8'), exportedIgnore);
   });
 }
+
+test('a reviewed public value is ignored by its fingerprint alone, and only while its line is unchanged', (t) => {
+  const base = mkdtempSync(join(tmpdir(), 'showcase-scanner-test-'));
+  t.after(() => rmSync(base, { recursive: true, force: true }));
+  const directory = join(base, 'snapshot');
+  mkdirSync(join(directory, 'extension'), { recursive: true });
+  const line = '  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA",';
+  writeFileSync(join(directory, 'extension', 'manifest.json'), `{\n${line}\n}\n`);
+  const reviewed = [{ finding: 'extension/manifest.json:generic-api-key:2',
+    line_sha256: createHash('sha256').update(line).digest('hex') }];
+  const ignored = [];
+  const scanDirectory = createSecretScanner({ tempRoot: base, run: (command, args) => {
+    if (args[0] === 'dir') ignored.push(readFileSync(args[args.indexOf('--gitleaks-ignore-path') + 1], 'utf8'));
+    return Buffer.alloc(0);
+  } });
+
+  scanDirectory(directory, reviewed);
+  assert.deepEqual(ignored, [`${join(directory, 'extension', 'manifest.json')}:generic-api-key:2\n`]);
+
+  writeFileSync(join(directory, 'extension', 'manifest.json'), `{\n${line.replace('MIIB', 'MIIC')}\n}\n`);
+  assert.throws(() => scanDirectory(directory, reviewed), /public_value extension\/manifest.json:generic-api-key:2 no longer matches/);
+  assert.throws(() => scanDirectory(directory, [{ ...reviewed[0], finding: 'extension/missing.json:generic-api-key:2' }]), /no longer matches/);
+  assert.equal(ignored.length, 1);
+});

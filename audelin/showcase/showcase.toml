@@ -1,8 +1,8 @@
 repo = "igor1309/audelin"
 description = "A local macOS call recorder with a selectable live transcript, built with Swift."
 homepage = "https://github.com/igor1309/audelin"
-topics = ["swift", "macos", "speech-recognition", "core-audio", "on-device"]
-check = "cd macos && swift build --build-tests && swift test && cd App && swift build --build-tests && swift test"
+topics = ["swift", "macos", "speech-recognition", "core-audio", "on-device", "chrome-extension"]
+check = "cd extension && npm ci && npm test && cd ../macos && swift build --build-tests && swift test && cd App && swift build --build-tests && swift test"
 
 include = [
   "macos/Package.swift",
@@ -16,9 +16,28 @@ include = [
   "macos/App/AppIcon/**",
   "macos/App/Audelin.entitlements",
   "macos/scripts/bundle.sh",
+  "macos/Vendor/FluidAudio/**",
+  "THIRD-PARTY-NOTICES.md",
   "macos/PreviewApps/Package.swift",
   "macos/PreviewApps/Package.resolved",
   "macos/PreviewApps/Sources/**",
   "macos/PreviewApps/Tests/**",
+  "extension/manifest.json",
+  "extension/package.json",
+  "extension/package-lock.json",
+  "extension/scripts/**",
+  "extension/src/**",
+  "extension/tests/**",
 ]
 exclude = ["macos/App/Sources/**/README.md"]
+
+# The extension's public key: Chrome derives the fixed extension ID from it,
+# and the app's native host accepts only that ID. It is not a secret.
+[[public_value]]
+finding = "extension/manifest.json:generic-api-key:6"
+line_sha256 = "6a4a736dc32af3820f9e5b7b2460434b470e6270d4787b680a49b11c01f6cfbb"
+
+# An upstream FluidAudio comment names its author's local results folder.
+[[allow_marker]]
+marker = "/Users/"
+paths = ["macos/Vendor/FluidAudio/Sources/FluidAudio/Shared/MLModelConfigurationUtils.swift"]
