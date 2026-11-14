@@ -57,7 +57,7 @@ Feature: Merging calls
     Then I am warned before the merge port is asked
 
   Scenario: S-7 Merging anyway after the warning
-    Given I was warned that the selected calls are far apart
+    Given I was warned that the selected calls are far apart, and Audelin is idle
     When I merge them anyway
     Then the merge port is asked to merge those calls
 
@@ -85,4 +85,9 @@ Feature: Merging calls
     Given merge mode with calls selected
     When I leave merge mode
     Then no call is selected for merging and other actions can start
+
+  Scenario: S-13 Merging anyway while busy is refused
+    Given I was warned that the selected calls are far apart, and Audelin is no longer idle
+    When I merge them anyway
+    Then nothing is asked of the merge port, the calls stay selected and I can tell that Audelin is busy
 ```
