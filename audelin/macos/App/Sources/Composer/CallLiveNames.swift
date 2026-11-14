@@ -3,18 +3,6 @@ import CallObservation
 import SpeakerNaming
 import ZoomAccessibility
 
-/// The local socket the Audelin browser extension's native host connects to,
-/// opened for one recording: the connections it accepts, and a way to close
-/// it.
-public struct BrowserChannel: Sendable {
-    public var connections: AsyncStream<BrowserConnection>
-    public var stop: @Sendable () -> Void
-
-    public init(connections: AsyncStream<BrowserConnection>, stop: @escaping @Sendable () -> Void) {
-        self.connections = connections; self.stop = stop
-    }
-}
-
 /// Gives remote rows tentative names during one recording, from what the call
 /// app shows: Zoom's "Talking" indicator, polled when Accessibility is already
 /// granted, and the browser extension's roster and speaking events, when its
