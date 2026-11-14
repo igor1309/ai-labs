@@ -30,9 +30,12 @@ transcript's Markdown. It knows no disk.
   follows is rendered again, and the rendering tells how much of it is
   final, which the transcript file may keep on disk. A replaced transcript
   after the call is a new rendering from nothing.
-- **Reading gives back each part with words as rendered:** its label, its
-  start in whole seconds and its words, every line up to the next part.
-  Text before the first part and the Speakers section are skipped.
+- **Reading gives back what rendering needs to render it again:** each part
+  with words, its side, speaker, start in whole seconds, filled-in mark and
+  words, each gap, and the speakers' names, so a merge renders a saved part
+  again as it was. Text before the first part is skipped.
+- **A gap is a row of its own** at its time, saying how long the call was
+  cut off; it has no side and no words, and reads back as a gap.
 - **A failed rendering keeps the final text:** it is told, and the final
   text rendered before stays, so the next rendering goes on from it.
 
@@ -86,7 +89,11 @@ Feature: Rendering a call's transcript
     Then I can tell the speakers apart, and read each one's current name after the text
 
   Scenario: S-11 A rendered transcript reads back
-    Given a transcript I rendered, with named speakers
-    When I read it back
-    Then I can tell each part's speaker, time and words, in order
+    Given a transcript I rendered, with named speakers, a gap and filled-in text
+    When I read it back and render what I read
+    Then I can read the same transcript
+
+  Scenario: S-12 A gap reads as the call cut off
+    When I render text with a gap of two minutes
+    Then I can read at its time that the call was cut off for two minutes
 ```

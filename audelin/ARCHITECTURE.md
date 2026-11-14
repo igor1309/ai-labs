@@ -117,6 +117,8 @@ It subscribes SummaryJobs to TranscriptFinalization's final transcripts
 to CallsStorage's transaction state.
 On quit, SummaryJobs stops dispatch and shuts down once TranscriptFinalization
 has settled, so the last final transcripts reach it first (Shutdown).
+Root storage integration coordinates publication with call rename, deletion,
+merging and calls-folder moves.
 
 ## Shutdown
 
@@ -176,6 +178,71 @@ actions to SummaryJobs, whose work continues when another call is selected.
 CallDetail only decides what the selected call shows; its effect handler
 reads notes and never starts, cancels or retries their generation. Calls
 lists folders and reads transcripts through Transcript format.
+
+## Merging calls
+
+The user merges calls that were one call, from the calls list, while
+Audelin is idle. Four responsibilities are new: the merge as the user
+drives it (merge mode, the selection, the far-apart warning, the outcome);
+joining transcripts; laying the merged call out on disk; and telling the
+rest of Audelin that a merge happened.
+
+**The merge is part of Recordings,** the calls list's machine, not a
+machine of its own. Rename, delete, a folder move and a merge all act on
+the listed call folders and must exclude one another; one state holds them,
+so no second machine has to read Recordings' phase or wait for it. Merge
+mode, the selected calls, the warning and the failure's reason are in its
+state; whether a selection is far apart is a pure rule over the list it
+already holds. It owns one new port: merge these calls, reporting merged
+or why not. The calls list and the calls window's toolbar draw merge mode
+and send its events; they decide nothing.
+
+**Idleness reaches Recordings as a dependency of its reducer:** an "is
+Audelin idle?" query, asked when merge mode is entered and when a merge is
+confirmed. The composition answers it from what it already knows: a call
+recording, a transcript being finished (bleed cleanup included) and notes
+being made. Idle is checked at those two moments, not held for the merge: a
+recording that starts during a merge goes to a new folder of its own and
+never touches the selected calls, so nothing is blocked or refused.
+
+**Transcript join** is a plain component and an operator in the sense of
+the transcript pipeline: given each part's start and rows, it puts them in
+time order on the merged call's clock and puts a gap between parts. It
+reads only times and speaker keys, giving each part's speakers a key of
+that part so two parts' speakers are never taken for one; it keeps no
+state and owns no ports. **Transcript format**,
+the format's one writer and reader, gains a gap row, and reads a saved
+transcript back as fully as it writes it, so a part's rows are written
+again as they were.
+
+**Calls owns the layout.** The merged call is a call folder named as the
+earliest part, so it keeps that part's id, start and title, and holds the
+joined transcript beside the parts' folders, moved inside it whole and
+unchanged, audio included. The list shows only top-level call folders, so
+the parts leave it and the merged call takes their place; rename, delete,
+search and a folder move treat it as any call. Calls arranges the folders
+whole or not at all, and recovers an interrupted merge as it recovers an
+interrupted move, so a failure leaves every part where it was. It reads a
+merged call's duration from its parts' tracks. Transcript file writes the
+joined transcript's bytes, never over a file.
+
+**The root answers the merge port** by chaining them: Calls reads each
+part's transcript, Transcript format reads it back, Transcript join joins,
+Transcript format renders, Transcript file writes into a folder not yet
+listed, and Calls arranges the folders. Its storage integration, as for
+delete, drops what the notes side holds for the parts.
+
+**The merged call's notes are made as an ended call's are.** On the merge
+outcome the root submits the joined transcript to Summaries, as it does when
+a recording's transcript closes. Recordings selects the merged row, and that
+selection, as any other, tells CallDetail what to show; CallDetail and
+Summaries keep their own responsibilities and stay connected by the app's
+subscriptions. The parts' own notes stay inside their folders and are not
+shown.
+
+The root constructs Transcript join and the merge port's chain with the
+rest of the calls window's composition, and holds them as long as it holds
+Recordings.
 
 ## Transcript pipeline
 

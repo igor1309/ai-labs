@@ -41,6 +41,7 @@ public final class AudelinCalls {
     /// Each call's gist, read with its notes.
     private var gists: [String: String] = [:]
     private var notesScan: Task<Void, Never>?
+    private var mergeFollow: Task<Void, Never>?
 
     private let retryableSummaries: () -> Set<String>
     private let retrySummary: (String) async throws -> Void
@@ -187,6 +188,15 @@ public final class AudelinCalls {
     var recordingsState: RecordingsState { inputs.state() }
     /// No folder move, delete or rename is under way or waiting on an answer.
     var idle: Bool { inputs.state().phase == .idle && editing == nil && !opening }
+    /// The toolbar's merge control: enters merge mode, or leaves it while choosing.
+    public func toggleMergeMode() {
+        if inputs.state().phase == .merging { inputs.send(.leaveMergeMode) } else { sendRecordings(.enterMergeMode) }
+    }
+    /// Whether the toolbar's merge control acts now, and whether it reads as leaving merge mode.
+    public var mergeControl: (enabled: Bool, merging: Bool) {
+        let phase = inputs.state().phase
+        return (phase == .idle || phase == .merging, phase == .merging || phase == .warnedFarApart || phase == .runningMerge)
+    }
     func sendRecordings(_ event: RecordingsEvent) {
         recordingChanged(recordingState())
         inputs.send(event)
@@ -203,6 +213,7 @@ public final class AudelinCalls {
         inputs.send(.refresh)
         present()
         scanNotes()
+        followMerges()
     }
 
     /// The calls window became narrow or wide: below the width for the call beside the list,
@@ -215,6 +226,24 @@ public final class AudelinCalls {
     public func windowClosed() {
         notesScan?.cancel()
         notesScan = nil
+        mergeFollow?.cancel()
+        mergeFollow = nil
+    }
+
+    /// Selects the call a merge made, so the detail reads it as any selected call.
+    private func followMerges() {
+        mergeFollow?.cancel()
+        mergeFollow = Task {
+            var seen = inputs.state().mergedCallID
+            for await merged in Observations({ self.inputs.state().mergedCallID }) {
+                defer { seen = merged }
+                guard let id = merged, id != seen else { continue }
+                commitRename()
+                selectedID = id
+                selectDetail()
+                detailModel.event(.notesChanged(id: id))
+            }
+        }
     }
 
     /// Finds which listed calls have notes, and each one's gist, as the listing or summary status changes
@@ -341,6 +370,11 @@ public final class AudelinCalls {
             selectedID = id
             selectDetail()
         case let .search(text): search(text)
+        case let .toggleMark(id): inputs.send(.toggleMergeSelection(id))
+        case .confirmMerge: inputs.send(.confirmMerge)
+        case .leaveMerge: inputs.send(.leaveMergeMode)
+        case .mergeAnyway: inputs.send(.mergeAnyway)
+        case .goBackFromWarning: inputs.send(.goBackFromWarning)
         case .selectNext: commitRename(); move(by: 1, in: snapshot.rows)
         case .selectPrevious: commitRename(); move(by: -1, in: snapshot.rows)
         case let .read(id):
@@ -394,9 +428,22 @@ func callsListState(_ state: RecordingsState, timeZone: TimeZone, now: Date, tex
     switch state.phase {
     case .idle: busy = false; deleteID = nil
     case let .askingDelete(id): busy = false; deleteID = id
+    case .merging, .warnedFarApart, .runningMerge: busy = false; deleteID = nil
     default: busy = true; deleteID = nil
     }
     let format = CallsListFormat(timeZone: timeZone, text: text)
+    let merge: CallsListState.Merge?
+    switch state.phase {
+    case .merging: merge = .init(marked: state.mergeSelection)
+    case .runningMerge: merge = .init(marked: state.mergeSelection, running: true)
+    case .warnedFarApart:
+        // The calls arrive newest first, so the earliest marked call is the last one.
+        let marked = state.calls.filter { state.mergeSelection.contains($0.id) }
+        let name = { (call: RecordedCall) in call.title.isEmpty ? format.stamp(call.start) : call.title }
+        merge = .init(marked: state.mergeSelection,
+                      warning: marked.last.flatMap { earliest in marked.first.map { latest in text(.mergeWarningBody, name(earliest), name(latest)) } })
+    default: merge = nil
+    }
     let days = state.calls.map { format.day($0.start, now: now) }
     return CallsListState(rows: state.calls.indices.map { index in
         let call = state.calls[index], day = days[index]
@@ -408,5 +455,5 @@ func callsListState(_ state: RecordingsState, timeZone: TimeZone, now: Date, tex
         text(.deleteBody, call.id + (call.title.isEmpty ? "" : " " + call.title))
     }, busy: busy || state.isListing, failure: state.failure.map { failure in
         (failure.id.map { "«\($0)»: " } ?? "") + failure.reason
-    })
+    }, merge: merge)
 }
