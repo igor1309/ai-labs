@@ -25,14 +25,11 @@ struct CallNotesInteractionTests {
         #expect(events.isEmpty)
     }
 
-    @Test func tabsAndActionsSendEventsWithoutChangingTheRenderedState() throws {
+    @Test func actionsSendEventsWithoutChangingTheRenderedState() throws {
         var events: [SettingsEvent] = []
         let host = try host("off") { events.append($0) }
-        #expect(try button("tab-callNotes", in: host).accessibilityLabel() == "Итоги звонков")
         for (id, expected) in [
-            ("tab-recording", SettingsEvent.selectTab(.recording)),
-            ("tab-callNotes", .selectTab(.callNotes)),
-            ("notes-automatic", .setAutomaticNotes(true)),
+            ("notes-automatic", SettingsEvent.setAutomaticNotes(true)),
             ("notes-speakers", .setIdentifySpeakers(true)),
             ("notes-validate", .notesAction(.validate)),
             ("notes-save", .notesAction(.save)),
@@ -43,7 +40,7 @@ struct CallNotesInteractionTests {
             control.performClick(nil)
             #expect(events.last == expected)
         }
-        #expect(events.count == 6)
+        #expect(events.count == 4)
         #expect(try button("notes-automatic", in: host).state == .off)
         #expect(try button("notes-speakers", in: host).state == .off)
     }
@@ -102,7 +99,7 @@ struct CallNotesInteractionTests {
         #expect(Offscreen.textFields(in: host).isEmpty)
         #expect(descendants(host, of: NSPopUpButton.self).isEmpty)
         #expect(descendants(host, of: NSButton.self).allSatisfy {
-            ["tab-general", "tab-recording", "tab-callNotes", "notes-retryLoad"].contains($0.accessibilityIdentifier() ?? "")
+            ["notes-retryLoad"].contains($0.accessibilityIdentifier() ?? "")
         })
     }
 
