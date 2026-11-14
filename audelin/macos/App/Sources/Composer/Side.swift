@@ -13,17 +13,8 @@ import struct SideText.FilledText
 import protocol SideText.LiveAudio
 import protocol SideText.LiveText
 import protocol SideText.FillingIn
+import LiveText
 import Synchronization
-
-protocol TextEngine: Sendable {
-
-    func prepare() async throws
-    func hear(_ audio: SideText.Audio) async throws -> TrackText.Update
-    func finish() async throws -> TrackText.Update
-    func shutdown() async
-}
-
-extension TrackText: TextEngine {}
 
 /// Connects a call side to its retained engine and a fresh fill-in on each switch.
 /// Without a written track, nothing missed can be filled in: switching on only
@@ -34,7 +25,7 @@ struct CallSide: CallText.Side {
 
     private let side: SideReader
 
-    init(audio: any SideText.LiveAudio, text: any TextEngine, written: (any FillIn.WrittenTrack)?, sampleRate: Double) {
+    init(audio: any SideText.LiveAudio, text: any TrackRecognition, written: (any FillIn.WrittenTrack)?, sampleRate: Double) {
 
         let audio = SideAudio(source: audio)
         let hearing = SideHearing(text: text)
@@ -109,50 +100,41 @@ private final class SideAudio: SideText.LiveAudio, FillIn.LiveAudioPosition, Sen
     }
 }
 
-actor SideHearing: SideText.LiveText {
+/// Gives side text the recognition stream's updates as its own.
+struct SideHearing: SideText.LiveText {
 
-    let text: any TextEngine
-    private var hearing: Task<TextUpdate<TranscriptSegment>, any Error>?
-
-    init(text: any TextEngine) { self.text = text }
+    let text: any TrackRecognition
 
     func hear(_ audio: SideText.Audio) async throws -> TextUpdate<TranscriptSegment> {
 
-        let text = text
-        let operation = Task {
-            let update = try await text.hear(audio)
-            return TextUpdate(final: update.final, tail: update.tail, noTextBefore: update.noTextBefore)
-        }
-        hearing = operation
-        defer { hearing = nil }
-        return try await withTaskCancellationHandler {
-            try await operation.value
-        } onCancel: { operation.cancel() }
+        Self.update(try await text.hear(.init(audio)))
     }
 
-    func cancelHearing() async {
+    func cancelHearing() async { await text.cancelHearing() }
 
-        hearing?.cancel()
-        _ = await hearing?.result
-    }
+    func finish() async throws -> TextUpdate<TranscriptSegment> { Self.update(try await text.finish()) }
 
-    func finish() async throws -> TextUpdate<TranscriptSegment> {
-
-        let update = try await text.finish()
-        return TextUpdate(final: update.final, tail: update.tail, noTextBefore: update.noTextBefore)
-    }
     func stop() async { await text.shutdown() }
+
+    static func update(_ update: RecognitionStream.Update) -> TextUpdate<TranscriptSegment> {
+
+        TextUpdate(
+            final: update.final.map(TranscriptSegment.init), tail: update.tail.map(TranscriptSegment.init),
+            noTextBefore: update.noTextBefore
+        )
+    }
 }
 
 private struct FillHearing: FillIn.LiveText {
 
-    let text: any TextEngine
+    let text: any TrackRecognition
 
     func prepare() async throws { try await text.prepare() }
 
     func hear(_ audio: FillIn.Audio) async throws -> [TranscriptSegment] {
 
-        try await text.hear(.init(start: audio.start, samples: audio.samples, sampleRate: audio.sampleRate)).all
+        let update = try await text.hear(.init(start: audio.start, samples: audio.samples, sampleRate: audio.sampleRate))
+        return (update.final + update.tail).map(TranscriptSegment.init)
     }
 }
 
@@ -161,7 +143,7 @@ private struct Filling: SideText.FillingIn {
     private let fill: FillReader
     private let sampleRate: Double
 
-    init(written: any FillIn.WrittenTrack, text: any TextEngine, audio: any FillIn.LiveAudioPosition, sampleRate: Double) {
+    init(written: any FillIn.WrittenTrack, text: any TrackRecognition, audio: any FillIn.LiveAudioPosition, sampleRate: Double) {
 
         fill = FillReader(written: written, text: FillHearing(text: text), audio: audio)
         self.sampleRate = sampleRate
@@ -189,7 +171,7 @@ private struct Filling: SideText.FillingIn {
 /// live text was switched off is lost, so live hearing then fails at its gap.
 private struct Preparing: SideText.FillingIn {
 
-    let text: any TextEngine
+    let text: any TrackRecognition
 
     func fillIn(from: Double, receive: @escaping @Sendable (FilledText<TranscriptSegment>) async -> Void) async throws {
 
@@ -206,5 +188,13 @@ private struct FillFailure: Error, CustomStringConvertible {
         switch failure {
         case .gettingReady(let message), .reading(let message), .hearing(let message): message
         }
+    }
+}
+
+private extension RecognitionStream.Audio {
+
+    init(_ audio: SideText.Audio) {
+
+        self.init(start: audio.start, samples: audio.samples, sampleRate: audio.sampleRate)
     }
 }

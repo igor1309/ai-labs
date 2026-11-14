@@ -1,7 +1,7 @@
-/// Turns a submission into a job from the notes preferences, and a stored call into a submission.
+/// Turns a submission into a job with whether notes are on, and a stored call into a submission.
 public protocol SummariesPreparation: Sendable {
-    /// The job for the submission, or none when notes are off and the user did not ask for them.
-    func job(for submission: SummariesSubmission) async -> Job?
+    /// The job for the submission, and whether notes are on at this moment.
+    func job(for submission: SummariesSubmission) async -> (job: Job, notesOn: Bool)
     /// The call's stored transcript as a submission the user asked for.
     func submission(call: String) async throws -> SummariesSubmission
 }
@@ -100,7 +100,8 @@ public struct SummariesEffectHandler: Sendable {
             do { return .recovered(call, try await records.load(call: call)) }
             catch { return .loadFailed(call) }
         case let .prepare(submission):
-            return .prepared(submission.call, await preparation.job(for: submission))
+            let prepared = await preparation.job(for: submission)
+            return .prepared(submission.call, prepared.job, notesOn: prepared.notesOn)
         case let .claim(job):
             do {
                 let result = try await claims.claim(job)

@@ -145,17 +145,33 @@ struct RecordingsMoveTests {
     @Test func stoppingDrainsAnAlreadyAcceptedMoveAndRejectsNewActions() {
         let moving = makeState { $0.phase = .moving; $0.move = plan(completed: [older]); $0.callsFolderAvailable = false }
         assert(moving, .stopActions, delivers: nil) { $0.stopping = true }
-        let stopped = makeState { $0.stopping = true }
+        let stopped = makeState { $0.stopping = true; $0.stopped = true }
         assert(stopped, .chooseFolder(destination), delivers: nil)
         assert(stopped, .rename(id: "A", title: "title"), delivers: nil)
-        let asking = makeState { $0.stopping = true; $0.phase = .askingMove; $0.move = plan() }
+        let asking = makeState { $0.stopping = true; $0.stopped = true; $0.phase = .askingMove; $0.move = plan() }
         assert(asking, .confirmMove, delivers: nil)
-        let deleting = makeState { $0.stopping = true; $0.phase = .askingDelete("A") }
+        let deleting = makeState { $0.stopping = true; $0.stopped = true; $0.phase = .askingDelete("A") }
         assert(deleting, .confirmDelete, delivers: nil)
         let draining = makeState { $0.stopping = true; $0.phase = .moving; $0.move = plan(completed: [older]); $0.callsFolderAvailable = false }
         assert(draining, .callMoved(id: newer.id, bytes: 7), delivers: .storeFolder(destination)) {
             $0.phase = .storingFolder; $0.move = plan(completed: [older, newer])
         }
+    }
+
+    @Test func stoppingWithNoMoveSettlesAtOnce() {
+        assert(makeState(), .stopActions, delivers: nil) { $0.stopping = true; $0.stopped = true }
+    }
+
+    @Test func stoppingSettlesWhenTheMoveReleasesTheFolder() {
+        let releasing = makeState { $0.stopping = true; $0.phase = .releasingMove; $0.move = plan(completed: [older, newer]); $0.callsFolderAvailable = false }
+        assert(releasing, .moveReleased, delivers: .list) {
+            $0.stopped = true; $0.callsFolderAvailable = true; $0.phase = .idle; $0.move = nil; $0.isListing = true
+        }
+    }
+
+    @Test func stoppingSettlesWhenTheMoveIsRefused() {
+        let reserving = makeState { $0.stopping = true; $0.phase = .reservingMove; $0.move = plan(); $0.callsFolderAvailable = false }
+        assert(reserving, .moveReserved(false), delivers: nil) { $0.stopped = true; $0.callsFolderAvailable = true; $0.phase = .refusedMove }
     }
 
     @Test(arguments: handlerCases)

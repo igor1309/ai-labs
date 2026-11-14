@@ -2,6 +2,7 @@ import class SavePacing.SavePacing
 import class CallAppProcesses.CallAppProcesses
 import CallFolder
 import Foundation
+import class LiveText.RecognitionStream
 import Session
 import TrackFile
 import TranscriptFile
@@ -213,7 +214,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
 
         guard let destination = sides[sessionSide], let file = destination.track else { return nil }
         let boundary = boundary
-        let adapter = TrackText(recognizerSource: { SignpostedRecognizer(base: BoundaryRecognizer(base: try await boundary.recognizers.recognizer(for: side)), intervals: boundary.intervals) })
+        let adapter = RecognitionStream(recognizerSource: { SignpostedRecognizer(base: BoundaryRecognizer(base: try await boundary.recognizers.recognizer(for: side)), intervals: boundary.intervals) })
         // A transient capture writes nothing, so its track would never cover what fill-in reads.
         let written = boundary.capturePersistence == .recorded ? WrittenTrack(track: file) : nil
         return CallSide(audio: destination.audio, text: adapter, written: written, sampleRate: TrackFile.sampleRate)

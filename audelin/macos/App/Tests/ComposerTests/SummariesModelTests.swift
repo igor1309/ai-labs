@@ -1,6 +1,7 @@
 import Calls
 import CallsListUI
-import Composer
+import CallsStorage
+@testable import Composer
 import Foundation
 import Preferences
 import SummaryFiles
@@ -11,7 +12,7 @@ import Testing
     @Test func aSubmissionRunsThroughFilesAndGenerationToPublishedNotes() async throws {
         let files = FilesFake()
         let sut = makeSUT(files)
-        sut.completed(call: "call", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)
+        sut.send(.finalized("call", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true, notesOn: true))
         try await waitUntil("notes are saved") { sut.state.calls["call"]?.stage == .succeeded }
         #expect(files.claimed.map(\.job) == ["job"])
         #expect(files.writes.contains { if case .publish(_, "notes") = $0 { true } else { false } })
@@ -55,10 +56,10 @@ import Testing
     }
     @Test func anEndedRecordingShowsWaitingUntilItsTranscriptArrives() async throws {
         let sut = makeSUT(FilesFake())
-        sut.waiting(call: "call")
+        sut.waiting(call: "call", notesOn: true)
         try await waitUntil("the call waits") { sut.statuses == ["call": CallsListText(language: .english)(.summaryWaiting)] }
         #expect(sut.badges == ["call": .pending])
-        sut.completed(call: "call", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)
+        sut.send(.finalized("call", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true, notesOn: true))
         try await waitUntil("notes are saved") { sut.state.calls["call"]?.stage == .succeeded }
     }
     @Test func forgetDropsASettledCall() async throws {
@@ -88,10 +89,33 @@ import Testing
         await sut.refresh()
         try await waitUntil("the call is reloaded") { sut.state.calls["call"]?.stage == .succeeded }
     }
-    @Test func shutdownReturnsOnceTheMachineHasEnded() async {
+    @Test func aWaitingCallIsDroppedWhenItsTranscriptArrivesWithNotesOff() async throws {
+        let sut = makeSUT(FilesFake(), notes: false)
+        sut.waiting(call: "call", notesOn: true)
+        try await waitUntil("the call waits") { sut.state.calls["call"]?.stage == .waiting }
+        sut.send(.finalized("call", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true, notesOn: true))
+        try await waitUntil("the call is dropped") { sut.state.calls["call"] == nil }
+        #expect(sut.statuses.isEmpty)
+    }
+    @Test func aCallsStorageTransactionHoldsPublicationUntilItEnds() async throws {
+        let files = FilesFake()
+        let sut = makeSUT(files)
+        let transactions = AsyncStream<CallsTransaction>.makeStream()
+        let subscription = subscribeTransactions(transactions.stream, to: sut)
+        defer { subscription.cancel() }
+        transactions.continuation.yield(.running)
+        try await waitUntil("the transaction is held") { sut.state.transaction }
+        sut.send(.finalized("call", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true, notesOn: true))
+        try await waitUntil("the notes wait") { sut.state.calls["call"]?.stage == .deferred }
+        #expect(!files.writes.contains { if case .publish = $0 { true } else { false } })
+        transactions.continuation.yield(.idle)
+        try await waitUntil("notes are saved") { sut.state.calls["call"]?.stage == .succeeded }
+        #expect(files.writes.contains { if case .publish(_, "notes") = $0 { true } else { false } })
+    }
+    @Test func shutdownReturnsOnceTheMachineHasSettled() async {
         let sut = makeSUT(FilesFake())
         await sut.shutdown()
-        #expect(sut.state.lifecycle == .ended)
+        #expect(sut.state.lifecycle == .settled)
     }
 
     private func makeSUT(_ files: FilesFake, notes: Bool = true, transcript: [Calls.Text.Line] = [], readFails: Bool = false) -> SummariesModel {

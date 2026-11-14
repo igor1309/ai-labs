@@ -21,11 +21,11 @@ import Testing
             try makeCall(root)
             let http = HeldHTTP()
             let owner = makeSUT(root, http: http), observer = makeSUT(root, http: http)
-            owner.completed(call: id, entries: [spoken], finalWrite: true, usable: true)
+            owner.send(.finalized(id, entries: [spoken], finalWrite: true, usable: true, notesOn: true))
             await http.started.next()
             do {
                 if recoverObserver { observer.recover(calls: [id]) }
-                else { observer.completed(call: id, entries: [.init(label: "B", time: "0", text: "competing")], finalWrite: true, usable: true) }
+                else { observer.send(.finalized(id, entries: [.init(label: "B", time: "0", text: "competing")], finalWrite: true, usable: true, notesOn: true)) }
                 await until(observer) { $0.calls[id]?.stage == .observed }
                 #expect(observer.statuses[id] == text.summariesStatus(.observed, false))
                 #expect(owner.busy && observer.busy)
@@ -73,7 +73,7 @@ import Testing
             try makeCall(root)
             let http = CleanupHTTP()
             let sut = makeSUT(root, http: http)
-            sut.completed(call: id, entries: [spoken], finalWrite: true, usable: true)
+            sut.send(.finalized(id, entries: [spoken], finalWrite: true, usable: true, notesOn: true))
             await http.started.next()
             let shutdown = Task { await sut.shutdown() }
             await http.cancelled.next()
@@ -93,7 +93,7 @@ import Testing
             let sut = makeSUT(root, http: UnusedHTTP())
             sut.recover(calls: [id])
             await until(sut) { $0.calls[id]?.stage == .failed }
-            sut.completed(call: id, entries: [spoken], finalWrite: true, usable: true)
+            sut.send(.finalized(id, entries: [spoken], finalWrite: true, usable: true, notesOn: true))
             // Shutdown returns once nothing is in flight, so the completion has been handled.
             await sut.shutdown()
             #expect(try Data(contentsOf: record) == corrupt)
@@ -159,7 +159,7 @@ import Testing
     @Test func statusesFollowTheLanguage() async throws {
         try await withComposeFolder { root in
             let sut = makeSUT(root, http: UnusedHTTP())
-            sut.waiting(call: "call")
+            sut.waiting(call: "call", notesOn: true)
             let russian = ["call": text.summariesStatus(.waiting, false)]
             for await value in sut.updates() where value == russian { break }
             var updates = sut.updates().makeAsyncIterator()
