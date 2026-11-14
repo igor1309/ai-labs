@@ -42,16 +42,11 @@ public final class SummariesModel {
     }
     /// Whether a job is being made or stored in this process, which an update must not cut short.
     public var busy: Bool { SummariesReducer.busy(model.state) }
-    /// What a recording session reports to the machine: an ended recording, then its transcript.
+    /// Marks the ended recording as waiting while notes are enabled.
     func callbacks(timeZone: TimeZone, notesOn: @escaping @Sendable () -> Bool) -> SummaryCallbacks {
         SummaryCallbacks(waiting: { [weak self] folder in
             guard notesOn(), let call = Calls.id(in: folder.lastPathComponent, timeZone: timeZone) else { return }
             await self?.waiting(call: call)
-        }, completed: { [weak self] folder, entries, finalWrite, usable in
-            guard let call = Calls.id(in: folder.lastPathComponent, timeZone: timeZone) else { return }
-            // Notes turned off while the call ended make none, so its waiting status goes.
-            guard notesOn() else { await self?.forget(call: call); return }
-            await self?.completed(call: call, entries: entries, finalWrite: finalWrite, usable: usable)
         })
     }
     /// Each call's calls list icon.

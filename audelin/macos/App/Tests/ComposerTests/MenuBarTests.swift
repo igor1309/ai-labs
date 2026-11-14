@@ -1,3 +1,4 @@
+import CallDiarizer
 import Composer
 import CoreAudioProcesses
 import Foundation
@@ -69,7 +70,7 @@ struct MenuBarTests {
                         }, ticks: panelClock.ticks), log: TestLogSink(), intervals: testIntervals,
                     recordings: FileRecordingStorage(), trash: removeForTrash, bleedCleaning: CleaningStub { _ in preconditionFailure("Live text is disabled") },
                     bleedHearing: HearingStub { _ in preconditionFailure("Live text is disabled") },
-                    transcripts: FileTranscriptStorage(diarizer: .unavailable),
+                    transcripts: FileTranscriptStorage(diarizer: CallDiarizer.unavailable),
                     preferredLanguages: { ["ru-RU"] }
                 )
                 let app = await compose(boundary: boundary, preferencesURL: root.appendingPathComponent("preferences.json"),

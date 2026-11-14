@@ -125,6 +125,7 @@ let package = Package(
                 .product(name: "TranscriptFormat", package: "macos"),
                 .product(name: "TranscriptFile", package: "macos"),
                 .product(name: "TranscriptWriting", package: "macos"),
+                .product(name: "TranscriptFinalization", package: "macos"),
                 .product(name: "SavePacing", package: "macos"),
                 .product(name: "Reading", package: "macos"),
                 .product(name: "PanelUI", package: "macos"),

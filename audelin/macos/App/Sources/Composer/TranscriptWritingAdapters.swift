@@ -22,20 +22,22 @@ struct WritingCallText: TranscriptWriting.CallText {
     func stop() async { await text.stop() }
 }
 
-/// A recording's transcript destination, kept open until its text has stopped.
-public protocol SessionTranscriptFile: Sendable {
-
+/// The file operations a recording and its finalization use.
+public protocol TranscriptWriter: Sendable {
     func write(_ state: CallState) async throws
-
     func close() async
+    func replaceWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) async throws
+}
 
-    /// After close: gives the far side to its diarized speakers and saves it in the file;
-    /// nil when there is no call track or the pass failed. The pass runs once; a later call
-    /// returns its result.
-    func attributeSpeakers() async -> AttributedFar?
+/// Open file handles and the pass that uses them; progress belongs to the finalization machine.
+public struct OpenedTranscript: Sendable {
+    let writer: any TranscriptWriter
+    let pass: AfterCallPass
+    let names: LiveNameBoard
 
-    /// Replaces the closed transcript atomically; a failure keeps its previous bytes.
-    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws
+    init(writer: any TranscriptWriter, pass: AfterCallPass, names: LiveNameBoard) {
+        self.writer = writer; self.pass = pass; self.names = names
+    }
 }
 
 struct PacedTextSaving<Value: Sendable>: TextSaving {
@@ -48,9 +50,9 @@ struct PacedTextSaving<Value: Sendable>: TextSaving {
 
 struct TranscriptDestination: Saving {
 
-    let file: any SessionTranscriptFile
+    let pieces: SessionPieces
 
-    func save(_ state: CallState) async throws { try await file.write(state) }
+    func save(_ state: CallState) async throws { try await pieces.saveTranscript(state) }
 }
 
 /// Renders call text for the transcript; `TranscriptFormat` in the app.
@@ -80,7 +82,7 @@ extension TranscriptFormat: TranscriptRenderer {
 }
 extension TranscriptFile: TranscriptBytes {}
 
-actor WritingTranscript: WholeTranscriptReplacing {
+actor WritingTranscript: TranscriptWriter, WholeTranscriptReplacing {
 
     let file: any TranscriptBytes
     let sink: any LogSink
@@ -166,14 +168,14 @@ final class TranscriptFailureReport: FailureReport, Sendable {
 
 
 public protocol TranscriptStorage: Sendable {
-    func open(at url: Foundation.URL, sink: any LogSink) async throws -> any SessionTranscriptFile
+    func open(at url: Foundation.URL, sink: any LogSink) async throws -> OpenedTranscript
 }
 public struct FileTranscriptStorage: TranscriptStorage {
-    private let diarizer: CallDiarizer
+    private let diarizer: any TranscriptDiarizer
     /// `diarizer` runs the after-call pass over the call track.
-    public init(diarizer: CallDiarizer) { self.diarizer = diarizer }
+    public init(diarizer: any TranscriptDiarizer) { self.diarizer = diarizer }
     /// Opening starts the diarizer's model loading, so it downloads during the call.
-    public func open(at url: Foundation.URL, sink: any LogSink) async throws -> any SessionTranscriptFile {
+    public func open(at url: Foundation.URL, sink: any LogSink) async throws -> OpenedTranscript {
         await diarizer.prepare()
         var format = TranscriptFormat()
         let initial = try format.render([])
@@ -181,7 +183,7 @@ public struct FileTranscriptStorage: TranscriptStorage {
         // Opening has no live write revision; the first saved speaker block starts at one.
         let names = LiveNameBoard.shared
         let writer = WritingTranscript(file: file, format: TranscriptFormat(), names: names, sink: sink)
-        let pass = AfterCallPass(writer: writer, names: names, diarizer: diarizer, sink: sink)
-        return ClosingTranscript(call: url.path, writer: writer, pass: pass, names: names)
+        let pass = AfterCallPass(writer: writer, track: url.deletingLastPathComponent().appendingPathComponent("call.caf"), names: names, diarizer: diarizer, sink: sink)
+        return OpenedTranscript(writer: writer, pass: pass, names: names)
     }
 }

@@ -1,3 +1,5 @@
+import CallDiarizer
+import TranscriptFormat
 import CallDetail
 import BlockingTestWork
 import CallsListUI
@@ -114,7 +116,7 @@ struct SummaryCompositionTests {
                 storage.release.send(); try await stopping.value
                 let calls = try #require(rig.menu.calls)
                 await rig.menu.perform(.showCalls)
-                for await state in Observations({ calls.state }) where !state.busy && state.rows.count == 1 { break }
+                for await state in Observations({ calls.state }) where !state.busy && state.rows.count == 1 && state.rows[0].summaryStatus.isEmpty { break }
                 #expect(await http.count == 0)
                 try #require(calls.state.rows[0].canMakeSummary)
                 #expect(calls.state.rows[0].summaryStatus.isEmpty)
@@ -398,12 +400,13 @@ private final class ControlledTranscripts: TranscriptStorage, Sendable {
     init(holdFinal: Bool = false, failEarly: Bool = false, failFinal: Bool = false) {
         self.holdFinal = holdFinal; self.failEarly = failEarly; self.failFinal = failFinal
     }
-    func open(at url: URL, sink: any LogSink) async throws -> any SessionTranscriptFile {
-        ControlledTranscript(base: try await FileTranscriptStorage(diarizer: .unavailable).open(at: url, sink: sink), controls: self)
+    func open(at url: URL, sink: any LogSink) async throws -> OpenedTranscript {
+        let opened = try await FileTranscriptStorage(diarizer: CallDiarizer.unavailable).open(at: url, sink: sink)
+        return OpenedTranscript(writer: ControlledTranscript(base: opened.writer, controls: self), pass: opened.pass, names: opened.names)
     }
 }
-private struct ControlledTranscript: SessionTranscriptFile {
-    let base: any SessionTranscriptFile
+private struct ControlledTranscript: TranscriptWriter {
+    let base: any TranscriptWriter
     let controls: ControlledTranscripts
     func write(_ state: CallState) async throws {
         let final = state.status == .finished
@@ -412,13 +415,12 @@ private struct ControlledTranscript: SessionTranscriptFile {
         try await base.write(state)
         controls.written.send()
     }
-    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) async throws {
-        try await base.replaceMicrophone(in: state, with: segments)
+    func replaceWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) async throws {
+        try await base.replaceWhole(segments, speakers: speakers)
     }
 
     func close() async { await base.close() }
 
-    func attributeSpeakers() async -> AttributedFar? { await base.attributeSpeakers() }
 }
 
 private func waitForCancellation() async throws {

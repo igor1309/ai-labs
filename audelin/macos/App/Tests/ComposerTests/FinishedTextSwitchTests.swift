@@ -1,3 +1,4 @@
+import CallDiarizer
 import LiveText
 import BlockingTestWork
 import CallText
@@ -36,7 +37,7 @@ struct FinishedTextSwitchTests {
 
         try await withComposeFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
-            let transcript = try await FileTranscriptStorage(diarizer: .unavailable).open(at: url, sink: SilentTranscriptLog())
+            let transcript = try await FileTranscriptStorage(diarizer: CallDiarizer.unavailable).open(at: url, sink: SilentTranscriptLog())
             do {
                 let speaker: CallState.Speaker = onCallSide ? .theirs : .mine
                 var statuses: [CallState.Status] = []
@@ -46,7 +47,7 @@ struct FinishedTextSwitchTests {
                     let entries = snapshot.entries.filter { $0.speaker == speaker }
                     #expect(entries.map(\.text) == [.init(id: 0, start: 0, end: 2, words: [.init("first", start: 0, end: 2), .init("last", start: 0, end: 2)], settledCount: 2)])
                     #expect(entries.map(\.writtenLater) == [false])
-                    try await transcript.write(snapshot)
+                    try await transcript.writer.write(snapshot)
                     #expect(try String(contentsOf: url, encoding: .utf8).contains("first last"))
                     final = snapshot
                 }
@@ -57,9 +58,9 @@ struct FinishedTextSwitchTests {
                 let theirs = onCallSide ? "first last" : "continuing"
                 #expect(try String(contentsOf: url, encoding: .utf8)
                     == "# Transcript\n\n**Me** 00:00:00\n\(mine)\n\n**Them** 00:00:00\n\(theirs)\n")
-                await transcript.close()
+                await transcript.writer.close()
             } catch {
-                await transcript.close()
+                await transcript.writer.close()
                 throw error
             }
         }

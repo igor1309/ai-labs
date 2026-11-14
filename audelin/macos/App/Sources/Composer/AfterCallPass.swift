@@ -9,19 +9,20 @@ protocol WholeTranscriptReplacing: Sendable {
 /// Gives a closed call's far side to its speakers and saves the result.
 struct AfterCallPass: Sendable {
     private let writer: any WholeTranscriptReplacing
+    private let track: URL?
     private let names: LiveNameBoard
-    private let diarizer: CallDiarizer
+    private let diarizer: any TranscriptDiarizer
     private let sink: any LogSink
 
-    init(writer: any WholeTranscriptReplacing, names: LiveNameBoard, diarizer: CallDiarizer, sink: any LogSink) {
-        self.writer = writer; self.names = names; self.diarizer = diarizer; self.sink = sink
+    init(writer: any WholeTranscriptReplacing, track: URL?, names: LiveNameBoard, diarizer: any TranscriptDiarizer, sink: any LogSink) {
+        self.writer = writer; self.track = track; self.names = names; self.diarizer = diarizer; self.sink = sink
     }
 
     /// A failed diarization keeps the far side plain and the live names tentative.
     func diarize(call _: String, _ state: CallState) async -> Composer.Transcript.Attributed? {
 
         let board = names.snapshot()
-        guard let track = board.callTrack else { return nil }
+        guard let track else { return nil }
 
         let zoom = !board.spoken.isEmpty
         guard let result = await RemoteSpeakers(diarizer: diarizer, sink: sink).attribute(state, track: track, speakers: nil) else { return nil }
