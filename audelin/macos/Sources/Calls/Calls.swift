@@ -154,7 +154,7 @@ public struct Calls: Sendable {
             guard let name = CallFolderName(part.lastPathComponent, timeZone: timeZone),
                   try length(part, start: name.start) != nil else { throw CallsFailure.unknownLength(id: id) }
         }
-        let prepared = folder.appendingPathComponent(".audelin-merge-" + UUID().uuidString, isDirectory: true)
+        let prepared = folder.appendingPathComponent(Self.mergePrefix + UUID().uuidString, isDirectory: true)
         try disk.makeFolder(prepared)
         var step = CallsFailure.MergeStep.writingTranscript
         do {
@@ -172,6 +172,20 @@ public struct Calls: Sendable {
             throw failure
         }
     }
+
+    /// Puts back every merge interrupted before it was in place: each part in a
+    /// prepared folder goes back to the calls folder and the prepared folder is
+    /// removed. The prepared folder is made before any part moves, so it records the
+    /// merge; a merge in place has none. Run once as Calls starts, before its first
+    /// listing, never while a merge is under way.
+    public func recoverInterruptedMerges() throws {
+        for prepared in try children(folder) where prepared.lastPathComponent.hasPrefix(Self.mergePrefix) {
+            let parts = try folders(in: prepared).map { folder.appendingPathComponent($0.0.lastPathComponent, isDirectory: true) }
+            try putBack(parts, from: prepared)
+        }
+    }
+
+    private static let mergePrefix = ".audelin-merge-"
 
     /// Moves every part found in `prepared` back to its place and removes `prepared`.
     private func putBack(_ parts: [URL], from prepared: URL) throws {

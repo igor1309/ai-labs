@@ -50,7 +50,11 @@ and `aMergeFailingToWriteTheTranscriptLeavesTheParts()`.
 
 Leave a recorded merge with A moved in, as a crash would, and start a new
 Calls: its first listing gives A and B and no prepared folder is left.
-With the final rename done, the merged call stays.
+With the final rename done, the merged call stays. A merge interrupted
+before any part moved leaves only the parts. Evidence:
+`CallsMergeTests.S7_anInterruptedMergeIsPutBack()`,
+`aMergeInPlaceStaysWhenCallsStarts()` and
+`anInterruptedMergeBeforeAnyPartMovedLeavesNothing()`.
 
 ## S-8 A merged call is deleted with its parts
 

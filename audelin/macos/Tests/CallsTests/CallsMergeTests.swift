@@ -222,6 +222,46 @@ struct CallsMergeTests {
             #expect(try files(root) == before)
         }
     }
+
+    @Test func S7_anInterruptedMergeIsPutBack() throws {
+        try withRoot { root in
+            try call(root, "2026.10.24-1000", seconds: 60, transcript: "a")
+            try call(root, "2026.10.24-1010", seconds: 60, transcript: "b")
+            let before = try files(root)
+            // A crash after A moved in: the prepared folder holds the joined transcript and A.
+            let prepared = try folder(root, ".audelin-merge-interrupted")
+            try Data("joined".utf8).write(to: prepared.appendingPathComponent("transcript.md"))
+            try FileManager.default.moveItem(at: root.appendingPathComponent("2026.10.24-1000"),
+                                             to: prepared.appendingPathComponent("2026.10.24-1000"))
+            let sut = sut(root, lengths: ["2026.10.24-1000": 60, "2026.10.24-1010": 60])
+            try sut.recoverInterruptedMerges()
+            #expect(try sut.list().map(\.id) == ["2026.10.24-1010", "2026.10.24-1000"])
+            #expect(try names(root) == ["2026.10.24-1000", "2026.10.24-1010"])
+            #expect(try files(root) == before)
+        }
+    }
+
+    @Test func aMergeInPlaceStaysWhenCallsStarts() throws {
+        try withRoot { root in
+            try call(root, "2026.10.24-1000", seconds: 60)
+            try call(root, "2026.10.24-1010", seconds: 60)
+            let sut = sut(root, lengths: ["2026.10.24-1000": 60, "2026.10.24-1010": 60])
+            try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { _ in }
+            let before = try files(root)
+            try sut.recoverInterruptedMerges()
+            #expect(try sut.list().map(\.id) == ["2026.10.24-1000"])
+            #expect(try files(root) == before)
+        }
+    }
+
+    @Test func anInterruptedMergeBeforeAnyPartMovedLeavesNothing() throws {
+        try withRoot { root in
+            try call(root, "2026.10.24-1000", seconds: 60)
+            _ = try folder(root, ".audelin-merge-early")
+            try sut(root, lengths: [:]).recoverInterruptedMerges()
+            #expect(try names(root) == ["2026.10.24-1000"])
+        }
+    }
 }
 
 private let utc = TimeZone(identifier: "UTC")!
