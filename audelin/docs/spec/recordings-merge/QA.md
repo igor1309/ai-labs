@@ -5,12 +5,14 @@ asks for, paired with effect tests for the same state and event. The idle
 query is a spy: not called on init or on events that neither enter merge
 mode nor confirm, called once on each of those, and its stub answer decides
 the result. The handler's merge port is a spy whose completion is
-delivered as the result event. Evidence: Missing for every row.
+delivered as the result event. A row without evidence is Missing.
 
 ## S-1 Merge mode opens while idle
 
 Idle, enter merge mode with the query answering idle: merge mode, nothing
-selected, no effect.
+selected, no effect. Evidence, without the query so far:
+`RecordingsMergeTests.S1_mergeModeOpensWithNothingSelected()` and
+`mergeModeWaitsForOtherActions()`.
 
 ## S-2 Merge mode is refused while busy
 
@@ -19,7 +21,8 @@ reason, no effect.
 
 ## S-3 Selecting calls
 
-Merge mode, select A then B, unselect A: B selected, no effect.
+Merge mode, select A then B, unselect A: B selected, no effect. Evidence:
+`RecordingsMergeTests.S3_selectingAndUnselectingCalls()`.
 
 ## S-4 Fewer than two calls do not merge
 
@@ -62,7 +65,9 @@ reason, no effect.
 ## S-12 Leaving merge mode
 
 Merge mode with A selected, leave: idle, nothing selected; a rename then
-starts.
+starts. Evidence:
+`RecordingsMergeTests.S12_leavingMergeModeClearsTheSelection()`; no other
+action starts in merge mode: `noOtherActionStartsInMergeMode()`.
 
 ## S-13 Merging anyway while busy is refused
 

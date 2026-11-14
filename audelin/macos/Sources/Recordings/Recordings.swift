@@ -24,6 +24,8 @@ public struct RecordingsState: Equatable, Sendable {
     public enum Phase: Equatable, Sendable {
         case idle, askingDelete(String), renaming(String), deleting(String)
         case countingMove, countFailed, askingMove, reservingMove, preparingMove, moving, storingFolder, releasingMove, failedMove, refusedMove
+        /// Choosing calls to merge into one.
+        case merging
     }
 
     public struct Failure: Equatable, Sendable {
@@ -42,12 +44,16 @@ public struct RecordingsState: Equatable, Sendable {
     public var callsFolderAvailable = true
     public var stopping = false
     public var move: CallsFolderMove?
+    /// The calls chosen to merge, while merging.
+    public var mergeSelection: Set<String> = []
 
     public init(calls: [RecordedCall] = [], isListing: Bool = false, phase: Phase = .idle,
                 recordingID: String? = nil, failure: Failure? = nil, callsFolder: URL? = nil,
-                callsFolderAvailable: Bool = true, stopping: Bool = false, move: CallsFolderMove? = nil) {
+                callsFolderAvailable: Bool = true, stopping: Bool = false, move: CallsFolderMove? = nil,
+                mergeSelection: Set<String> = []) {
         self.calls = calls; self.isListing = isListing; self.phase = phase; self.recordingID = recordingID
         self.failure = failure; self.callsFolder = callsFolder; self.callsFolderAvailable = callsFolderAvailable; self.stopping = stopping; self.move = move
+        self.mergeSelection = mergeSelection
     }
 }
 
@@ -61,6 +67,7 @@ public enum RecordingsEvent: Equatable, Sendable {
     case callMoved(id: String, bytes: Int64), callMoveFailed(id: String, reason: String)
     case folderStored, folderStoreFailed(String)
     case askDelete(String), confirmDelete, cancelDelete, deleted(String), deleteFailed(id: String, reason: String)
+    case enterMergeMode, leaveMergeMode, toggleMergeSelection(String)
 }
 
 public enum RecordingsEffect: Equatable, Sendable {
@@ -144,6 +151,18 @@ public struct RecordingsReducer: Sendable {
             guard state.phase == .deleting(id) else { return (state, nil) }
             state.phase = .idle
             state.failure = .init(id: id, reason: reason)
+        case .enterMergeMode:
+            guard Self.acceptsAction(state) else { return (state, nil) }
+            state.phase = .merging
+            state.mergeSelection = []
+            state.failure = nil
+        case .leaveMergeMode:
+            guard state.phase == .merging else { return (state, nil) }
+            state.phase = .idle
+            state.mergeSelection = []
+        case let .toggleMergeSelection(id):
+            guard state.phase == .merging, state.calls.contains(where: { $0.id == id }) else { return (state, nil) }
+            if state.mergeSelection.remove(id) == nil { state.mergeSelection.insert(id) }
         default: break
         }
         return (state, nil)
