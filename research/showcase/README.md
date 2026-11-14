@@ -98,6 +98,13 @@ Mounts are added after project files and before `public/`; collisions with
 selected project files or earlier mounts stop the export. Mounted files pass
 the same path checks and marker and secret scans.
 
+Optional `[[public_value]]` tables name one secret-scan finding the owner has
+reviewed as public, such as a browser extension's public key: `finding` is
+`<export path>:<gitleaks rule>:<line>` and `line_sha256` the SHA-256 of that
+line as committed. The export checks the hash before scanning and ignores only
+that fingerprint, so a changed or moved line, or any other finding, still
+stops it.
+
 One exporter serves every project, `scripts/showcase/export.js`:
 
 1. Export the committed project files at `HEAD` that the allowlist matches,

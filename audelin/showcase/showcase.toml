@@ -28,3 +28,9 @@ include = [
   "extension/tests/**",
 ]
 exclude = ["macos/App/Sources/**/README.md"]
+
+# The extension's public key: Chrome derives the fixed extension ID from it,
+# and the app's native host accepts only that ID. It is not a secret.
+[[public_value]]
+finding = "extension/manifest.json:generic-api-key:6"
+line_sha256 = "6a4a736dc32af3820f9e5b7b2460434b470e6270d4787b680a49b11c01f6cfbb"

@@ -36,7 +36,7 @@ export function readSettings(text, project, markers = readFileSync(new URL('mark
       throw new Error(`showcase.toml: ${key} must be an array of nonempty strings`);
     }
   }
-  for (const key of ['allow_marker', 'mount']) {
+  for (const key of ['allow_marker', 'mount', 'public_value']) {
     if (settings[key] === undefined) continue;
     if (!Array.isArray(settings[key]) || settings[key].some((entry) => !entry || typeof entry !== 'object' || Array.isArray(entry))) {
       throw new Error(`showcase.toml: ${key} must be an array of tables`);
@@ -49,6 +49,18 @@ export function readSettings(text, project, markers = readFileSync(new URL('mark
     }
     if (!Array.isArray(entry.paths) || !entry.paths.length || entry.paths.some((path) => typeof path !== 'string' || !path.trim())) {
       throw new Error('showcase.toml: allow_marker.paths must be a nonempty array of nonempty strings');
+    }
+  }
+  for (const entry of settings.public_value ?? []) {
+    const [path, rule, line] = typeof entry.finding === 'string' ? entry.finding.split(':') : [];
+    try {
+      if (!rule || !/^[\w-]+$/.test(rule) || !/^[1-9]\d*$/.test(line ?? '')) throw new Error();
+      safePath(path);
+    } catch {
+      throw new Error('showcase.toml: public_value.finding must be <export path>:<gitleaks rule>:<line>');
+    }
+    if (typeof entry.line_sha256 !== 'string' || !/^[\da-f]{64}$/.test(entry.line_sha256)) {
+      throw new Error('showcase.toml: public_value.line_sha256 must be a lowercase SHA-256 hex digest');
     }
   }
   for (const entry of settings.mount ?? []) {
@@ -214,7 +226,7 @@ export function exportProject({ root, project, push = false, tempRoot = tmpdir()
   let clone;
   try {
     writeSnapshot(directory, files);
-    scanDirectory(directory);
+    scanDirectory(directory, settings.public_value ?? []);
     const output = run('sh', ['-c', settings.check], { cwd: directory });
     if (output?.length) log(output.toString().trimEnd());
     writeSnapshot(directory, files);

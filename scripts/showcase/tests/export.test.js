@@ -579,7 +579,15 @@ test('validates marker allowance tables and mount tables with showcase.toml diag
       'lib\\nested', 'C:/lib', '.git', 'lib/.GIT'].map((target) => ['mount', [{ ...mount, target }], 'mount.target must be a safe export-relative folder']),
     ...[undefined, '**', [''], [false]].map((include) => ['mount',
       [{ source: 'gokit', ...(include === undefined ? {} : { include }) }], 'mount.include must be an array of nonempty strings']),
-    ...['**', [''], [false]].map((exclude) => ['mount', [{ ...mount, exclude }], 'mount.exclude must be an array of nonempty strings'])
+    ...['**', [''], [false]].map((exclude) => ['mount', [{ ...mount, exclude }], 'mount.exclude must be an array of nonempty strings']),
+    ['public_value', 'key', 'public_value must be an array of tables'],
+    ...[undefined, false, 'manifest.json', 'manifest.json:generic-api-key', 'manifest.json:generic-api-key:0',
+      'manifest.json:bad rule:6', '../manifest.json:generic-api-key:6', '/manifest.json:generic-api-key:6']
+      .map((finding) => ['public_value', [{ line_sha256: 'a'.repeat(64), ...(finding === undefined ? {} : { finding }) }],
+        'public_value.finding must be <export path>:<gitleaks rule>:<line>']),
+    ...[undefined, 'abc', 'A'.repeat(64)].map((line_sha256) => ['public_value',
+      [{ finding: 'extension/manifest.json:generic-api-key:6', ...(line_sha256 === undefined ? {} : { line_sha256 }) }],
+      'public_value.line_sha256 must be a lowercase SHA-256 hex digest'])
   ];
   for (const [key, value, diagnostic] of cases) {
     assert.throws(() => readSettings(stringify({ ...settings, [key]: value }), 'game'), (error) => {
@@ -589,7 +597,8 @@ test('validates marker allowance tables and mount tables with showcase.toml diag
   }
   const valid = { ...settings,
     allow_marker: [{ marker: 'AGISTER', paths: ['src/**'] }, { marker: '/users/', paths: ['tests/*.js'] }],
-    mount: [mount, { source: 'game-tools', target: 'lib/tools', include: ['*.go'], exclude: ['private.go'] }]
+    mount: [mount, { source: 'game-tools', target: 'lib/tools', include: ['*.go'], exclude: ['private.go'] }],
+    public_value: [{ finding: 'extension/manifest.json:generic-api-key:6', line_sha256: 'a'.repeat(64) }]
   };
   assert.deepEqual(readSettings(stringify(valid), 'game'), valid);
   assert.deepEqual(readSettings(stringify({ ...settings, allow_marker: [], mount: [] }), 'game'),
