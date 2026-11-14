@@ -358,14 +358,14 @@ public final class AudelinCalls {
         case let .read(id):
             guard snapshot.rows.contains(where: { $0.id == id }) else { return }
             await sendList(.select(id))
-            let revision = detailModel.state.revision
+            let opens = detailModel.state.opens
             selectDetail()
-            // The selection event is asynchronous; open only after its latest read has answered.
+            detailModel.event(.openRequested(id: id))
+            // CallDetail says when the call is ready to open; a search hiding it ends the request.
             for await (detailState, visibleID) in Observations({ (self.detailModel.state, self.state.selectedID) }) {
                 guard visibleID == id else { return }
-                if detailState.revision > revision, detailState.selected?.id == id, detailState.notes != .notRead { break }
+                if detailState.opens > opens { break }
             }
-            guard list.state.selectedID == id, detail?.id == id else { return }
             readCall()
         case let .makeSummary(id):
             guard !snapshot.busy, let row = snapshot.rows.first(where: { $0.id == id }), row.canMakeSummary else { return }

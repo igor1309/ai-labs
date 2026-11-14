@@ -158,15 +158,29 @@ unreadable notes, a pending or failed summary and no summary. A selection,
 summary update or notes change asks its effect handler to read notes;
 superseded answers cannot replace the current detail. The previous detail
 stays visible until the selected call's read answers, and no selection
-clears it.
+clears it. Asked to open the selected call in its own window, CallDetail
+holds the request until that call's read answers, then publishes the call
+as ready to open; another selection drops the request.
+
+CallsList is the state machine for the list's own actions. Its state holds
+the selection, which a search can hide and show again, the inline rename
+being edited, the calls whose summary retry is running, whether a call's
+folder is being opened, and why the list's last action failed. Its pure
+reducer refuses a rename, retry or open the list cannot take, commits a
+rename when the selection moves, and publishes each request it makes:
+rename a call or clear the failure for Recordings, retry a summary for
+SummaryJobs, open a folder for the app. The composer passes each new
+request on and sends its outcome back as an event.
 
 The composer connects the list's visible selection and the SummaryJobs
 machine's badge, status text and retry availability to CallDetail, without
 passing either machine's internal state. Its notes scan fills the
 list's notes marks and gists and tells CallDetail when notes may have
 changed. The summary view draws the rendered detail, Markdown included.
+The views only render these states and send what the user does.
 The app owns the calls window, its split and, for a narrow window, the
-call's own window; it opens that window after the selected detail is read.
+call's own window, which it opens when CallDetail publishes the call as
+ready to open.
 
 ### Making a call's notes on request
 

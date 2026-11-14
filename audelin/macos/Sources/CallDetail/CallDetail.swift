@@ -39,9 +39,17 @@ public struct CallDetailState: Equatable, Sendable {
     public var detail: CallsDetail?
     /// Distinguishes overlapping reads, including rereads of the same call.
     public var revision: Int
+    /// The call to open in its own window once its read answers.
+    public var pendingOpen: String?
+    /// The call last ready to open in its own window, nil before the first.
+    public var opened: String?
+    /// How many times a call became ready to open; it opens when this grows.
+    public var opens: Int
 
-    public init(selected: Call? = nil, notes: Notes = .notRead, detail: CallsDetail? = nil, revision: Int = 0) {
+    public init(selected: Call? = nil, notes: Notes = .notRead, detail: CallsDetail? = nil, revision: Int = 0,
+                pendingOpen: String? = nil, opened: String? = nil, opens: Int = 0) {
         self.selected = selected; self.notes = notes; self.detail = detail; self.revision = revision
+        self.pendingOpen = pendingOpen; self.opened = opened; self.opens = opens
     }
 }
 
@@ -50,6 +58,8 @@ public enum CallDetailEvent: Equatable, Sendable {
     case summaryChanged(id: String, summary: CallDetailState.Call.Summary)
     case notesChanged(id: String)
     case readFinished(id: String, revision: Int, result: CallDetailState.Notes)
+    /// The user asked to read the selected call in its own window.
+    case openRequested(id: String)
 }
 
 public enum CallDetailEffect: Equatable, Sendable {
@@ -63,6 +73,7 @@ public struct CallDetailReducer: Sendable {
         var state = state
         switch event {
         case let .selectionChanged(call):
+            if call?.id != state.pendingOpen { state.pendingOpen = nil }
             state.selected = call
             state.notes = .notRead
             guard call != nil else {
@@ -91,12 +102,24 @@ public struct CallDetailReducer: Sendable {
             case .notRead: return (state, nil)
             }
             state.detail = .init(id: call.id, title: call.title, date: call.date, duration: call.duration, content: content)
+            if state.pendingOpen == id { open(id, &state) }
+            return (state, nil)
+        case let .openRequested(id):
+            guard state.selected?.id == id else { return (state, nil) }
+            if state.notes != .notRead, state.detail?.id == id { open(id, &state) }
+            else { state.pendingOpen = id }
             return (state, nil)
         }
         guard let call = state.selected else { return (state, nil) }
         state.notes = .notRead
         state.revision += 1
         return (state, .read(id: call.id, revision: state.revision))
+    }
+
+    private func open(_ id: String, _ state: inout CallDetailState) {
+        state.pendingOpen = nil
+        state.opened = id
+        state.opens += 1
     }
 }
 
