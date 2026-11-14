@@ -61,6 +61,7 @@ let package = Package(
         .library(name: "TranscriptFile", targets: ["TranscriptFile"]),
         .library(name: "SavePacing", targets: ["SavePacing"]),
         .library(name: "TranscriptFinalization", targets: ["TranscriptFinalization"]),
+        .library(name: "RecordingConditions", targets: ["RecordingConditions"]),
         .library(name: "TranscriptWriting", targets: ["TranscriptWriting"]),
         .library(name: "TwoPassRecognizer", targets: ["TwoPassRecognizer"]),
     ],
@@ -157,6 +158,9 @@ let package = Package(
         ),
         .target(
             name: "TranscriptFinalization"
+        ),
+        .target(
+            name: "RecordingConditions"
         ),
         .target(
             name: "LiveAudio"
@@ -304,6 +308,10 @@ let package = Package(
         .testTarget(
             name: "TranscriptFinalizationTests",
             dependencies: ["TranscriptFinalization"]
+        ),
+        .testTarget(
+            name: "RecordingConditionsTests",
+            dependencies: ["RecordingConditions"]
         ),
         .testTarget(
             name: "LiveAudioTests",
