@@ -19,6 +19,16 @@ public enum CallsFixture {
         try await call(d, in: calls, words: ["Другой звонок.", "Ответ."], notes: false)
     }
 
+    /// The merge fixture as a crash leaves a merge of A and B: the merge's prepared folder holds
+    /// the joined transcript and B, moved into it; A has not moved yet.
+    public static func seedInterruptedMerge(in calls: URL) async throws {
+        try await seedMerge(in: calls)
+        let prepared = calls.appendingPathComponent(".audelin-merge-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: prepared, withIntermediateDirectories: true)
+        try Data("# Transcript\n".utf8).write(to: prepared.appendingPathComponent("transcript.md"))
+        try FileManager.default.moveItem(at: calls.appendingPathComponent(b), to: prepared.appendingPathComponent(b))
+    }
+
     private static func call(_ id: String, in calls: URL, words: [String]?, notes: Bool = true) async throws {
         let folder = calls.appendingPathComponent(id, isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

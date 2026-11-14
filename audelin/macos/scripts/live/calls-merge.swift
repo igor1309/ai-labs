@@ -191,8 +191,10 @@ private struct Fixture {
             try launch(app: app, root: root, name: "merge", run: merging)
             try launch(app: app, root: root, name: "far-apart", run: farApart)
             try launch(app: app, root: root, name: "failure", run: failing)
+            try launch(app: app, root: root, name: "busy", run: refusingWhileBusy)
+            try launch(app: app, root: root, name: "recovered", seed: "interrupted-merge", run: recovering)
             removeFixtures(root)
-            print("PASS: refusing a call without a transcript, merging a cut call with its notes, the far-apart warning and a failed merge")
+            print("PASS: refusing a call without a transcript, merging a cut call with its notes, the far-apart warning, a failed merge, refusing while busy and recovering an interrupted merge")
         } catch {
             fputs("FAIL: \(error)\n", stderr)
             if let output { removeFixtures(output) }
@@ -352,5 +354,35 @@ private struct Fixture {
         guard try fixture.files() == [a, b, c, d] else { throw LiveFailure("After a failed merge the folder holds \(try fixture.files())") }
         _ = try driver.element("calls.select.\(a)")
         _ = try driver.element("calls.select.\(b)")
+    }
+
+    /// While D's notes are being made, merge mode reads why it is not available and is not entered.
+    @MainActor private static func refusingWhileBusy(_ driver: Driver, _ fixture: Fixture) throws {
+        try driver.press("calls.select.\(d)")
+        try driver.press("preview.make")
+        _ = try driver.wait("D's notes started") {
+            FileManager.default.fileExists(atPath: fixture.control.appendingPathComponent("started-1").path) ? true : nil
+        }
+        _ = try driver.element("preview.making")
+        try driver.pressMergeControl()
+        _ = try driver.element("calls.failure", value: { $0 == busy })
+        try driver.absent("calls.merge.confirm")
+        try driver.screenshot("busy", into: fixture.output)
+        try Data().write(to: fixture.control.appendingPathComponent("finish-1"))
+        _ = try driver.element("preview.notes", value: { $0.contains("Обсудили выпуск Audelin.") })
+        try driver.pressMergeControl()
+        _ = try driver.element("calls.merge.confirm")
+        try driver.screenshot("idle-again", into: fixture.output)
+    }
+
+    /// A merge a crash interrupted is put back whole on launch: B returns, the prepared folder goes.
+    @MainActor private static func recovering(_ driver: Driver, _ fixture: Fixture) throws {
+        for id in [a, b, c, d] { _ = try driver.element("calls.select.\(id)") }
+        let left = try FileManager.default.contentsOfDirectory(atPath: fixture.calls.path).sorted()
+        guard left == [a, b, c, d] else { throw LiveFailure("After recovery the folder holds \(left)") }
+        guard try fixture.files(b) == ["call.caf", "summary.md", "transcript.md"] else {
+            throw LiveFailure("B came back holding \(try fixture.files(b))")
+        }
+        try driver.screenshot("recovered", into: fixture.output)
     }
 }

@@ -8,13 +8,13 @@ public struct CallsRehearsalOptions: Equatable, Sendable {
     /// Where the rehearsal's Trash port moves items, so a run never reaches the user's Trash.
     public let trashFolder: URL
     /// Calls to write into the calls folder before launch, for a live test.
-    public enum Seed: String, Sendable { case merge }
+    public enum Seed: String, Sendable { case merge, interruptedMerge = "interrupted-merge" }
     public let seed: Seed?
     public var preferencesURL: URL { stateFolder.appendingPathComponent("preferences.json") }
     public var controlFolder: URL { stateFolder.appendingPathComponent("control", isDirectory: true) }
 
     public enum Failure: Error { case invalidArguments }
-    public static let usage = "CallsRehearsal --calls <absolute directory> --state <absolute directory> --trash <absolute directory> [--seed merge]"
+    public static let usage = "CallsRehearsal --calls <absolute directory> --state <absolute directory> --trash <absolute directory> [--seed merge|interrupted-merge]"
 
     public static func parse(_ arguments: [String]) throws -> Self {
         var arguments = arguments
@@ -40,7 +40,11 @@ public struct CallsRehearsalOptions: Equatable, Sendable {
     /// Settings are written before composition, so no automatic work can start on launch.
     /// Writes the seed's calls, if any; run before composition, so the calls list reads them on launch.
     public func seedCalls() async throws {
-        if seed == .merge { try await CallsFixture.seedMerge(in: callsFolder) }
+        switch seed {
+        case .merge: try await CallsFixture.seedMerge(in: callsFolder)
+        case .interruptedMerge: try await CallsFixture.seedInterruptedMerge(in: callsFolder)
+        case nil: break
+        }
     }
 
     public func prepare() throws {

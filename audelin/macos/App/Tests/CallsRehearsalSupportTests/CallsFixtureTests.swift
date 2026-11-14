@@ -31,6 +31,20 @@ struct CallsFixtureTests {
         }
     }
 
+    @Test func interruptedMergeLeavesBInsideAPreparedMergeFolder() async throws {
+        try await withRehearsalFolder { root in
+            let calls = root.appendingPathComponent("calls")
+            let options = try CallsRehearsalOptions.parse(["--calls", calls.path, "--state", root.appendingPathComponent("state").path,
+                                                           "--trash", root.appendingPathComponent("trash").path, "--seed", "interrupted-merge"])
+            try await options.seedCalls()
+            let names = try FileManager.default.contentsOfDirectory(atPath: calls.path).sorted()
+            let prepared = try #require(names.first { $0.hasPrefix(".audelin-merge-") })
+            #expect(names.filter { !$0.hasPrefix(".") } == [CallsFixture.a, CallsFixture.c, CallsFixture.d])
+            let inside = try FileManager.default.contentsOfDirectory(atPath: calls.appendingPathComponent(prepared).path).sorted()
+            #expect(inside == [CallsFixture.b, "transcript.md"])
+        }
+    }
+
     @Test(arguments: [["--seed", "other"], ["--seed"], ["--other", "merge"]])
     func unknownSeedFails(extra: [String]) {
         #expect(throws: CallsRehearsalOptions.Failure.self) {
