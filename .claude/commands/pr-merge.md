@@ -5,17 +5,27 @@ allowed-tools:
   - Bash(gh:*)
   - Bash(git:*)
   - Bash(./scripts/watch-pr.sh:*)
+  - Bash(./scripts/wait-pr-merged.sh:*)
   - Bash(./scripts/finish-merged-pr.sh:*)
 ---
 
 Complete the current branch's PR lifecycle:
 
 1. A branch does not need to include the latest trunk to merge. Do not
-   merge trunk just because the branch is behind. If GitHub reports merge
-   conflicts, fetch origin and merge `origin/trunk` (never rebase), resolve
-   the conflicts while preserving each side's intent, and run the checks
-   covering the merge changes before pushing. Stop and report when the
-   sides contradict each other and choosing between them is a product call.
+   merge trunk just because the branch is behind. Check for conflicts with
+   the PR's base (`trunk`, or the branch below a stacked PR) before pushing:
+
+   ```sh
+   git fetch origin
+   git merge-tree --write-tree --quiet origin/<base> HEAD
+   ```
+
+   Exit 0 is clean; exit 1 means conflicts; any other exit is an error to
+   stop on. On conflicts, merge `origin/<base>` (never rebase), resolve them
+   preserving each side's intent, and run the checks covering the merge
+   changes before pushing. Stop and report when the sides contradict each
+   other and choosing between them is a product call. This check is early
+   feedback only: the base can move later, and steps 5 and 6 catch that.
 2. Push if there are unpushed commits. Trunk advancing while CI runs does
    not require a branch update or another CI run.
 3. Create a PR with `gh pr create` and record its number and URL.
@@ -28,11 +38,19 @@ Complete the current branch's PR lifecycle:
    gh pr merge <number> --merge --auto --delete-branch
    ```
 
-5. Watch CI with `./scripts/watch-pr.sh <number>`. If CI fails, stop and report
-   the failure. Never merge a red PR. If it exits 3 (a check queued with no
-   runner) or 4 (checks still pending at its limit), stop and report the
-   check it names.
-6. After GitHub reports the PR merged and the remote feature branch deleted, run:
+5. Watch CI with `./scripts/watch-pr.sh <number>`. It passes only when the
+   required `report` check ran and passed. If CI fails (exit 1, which
+   includes CI that never ran), stop and report the failure. Never merge a
+   red PR. If it exits 3 (a check queued with no runner) or 4 (checks still
+   pending at its limit), stop and report the check it names. If it exits 5
+   (the PR conflicts with its base, so GitHub runs no CI for it), resolve
+   as in step 1, push, and watch again.
+6. Wait for the merge with `./scripts/wait-pr-merged.sh <number>`; exit 0
+   means merged. On exit 5 (a conflict appeared after the base moved),
+   resolve as in step 1, push and go back to step 5. On exit 6 (no
+   auto-merge set) or 4 (not merged in time), stop and report the merge
+   state it names.
+7. After GitHub reports the PR merged and the remote feature branch deleted, run:
 
    ```sh
    ./scripts/finish-merged-pr.sh <feature-branch>
@@ -40,7 +58,7 @@ Complete the current branch's PR lifecycle:
 
    Stop if the script reports a dirty worktree, non-fast-forward, or any other
    unsafe condition. Do not force past it.
-7. Report the PR URL, final CI status, trunk update, and cleanup result.
+8. Report the PR URL, final CI status, trunk update, and cleanup result.
 
 ## Definition of Done
 
