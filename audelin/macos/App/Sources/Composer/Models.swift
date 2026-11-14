@@ -78,10 +78,20 @@ final class RecordingModel {
     }
 
     var state: RecordingState { model.state }
-    func reserveStorage() -> Bool {
-        let previouslyReserved = model.state.storageReserved
-        model.event(.reserveStorage)
-        return !previouslyReserved && model.state.storageReserved
+    private var lastReservation: UInt64 = 0
+
+    /// Answers this request's own decision; another caller's reservation is not this one's.
+    func reserveStorage() async -> Bool {
+        lastReservation += 1
+        let request = lastReservation
+        let states = feed.subscribe(from: model.state)
+        model.event(.reserveStorage(request: request))
+        for await state in states {
+            guard let granted = state.reservations[request] else { continue }
+            model.event(.reservationAnswered(request: request))
+            return granted
+        }
+        return false
     }
 
     func send(_ event: RecordingEvent) { model.event(event) }

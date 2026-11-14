@@ -80,6 +80,8 @@ public struct RecordingState: Equatable, Sendable {
     }
 
     public var storageReserved = false
+    /// Each storage reservation request's decision, kept until its caller has read it.
+    public var reservations: [UInt64: Bool] = [:]
     public var pendingStart: Origin?
     public var automatic: Bool
     public var missing: Set<RecordingCondition>
@@ -118,7 +120,8 @@ public enum RecordingEvent: Equatable, Sendable {
     case callStarted
     case callEnded
     case userStart
-    case reserveStorage, releaseStorage
+    case reserveStorage(request: UInt64), reservationAnswered(request: UInt64)
+    case releaseStorage
     case userStop
     case automaticChanged(Bool)
     case conditionChanged(RecordingCondition, available: Bool)
@@ -140,9 +143,14 @@ public enum RecordingReducer {
             state = end(&state)
             state.shutdown = state.phase == .idle ? .settled : .requested
             return state
-        case .reserveStorage:
-            guard state.phase == .idle else { return state }
-            state.storageReserved = true
+        case let .reserveStorage(request):
+            guard state.reservations[request] == nil else { return state }
+            let granted = state.phase == .idle && !state.storageReserved
+            if granted { state.storageReserved = true }
+            state.reservations[request] = granted
+            return state
+        case let .reservationAnswered(request):
+            state.reservations[request] = nil
             return state
         case .releaseStorage:
             state.storageReserved = false
