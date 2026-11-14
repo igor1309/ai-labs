@@ -21,12 +21,7 @@ actor RecordingSessions: RecordingSession {
         var enders: [CheckedContinuation<Void, Never>] = []
         var started = false
         var endRequested = false
-        var reportedFailure = false
-        var faults: Set<RecordingFault> = []
-        var reportedFaults: Set<RecordingFault> = []
-        var callSilent = false
         var announcedEnding = false
-        var reports: [RecordingSessionReport] = []
     }
 
     nonisolated let panel: AudelinPanel
@@ -140,37 +135,25 @@ actor RecordingSessions: RecordingSession {
 
     private func receive(_ state: SessionState, id: UInt64) async -> Bool {
 
-        await status(id, RecordingSessionStatus(callID: state.recordedFolder.flatMap {
-            Calls.id(in: URL(fileURLWithPath: $0.id).lastPathComponent, timeZone: timeZone())
-        }))
+        await status(id, RecordingSessionStatus(
+            callID: state.recordedFolder.flatMap { Calls.id(in: URL(fileURLWithPath: $0.id).lastPathComponent, timeZone: timeZone()) },
+            recording: state.phase == .recording, cannotRecord: state.cannotRecord,
+            faults: recordingFaults(state), callSilent: state.audioWarning == .callSilent
+        ))
         // Notes show the call as waiting once its text stops; a later finalized transcript supersedes this.
         if state.callText == .stopping || state.callText == .closed, let folder = state.recordedFolder, running[id]?.announcedEnding == false {
             running[id]?.announcedEnding = true
             await summaries.waiting(URL(fileURLWithPath: folder.id))
         }
         guard var entry = running[id] else { return true }
-        if let reason = state.cannotRecord, !entry.reportedFailure {
-            entry.reportedFailure = true
-            deliver(.cannotRecord(reason), id: id, entry: &entry)
-        }
-        if state.phase == .recording, entry.first == nil {
-            deliver(.ready, id: id, entry: &entry)
-        }
-        entry.faults.formUnion(recordingFaults(state))
-        if entry.first == .ready {
-            let callSilent = state.audioWarning == .callSilent
-            if callSilent != entry.callSilent {
-                entry.callSilent = callSilent
-                deliver(.callSilent(callSilent), id: id, entry: &entry)
-            }
-            for fault in RecordingFault.allCases where entry.faults.contains(fault) && entry.reportedFaults.insert(fault).inserted {
-                deliver(.failed(fault), id: id, entry: &entry)
-            }
+        // Begin answers with the first of ready, cannot record or ended; later news travels as status.
+        if entry.first == nil {
+            if let reason = state.cannotRecord { answer(.cannotRecord(reason), entry: &entry) }
+            else if state.phase == .recording { answer(.ready, entry: &entry) }
         }
         if state.phase == .ended {
-            if entry.first == nil || !entry.endRequested {
-                deliver(.ended, id: id, entry: &entry)
-            }
+            if entry.first == nil { answer(.ended, entry: &entry) }
+            else if !entry.endRequested { await report(id, .ended) }
             let subscription = entry.subscription, observation = entry.observation, session = entry.session
             let sends = entry.sends, pieces = entry.pieces
             Task {
@@ -185,22 +168,15 @@ actor RecordingSessions: RecordingSession {
                 self.forget(id: id)
             }
         }
-        let reports = entry.reports
-        entry.reports.removeAll()
         running[id] = entry
-        for value in reports { await report(id, value) }
         return state.phase == .ended
     }
 
-    private func deliver(_ value: RecordingSessionReport, id: UInt64, entry: inout Running) {
+    private func answer(_ value: RecordingSessionReport, entry: inout Running) {
 
-        if entry.first == nil {
-            entry.first = value
-            for answer in entry.beginners { answer.resume(returning: value) }
-            entry.beginners.removeAll()
-        } else {
-            entry.reports.append(value)
-        }
+        entry.first = value
+        for answer in entry.beginners { answer.resume(returning: value) }
+        entry.beginners.removeAll()
     }
 
     private func forget(id: UInt64) {

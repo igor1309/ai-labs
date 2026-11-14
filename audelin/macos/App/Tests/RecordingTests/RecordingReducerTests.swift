@@ -13,8 +13,16 @@ struct RecordingReducerTests {
         }
     }
 
-    @Test(arguments: [RecordingState.Phase.beginning, .recording, .ending], [false, true])
-    func callSilenceFollowsTheCurrentSession(_ phase: RecordingState.Phase, _ value: Bool) { assert(makeState(makeRunning()) { $0.phase = phase; $0.callSilent = !value; $0.faults = [.microphone] }, .sessionReported(id: 1, .callSilent(value))) { $0.callSilent = value } }
+    @Test(arguments: [RecordingState.Phase.recording, .ending], [false, true])
+    func callSilenceFollowsTheCurrentSession(_ phase: RecordingState.Phase, _ value: Bool) { assert(makeState(makeRunning()) { $0.phase = phase; $0.callSilent = !value; $0.faults = [.microphone] }, .sessionChanged(id: 1, .init(callSilent: value))) { $0.callSilent = value } }
+
+    @Test func callSilenceBeforeTheSessionRecordsIsIgnored() { assert(makeBeginning(), .sessionChanged(id: 1, .init(callSilent: true))) }
+
+    @Test func aRecordingSessionMovesBeginningToRecording() { assert(makeBeginning(), .sessionChanged(id: 1, .init(recording: true, faults: [.microphone], callSilent: true))) { $0.phase = .recording; $0.faults = [.microphone]; $0.callSilent = true } }
+
+    @Test func cannotRecordEndsTheSession() { assert(makeRunning(), .sessionChanged(id: 1, .init(recording: true, cannotRecord: "no track can record", faults: [.microphone]))) { $0.cannotRecord = "no track can record"; $0.phase = .ending } }
+
+    @Test func cannotRecordCountsOnce() { assert(makeFailed(), .sessionChanged(id: 1, .init(cannotRecord: "another reason"))) }
 
     @Test func theSessionsCreatedCallIsKept() { assert(makeRunning(), .sessionChanged(id: 1, .init(callID: "A"))) { $0.callID = "A" } }
 
@@ -29,11 +37,11 @@ struct RecordingReducerTests {
     @Test func aNewBeginClearsCallSilence() { assert(makeState(makeIdle()) { $0.callSilent = true }, .userStart) { $0.phase = .beginning; $0.session = .init(id: 1, origin: .hand); $0.lastSessionID = 1; $0.callSilent = false } }
 
     @Test(arguments: [false, true])
-    func staleCallSilenceAfterEndIsIgnored(_ value: Bool) { assert(makeIdleAfter(1), .sessionReported(id: 1, .callSilent(value))) }
+    func staleCallSilenceAfterEndIsIgnored(_ value: Bool) { assert(makeIdleAfter(1), .sessionChanged(id: 1, .init(callSilent: value))) }
 
-    @Test func callSilenceWhileIdleIsIgnored() { assert(makeState(makeIdleAfter(1)) { $0.session = .init(id: 1, origin: .hand) }, .sessionReported(id: 1, .callSilent(true))) }
+    @Test func callSilenceWhileIdleIsIgnored() { assert(makeState(makeIdleAfter(1)) { $0.session = .init(id: 1, origin: .hand) }, .sessionChanged(id: 1, .init(callSilent: true))) }
 
-    @Test func anotherSessionsCallSilenceIsIgnored() { assert(makeRunning(), .sessionReported(id: 99, .callSilent(true))) }
+    @Test func anotherSessionsCallSilenceIsIgnored() { assert(makeRunning(), .sessionChanged(id: 99, .init(callSilent: true))) }
 
     @Test func endingKeepsCallSilence() { assert(makeState(makeRunning()) { $0.callSilent = true }, .userStop) { $0.phase = .ending } }
 
@@ -175,17 +183,19 @@ private let faultTransitions: [FaultTransition] = RecordingFault.allCases.flatMa
     let addDiskFull: (@Sendable (inout RecordingState) -> Void)?
     if fault == .diskFull { addDiskFull = nil }
     else { addDiskFull = { $0.faults.insert(.diskFull) } }
-    return [makeBeginning(), makeRunning(), makeEnding()].flatMap { state -> [FaultTransition] in
-        [FaultTransition(state: state, event: .sessionReported(id: 1, .failed(fault))) { $0.faults = [fault] },
-         FaultTransition(state: state, event: .sessionReported(id: 99, .failed(fault)))]
+    return [makeRunning(), makeEnding()].flatMap { state -> [FaultTransition] in
+        [FaultTransition(state: state, event: .sessionChanged(id: 1, .init(faults: [fault]))) { $0.faults = [fault] },
+         FaultTransition(state: state, event: .sessionChanged(id: 99, .init(faults: [fault])))]
     } + [
-        FaultTransition(state: faulted, event: .sessionReported(id: 1, .failed(fault))),
-        FaultTransition(state: faulted, event: .sessionReported(id: 1, .failed(.diskFull)), mutation: addDiskFull),
+        FaultTransition(state: makeBeginning(), event: .sessionChanged(id: 1, .init(faults: [fault]))),
+        FaultTransition(state: faulted, event: .sessionChanged(id: 1, .init(faults: [fault]))),
+        FaultTransition(state: faulted, event: .sessionChanged(id: 1, .init())),
+        FaultTransition(state: faulted, event: .sessionChanged(id: 1, .init(faults: [.diskFull])), mutation: addDiskFull),
         FaultTransition(state: faulted, event: .userStop) { $0.phase = .ending },
         FaultTransition(state: faulted, event: .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.session = nil },
         FaultTransition(state: makeState(makeEnding()) { $0.faults = [fault, .diskFull] }, event: .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.session = nil },
-        FaultTransition(state: faultedIdle, event: .sessionReported(id: 1, .failed(.diskFull))),
-        FaultTransition(state: makeState(faultedIdle) { $0.session = .init(id: 1, origin: .hand) }, event: .sessionReported(id: 1, .failed(.diskFull))),
+        FaultTransition(state: faultedIdle, event: .sessionChanged(id: 1, .init(faults: [.diskFull]))),
+        FaultTransition(state: makeState(faultedIdle) { $0.session = .init(id: 1, origin: .hand) }, event: .sessionChanged(id: 1, .init(faults: [.diskFull]))),
         FaultTransition(state: faultedIdle, event: .userStart) { $0.phase = .beginning; $0.lastSessionID = 2; $0.session = .init(id: 2, origin: .hand); $0.faults = [] },
         FaultTransition(state: makeState(makePending()) { $0.faults = [fault] }, event: .sessionReported(id: 1, .ended)) { $0.phase = .beginning; $0.lastSessionID = 2; $0.session = .init(id: 2, origin: .call); $0.sessionBeganDuringCall = true; $0.pendingCall = false; $0.faults = [] },
         FaultTransition(state: makeState(faultedIdle) { $0.missing = [.room] }, event: .userStart),

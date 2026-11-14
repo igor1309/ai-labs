@@ -65,7 +65,7 @@ struct RecordingSessionsTests {
             #expect(await rig.sessions.begin(id: 4) == .ready)
             #expect(rig.waiting.all.isEmpty)
             await rig.sessions.end(id: 4)
-            let created = Set(rig.statuses.all.compactMap(\.callID))
+            let created = Set(rig.statuses.all.compactMap(\.status.callID))
             #expect(created.count == 1)
             #expect(rig.waiting.all.count == 1)
             #expect(rig.waiting.all.map(\.lastPathComponent).compactMap { Calls.id(in: $0, timeZone: .gmt) } == Array(created))
@@ -82,35 +82,16 @@ struct RecordingSessionsTests {
         }
     }
 
-    @Test func cannotRecordIsReportedOnce() async throws {
+    @Test func cannotRecordAndFaultsReachRecordingAsStatus() async throws {
 
         try await withSessions { rig in
             #expect(await rig.sessions.begin(id: 7) == .ready)
             rig.microphones.capture(0).end(throwing: ScriptFailure.failed)
             rig.calls.capture(0).end(throwing: ScriptFailure.failed)
-            await rig.reports.wait(for: .init(id: 7, report: .cannotRecord("no track can record")))
+            await rig.statuses.wait { $0.id == 7 && $0.status.cannotRecord == "no track can record" }
             await rig.sessions.end(id: 7)
-            #expect(rig.reports.all.filter { if case .cannotRecord = $0.report { true } else { false } }
-                    == [.init(id: 7, report: .cannotRecord("no track can record"))])
-            let faults = rig.reports.all.filter { if case .failed = $0.report { true } else { false } }
-            #expect(faults.count == 2)
-            #expect(faults.contains(.init(id: 7, report: .failed(.microphone))))
-            #expect(faults.contains(.init(id: 7, report: .failed(.callAudio))))
-        }
-    }
-
-    @Test func aFaultIsReportedOncePerSessionNotOncePerActor() async throws {
-
-        try await withSessions { rig in
-            for (index, id) in [UInt64(21), 34].enumerated() {
-                #expect(await rig.sessions.begin(id: id) == .ready)
-                rig.microphones.capture(index).end(throwing: ScriptFailure.failed)
-                await rig.reports.wait(for: .init(id: id, report: .failed(.microphone)))
-                await rig.sessions.end(id: id)
-            }
-            #expect(rig.reports.all.filter { if case .failed = $0.report { true } else { false } } == [
-                .init(id: 21, report: .failed(.microphone)), .init(id: 34, report: .failed(.microphone)),
-            ])
+            #expect(rig.statuses.all.filter { $0.id == 7 }.reduce(into: Set()) { $0.formUnion($1.status.faults) } == [.microphone, .callAudio])
+            #expect(rig.reports.all.isEmpty)
         }
     }
 
@@ -123,20 +104,17 @@ struct RecordingSessionsTests {
 
             #expect(await rig.sessions.begin(id: 2) == .ready)
             rig.microphones.capture(0).end(throwing: ScriptFailure.failed)
-            await rig.reports.wait(for: .init(id: 1, report: .failed(.microphone)))
+            await rig.statuses.wait { $0.id == 1 && $0.status.faults.contains(.microphone) }
             #expect(!rig.log.entries.all.contains { wants($0, id: 2) })
-            #expect(!rig.reports.all.contains(.init(id: 2, report: .failed(.microphone))))
+            #expect(!rig.statuses.all.contains { $0.id == 2 && !$0.status.faults.isEmpty })
 
             // The panel follows the session begun last, whichever ends first.
             await rig.panel.send(.switchLiveTextOn)
             await rig.log.wait { wants($0, id: 2) }
             rig.microphones.capture(1).end(throwing: ScriptFailure.failed)
-            await rig.reports.wait(for: .init(id: 2, report: .failed(.microphone)))
+            await rig.statuses.wait { $0.id == 2 && $0.status.faults.contains(.microphone) }
             await rig.sessions.end(id: 1)
             await rig.sessions.end(id: 2)
-            #expect(rig.reports.all.filter { if case .failed = $0.report { true } else { false } } == [
-                .init(id: 1, report: .failed(.microphone)), .init(id: 2, report: .failed(.microphone)),
-            ])
         }
     }
 }
@@ -169,6 +147,23 @@ private func wants(_ entry: LogEntry, id: UInt64) -> Bool {
 private struct Reported: Equatable, Sendable {
     let id: UInt64
     let report: RecordingSessionReport
+}
+
+private struct Status: Equatable, Sendable {
+    let id: UInt64
+    let status: RecordingSessionStatus
+}
+
+private final class Statuses: Sendable {
+    private let stored = Values<Status>()
+    private let arrival = Signal()
+    var all: [Status] { stored.all }
+    func append(_ id: UInt64, _ status: RecordingSessionStatus) { stored.append(.init(id: id, status: status)); arrival.send() }
+    func wait(until met: (Status) -> Bool) async {
+        if stored.all.contains(where: met) { return }
+        for await _ in arrival.stream where stored.all.contains(where: met) { return }
+    }
+    func end() { arrival.end() }
 }
 
 private final class Reports: Sendable {
@@ -211,15 +206,15 @@ private struct SessionsRig: Sendable {
     let calls: Captures
     let reports: Reports
     let waiting: Values<URL>
-    let statuses: Values<RecordingSessionStatus>
+    let statuses: Statuses
     let log: FixtureLog
 }
 
 private func withSessions(folderFails: Bool = false, _ body: @Sendable (SessionsRig) async throws -> Void) async throws {
 
     try await withComposeFolder { root in
-        let microphones = Captures(), calls = Captures(), reports = Reports(), waiting = Values<URL>(), statuses = Values<RecordingSessionStatus>(), log = FixtureLog(), clock = FixtureClock()
-        defer { reports.end(); clock.finish() }
+        let microphones = Captures(), calls = Captures(), reports = Reports(), waiting = Values<URL>(), statuses = Statuses(), log = FixtureLog(), clock = FixtureClock()
+        defer { reports.end(); statuses.end(); clock.finish() }
         var boundary = rehearsalBoundary(capturePersistence: .recorded,
             microphone: { try microphones.start() }, call: { _ in try calls.start() },
             mine: RehearsalRecognizer(SessionRecognizer(name: "mine")), theirs: RehearsalRecognizer(SessionRecognizer(name: "theirs")),
@@ -247,7 +242,7 @@ private func withSessions(folderFails: Bool = false, _ body: @Sendable (Sessions
             finals: SessionFinals(resources: resources))
         let sessions = RecordingSessions(preferences: preferences, occupiedCallNames: { [] }, callApp: app, processes: processes, boundary: boundary,
                                          report: { id, report in reports.append(.init(id: id, report: report)) },
-                                         status: { _, status in statuses.append(status) }, panel: panel, finalization: finalization, finalizationResources: resources,
+                                         status: { id, status in statuses.append(id, status) }, panel: panel, finalization: finalization, finalizationResources: resources,
                                          summaries: SummaryCallbacks(waiting: { waiting.append($0) }))
         try await body(SessionsRig(sessions: sessions, panel: panel, microphones: microphones, calls: calls, reports: reports, waiting: waiting, statuses: statuses, log: log))
         await processes.stop()

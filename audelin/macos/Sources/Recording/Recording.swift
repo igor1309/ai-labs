@@ -17,8 +17,6 @@ public enum RecordingSessionReport: Equatable, Sendable {
 
     case ready
     case cannotRecord(String)
-    case failed(RecordingFault)
-    case callSilent(Bool)
     case ended
 }
 
@@ -27,10 +25,20 @@ public struct RecordingSessionStatus: Equatable, Sendable {
 
     /// The call the Session created, once its folder exists.
     public var callID: String?
+    /// The Session records both sides.
+    public var recording: Bool
+    public var cannotRecord: String?
+    public var faults: Set<RecordingFault>
+    public var callSilent: Bool
 
-    public init(callID: String? = nil) {
+    public init(callID: String? = nil, recording: Bool = false, cannotRecord: String? = nil,
+                faults: Set<RecordingFault> = [], callSilent: Bool = false) {
 
         self.callID = callID
+        self.recording = recording
+        self.cannotRecord = cannotRecord
+        self.faults = faults
+        self.callSilent = callSilent
     }
 }
 
@@ -191,8 +199,17 @@ public enum RecordingReducer {
             return state
 
         case let .sessionChanged(id, status):
-            guard state.session?.id == id, let callID = status.callID else { return state }
-            state.callID = callID
+            guard state.session?.id == id, state.phase != .idle else { return state }
+            if let callID = status.callID { state.callID = callID }
+            if let reason = status.cannotRecord, state.cannotRecord == nil {
+                state.cannotRecord = reason
+                return end(&state)
+            }
+            if status.recording, state.phase == .beginning { state.phase = .recording }
+            // Faults and silence count once the Session records; a fault stays until the session ends.
+            guard state.phase == .recording || state.phase == .ending else { return state }
+            state.faults.formUnion(status.faults)
+            state.callSilent = status.callSilent
             return state
 
         case let .sessionReported(id, report):
@@ -204,16 +221,6 @@ public enum RecordingReducer {
                 return state
             }
             switch report {
-            case let .failed(fault):
-                if state.phase == .beginning || state.phase == .recording || state.phase == .ending {
-                    state.faults.insert(fault)
-                }
-                return state
-            case let .callSilent(value):
-                if state.phase == .beginning || state.phase == .recording || state.phase == .ending {
-                    state.callSilent = value
-                }
-                return state
             case .ready:
                 if state.phase == .beginning { state.phase = .recording }
                 return state
