@@ -21,6 +21,10 @@ final class CallsRehearsalDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func start() async {
+        do { try await options.seedCalls() } catch {
+            FileHandle.standardError.write(Data("Seeding calls failed: \(error)\n".utf8))
+            exit(70)
+        }
         startWithDefaultLayout()
         let nsWindow = NSWindow(contentRect: NSRect(origin: .zero, size: CallsWindow.firstSize),
                                 styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)

@@ -7,13 +7,23 @@ public struct CallsRehearsalOptions: Equatable, Sendable {
     public let stateFolder: URL
     /// Where the rehearsal's Trash port moves items, so a run never reaches the user's Trash.
     public let trashFolder: URL
+    /// Calls to write into the calls folder before launch, for a live test.
+    public enum Seed: String, Sendable { case merge }
+    public let seed: Seed?
     public var preferencesURL: URL { stateFolder.appendingPathComponent("preferences.json") }
     public var controlFolder: URL { stateFolder.appendingPathComponent("control", isDirectory: true) }
 
     public enum Failure: Error { case invalidArguments }
-    public static let usage = "CallsRehearsal --calls <absolute directory> --state <absolute directory> --trash <absolute directory>"
+    public static let usage = "CallsRehearsal --calls <absolute directory> --state <absolute directory> --trash <absolute directory> [--seed merge]"
 
     public static func parse(_ arguments: [String]) throws -> Self {
+        var arguments = arguments
+        var seed: Seed?
+        if arguments.count == 8, arguments[6] == "--seed" {
+            guard let named = Seed(rawValue: arguments[7]) else { throw Failure.invalidArguments }
+            seed = named
+            arguments.removeLast(2)
+        }
         guard arguments.count == 6 else { throw Failure.invalidArguments }
         var paths: [String: URL] = [:]
         for index in stride(from: 0, to: arguments.count, by: 2) {
@@ -24,10 +34,15 @@ public struct CallsRehearsalOptions: Equatable, Sendable {
         }
         guard let calls = paths["--calls"], let state = paths["--state"],
               let trash = paths["--trash"] else { throw Failure.invalidArguments }
-        return Self(callsFolder: calls, stateFolder: state, trashFolder: trash)
+        return Self(callsFolder: calls, stateFolder: state, trashFolder: trash, seed: seed)
     }
 
     /// Settings are written before composition, so no automatic work can start on launch.
+    /// Writes the seed's calls, if any; run before composition, so the calls list reads them on launch.
+    public func seedCalls() async throws {
+        if seed == .merge { try await CallsFixture.seedMerge(in: callsFolder) }
+    }
+
     public func prepare() throws {
         try FileManager.default.createDirectory(at: controlFolder, withIntermediateDirectories: true)
         try PreferencesStore(fileURL: preferencesURL).write(Preferences(
