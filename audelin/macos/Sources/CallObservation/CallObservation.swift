@@ -44,14 +44,20 @@ public struct Snapshot: Equatable, Sendable {
 
 public struct CallObservation: Sendable {
     public let timeout: Double
-    private var epoch = Int.min
-    private var sequence = 0
-    private var members: [Member] = []
-    private var intervals: [Interval] = []
-    private var through = 0.0
-    private var health = Health.waiting
+    public var epoch: Int
+    public var sequence: Int
+    public var members: [Member]
+    public var intervals: [Interval]
+    public var through: Double
+    public var health: Health
 
-    public init(timeout: Double = 3) { self.timeout = timeout }
+    public init(
+        timeout: Double = 3, epoch: Int = .min, sequence: Int = 0,
+        members: [Member] = [], intervals: [Interval] = [], through: Double = 0, health: Health = .waiting
+    ) {
+        self.timeout = timeout; self.epoch = epoch; self.sequence = sequence
+        self.members = members; self.intervals = intervals; self.through = through; self.health = health
+    }
 
     public mutating func receive(_ event: Event) {
         guard event.epoch >= epoch else { return }

@@ -16,6 +16,16 @@ public struct LiveNames: Sendable {
         roster: [Participant], activities: [Activity], through: Double
     ) -> String? {
         if let name = given[row] { return name }
+        guard let name = match(start: start, end: end, roster: roster, activities: activities, through: through) else { return nil }
+        given[row] = name
+        return name
+    }
+
+    /// Matches only the supplied evidence; callers that own row names keep the result themselves.
+    public func match(
+        start: Double, end: Double,
+        roster: [Participant], activities: [Activity], through: Double
+    ) -> String? {
         let upper = min(end, through)
         guard upper - start >= minimumSeconds else { return nil }
         let people = Dictionary(roster.map { ($0.id, $0) }, uniquingKeysWith: { $1 })
@@ -34,7 +44,6 @@ public struct LiveNames: Sendable {
         }
         guard let best = alone.max(by: { $0.value < $1.value }), best.value / (upper - start) >= share,
               let name = people[best.key]?.name else { return nil }
-        given[row] = name
         return name
     }
 }
