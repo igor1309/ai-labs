@@ -92,10 +92,10 @@ public final class SummariesModel {
     }
     /// Starts no new job; running ones go on.
     public func stopDispatch() { model.event(.stopDispatch) }
-    /// Drains the machine and returns once it has ended.
+    /// Drains the machine and returns once it has published settled.
     public func shutdown() async {
         model.event(.shutdown)
-        while model.state.lifecycle != .ended { await changed() }
+        for await lifecycle in Observations({ self.model.state.lifecycle }) where lifecycle == .settled { return }
     }
     private func changed() async {
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in

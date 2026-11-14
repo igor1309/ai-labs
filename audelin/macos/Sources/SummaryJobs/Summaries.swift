@@ -1,7 +1,8 @@
 /// One machine for the whole line of a call's notes: every call's stage, from
 /// recovery or submission to saved notes, and the lifecycle around them.
 public struct SummariesState: Equatable, Sendable {
-    public enum Lifecycle: Equatable, Sendable { case accepting, draining, ended }
+    /// After `.shutdown` the machine drains, then publishes `settled` once nothing it started is in flight.
+    public enum Lifecycle: Equatable, Sendable { case accepting, draining, settled }
     public struct Call: Equatable, Sendable {
         public enum Stage: Equatable, Sendable {
             case waiting, reading, recovering, preparing, claiming, pending, starting, identifying, checkpointing, noting, deferred, publishing, saving
@@ -115,7 +116,7 @@ public enum SummariesEvent: Equatable, Sendable {
     case discarded(String)
     /// A running generation call for the call was told to stop.
     case aborted(String)
-    /// Stops the machine: running jobs are interrupted and released, and it ends once nothing is in flight.
+    /// Stops the machine: running jobs are interrupted and released, and it settles once nothing is in flight.
     case shutdown
     case released
     /// Reloads the calls another process runs.
@@ -182,7 +183,7 @@ public struct SummariesReducer: Sendable {
         default: nil
         }
     }
-    /// The stages that wait on a storage answer shutdown lets arrive before the machine ends.
+    /// The stages that wait on a storage answer shutdown lets arrive before the machine settles.
     static let inFlight: Set<SummariesState.Call.Stage> = [.reading, .recovering, .preparing, .claiming, .retrying]
     static let working: Set<SummariesState.Call.Stage> = [.claiming, .starting, .identifying, .checkpointing, .noting, .publishing, .saving, .discarding]
     public func reduce(_ state: SummariesState, _ event: SummariesEvent) -> (SummariesState, SummariesEffect?) {
@@ -201,7 +202,7 @@ public struct SummariesReducer: Sendable {
             effect = .publish(job, notes, warning: work.warning)
         }
         if next.lifecycle == .draining && !next.releasing && !next.calls.values.contains(where: { SummariesReducer.inFlight.contains($0.stage) }) {
-            next.lifecycle = .ended
+            next.lifecycle = .settled
         }
         return (next, effect)
     }
@@ -387,7 +388,7 @@ public struct SummariesReducer: Sendable {
         case .released where state.releasing:
             next.releasing = false
             return (next, nil)
-        case .refresh where state.lifecycle != .ended && !state.refreshing:
+        case .refresh where state.lifecycle != .settled && !state.refreshing:
             let observed = state.calls.filter { SummariesReducer.reloadable($0.value) }.keys.sorted()
             guard !observed.isEmpty else { return (state, nil) }
             next.refreshing = true

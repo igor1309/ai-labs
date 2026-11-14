@@ -24,11 +24,11 @@ import Testing
     func aRetryOfACallNotFailedOrInterruptedDeliversNothing(stage: SummariesState.Call.Stage) {
         assert(make(stage), .retry("call"), delivers: nil)
     }
-    @Test(arguments: [(SummariesState.Lifecycle.accepting, false), (.draining, true), (.ended, true)])
+    @Test(arguments: [(SummariesState.Lifecycle.accepting, false), (.draining, true), (.settled, true)])
     func aRetryWithoutDispatchOrAfterShutdownChangesNothing(lifecycle: SummariesState.Lifecycle, dispatch: Bool) {
         assert(make(.failed, lifecycle: lifecycle, dispatch: dispatch), .retry("call"))
     }
-    @Test(arguments: [(SummariesState.Lifecycle.accepting, false), (.draining, true), (.ended, true)])
+    @Test(arguments: [(SummariesState.Lifecycle.accepting, false), (.draining, true), (.settled, true)])
     func aRetryWithoutDispatchOrAfterShutdownDeliversNothing(lifecycle: SummariesState.Lifecycle, dispatch: Bool) {
         assert(make(.failed, lifecycle: lifecycle, dispatch: dispatch), .retry("call"), delivers: nil)
     }

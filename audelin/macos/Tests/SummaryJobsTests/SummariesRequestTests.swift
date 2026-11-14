@@ -21,10 +21,10 @@ import Testing
     func aRequestForABusyCallDeliversNothing(stage: SummariesState.Call.Stage) {
         assert(make(stage), .request("call"), delivers: nil)
     }
-    @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func aRequestAfterShutdownChangesNothing(lifecycle: SummariesState.Lifecycle) {
+    @Test(arguments: [SummariesState.Lifecycle.draining, .settled]) func aRequestAfterShutdownChangesNothing(lifecycle: SummariesState.Lifecycle) {
         assert(makeState(lifecycle: lifecycle), .request("call"))
     }
-    @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func aRequestAfterShutdownDeliversNothing(lifecycle: SummariesState.Lifecycle) {
+    @Test(arguments: [SummariesState.Lifecycle.draining, .settled]) func aRequestAfterShutdownDeliversNothing(lifecycle: SummariesState.Lifecycle) {
         assert(makeState(lifecycle: lifecycle), .request("call"), delivers: nil)
     }
     @Test func theReadTranscriptIsPrepared() {
@@ -38,7 +38,7 @@ import Testing
     }
     @Test func aTranscriptReadDuringShutdownDropsTheCall() {
         var state = makeReading(); state.lifecycle = .draining
-        assert(state, .submit(makeSubmission(requested: true))) { $0.calls["call"] = nil; $0.lifecycle = .ended }
+        assert(state, .submit(makeSubmission(requested: true))) { $0.calls["call"] = nil; $0.lifecycle = .settled }
     }
     @Test func aTranscriptReadDuringShutdownDeliversNothing() {
         var state = makeReading(); state.lifecycle = .draining

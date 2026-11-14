@@ -60,10 +60,10 @@ import Testing
     @Test func waitingForAKnownCallDeliversNothing() {
         assert(makeState(calls: ["call": .init(stage: .claiming)]), .waiting("call", notesOn: true), delivers: nil)
     }
-    @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func waitingAfterShutdownChangesNothing(lifecycle: SummariesState.Lifecycle) {
+    @Test(arguments: [SummariesState.Lifecycle.draining, .settled]) func waitingAfterShutdownChangesNothing(lifecycle: SummariesState.Lifecycle) {
         assert(makeState(lifecycle: lifecycle), .waiting("call", notesOn: true))
     }
-    @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func waitingAfterShutdownDeliversNothing(lifecycle: SummariesState.Lifecycle) {
+    @Test(arguments: [SummariesState.Lifecycle.draining, .settled]) func waitingAfterShutdownDeliversNothing(lifecycle: SummariesState.Lifecycle) {
         assert(makeState(lifecycle: lifecycle), .waiting("call", notesOn: true), delivers: nil)
     }
     @Test func aSubmissionForAWaitingCallPreparesItsJob() {
@@ -74,10 +74,10 @@ import Testing
     @Test func aSubmissionForAWaitingCallDeliversPrepare() {
         assert(makeState(calls: ["call": .init(stage: .waiting)]), makeFinalized(), delivers: .prepare(makeSubmission()))
     }
-    @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func aSubmissionAfterShutdownChangesNothing(lifecycle: SummariesState.Lifecycle) {
+    @Test(arguments: [SummariesState.Lifecycle.draining, .settled]) func aSubmissionAfterShutdownChangesNothing(lifecycle: SummariesState.Lifecycle) {
         assert(makeState(lifecycle: lifecycle), makeFinalized())
     }
-    @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func aSubmissionAfterShutdownDeliversNothing(lifecycle: SummariesState.Lifecycle) {
+    @Test(arguments: [SummariesState.Lifecycle.draining, .settled]) func aSubmissionAfterShutdownDeliversNothing(lifecycle: SummariesState.Lifecycle) {
         assert(makeState(lifecycle: lifecycle), makeFinalized(), delivers: nil)
     }
 
@@ -236,10 +236,10 @@ import Testing
     @Test func recoveringAKnownCallDeliversNothing() {
         assert(makeClaiming(), .recover("call"), delivers: nil)
     }
-    @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func recoveringAfterShutdownChangesNothing(lifecycle: SummariesState.Lifecycle) {
+    @Test(arguments: [SummariesState.Lifecycle.draining, .settled]) func recoveringAfterShutdownChangesNothing(lifecycle: SummariesState.Lifecycle) {
         assert(makeState(lifecycle: lifecycle), .recover("call"))
     }
-    @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func recoveringAfterShutdownDeliversNothing(lifecycle: SummariesState.Lifecycle) {
+    @Test(arguments: [SummariesState.Lifecycle.draining, .settled]) func recoveringAfterShutdownDeliversNothing(lifecycle: SummariesState.Lifecycle) {
         assert(makeState(lifecycle: lifecycle), .recover("call"), delivers: nil)
     }
 

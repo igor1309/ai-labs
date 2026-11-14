@@ -78,7 +78,7 @@ import Testing
     }
     @Test func aDeferredCallDoesNotPublishAfterShutdown() {
         let state = make(transaction: true, ["call": deferred("call")], lifecycle: .draining)
-        assert(state, .transaction(running: false)) { $0.transaction = false; $0.lifecycle = .ended }
+        assert(state, .transaction(running: false)) { $0.transaction = false; $0.lifecycle = .settled }
     }
     @Test func aDeferredCallAfterShutdownDeliversNothing() {
         assert(make(transaction: true, ["call": deferred("call")], lifecycle: .draining), .transaction(running: false), delivers: nil)

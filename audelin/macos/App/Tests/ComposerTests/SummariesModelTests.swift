@@ -112,10 +112,10 @@ import Testing
         try await waitUntil("notes are saved") { sut.state.calls["call"]?.stage == .succeeded }
         #expect(files.writes.contains { if case .publish(_, "notes") = $0 { true } else { false } })
     }
-    @Test func shutdownReturnsOnceTheMachineHasEnded() async {
+    @Test func shutdownReturnsOnceTheMachineHasSettled() async {
         let sut = makeSUT(FilesFake())
         await sut.shutdown()
-        #expect(sut.state.lifecycle == .ended)
+        #expect(sut.state.lifecycle == .settled)
     }
 
     private func makeSUT(_ files: FilesFake, notes: Bool = true, transcript: [Calls.Text.Line] = [], readFails: Bool = false) -> SummariesModel {
