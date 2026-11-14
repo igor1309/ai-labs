@@ -8,17 +8,21 @@ struct SegmentsScalingTests {
 
     @Test func aHearingLateInALongCallCostsAboutWhatAnEarlyOneDoes() {
 
-        // The quickest of five runs each, taken in turn, so a busy spell
-        // slows both sides rather than one alone. Work that does not grow
-        // with the call stays well within 3x: caches cold for a longer call
-        // cost a little.
-        let runs = (0..<5).map { _ in (secondsPerHearing(after: 300), secondsPerHearing(after: 30_000)) }
-        let earlies = runs.map(\.0), lates = runs.map(\.1)
-        let early = (seconds: earlies.map(\.seconds).min()!, lost: earlies.map(\.lost).max()!)
-        let late = (seconds: lates.map(\.seconds).min()!, lost: lates.map(\.lost).max()!)
+        // Early and late take turns in short chunks, and each side's cost is
+        // its quickest chunk. A busy runner slows some chunks for whole
+        // stretches; a chunk this short almost always finds a quiet slice,
+        // and both sides get the same chances at one. Work that does not
+        // grow with the call stays well within 3x: caches cold for a longer
+        // call cost a little.
+        var early = Call(history: 300), late = Call(history: 30_000)
+        var earlySeconds = Double.infinity, lateSeconds = Double.infinity
+        for _ in 0..<40 {
+            earlySeconds = min(earlySeconds, early.secondsPerHearing(hearings: 50))
+            lateSeconds = min(lateSeconds, late.secondsPerHearing(hearings: 50))
+        }
         #expect(early.lost == 0, "\(early.lost) words lost after 300")
         #expect(late.lost == 0, "\(late.lost) words lost after 30,000")
-        #expect(late.seconds / early.seconds <= 3, "a hearing after 30,000 words costs \(late.seconds / early.seconds)x one after 300")
+        #expect(lateSeconds / earlySeconds <= 3, "a hearing after 30,000 words costs \(lateSeconds / earlySeconds)x one after 300")
     }
 
     /// Segments already final are not cut again, so cutting words as they
@@ -56,35 +60,43 @@ struct SegmentsScalingTests {
     }
 }
 
-/// Times hearings that each add a word, after `history` words: a word every
-/// 0.4 s in 8 s sentences with 4 s pauses, final a second after it ends.
-/// Also counts the words said that the segments no longer hold, so dropping
-/// history cannot pass for keeping up.
-private func secondsPerHearing(after history: Int) -> (seconds: Double, lost: Int) {
+/// A call `history` words in: a word every 0.4 s in 8 s sentences with
+/// 4 s pauses, final a second after it ends.
+private struct Call {
 
-    var segments = Segments(pause: 1)
-    var spoken = Speaker()
-    // The history arrives in one hearing, so building it stays cheap.
-    let past = (0..<history).flatMap { _ in spoken.next().words.suffix(1) }
-    segments.hear(Hearing(words: past, finalThrough: past.last.map { $0.end }))
+    private var segments = Segments(pause: 1)
+    private var spoken = Speaker()
 
-    // About 20 ms a run: long enough that one pause of a busy runner's
-    // scheduler cannot pass for a hearing's cost.
-    let hearings = 2_000
-    let clock = ContinuousClock()
-    let elapsed = clock.measure {
-        for _ in 0..<hearings { segments.hear(spoken.next()) }
+    init(history: Int) {
+
+        // The history arrives in one hearing, so building it stays cheap.
+        let past = (0..<history).flatMap { _ in spoken.next().words.suffix(1) }
+        segments.hear(Hearing(words: past, finalThrough: past.last.map { $0.end }))
     }
-    let said = (0..<history + hearings).map { "w\($0)" }
-    let held = segments.all.flatMap { $0.words.map(\.text) }
-    let lost = held.difference(from: said).removals.count
-    return ((Double(elapsed.components.attoseconds) / 1e18 + Double(elapsed.components.seconds)) / Double(hearings), lost)
+
+    /// Times `hearings` hearings that each add a word.
+    mutating func secondsPerHearing(hearings: Int) -> Double {
+
+        let elapsed = ContinuousClock().measure {
+            for _ in 0..<hearings { segments.hear(spoken.next()) }
+        }
+        return (Double(elapsed.components.attoseconds) / 1e18 + Double(elapsed.components.seconds)) / Double(hearings)
+    }
+
+    /// The words said that the segments no longer hold, so dropping history
+    /// cannot pass for keeping up.
+    var lost: Int {
+
+        let said = (0..<spoken.count).map { "w\($0)" }
+        let held = segments.all.flatMap { $0.words.map(\.text) }
+        return held.difference(from: said).removals.count
+    }
 }
 
 private struct Speaker {
 
     private var time = 0.0
-    private var count = 0
+    private(set) var count = 0
 
     /// Reports the newest word with the one before it, as a recogniser revises its tail.
     mutating func next() -> Hearing {
