@@ -21,8 +21,11 @@ struct CallNotesAccessibilityTests {
             #expect(control.cell is NSButtonCell)
             #expect(control.state == .off)
             #expect(control.isAccessibilityElement())
-            #expect(control.focusRingType == .exterior)
         }
+        // Tabs ring the focused segment inside the track; other buttons keep the system ring.
+        #expect(recording.focusRingType == .none)
+        #expect(notes.focusRingType == .none)
+        #expect(action.focusRingType == .exterior)
         #expect(checkbox.accessibilityRole() == .checkBox)
         #expect(checkbox.cell is NSButtonCell)
         #expect(checkbox.accessibilityValue() as? Int == 0)

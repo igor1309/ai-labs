@@ -16,6 +16,8 @@ public struct SettingsView: View {
     @State var notesDetailsExpanded = false
     @State var tabsHeight: CGFloat = 0
     @State var pageHeight: CGFloat = 0
+    /// The segmented control or tab that holds keyboard focus, ringed in the accent colour.
+    @State var focusedControl: String?
 
     @Environment(\.colorScheme) private var scheme
 
@@ -77,37 +79,91 @@ extension SettingsView {
     @ViewBuilder
     func segmented<ID>(_ control: SettingsState.Segmented<ID>, id: String, select: @escaping (ID) -> Void) -> some View {
 
+        segmentTrack(
+            titles: control.segments.map(\.title), enabled: control.segments.map(\.isEnabled),
+            selected: control.segments.firstIndex { $0.id == control.selected },
+            ring: focusedControl == id ? control.segments.firstIndex { $0.id == control.selected } : nil
+        )
+        .overlay { segmentsTarget(titles: control.segments.map(\.title), enabled: control.segments.map(\.isEnabled),
+                                  selected: control.segments.firstIndex { $0.id == control.selected }, id: id,
+                                  segmentIDs: control.segments.map { "\(id)-\($0.id)" }) { select(control.segments[$0].id) } }
+
+        uiText(control.hint, tokens.typeSmall, tokens.gutter)
+    }
+
+    /// The native-style track every segmented choice in Settings draws: a
+    /// raised thumb under the selected segment and, while the control holds
+    /// keyboard focus, an accent ring around the segment that has it. The
+    /// ring sits in the track's padding, so nothing draws outside the control.
+    func segmentTrack(
+        titles: [String],
+        enabled: [Bool],
+        selected: Int?,
+        ring: Int?,
+        data: Bool = false,
+        fill: Bool = true
+    ) -> some View {
+
         HStack(spacing: tokens.space2) {
 
-            ForEach(control.segments, id: \.id) { segment in
+            ForEach(titles.indices, id: \.self) { index in
 
-                let isSelected = segment.id == control.selected
+                let isSelected = index == selected
+                let color = enabled[index] ? tokens.text : tokens.disText
+                let label = titles[index]
 
-                uiText(segment.title, tokens.typeSmall, isSelected ? tokens.text : tokens.sub, isSelected ? .semibold : .regular)
-                    .padding(.vertical, tokens.space4)
-                    .padding(.horizontal, tokens.space12)
-                    .frame(maxWidth: .infinity)
-                    .background {
-                        if isSelected {
-                            RoundedRectangle(cornerRadius: tokens.radiusControl)
-                                .fill(tokens.surface)
-                                .strokeBorder(tokens.rule, lineWidth: 1)
-                        }
+                Group {
+                    if data {
+                        dataText(label, tokens.typeSmall, color, isSelected ? .medium : .regular)
+                    } else {
+                        uiText(label, tokens.typeSmall, color, isSelected ? .medium : .regular)
                     }
+                }
+                .lineLimit(1)
+                .padding(.vertical, tokens.space2)
+                .padding(.horizontal, tokens.space12)
+                .frame(maxWidth: fill ? .infinity : nil)
+                .background {
+                    if isSelected {
+                        RoundedRectangle(cornerRadius: tokens.radiusThumb)
+                            .fill(tokens.segThumb)
+                            .shadow(color: tokens.segShadow, radius: 1, y: 1)
+                    }
+                }
+                .overlay {
+                    if index == ring {
+                        RoundedRectangle(cornerRadius: tokens.radiusThumb + tokens.space2)
+                            .strokeBorder(tokens.me, lineWidth: 2)
+                            .padding(-tokens.space2)
+                    }
+                }
             }
         }
         .padding(tokens.space2)
-        .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
+        .background(tokens.segTrack, in: .rect(cornerRadius: tokens.radiusControl))
         .accessibilityHidden(true)
-        .overlay {
-            SettingsSegmentsTarget(
-                titles: control.segments.map(\.title), enabled: control.segments.map(\.isEnabled),
-                selected: control.segments.firstIndex { $0.id == control.selected }, identifier: id,
-                segmentIdentifiers: control.segments.map { "\(id)-\($0.id)" },
-                select: { select(control.segments[$0].id) })
-        }
+    }
 
-        uiText(control.hint, tokens.typeSmall, tokens.gutter)
+    /// AppKit target over a segment track: focus, clicks, arrow keys and the
+    /// radio-group accessibility, reporting focus so the track draws its ring.
+    func segmentsTarget(
+        titles: [String],
+        enabled: [Bool],
+        selected: Int?,
+        id: String,
+        segmentIDs: [String],
+        select: @escaping (Int) -> Void
+    ) -> some View {
+
+        SettingsSegmentsTarget(
+            titles: titles, enabled: enabled, selected: selected, identifier: id,
+            segmentIdentifiers: segmentIDs, select: select,
+            focusChanged: { focusChanged(id, $0) })
+    }
+
+    func focusChanged(_ id: String, _ isFocused: Bool) {
+
+        if isFocused { focusedControl = id } else if focusedControl == id { focusedControl = nil }
     }
 
     var recordingPage: some View {
@@ -126,19 +182,30 @@ extension SettingsView {
         }
     }
 
+    /// The tab bar is the same segmented track; each tab stays its own
+    /// button to the keyboard and assistive apps.
     var tabs: some View {
-        HStack(spacing: tokens.space4) {
-            tab(text(.generalTab), .general)
-            tab(text(.recordingTab), .recording)
-            tab(text(.callNotesTab), .callNotes)
-        }
-    }
 
-    func tab(_ title: String, _ tab: SettingsState.Tab) -> some View {
-        button(title, state.selectedTab == tab ? .primary : .secondary, fill: true, id: "tab-\(tab.rawValue)", selected: state.selectedTab == tab) {
-            event(.selectTab(tab))
+        let all: [(String, SettingsState.Tab)] = [
+            (text(.generalTab), .general), (text(.recordingTab), .recording), (text(.callNotesTab), .callNotes),
+        ]
+
+        return segmentTrack(
+            titles: all.map(\.0), enabled: all.map { _ in true },
+            selected: all.firstIndex { $0.1 == state.selectedTab },
+            ring: all.firstIndex { focusedControl == "tab-\($0.1.rawValue)" }
+        )
+        .overlay {
+            HStack(spacing: tokens.space2) {
+                ForEach(all, id: \.1) { title, tab in
+                    let id = "tab-\(tab.rawValue)"
+                    SettingsPressTarget(
+                        title: title, identifier: id, isEnabled: true, selected: state.selectedTab == tab,
+                        action: { event(.selectTab(tab)) }, focusChanged: { focusChanged(id, $0) })
+                }
+            }
+            .padding(tokens.space2)
         }
-        .accessibilityIdentifier("tab-\(tab.rawValue)")
     }
 
     var tokens: GlassLedger { config.tokens(for: scheme) }
@@ -306,27 +373,18 @@ extension SettingsView {
 
         HStack(spacing: tokens.space8) {
 
-            HStack(spacing: tokens.space2) {
+            let titles = chunk.options.map { text(.chunkSeconds, $0) }
+            let selected = chunk.options.firstIndex(of: chunk.selected)
 
-                ForEach(chunk.options, id: \.self) { seconds in
-
-                    let isSelected = seconds == chunk.selected
-
-                    Button { event(.selectChunk(seconds)) } label: {
-
-                        dataText(text(.chunkSeconds, seconds), tokens.typeSmall, isSelected ? tokens.selText : tokens.text)
-                            .padding(.vertical, tokens.space4)
-                            .padding(.horizontal, tokens.space12)
-                            .background(
-                                isSelected ? tokens.selBg : .clear,
-                                in: .rect(cornerRadius: tokens.radiusControl)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
+            segmentTrack(
+                titles: titles, enabled: titles.map { _ in true }, selected: selected,
+                ring: focusedControl == "chunk" ? selected : nil, data: true, fill: false
+            )
+            .fixedSize()
+            .overlay {
+                segmentsTarget(titles: titles, enabled: titles.map { _ in true }, selected: selected, id: "chunk",
+                               segmentIDs: chunk.options.map { "chunk-\($0)" }) { event(.selectChunk(chunk.options[$0])) }
             }
-            .padding(tokens.space2)
-            .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
 
             dataText("DEBUG", tokens.typeCaption, tokens.warn, .semibold)
                 .padding(.vertical, tokens.space2)

@@ -10,6 +10,8 @@ struct SettingsPressTarget: NSViewRepresentable {
     var checked: Bool? = nil
     var selected: Bool? = nil
     var action: () -> Void
+    /// When set, SwiftUI draws the focus ring and is told of focus changes.
+    var focusChanged: ((Bool) -> Void)? = nil
 
     func makeCoordinator() -> Coordinator { Coordinator(action: action) }
 
@@ -19,7 +21,6 @@ struct SettingsPressTarget: NSViewRepresentable {
         button.setButtonType(checked == nil ? .momentaryPushIn : .switch)
         button.isBordered = false
         button.isTransparent = true
-        button.focusRingType = .exterior
         return button
     }
 
@@ -27,6 +28,8 @@ struct SettingsPressTarget: NSViewRepresentable {
         context.coordinator.action = action
         context.coordinator.checked = checked
         button.isEnabled = isEnabled
+        button.focusRingType = focusChanged == nil ? .exterior : .none
+        (button as? AccessiblePressButton)?.focusChanged = focusChanged
         button.state = checked == true ? .on : .off
         if let selected { button.setAccessibilitySelected(selected) }
         button.setAccessibilityElement(true)
@@ -49,6 +52,17 @@ struct SettingsPressTarget: NSViewRepresentable {
 /// by SwiftUI, but the native control still owns focus and activation.
 private final class AccessiblePressButton: NSButton {
     var isCheckbox = false
+    var focusChanged: ((Bool) -> Void)?
+    override func becomeFirstResponder() -> Bool {
+        let became = super.becomeFirstResponder()
+        if became { focusChanged?(true) }
+        return became
+    }
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        if resigned { focusChanged?(false) }
+        return resigned
+    }
     override func accessibilityRole() -> NSAccessibility.Role? { isCheckbox ? .checkBox : .button }
     override func accessibilityValue() -> Any? { isCheckbox ? NSNumber(value: state == .on) : super.accessibilityValue() }
     override func accessibilityPerformPress() -> Bool {
