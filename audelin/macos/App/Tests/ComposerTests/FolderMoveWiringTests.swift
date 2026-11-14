@@ -78,7 +78,7 @@ struct FolderMoveWiringTests {
             let inputs = makeRecordings(handler: .init(calls: spy,
                 reserve: { await rig.menu.reserveCallsFolder() },
                 release: { await rig.menu.releaseCallsFolder() }, storeFolder: { await spy.store($0) }, describe: russianSettings.callsFailure),
-                text: russianSettingsText, initial: .init(callsFolder: rig.root))
+                text: russianSettingsText, isIdle: alwaysIdle, initial: .init(callsFolder: rig.root))
             let calls = AudelinCalls(inputs: inputs, timeZone: .gmt, now: Date.init, recordingState: { rig.menu.state },
                                     location: { _ in rig.root }, openFolder: { _ in true }, present: {})
             rig.menu.installCalls(calls)
@@ -120,7 +120,7 @@ struct FolderMoveWiringTests {
             let inputs = makeRecordings(handler: .init(calls: spy,
                 reserve: { await rig.menu.reserveCallsFolder() },
                 release: { await rig.menu.releaseCallsFolder() }, storeFolder: { await spy.store($0) }, describe: russianSettings.callsFailure),
-                text: russianSettingsText, initial: .init(callsFolder: rig.root))
+                text: russianSettingsText, isIdle: alwaysIdle, initial: .init(callsFolder: rig.root))
             let calls = AudelinCalls(inputs: inputs, timeZone: .gmt, now: Date.init, recordingState: { rig.menu.state },
                                     location: { _ in rig.root }, openFolder: { _ in true }, present: {})
             rig.menu.installCalls(calls)
@@ -266,8 +266,12 @@ private actor CallsMoveSpy: RecordingsCalls {
     func list() -> [RecordedCall] { listings += 1; return [.init(id: "fresh", title: "Fresh", start: .distantPast, duration: nil)] }
     func rename(id: String, title: String) { Issue.record("Unexpected rename") }
     func delete(id: String) { Issue.record("Unexpected delete") }
+    func merge(ids: [String]) -> String { Issue.record("Unexpected merge"); return "" }
 }
 
 private struct MoveFailure: LocalizedError { var errorDescription: String? { "disk" } }
 
 @Sendable private func russianSettingsText() -> SettingsText { SettingsText(language: .russian) }
+
+/// Audelin answering that it is idle, for compositions that do not merge.
+@Sendable func alwaysIdle() -> Bool { true }

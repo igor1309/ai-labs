@@ -33,6 +33,14 @@ import Testing
     @Test func aCancelOnAStoredJobNotStartedDeliversDiscard() {
         assert(make(.pending), .cancel("call"), delivers: .discard(makeJob()))
     }
+    @Test func S15_droppingAMergedPartsStoredJobDiscardsIt() {
+        assert(make(.pending), .drop("call")) {
+            $0.calls["call"]?.stage = .discarding; $0.calls["call"]?.cancelling = true; $0.calls["call"]?.status = "discarding:false"
+        }
+    }
+    @Test func S15_droppingAMergedPartsStoredJobDeliversDiscard() {
+        assert(make(.pending), .drop("call"), delivers: .discard(makeJob()))
+    }
     @Test func aSecondCancelChangesNothing() {
         assert(make(.noting, cancelling: true), .cancel("call"))
         #expect(format.payloads.isEmpty)
@@ -95,6 +103,26 @@ import Testing
     }
     @Test func aFailedDiscardDeliversNothing() {
         assert(make(.discarding, cancelling: true), .storageFailed("call"), delivers: nil)
+    }
+
+    @Test func S15_aMergedCallsSubmissionWaitsForItsPartsDiscard() {
+        assert(make(.discarding, cancelling: true), makeFinalized()) { $0.calls["call"]?.submission = makeSubmission() }
+        assert(make(.discarding, cancelling: true), makeFinalized(), delivers: nil)
+        let held = makeState(calls: ["call": .init(stage: .discarding, job: makeJob(), cancelling: true, submission: makeSubmission(requested: true))])
+        assert(held, makeFinalized())
+    }
+    @Test(arguments: [SummariesEvent.discarded("call"), .storageFailed("call")])
+    func S15_aMergedCallsSubmissionIsPreparedOnceThePartsJobIsGone(event: SummariesEvent) {
+        let held = makeState(calls: ["call": .init(stage: .discarding, job: makeJob(), cancelling: true, submission: makeSubmission())])
+        assert(held, event) {
+            $0.calls["call"] = .init(stage: .preparing, submission: makeSubmission())
+            $0.calls["call"]?.status = "preparing:false"
+        }
+        #expect(format.payloads == [.init(stage: .preparing, warning: false)])
+        assert(held, event, delivers: .prepare(makeSubmission()))
+    }
+    @Test func S15_aDiscardWithoutASubmissionStillDropsTheCall() {
+        assert(make(.discarding, cancelling: true), .discarded("call"), delivers: nil)
     }
 
     private func make(_ stage: SummariesState.Call.Stage, cancelling: Bool = false) -> SummariesState {

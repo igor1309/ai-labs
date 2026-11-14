@@ -31,6 +31,15 @@ public enum SettingsPhrase: String, CaseIterable, Sendable {
     /// Takes the folder name and the system's reason.
     case callTrashFailed = "calls.trashFailed"
     case callSizeMismatch = "calls.sizeMismatch"
+    /// Takes the call id.
+    case callUnknownLength = "calls.unknownLength"
+    /// Takes the call id and the system's reason.
+    case callUnreadableTranscript = "calls.unreadableTranscript"
+    /// Takes the system's reason.
+    case callMergeFailed = "calls.mergeFailed"
+    case callMergeBusy = "calls.mergeBusy"
+    /// Takes the part's folder name and the system's reason.
+    case callMergeMoveFailed = "calls.mergeMoveFailed"
     case moveRefreshing = "move.refreshing"
     case generalTab = "tab.general"
     case languageRow = "general.languageRow"

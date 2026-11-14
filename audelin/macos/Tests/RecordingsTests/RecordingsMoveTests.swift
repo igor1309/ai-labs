@@ -116,7 +116,7 @@ struct RecordingsMoveTests {
     @Test func formattingIsInjectedAndUsedOnlyWhenMoveValuesChange() {
         let calls = Mutex<[CallsFolderMove]>([])
         let stub = MoveText(title: "title", body: "body", detail: "detail", moved: "moved")
-        let reducer = RecordingsReducer(failureMessage: { _, _ in "" }, moveText: { move in calls.withLock { $0.append(move) }; return stub })
+        let reducer = RecordingsReducer(failureMessage: { _, _ in "" }, moveText: { move in calls.withLock { $0.append(move) }; return stub }, isIdle: { true }, busyMessage: { "busy" })
         #expect(calls.withLock { $0 }.isEmpty)
         let idle = makeState()
         assert(idle, .cancelMove, delivers: nil, using: reducer)
@@ -242,6 +242,7 @@ private actor MoveSpy: RecordingsCalls {
     func list() async throws -> [RecordedCall] { throw MoveError() }
     func rename(id: String, title: String) async throws { throw MoveError() }
     func delete(id: String) async throws { throw MoveError() }
+    func merge(ids: [String]) async throws -> String { throw MoveError() }
 }
 private func expect(_ sut: RecordingsEffectHandler, with effect: RecordingsEffect, toDeliver expected: RecordingsEvent,
                     on action: @escaping @Sendable () async -> Void, sourceLocation: SourceLocation = #_sourceLocation) async {
