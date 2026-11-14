@@ -8,26 +8,38 @@ Oracle: the owner's rulings on merging calls.
 ## Decided
 
 - **Merging joins transcripts only.** The parts' audio is left as it was.
-- **Only while Audelin is idle:** nothing recording, no transcript being
+- **Merging needs Audelin idle:** nothing recording, no transcript being
   finished, no notes being made (owner's ruling).
 - **The merged call reads as the call it was:** the parts' transcripts in
   time order with each gap marked, under the earliest part's start and
   title, with one set of notes made from the whole.
+- **A selection is far apart when another call lies between selected
+  calls** in the list: the parts of one cut call are neighbours, so a call
+  between them means a row was likely picked by mistake.
 
 ```gherkin
 Feature: Merging calls that were one call
 
-  Scenario: S-1 Merging calls into one
-    Given I switched the calls list to merge mode and selected calls that were one call
-    When I confirm the merge
-    Then I can read them as one call, see where it was cut off, and read one set of notes
+  Background:
+    Given Audelin is idle
+    And the calls list is in merge mode
 
-  Scenario: S-2 No merge while Audelin is busy
-    Given Audelin is recording or preparing a transcript or notes
-    When I look for merge mode
-    Then I cannot merge and can read why
+  Scenario: S-1 Merging neighbouring calls
+    Given I selected calls that are next to each other in the list
+    When I confirm the merge
+    Then I can read them as one call
+    And I can see where the call was cut off
+    And I can read one set of notes for the whole call
+
+  Scenario: S-2 Merging calls far apart asks again
+    Given I selected calls with another call between them in the list
+    When I confirm the merge
+    Then I am warned that a call may have been selected by mistake
+    And I can merge them anyway or go back to my selection
 
   Scenario: S-3 A merge that fails
-    When a merge cannot be completed
-    Then I can still read each call as before and can read why it failed
+    Given I selected calls to merge
+    When the merge cannot be completed
+    Then I can still read each call as before
+    And I can read why the merge failed
 ```
