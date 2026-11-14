@@ -97,7 +97,83 @@ struct CallDetailReducerTests {
     fileprivate func irrelevantOrStaleEvent_state(test: IgnoredCase) { assert(test.state(), test.event) }
     @Test(arguments: ignoredCases)
     fileprivate func irrelevantOrStaleEvent_effect(test: IgnoredCase) { assert(test.state(), test.event, delivers: nil) }
+    @Test func openRequestWhileReadingWaits_state() {
+        assert(makeReading(), .openRequested(id: "a")) { $0.pendingOpen = "a" }
+    }
+    @Test func openRequestWhileReadingWaits_effect() {
+        assert(makeReading(), .openRequested(id: "a"), delivers: nil)
+    }
+
+    @Test func openRequestAfterReadOpensAtOnce_state() {
+        assert(makeShown(), .openRequested(id: "a")) {
+            $0.opened = "a"
+            $0.opens += 1
+        }
+    }
+    @Test func openRequestAfterReadOpensAtOnce_effect() {
+        assert(makeShown(), .openRequested(id: "a"), delivers: nil)
+    }
+
+    @Test(arguments: [makeEmpty(), makeShown(), makeReading()])
+    func openRequestForAnotherCallChangesNothing_state(given: CallDetailState) {
+        assert(given, .openRequested(id: "b"))
+    }
+    @Test(arguments: [makeEmpty(), makeShown(), makeReading()])
+    func openRequestForAnotherCallChangesNothing_effect(given: CallDetailState) {
+        assert(given, .openRequested(id: "b"), delivers: nil)
+    }
+
+    @Test(arguments: contentCases)
+    fileprivate func readAnswerOpensThePendingCall_state(test: ContentCase) {
+        assert(makePendingOpen(summary: test.summary, editable: test.editable),
+               .readFinished(id: "a", revision: 7, result: test.result)) {
+            $0.notes = test.result
+            $0.detail = .init(id: "a", title: "A title", date: "Today, 10:00", duration: "1:00", content: test.content)
+            $0.pendingOpen = nil
+            $0.opened = "a"
+            $0.opens += 1
+        }
+    }
+    @Test(arguments: contentCases)
+    fileprivate func readAnswerOpensThePendingCall_effect(test: ContentCase) {
+        assert(makePendingOpen(summary: test.summary, editable: test.editable),
+               .readFinished(id: "a", revision: 7, result: test.result), delivers: nil)
+    }
+
+    @Test func supersededReadKeepsTheOpenPending_state() {
+        assert(makePendingOpen(), .readFinished(id: "a", revision: 6, result: .absent))
+    }
+    @Test func supersededReadKeepsTheOpenPending_effect() {
+        assert(makePendingOpen(), .readFinished(id: "a", revision: 6, result: .absent), delivers: nil)
+    }
+
+    @Test(arguments: [makeCall(id: "b"), nil])
+    func anotherSelectionDropsThePendingOpen_state(call: CallDetailState.Call?) {
+        assert(makePendingOpen(), .selectionChanged(call)) {
+            $0.pendingOpen = nil
+            $0.selected = call
+            if call == nil { $0.detail = nil } else { $0.revision += 1 }
+        }
+    }
+    @Test(arguments: [makeCall(id: "b"), nil])
+    func anotherSelectionDropsThePendingOpen_effect(call: CallDetailState.Call?) {
+        assert(makePendingOpen(), .selectionChanged(call), delivers: call.map { _ in .read(id: "b", revision: 8) })
+    }
+
+    @Test func reselectingThePendingCallKeepsIt_state() {
+        assert(makePendingOpen(), .selectionChanged(makeCall())) { $0.revision += 1 }
+    }
+    @Test func reselectingThePendingCallKeepsIt_effect() {
+        assert(makePendingOpen(), .selectionChanged(makeCall()), delivers: .read(id: "a", revision: 8))
+    }
 }
+
+private func makePendingOpen(summary: CallDetailState.Call.Summary = makeSummary(.none), editable: Bool = true) -> CallDetailState {
+    var state = makeReading(summary: summary, editable: editable)
+    state.pendingOpen = "a"
+    return state
+}
+
 
 private let changedSummaries: [CallDetailState.Call.Summary] = [
     makeSummary(.pending), makeFailed(),
