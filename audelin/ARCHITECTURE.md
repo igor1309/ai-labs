@@ -46,7 +46,7 @@ platform; anything else breaks rule 1. The lanes of
 
 | Kind | May import | Targets |
 |---|---|---|
-| Machine | nothing | Session, Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, CallsList, TranscriptFinalization, RecordingConditions, CallNames |
+| Machine | nothing | Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, CallsList, TranscriptFinalization, RecordingConditions, CallNames |
 | Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, LatestText, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch |
 | Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, Calls, CallsStorage, Preferences |
 | Shared helper | nothing | SplitRows, CallFolderName, AudioConversion, ModelLoading |
@@ -56,14 +56,31 @@ platform; anything else breaks rule 1. The lanes of
 
 A shared helper is a pure function or value with one reason to change of
 its own (a format, a conversion); it holds no domain type, so rule 3
-stands. MenuBar is UI that also holds the pure reducer for panel presence.
+stands. MenuBar is UI that also holds panel presence's pure reducer; the
+root composes it as a machine.
 
 ### Open
 
-The composer does not yet follow rule 4. It holds state across events
-(`NewestText`). Each becomes a component or machine of its own, or is
-shown to be only mapping. No check yet fails on an import that a target's
-kind does not allow.
+The code does not yet follow rules 4 and 5 everywhere. Each item below
+becomes part of a machine's state, or is shown to be only mapping:
+
+- Recording and Session are still two machines. Recording's effects begin
+  and end a Session, and the composer keeps one Session model per
+  recording, with continuations that wait for its end. They become the one
+  Recording machine (`docs/app-shape.md`).
+- Recordings reserves the calls folder through Recording and waits on
+  Recording's state for the answer. The calls-folder claim (Calls storage)
+  replaces it.
+- Recordings' reducer asks whether Audelin is idle through a closure that
+  reads Recording, TranscriptFinalization and SummaryJobs (Merging calls).
+- The session's composition sends TranscriptFinalization its events
+  directly instead of the root subscribing Recording's output.
+- The panel's composition builds a Reading and a CallNames for each
+  recording and decides what Reading is sent.
+- The menu runs panel presence's reducer and its delay by hand.
+- The composer holds `NewestText` across events.
+
+No check yet fails on an import that a target's kind does not allow.
 
 ## Recording conditions
 
@@ -124,8 +141,8 @@ merging and calls-folder moves.
 
 Lifecycle owns termination policy only. On quit it publishes a quit
 intention. The root sends shutdown to each participant: it stops call
-detection and shuts Recording down, which ends a running session and settles
-once idle; Recordings stops its actions and settles once no folder move holds
+detection and shuts Recording down, which ends a running recording and
+settles once its pieces are down and its transcript output is delivered; Recordings stops its actions and settles once no folder move holds
 the calls folder; TranscriptFinalization settles each call; SummaryJobs ends
 its work. Each publishes its own settled outcome, the root sends it to
 Lifecycle, and Lifecycle allows termination once all have settled. After a
@@ -135,8 +152,8 @@ rest. Lifecycle reads no participant and drives none.
 An update that replaced the app relaunches it only through Lifecycle. The root
 reports what blocks a relaunch now (an open folder picker, a calls window
 action, notes being made); Lifecycle starts the relaunch only while running
-with nothing blocking. The relaunch reserves the calls folder, so no recording
-starts behind it, and a started relaunch publishes the same quit intention.
+with nothing blocking. The relaunch holds the calls-folder claim, so no
+recording starts behind it, and a started relaunch publishes the same quit intention.
 
 ### Calls storage
 
@@ -150,6 +167,17 @@ commit is running, which SummaryJobs receives. SummaryFiles reaches a call's fol
 location and transaction port, and keeps no journal. Recordings holds move
 and delete policy: it confirms each action, leaves out calls already in the
 destination, and reloads its list after a failed rename or delete.
+
+CallsStorage also offers the calls-folder claim, which keeps operations
+that conflict on the folder apart. A recording creating its folder, a move
+of the calls folder and a relaunch each take the claim; while one holds
+it, the others are refused with the reason. Merging selected ended calls
+needs no claim, since a new recording never touches their folders. Taking
+and releasing are atomic and name the holder's token, so a late release
+cannot free another holder's claim. A holder keeps its token in its own
+state and releases it through its own effect, also when it stops before
+its claim was answered. The claim enforces exclusion only; whether Audelin
+is idle and when to relaunch are decided by Recordings and Lifecycle.
 
 SummaryFiles is also the one reader of published notes: it gives a call's
 notes text and made date, none, or why they cannot be read. CallDetail is the
@@ -211,13 +239,17 @@ already holds. It owns one new port: merge these calls, reporting merged
 or why not. The calls list and the calls window's toolbar draw merge mode
 and send its events; they decide nothing.
 
-**Idleness reaches Recordings as a dependency of its reducer:** an "is
-Audelin idle?" query, asked when merge mode is entered and when a merge is
-confirmed. The composition answers it from what it already knows: a call
-recording, a transcript being finished (bleed cleanup included) and notes
-being made. Idle is checked at those two moments, not held for the merge: a
+**Idleness reaches Recordings as an event.** The root maps three outputs
+into one value, idle or not: Recording running a call,
+TranscriptFinalization finishing a transcript (bleed cleanup included) and
+SummaryJobs making notes. It sends the value to Recordings whenever it
+changes; Recordings keeps it in its state, which starts as not idle until
+the first value arrives. Its reducer checks it when merge mode is entered
+and when a merge is confirmed, and does not hold it for the merge: a
 recording that starts during a merge goes to a new folder of its own and
-never touches the selected calls, so nothing is blocked or refused.
+never touches the selected calls, so nothing is blocked or refused. The
+value may be a moment old; actual conflicts on the folder are kept apart by
+the calls-folder claim.
 
 **Transcript join** is a plain component and an operator in the sense of
 the transcript pipeline: given each part's start and rows, it puts them in
@@ -319,7 +351,9 @@ as written, and the machine stops its cleanup; a call being diarized or
 committed is final when that file write returns, since both replace the
 file; a call still being written is final as last saved once it closes.
 The machine publishes settled once every opened call's final transcript is
-published, so quit waits on settled alone.
+published, so quit waits on settled alone. Recording settles only once its
+transcript output is delivered, so the last close reaches the machine
+before it settles.
 
 Its collaborators are ports it owns: the diarizer (the root's after-call
 pass, which also hands its speaker turns to CallNames), microphone cleanup
@@ -327,7 +361,8 @@ and its stop, transcript replacement, and the receiver of final
 transcripts. The transcript writer only renders and saves: live writes and
 whole replacements. The root keeps each call's writer, cleanup inputs and
 running cleanup as resource handles until its final transcript is
-published, sends the session's opening, writes and close as events, and
+published, subscribes the machine to Recording's ordered transcript
+output (each opening, write and close, keyed by call, none dropped), and
 answers the receiver port by handing each final transcript to SummaryJobs
 before it releases the call's handles; it subscribes the panel's speaker
 rows to the machine.
@@ -384,9 +419,12 @@ the transcript, summary and panel.
 
 ## Call names
 
-CallNames is a machine with one responsibility: the names of one
-recording's far-side rows. Its reason to change is how call-app evidence
-becomes a name. Its state holds the evidence it kept from Zoom and the
+CallNames is a machine with one responsibility: the names of each call's
+far-side rows. Its reason to change is how call-app evidence becomes a
+name. One machine lives as long as the app and holds every call by key: a
+call is kept after its recording ends, until its final transcript is
+published, since its after-call pass may run while another recording has
+begun. For each call its state holds the evidence it kept from Zoom and the
 browser extension, each row's name, the participant IDs the transcript
 uses, whether the names are confirmed, and whether the call app is being
 watched. The reducer names a row through an injected matcher
@@ -396,13 +434,13 @@ rule (`AfterCallNames.names`), both in SpeakerNaming.
 Its effect handler watches and closes the call-app sources. Two adapters in
 the composer answer that port: the Zoom observer reports the Talking
 indicator from Zoom's accessibility tree, and the browser observer reports
-the extension's events and connections. The recording's start and end
-start and stop the watch; the names stay after it.
+the extension's events and connections. The root subscribes Recording's
+output to it: a recording's start and end start and stop the watch for
+that call; its names stay after it.
 
-The panel's reading subscription composes one instance per recording. It
-sends each new remote row to it, and subscribes its state: the panel shows
-the row names, tentative until confirmed, and the recording's names port
-keeps the state last published. The transcript writer and the after-call
+The root sends it each new remote row of a call, and subscribes its names,
+tentative and confirmed, to Reading, which shows them, and to the call's
+names port, which keeps the names last published. The transcript writer and the after-call
 pass read that port; they never wait for the machine. The pass gives the
 speaker turns it diarized back through the same port, and CallNames
 confirms the names from them and its kept evidence.
