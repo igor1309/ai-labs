@@ -36,3 +36,8 @@ exclude = ["macos/App/Sources/**/README.md"]
 [[public_value]]
 finding = "extension/manifest.json:generic-api-key:6"
 line_sha256 = "6a4a736dc32af3820f9e5b7b2460434b470e6270d4787b680a49b11c01f6cfbb"
+
+# An upstream FluidAudio comment names its author's local results folder.
+[[allow_marker]]
+marker = "/Users/"
+paths = ["macos/Vendor/FluidAudio/Sources/FluidAudio/Shared/MLModelConfigurationUtils.swift"]
