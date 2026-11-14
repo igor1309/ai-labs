@@ -1,4 +1,5 @@
 import CallDiarizer
+import CallNames
 import Foundation
 import SpeakerNaming
 import TranscriptFormat
@@ -37,7 +38,7 @@ struct AfterCallPass: Sendable {
                                         through: board.through)
             let confirmed = AfterCallNames.names(rows: rows, turns: turns, evidence: evidence)
             names.confirm(confirmed)
-            await names.announce(confirmed)
+            await names.diarized(turns, rows: rows.map { Row(id: $0.id, start: $0.start, end: $0.end) })
             clusters = AfterCallNames.clusterNames(turns: turns, evidence: evidence)
             sink.write(.init(category: .session, message: "after-call names confirmed=\(clusters.count) turns=\(result.turns.count)"))
         }

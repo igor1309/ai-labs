@@ -50,17 +50,17 @@ struct AfterCallPassTests {
         }
     }
 
-    @Test func aZoomCallConfirmsItsRowNamesAndAnnouncesThem() async throws {
+    @Test func aZoomCallConfirmsItsRowNamesAndHandsItsTurnsToCallNames() async throws {
         try await withPassTrack { track in
             let names = LiveNameBoard()
-            let heard = Values<[Int: String]>()
-            names.listen { heard.append($0) }
+            let heard = Values<[Int]>()
+            names.listen { turns, rows in if !turns.isEmpty { heard.append(rows.map(\.id)) } }
             let (_, _, pass, raw) = try await zoomPass(track: track, binding: Self.alternating, names: names)
             _ = await pass.diarize(call: track.path, raw)
             let board = names.snapshot()
             #expect(board.rows == [1: "Anna", 2: "Boris", 3: "Anna"])
             #expect(board.confirmed)
-            #expect(heard.all == [[1: "Anna", 2: "Boris", 3: "Anna"]])
+            #expect(heard.all == [[1, 2, 3]])
         }
     }
 

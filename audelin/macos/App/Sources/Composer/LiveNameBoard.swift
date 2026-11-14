@@ -1,4 +1,6 @@
+import CallNames
 import Foundation
+import SpeakerNaming
 import Synchronization
 
 /// The live tier's names for the current recording, shared by the panel (which gives them)
@@ -23,18 +25,18 @@ final class LiveNameBoard: Sendable {
 
     private let names = Mutex(Names())
 
-    private struct Listener: Sendable { let deliver: @Sendable ([Int: String]) async -> Void }
+    private struct Listener: Sendable { let deliver: @Sendable ([DiarizedTurn], [Row]) async -> Void }
     private let listener = Mutex<Listener?>(nil)
 
-    /// The panel's reading model, told when the after-call pass confirms names.
-    func listen(_ deliver: @escaping @Sendable ([Int: String]) async -> Void) {
+    /// The recording's CallNames, told the after-call pass's speaker turns.
+    func listen(diarized deliver: @escaping @Sendable ([DiarizedTurn], [Row]) async -> Void) {
 
         listener.withLock { $0 = Listener(deliver: deliver) }
     }
 
-    func announce(_ confirmed: [Int: String]) async {
+    func diarized(_ turns: [DiarizedTurn], rows: [Row]) async {
 
-        await listener.withLock { $0 }?.deliver(confirmed)
+        await listener.withLock { $0 }?.deliver(turns, rows)
     }
 
     func reset() { names.withLock { $0 = Names() } }

@@ -196,7 +196,7 @@ final class ReadingSubscription {
                 LiveNameBoard.shared.give(state.rowNames)
                 LiveNameBoard.shared.record(roster: state.roster, spoken: state.spoken.map { ($0.name, $0.start, $0.end) },
                                             through: state.through)
-                shown.namesChanged(state.rowNames)
+                shown.namesChanged(state.rowNames, confirmed: state.confirmed)
             }
         }
         let presenter = ReadingPresenter(sink: sink, receive: receive)
@@ -209,7 +209,6 @@ final class ReadingSubscription {
                 await presenter.show(state)
             }
         }
-        LiveNameBoard.shared.listen { names in await reading.send(.namesConfirmed(names)) }
         names.event(.start)
         self.text = Task {
             var mapped = 0
@@ -233,7 +232,10 @@ final class ReadingSubscription {
                 time.tick()
             }
         }
+        LiveNameBoard.shared.listen { [weak self] turns, rows in await self?.diarized(turns, rows: rows) }
     }
+
+    private func diarized(_ turns: [DiarizedTurn], rows: [Row]) { names.event(.diarized(turns, rows: rows)) }
 
     func recordingChanged(_ recording: ReadingRecording) {
 
@@ -281,6 +283,7 @@ private final class ShownText {
 
     private let reading: ReadingInputs
     private var names: [Int: String] = [:]
+    private var confirmed = false
     private var last: (state: CallState, from: Int)?
 
     init(reading: ReadingInputs) { self.reading = reading }
@@ -291,11 +294,17 @@ private final class ShownText {
         reading.send(.textUpdated(readingText(state, from: from, names: names)))
     }
 
-    func namesChanged(_ names: [Int: String]) {
+    /// Confirmed names replace every live one, so later text cannot bring a live name back.
+    func namesChanged(_ names: [Int: String], confirmed: Bool) {
 
-        guard names != self.names else { return }
+        guard names != self.names || confirmed != self.confirmed else { return }
         self.names = names
-        if let last { reading.send(.textUpdated(readingText(last.state, from: last.from, names: names))) }
+        self.confirmed = confirmed
+        if confirmed {
+            reading.send(.namesConfirmed(names))
+        } else if let last {
+            reading.send(.textUpdated(readingText(last.state, from: last.from, names: names)))
+        }
     }
 }
 
