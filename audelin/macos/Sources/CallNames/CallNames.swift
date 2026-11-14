@@ -13,6 +13,8 @@ public struct CallNamesState: Equatable, Sendable {
     public var participantIDs: [String: String]
     public var participantOrder: [String]
     public var confirmed: Bool
+    /// Whether the call app is being watched for this recording.
+    public var observation: Observation
     /// Names seen by the adapter, including those whose observation was too late to accept.
     public var knownNames: [String]
     /// The adapter's sequence includes events that the observation rejected.
@@ -24,12 +26,12 @@ public struct CallNamesState: Equatable, Sendable {
     public init(
         roster: [String] = [], spoken: [Spoken] = [], through: Double = 0,
         rowNames: [Int: String] = [:], participantIDs: [String: String] = [:], participantOrder: [String] = [],
-        confirmed: Bool = false, knownNames: [String] = [], sequence: Int = 0,
+        confirmed: Bool = false, observation: Observation = .idle, knownNames: [String] = [], sequence: Int = 0,
         zoom: Evidence = Evidence(), browser: Evidence = Evidence(), browserConnections: Set<Int> = []
     ) {
         self.roster = roster; self.spoken = spoken; self.through = through
         self.rowNames = rowNames; self.participantIDs = participantIDs; self.participantOrder = participantOrder
-        self.confirmed = confirmed; self.knownNames = knownNames; self.sequence = sequence
+        self.confirmed = confirmed; self.observation = observation; self.knownNames = knownNames; self.sequence = sequence
         self.zoom = zoom; self.browser = browser; self.browserConnections = browserConnections
     }
 
@@ -49,6 +51,14 @@ public struct CallNamesState: Equatable, Sendable {
             self.members = members; self.intervals = intervals; self.through = through
             self.epoch = epoch; self.sequence = sequence; self.health = health; self.timeout = timeout
         }
+    }
+
+    public enum Observation: Equatable, Sendable {
+        case idle
+        case observing
+        /// Stop was asked; the sources are being closed.
+        case stopping
+        case stopped
     }
 
     public struct Spoken: Equatable, Sendable {
@@ -88,9 +98,19 @@ public enum CallNamesEvent: Equatable, Sendable {
     case rows([Row], now: Double)
     /// The after-call pass's speaker turns over the closed call, with its remote rows.
     case diarized([DiarizedTurn], rows: [Row])
+    /// The recording started: watch the call app.
+    case start
+    /// The recording ended: stop watching; the names stay.
+    case stop
+    case observationStopped
 }
 
-public enum CallNamesEffect: Equatable, Sendable {}
+public enum CallNamesEffect: Equatable, Sendable {
+    /// Watch every call-app source, delivering what each observes.
+    case observe
+    /// Close every call-app source.
+    case stopObserving
+}
 
 /// Gives rows stable names from browser or Zoom evidence; matching policy is supplied by the caller.
 public struct CallNamesReducer: Sendable {
@@ -113,6 +133,21 @@ public struct CallNamesReducer: Sendable {
     public func reduce(_ state: State, _ event: Event) -> (State, Effect?) {
         var next = state
         switch event {
+        case .start:
+            guard state.observation == .idle else { return (state, nil) }
+            next.observation = .observing
+            return (next, .observe)
+
+        case .stop:
+            guard state.observation == .observing else { return (state, nil) }
+            next.observation = .stopping
+            return (next, .stopObserving)
+
+        case .observationStopped:
+            guard state.observation == .stopping else { return (state, nil) }
+            next.observation = .stopped
+            return (next, nil)
+
         case let .rows(rows, now):
             let evidence = publish(&next, now: now)
             let roster = evidence.members.map { Participant(id: $0.id, name: $0.name, isLocal: $0.isLocal) }
@@ -186,7 +221,7 @@ public struct CallNamesReducer: Sendable {
                 case .lost: break
                 }
             case let .tick(now): zoom.tick(now: now)
-            case .rows, .diarized, .browser, .browserConnected, .browserDisconnected: break
+            case .rows, .diarized, .browser, .browserConnected, .browserDisconnected, .start, .stop, .observationStopped: break
             }
             next.zoom = .init(zoom)
             if next.zoom != state.zoom { publish(&next) }

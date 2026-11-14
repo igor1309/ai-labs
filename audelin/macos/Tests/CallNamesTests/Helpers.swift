@@ -89,14 +89,14 @@ func makeConfirmingSUT(stubs: [String?] = [], confirmed: [Int: String] = [:]) ->
 
 @discardableResult
 func assert(
-    _ state: State, _ event: Event, using sut: Reducer,
+    _ state: State, _ event: Event, using sut: Reducer, delivering effect: CallNamesEffect? = nil,
     _ update: (inout State) -> Void = { _ in }, sourceLocation: SourceLocation = #_sourceLocation
 ) -> State {
     var expected = state
     update(&expected)
-    let (next, effect): (State, CallNamesEffect?) = sut.reduce(state, event)
+    let (next, delivered): (State, CallNamesEffect?) = sut.reduce(state, event)
     #expect(next == expected, "\(state) + \(event)", sourceLocation: sourceLocation)
-    #expect(effect == nil, sourceLocation: sourceLocation)
+    #expect(delivered == effect, "\(state) + \(event)", sourceLocation: sourceLocation)
     return next
 }
 
@@ -120,3 +120,4 @@ func makeBrowserRequest(through: Double = 6) -> NamingSpy.Request {
           activities: [.init(participantID: "remote", start: 2, end: nil, uncertainty: 0.5),
                        .init(participantID: "self", start: 0, end: 1, uncertainty: 0.5)], through: through)
 }
+
