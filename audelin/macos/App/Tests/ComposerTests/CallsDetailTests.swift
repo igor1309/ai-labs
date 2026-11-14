@@ -1,3 +1,4 @@
+import CallDetail
 import CallsListUI
 import Foundation
 import Observation
@@ -70,6 +71,16 @@ struct CallsDetailTests {
         sut.summaries.statuses = [:]
 
         await sut.waitDetail { $0?.content == .notes("# Ready") }
+    }
+
+    @Test func aBadgeChangeWithoutAStatusChangeReachesTheDetail() async {
+        let sut = Fixture()
+        sut.calls.show()
+        await sut.calls.send(.read(a))
+
+        sut.summaries.badges[a] = .pending
+
+        await sut.waitDetail { $0?.content == .preparing }
     }
 
     @Test func aSearchThatHidesTheSelectedCallEmptiesTheDetailAndClearingItBringsItBack() async throws {
