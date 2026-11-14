@@ -3,6 +3,7 @@ import Calls
 import Recordings
 import Foundation
 import CallAudioAccess
+import IMRxObservation
 import Lifecycle
 import MenuBar
 import Observation
@@ -18,7 +19,8 @@ private struct MenuApplication {
     let states: () async -> AsyncStream<RecordingState>
     let failures: AsyncStream<any Error>
     let send: (RecordingEvent) async -> Void
-    let quit: () async -> Void
+    let stopDelivery: () async -> Void
+    let end: @Sendable () async -> Void
     let reserveStorage: () async -> Bool
     let releaseStorage: () async -> Void
     let panelStates: () async -> AsyncStream<PanelState>
@@ -59,7 +61,9 @@ public final class AudelinMenu {
     private let openURL: (URL) -> Void
     private let reserveStorage: () async -> Bool
     private let releaseStorage: () async -> Void
-    private let quit: () async -> Void
+    private let termination: ObservableModel<TerminationState, TerminationEvent, TerminationEffect>
+    private var shutdownObservation: Task<Void, Never>?
+    private let pendingRelaunch = PendingRelaunch()
     private var finalizationSubscriptions: [Task<Void, Never>] = []
     private var finishFinalTranscripts: () -> Void = {}
     private var observation: Task<Void, Never>?
@@ -143,11 +147,7 @@ public final class AudelinMenu {
             application = MenuApplication(
                 states: { await recording.inputs.states() }, failures: recording.detectionFailures,
                 send: { await recording.inputs.send($0) },
-                quit: { await Composer.quit(recording.lifecycle(terminate: {
-                    await finalization.shutdown(); await finalizationResources.drain()
-                    await summaries?.shutdown()
-                    await terminate()
-                })) },
+                stopDelivery: { await recording.stopDelivery() }, end: { await recording.inputs.end() },
                 reserveStorage: { await recording.reserveStorage() }, releaseStorage: { await recording.releaseStorage() },
                 panelStates: { await recording.panel.states() },
                 sendPanel: { await recording.panel.send($0) }
@@ -166,8 +166,21 @@ public final class AudelinMenu {
         self.openURL = openURL
         self.reserveStorage = application?.reserveStorage ?? { false }
         self.releaseStorage = application?.releaseStorage ?? {}
-        self.quit = application?.quit ?? { await finalization.shutdown(); await finalizationResources.drain(); await summaries?.shutdown(); await terminate() }
         self.sendPanelEvent = application?.sendPanel ?? { _ in }
+        let termination = makeTermination(
+            relaunch: { [pendingRelaunch] in await pendingRelaunch.run() },
+            unsettled: application == nil ? [.finalization, .summaries, .storage] : Set(TerminationParticipant.allCases),
+            terminate: { [end = application?.end] in await end?(); await terminate() })
+        self.termination = termination
+        shutdownObservation = Task { [weak self] in
+            for await state in Observations({ termination.state }) where state.phase == .quitting {
+                // A started relaunch quits without the menu's quit, so the menu learns it here.
+                self?.quitting = true
+                self?.summaries?.stopDispatch()
+                self?.shutDown(application: application, finalization: finalization, finalizationResources: finalizationResources)
+                return
+            }
+        }
         if let application {
             panelObservation = Task { [weak self, states = application.panelStates] in
                 for await state in await states() {
@@ -294,8 +307,36 @@ public final class AudelinMenu {
         case .quit:
             quitting = true
             summaries?.stopDispatch()
-            await calls?.drainMove()
-            await quit()
+            termination.event(.quit)
+            for await state in Observations({ self.termination.state }) where state.phase == .terminated { return }
+        }
+    }
+
+    /// Sends shutdown to each participant on the quit intention, and each one's settled outcome
+    /// to the termination machine. Summaries shut down once final transcripts have reached them.
+    private func shutDown(application: MenuApplication?, finalization: TranscriptFinalizationModel,
+                          finalizationResources: FinalizationResources) {
+
+        let termination = termination
+        if let application {
+            Task {
+                await application.stopDelivery()
+                await application.send(.shutdown)
+                for await state in await application.states() where state.shutdown == .settled { break }
+                termination.event(.settled(.recording))
+            }
+        }
+        if let calls {
+            Task { await calls.drainMove(); termination.event(.settled(.storage)) }
+        } else {
+            termination.event(.settled(.storage))
+        }
+        Task { [summaries] in
+            await finalization.shutdown()
+            await finalizationResources.drain()
+            termination.event(.settled(.finalization))
+            await summaries?.shutdown()
+            termination.event(.settled(.summaries))
         }
     }
 
@@ -316,12 +357,34 @@ public final class AudelinMenu {
 
     /// The reservation refuses a running session and holds back a new one, so no
     /// recording can start behind this check and be cut short by the quit.
-    func relaunchIfIdle(_ relaunch: () throws -> Void) async -> Bool {
+    /// Lifecycle decides whether the update may relaunch now; a started relaunch quits the app.
+    func relaunchIfIdle(_ relaunch: @escaping () throws -> Void) async -> Bool {
 
         await summaries?.refresh()
-        guard !quitting, updateCanInterrupt, await reserveStorage() else { return false }
+        guard !quitting else { return false }
+        let request = TerminationEvent.relaunchRequested(blockers: relaunchBlockers)
+        // The event is reduced later; nothing reduced before it can change this decision while not quitting.
+        guard TerminationReducer.reduce(termination.state, request).1 == .relaunch else { return false }
+        let outcome = AsyncStream<Bool>.makeStream()
+        pendingRelaunch.start = { [weak self] in
+            let started = await self?.startRelaunch(relaunch) ?? false
+            outcome.continuation.yield(started)
+            return started
+        }
+        termination.event(request)
+        var results = outcome.stream.makeAsyncIterator()
+        guard await results.next() == true else { return false }
+        for await state in Observations({ self.termination.state }) where state.phase == .terminated { break }
+        return true
+    }
+
+    /// The reservation refuses a running session and holds back a new one, so no
+    /// recording can start behind the decision and be cut short by the quit.
+    private func startRelaunch(_ relaunch: () throws -> Void) async -> Bool {
+
+        guard await reserveStorage() else { return false }
         do {
-            guard !quitting, updateCanInterrupt else { throw CancellationError() }
+            guard !quitting, relaunchBlockers.isEmpty else { throw CancellationError() }
             try relaunch()
         } catch {
             if !(error is CancellationError) {
@@ -331,12 +394,15 @@ public final class AudelinMenu {
             return false
         }
         sink.write(.init(category: .menu, message: "relaunching for update"))
-        await perform(.quit)
         return true
     }
 
-    private var updateCanInterrupt: Bool {
-        !choosingFolder && calls?.idle != false && summaries?.busy != true
+    private var relaunchBlockers: Set<RelaunchBlocker> {
+        var blockers: Set<RelaunchBlocker> = []
+        if choosingFolder { blockers.insert(.folderPicker) }
+        if calls?.idle == false { blockers.insert(.callsWindow) }
+        if summaries?.busy == true { blockers.insert(.summaries) }
+        return blockers
     }
 
     public func panelClosed() { receivePanelPresence(.userClosed) }
@@ -398,6 +464,7 @@ public final class AudelinMenu {
         observation?.cancel()
         detectionObservation?.cancel()
         updateWatch?.cancel()
+        shutdownObservation?.cancel()
     }
 }
 
@@ -407,4 +474,12 @@ private func panelRecordingID(_ state: RecordingState) -> UInt64? {
     case .beginning, .recording, .ending: state.session?.id
     case .idle: nil
     }
+}
+
+/// The relaunch the termination machine starts, installed by the update check that asked for it.
+@MainActor
+private final class PendingRelaunch {
+
+    var start: () async -> Bool = { false }
+    func run() async -> Bool { await start() }
 }
