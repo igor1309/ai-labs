@@ -136,3 +136,20 @@ so the token cannot be bound. Fixed sizes with no token are layout widths:
 list 340, window 1100 and minimum 560, skeleton bars 8 high (a height
 cannot bind `space-8`) and 640–300 wide, time 40, duration 48, icons 14 and
 20, search field 160, menu 240, alert 340.
+
+## Merge mode
+
+- «Объединить звонки…» (combine icon) leads the list bar's actions, before
+  Открыть and Переименовать. It turns the list bar into the Merge bar:
+  «Объединение», «Готово», which leaves merge mode (Escape too), and
+  «Объединить N», which counts the marked calls.
+- Every row shows a mark before its time: an empty circle in `gutter`, or a
+  checked circle in `me` when marked (Row/Unmarked and Row/Marked; a
+  preparing, failed or selected row adds the mark to its own state). A click
+  marks or unmarks; the selection and the detail stay as they were.
+- Below two marked calls the merge button is disabled (`dis`, `disText`)
+  and still counts. Narrow, the bar and marks are the same over the
+  full-width list.
+- Frames: «Calls — merge mode», «… one marked», «… narrow», with dark
+  instances.
+- Open: whether the row actions stay visible, disabled, in merge mode.
