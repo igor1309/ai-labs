@@ -1,7 +1,5 @@
 
 
-## S-16 A part's waiting notes do not run
-
-Part A pending and B done, merged as A: A's pending job is dropped, the
-fake runtime never gets A's own transcript, and its one request for A
+With part A pending and B done, merged as A: A's pending job is dropped,
+the fake runtime never gets A's own transcript, and the one request for A
 holds both parts' text. Evidence: Missing.
