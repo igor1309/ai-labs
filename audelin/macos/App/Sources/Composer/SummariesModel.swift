@@ -42,11 +42,11 @@ public final class SummariesModel {
     }
     /// Whether a job is being made or stored in this process, which an update must not cut short.
     public var busy: Bool { SummariesReducer.busy(model.state) }
-    /// Marks the ended recording as waiting while notes are enabled.
+    /// Hands the ended recording, with whether notes are on, to the machine.
     func callbacks(timeZone: TimeZone, notesOn: @escaping @Sendable () -> Bool) -> SummaryCallbacks {
         SummaryCallbacks(waiting: { [weak self] folder in
-            guard notesOn(), let call = Calls.id(in: folder.lastPathComponent, timeZone: timeZone) else { return }
-            await self?.waiting(call: call)
+            guard let call = Calls.id(in: folder.lastPathComponent, timeZone: timeZone) else { return }
+            await self?.waiting(call: call, notesOn: notesOn())
         })
     }
     /// Each call's calls list icon.
@@ -57,8 +57,8 @@ public final class SummariesModel {
     }
     /// The calls whose notes the user can make again.
     public var retryable: Set<String> { Set(model.state.calls.filter(\.value.retryable).keys) }
-    /// Shows a just-ended recording as waiting for its transcript.
-    public func waiting(call: String) { model.event(.waiting(call)) }
+    /// Shows a just-ended recording as waiting for its transcript while notes are on.
+    public func waiting(call: String, notesOn: Bool) { model.event(.waiting(call, notesOn: notesOn)) }
     /// Hands a finished recording's transcript to the machine.
     public func completed(call: String, entries: [Job.Entry], finalWrite: Bool, usable: Bool) {
         model.event(.submit(.init(call: call, input: summaryInput(entries), entries: entries, finalWrite: finalWrite, usable: usable)))

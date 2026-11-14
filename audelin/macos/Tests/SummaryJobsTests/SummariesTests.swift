@@ -35,24 +35,31 @@ import Testing
         assert(makeState(calls: ["call": .init(stage: .claiming)]), .submit(makeSubmission()), delivers: nil)
     }
     @Test func anEndedRecordingWaitsForItsTranscript() {
-        assert(makeState(), .waiting("call")) { $0.calls["call"] = .init(stage: .waiting, status: "waiting:false") }
+        assert(makeState(), .waiting("call", notesOn: true)) { $0.calls["call"] = .init(stage: .waiting, status: "waiting:false") }
         #expect(format.payloads == [.init(stage: .waiting, warning: false)])
     }
     @Test func anEndedRecordingDeliversNothing() {
-        assert(makeState(), .waiting("call"), delivers: nil)
+        assert(makeState(), .waiting("call", notesOn: true), delivers: nil)
+    }
+    @Test func anEndedRecordingWithNotesOffChangesNothing() {
+        assert(makeState(), .waiting("call", notesOn: false))
+        #expect(format.payloads.isEmpty)
+    }
+    @Test func anEndedRecordingWithNotesOffDeliversNothing() {
+        assert(makeState(), .waiting("call", notesOn: false), delivers: nil)
     }
     @Test func waitingForAKnownCallChangesNothing() {
-        assert(makeState(calls: ["call": .init(stage: .claiming)]), .waiting("call"))
+        assert(makeState(calls: ["call": .init(stage: .claiming)]), .waiting("call", notesOn: true))
         #expect(format.payloads.isEmpty)
     }
     @Test func waitingForAKnownCallDeliversNothing() {
-        assert(makeState(calls: ["call": .init(stage: .claiming)]), .waiting("call"), delivers: nil)
+        assert(makeState(calls: ["call": .init(stage: .claiming)]), .waiting("call", notesOn: true), delivers: nil)
     }
     @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func waitingAfterShutdownChangesNothing(lifecycle: SummariesState.Lifecycle) {
-        assert(makeState(lifecycle: lifecycle), .waiting("call"))
+        assert(makeState(lifecycle: lifecycle), .waiting("call", notesOn: true))
     }
     @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func waitingAfterShutdownDeliversNothing(lifecycle: SummariesState.Lifecycle) {
-        assert(makeState(lifecycle: lifecycle), .waiting("call"), delivers: nil)
+        assert(makeState(lifecycle: lifecycle), .waiting("call", notesOn: true), delivers: nil)
     }
     @Test func aSubmissionForAWaitingCallPreparesItsJob() {
         assert(makeState(calls: ["call": .init(stage: .waiting)]), .submit(makeSubmission())) {

@@ -55,7 +55,7 @@ import Testing
     }
     @Test func anEndedRecordingShowsWaitingUntilItsTranscriptArrives() async throws {
         let sut = makeSUT(FilesFake())
-        sut.waiting(call: "call")
+        sut.waiting(call: "call", notesOn: true)
         try await waitUntil("the call waits") { sut.statuses == ["call": CallsListText(language: .english)(.summaryWaiting)] }
         #expect(sut.badges == ["call": .pending])
         sut.completed(call: "call", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)
@@ -87,6 +87,14 @@ import Testing
         files.stored = try await record(phase: "succeeded")
         await sut.refresh()
         try await waitUntil("the call is reloaded") { sut.state.calls["call"]?.stage == .succeeded }
+    }
+    @Test func aWaitingCallIsDroppedWhenItsTranscriptArrivesWithNotesOff() async throws {
+        let sut = makeSUT(FilesFake(), notes: false)
+        sut.waiting(call: "call", notesOn: true)
+        try await waitUntil("the call waits") { sut.state.calls["call"]?.stage == .waiting }
+        sut.completed(call: "call", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true)
+        try await waitUntil("the call is dropped") { sut.state.calls["call"] == nil }
+        #expect(sut.statuses.isEmpty)
     }
     @Test func shutdownReturnsOnceTheMachineHasEnded() async {
         let sut = makeSUT(FilesFake())

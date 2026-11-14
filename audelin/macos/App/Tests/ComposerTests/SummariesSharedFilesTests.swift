@@ -159,7 +159,7 @@ import Testing
     @Test func statusesFollowTheLanguage() async throws {
         try await withComposeFolder { root in
             let sut = makeSUT(root, http: UnusedHTTP())
-            sut.waiting(call: "call")
+            sut.waiting(call: "call", notesOn: true)
             let russian = ["call": text.summariesStatus(.waiting, false)]
             for await value in sut.updates() where value == russian { break }
             var updates = sut.updates().makeAsyncIterator()

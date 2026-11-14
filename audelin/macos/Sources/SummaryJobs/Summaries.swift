@@ -77,8 +77,8 @@ public struct SummariesSaved: Equatable, Sendable {
 
 public enum SummariesEvent: Equatable, Sendable {
     case recover(String)
-    /// A recording ended and its transcript is not ready yet.
-    case waiting(String)
+    /// A recording ended and its transcript is not ready yet, and whether notes are on; it waits only while they are.
+    case waiting(String, notesOn: Bool)
     /// The user asked for the call's notes, made from its stored transcript.
     case request(String)
     case readFailed(String)
@@ -225,7 +225,7 @@ public struct SummariesReducer: Sendable {
             // A submission waits for recovery; a saved job takes precedence over it.
             next.calls[submission.call]?.submission = submission
             return (next, nil)
-        case let .waiting(id) where state.lifecycle == .accepting && state.calls[id] == nil:
+        case let .waiting(id, notesOn: true) where state.lifecycle == .accepting && state.calls[id] == nil:
             call = id
             next.calls[id] = .init(stage: .waiting)
         case let .request(id) where state.lifecycle == .accepting
