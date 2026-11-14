@@ -1,5 +1,6 @@
 import BleedCleanup
 import Foundation
+import LiveText
 
 /// The boundary keeps one lazy load, including while another call is waiting for it.
 public actor LocalVqeCleaning<Manager: Sendable>: MicrophoneCleaning {
@@ -42,7 +43,7 @@ public struct CleanupHearing: CleanedHearing {
     public init(recognizers: any RecognizerSource) { self.recognizers = recognizers }
 
     public func hear(_ samples: [Float]) async throws -> [TranscriptSegment]? {
-        let text = TrackText(recognizerSource: { BoundaryRecognizer(base: try await recognizers.recognizer(for: .microphone)) })
+        let text = RecognitionStream(recognizerSource: { BoundaryRecognizer(base: try await recognizers.recognizer(for: .microphone)) })
         do {
             try Task.checkCancellation()
             try await text.prepare()
@@ -55,7 +56,8 @@ public struct CleanupHearing: CleanedHearing {
                 ))
             }
             try Task.checkCancellation()
-            let heard = try await text.finish().all
+            let ending = try await text.finish()
+            let heard = (ending.final + ending.tail).map(TranscriptSegment.init)
             try Task.checkCancellation()
             return heard.contains(where: { !$0.words.isEmpty }) ? heard : nil
         } catch {
