@@ -37,6 +37,7 @@ public enum SettingsPhrase: String, CaseIterable, Sendable {
     case callUnreadableTranscript = "calls.unreadableTranscript"
     /// Takes the system's reason.
     case callMergeFailed = "calls.mergeFailed"
+    case callMergeBusy = "calls.mergeBusy"
     /// Takes the part's folder name and the system's reason.
     case callMergeMoveFailed = "calls.mergeMoveFailed"
     case moveRefreshing = "move.refreshing"

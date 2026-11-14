@@ -102,7 +102,7 @@ struct RecordingsMoveTests {
     @Test func formattingIsInjectedAndUsedOnlyWhenMoveValuesChange() {
         let calls = Mutex<[CallsFolderMove]>([])
         let stub = MoveText(title: "title", body: "body", detail: "detail", moved: "moved")
-        let reducer = RecordingsReducer(failureMessage: { _, _ in "" }, moveText: { move in calls.withLock { $0.append(move) }; return stub })
+        let reducer = RecordingsReducer(failureMessage: { _, _ in "" }, moveText: { move in calls.withLock { $0.append(move) }; return stub }, isIdle: { true }, busyMessage: { "busy" })
         #expect(calls.withLock { $0 }.isEmpty)
         let idle = makeState()
         assert(idle, .cancelMove, delivers: nil, using: reducer)

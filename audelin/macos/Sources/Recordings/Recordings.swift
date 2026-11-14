@@ -79,10 +79,16 @@ public struct RecordingsReducer: Sendable {
     private let failureMessage: @Sendable (String, String) -> String
 
     let moveText: @Sendable (CallsFolderMove) -> MoveText
+    private let isIdle: @Sendable () -> Bool
+    private let busyMessage: @Sendable () -> String
 
-    public init(failureMessage: @escaping @Sendable (String, String) -> String, moveText: @escaping @Sendable (CallsFolderMove) -> MoveText) {
+    /// `isIdle` answers whether Audelin is idle enough to merge; `busyMessage` says it is not.
+    public init(failureMessage: @escaping @Sendable (String, String) -> String, moveText: @escaping @Sendable (CallsFolderMove) -> MoveText,
+                isIdle: @escaping @Sendable () -> Bool, busyMessage: @escaping @Sendable () -> String) {
         self.failureMessage = failureMessage
         self.moveText = moveText
+        self.isIdle = isIdle
+        self.busyMessage = busyMessage
     }
 
     public func reduce(_ state: RecordingsState, _ event: RecordingsEvent) -> (RecordingsState, RecordingsEffect?) {
@@ -153,6 +159,10 @@ public struct RecordingsReducer: Sendable {
             state.failure = .init(id: id, reason: reason)
         case .enterMergeMode:
             guard Self.acceptsAction(state) else { return (state, nil) }
+            guard isIdle() else {
+                state.failure = .init(id: nil, reason: busyMessage())
+                return (state, nil)
+            }
             state.phase = .merging
             state.mergeSelection = []
             state.failure = nil

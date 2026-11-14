@@ -53,7 +53,7 @@ import Testing
                 var next: RecordingsEvent? = event
                 while let event = next {
                     events.append(event)
-                    let (changed, effect) = recordingsReducer { SettingsText(language: .russian) }.reduce(state, event)
+                    let (changed, effect) = recordingsReducer({ SettingsText(language: .russian) }, isIdle: { true }).reduce(state, event)
                     state = changed; next = nil
                     if let effect { for await result in handler.handle(effect) { next = result } }
                 }

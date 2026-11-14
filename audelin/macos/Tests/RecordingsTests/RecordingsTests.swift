@@ -117,14 +117,14 @@ struct RecordingsTests {
 
     @Test func constructionDoesNotComposeFailure() {
         let spy = FailureMessageSpy(result: "unused")
-        _ = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText)
+        _ = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, isIdle: { true }, busyMessage: { "busy" })
         #expect(spy.calls == [])
     }
 
     @Test(arguments: [nil, "A"] as [String?])
     func refreshFailureUsesInjectedMessageAndKeepsFailureID(_ id: String?) {
         let spy = FailureMessageSpy(result: "composed message")
-        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText)
+        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, isIdle: { true }, busyMessage: { "busy" })
         let state = makeState {
             $0.isListing = true
             $0.failure = .init(id: id, reason: " prior failure ")
@@ -141,7 +141,7 @@ struct RecordingsTests {
     @Test func listFailureWithoutPriorFailureDoesNotComposeMessage() {
         let spy = FailureMessageSpy(result: "unused")
         let state = makeState { $0.isListing = true }
-        assert(state, .listFailed("denied"), delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText)) {
+        assert(state, .listFailed("denied"), delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, isIdle: { true }, busyMessage: { "busy" })) {
             $0.isListing = false
             $0.failure = .init(id: nil, reason: "denied")
         }
@@ -172,7 +172,7 @@ struct RecordingsTests {
         for (state, events) in cases {
             for event in events {
                 let spy = FailureMessageSpy(result: "unused")
-                assert(state, event, delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText))
+                assert(state, event, delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, isIdle: { true }, busyMessage: { "busy" }))
                 #expect(spy.calls == [])
             }
         }
@@ -180,7 +180,7 @@ struct RecordingsTests {
 
     @Test func unrelatedTransitionsDoNotComposeFailure() {
         let spy = FailureMessageSpy(result: "unused")
-        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText)
+        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, isIdle: { true }, busyMessage: { "busy" })
         let failed = makeState { $0.failure = .init(id: "A", reason: "prior") }
         let asking = makeState { $0.phase = .askingDelete("A"); $0.failure = failed.failure }
         let renaming = makeState { $0.phase = .renaming("A"); $0.failure = failed.failure }
@@ -304,4 +304,4 @@ private actor CallsSpy: RecordingsCalls {
 
 let defaultReducer = RecordingsReducer(failureMessage: { prior, refreshError in
     prior + " Не удалось обновить список: " + refreshError
-}, moveText: stubMoveText)
+}, moveText: stubMoveText, isIdle: { true }, busyMessage: { "busy" })

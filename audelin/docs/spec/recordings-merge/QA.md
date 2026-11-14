@@ -10,14 +10,17 @@ delivered as the result event. A row without evidence is Missing.
 ## S-1 Merge mode opens while idle
 
 Idle, enter merge mode with the query answering idle: merge mode, nothing
-selected, no effect. Evidence, without the query so far:
-`RecordingsMergeTests.S1_mergeModeOpensWithNothingSelected()` and
-`mergeModeWaitsForOtherActions()`.
+selected, no effect. Evidence:
+`RecordingsMergeTests.S1_mergeModeOpensWithNothingSelected()`,
+`S1_enteringMergeModeAsksTheIdleQueryOnce()`,
+`mergeModeWaitsForOtherActions()`, `theIdleQueryIsNotAskedOnInit()` and
+`theIdleQueryIsNotAskedOutsideMergeEntry()`.
 
 ## S-2 Merge mode is refused while busy
 
 Idle, enter merge mode with the query answering busy: idle with the busy
-reason, no effect.
+reason, no effect. Evidence:
+`RecordingsMergeTests.S2_mergeModeIsRefusedWhileBusy()`.
 
 ## S-3 Selecting calls
 

@@ -149,15 +149,16 @@ func quit(_ handler: LifecycleEffectHandler) async {
 }
 
 @MainActor
-func makeRecordings(handler: RecordingsEffectHandler, text: @escaping @Sendable () -> SettingsText, initial: RecordingsState = .init()) -> RecordingsInputs {
-    let model = ObservableModel(initialState: initial, reduce: recordingsReducer(text).reduce,
+func makeRecordings(handler: RecordingsEffectHandler, text: @escaping @Sendable () -> SettingsText, isIdle: @escaping @Sendable () -> Bool,
+                    initial: RecordingsState = .init()) -> RecordingsInputs {
+    let model = ObservableModel(initialState: initial, reduce: recordingsReducer(text, isIdle: isIdle).reduce,
                                 handleEffect: { handleRecordingsEffect(handler, $0) })
     return RecordingsInputs(state: { model.state }, send: { model.event($0) })
 }
 
 /// The calls list machine, with its text in the language `text` gives when it writes.
-func recordingsReducer(_ text: @escaping @Sendable () -> SettingsText) -> RecordingsReducer {
+func recordingsReducer(_ text: @escaping @Sendable () -> SettingsText, isIdle: @escaping @Sendable () -> Bool) -> RecordingsReducer {
     RecordingsReducer(failureMessage: { prior, refreshError in
         text()(.refreshFailed, prior, refreshError)
-    }, moveText: folderMoveText(text))
+    }, moveText: folderMoveText(text), isIdle: isIdle, busyMessage: { text()(.callMergeBusy) })
 }
