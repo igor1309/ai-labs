@@ -41,6 +41,16 @@ import Testing
         try await waitUntil("the retry succeeds") { sut.state.calls["call"]?.stage == .succeeded }
         #expect(files.retried.map(\.1) == ["fresh"])
     }
+    @Test func theCallsListReadsEachCallsStatusBadgeAndRetry() async throws {
+        let files = FilesFake()
+        files.stored = try await record(phase: "failed")
+        let sut = makeSUT(files)
+        sut.recover(calls: ["call"])
+        try await waitUntil("the call is recovered") { sut.state.calls["call"]?.stage == .failed }
+        #expect(sut.statuses == ["call": CallsListText(language: .english)(.summaryFailed)])
+        #expect(sut.badges == ["call": .failed])
+        #expect(sut.retryable == ["call"])
+    }
     @Test func forgetDropsASettledCall() async throws {
         let files = FilesFake()
         files.stored = try await record(phase: "succeeded")

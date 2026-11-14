@@ -21,6 +21,16 @@ public final class SummariesModel {
     public var state: SummariesState { model.state }
     public func send(_ event: SummariesEvent) { model.event(event) }
 
+    /// Each call's notes status as the calls list shows it.
+    public var statuses: [String: String] { model.state.calls.mapValues(\.status) }
+    /// Each call's calls list icon.
+    public var badges: [String: CallsListState.Row.Summary] {
+        model.state.calls.mapValues {
+            switch $0.badge { case .none: .none; case .pending: .pending; case .failed: .failed }
+        }
+    }
+    /// The calls whose notes the user can make again.
+    public var retryable: Set<String> { Set(model.state.calls.filter(\.value.retryable).keys) }
     /// Hands a finished recording's transcript to the machine.
     public func completed(call: String, entries: [Job.Entry], finalWrite: Bool, usable: Bool) {
         model.event(.submit(.init(call: call, input: summaryInput(entries), entries: entries, finalWrite: finalWrite, usable: usable)))
