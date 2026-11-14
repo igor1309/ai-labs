@@ -25,8 +25,8 @@ struct SummaryGeneration: SummaryJobs.Generation {
             return try NotesResponse.validate(output)
         } }
     }
-    /// Stops the job's running call, which then throws a cancellation.
-    func cancel(_ job: Job) async { running.cancel(job.id) }
+    /// Stops the job's running call and returns once it has ended; the call then throws a cancellation.
+    func cancel(_ job: Job) async { await running.cancel(job.id) }
     private func fallback<Value: Sendable>(_ job: Job, attempt: (SummaryRuntime.Configuration) async throws -> Value) async throws -> Value {
         do { return try await attempt(runtimeConfiguration(job.primary)) }
         catch {
@@ -46,14 +46,14 @@ extension SummaryGeneration: SummariesGeneration {}
 
 /// The generation calls running now, by job, so a cancel can stop one.
 private final class RunningCalls: Sendable {
-    private let cancels = Mutex<[String: @Sendable () -> Void]>([:])
+    private let cancels = Mutex<[String: @Sendable () async -> Void]>([:])
     func run<Value: Sendable>(_ id: String, _ work: @escaping @Sendable () async throws -> Value) async throws -> Value {
         let task = Task { try await work() }
-        cancels.withLock { $0[id] = { task.cancel() } }
+        cancels.withLock { $0[id] = { task.cancel(); _ = await task.result } }
         defer { cancels.withLock { _ = $0.removeValue(forKey: id) } }
         return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
     }
-    func cancel(_ id: String) { cancels.withLock { $0[id] }?() }
+    func cancel(_ id: String) async { await cancels.withLock { $0[id] }?() }
 }
 
 enum NotesResponse {

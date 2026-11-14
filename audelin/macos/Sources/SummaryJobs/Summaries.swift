@@ -150,9 +150,12 @@ public struct SummariesReducer: Sendable {
                 badge: @escaping @Sendable (SummariesState.Call.Stage) -> SummariesState.Call.Badge) {
         self.format = format; self.badge = badge
     }
-    /// The stages that wait on storage or generation, which a storage failure ends.
     /// The stages a call rests in once nothing runs for it.
     static let settled: Set<SummariesState.Call.Stage> = [.succeeded, .failed, .interrupted, .unavailable]
+    /// A call a refresh reads again: one another process runs, or a stopped job another process may run again.
+    static func reloadable(_ call: SummariesState.Call) -> Bool {
+        call.stage == .observed || ([.failed, .interrupted] as Set).contains(call.stage) && call.job != nil
+    }
     /// The stages whose result a cancel waits for before it discards the job.
     static let running: Set<SummariesState.Call.Stage> = [.starting, .identifying, .checkpointing, .noting, .publishing, .saving]
     /// The call and stage a result answers, for the results a cancel turns into a discard.
@@ -357,13 +360,13 @@ public struct SummariesReducer: Sendable {
             next.releasing = false
             return (next, nil)
         case .refresh where state.lifecycle != .ended && !state.refreshing:
-            let observed = state.calls.filter { $0.value.stage == .observed }.keys.sorted()
+            let observed = state.calls.filter { SummariesReducer.reloadable($0.value) }.keys.sorted()
             guard !observed.isEmpty else { return (state, nil) }
             next.refreshing = true
             return (next, .reload(observed))
         case let .reloaded(results):
             next.refreshing = false
-            for (id, saved) in results where state.calls[id]?.stage == .observed {
+            for (id, saved) in results where state.calls[id].map(SummariesReducer.reloadable) == true {
                 guard let saved else { next.calls[id] = nil; continue }
                 let stage = saved.stage == .pending ? .observed : saved.stage
                 next.calls[id] = .init(stage: stage, job: saved.job, identities: saved.identities, warning: saved.warning,

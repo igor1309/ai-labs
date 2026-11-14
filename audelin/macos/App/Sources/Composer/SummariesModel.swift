@@ -105,10 +105,10 @@ public final class SummariesModel {
         while reducer.reduce(model.state, event).0 != model.state
                 || model.state.calls[call].map({ storing.contains($0.stage) }) == true { await changed() }
     }
-    /// Reads again the calls whose jobs another process runs, and returns once they are read.
+    /// Reads again the calls whose jobs another process runs or may run again, and returns once they are read.
     public func refresh() async {
         let before = model.state
-        guard before.lifecycle != .ended, before.calls.values.contains(where: { $0.stage == .observed }) else { return }
+        guard before.refreshing || reducer.reduce(before, .refresh).0 != before else { return }
         model.event(.refresh)
         // The refresh changes the state: it starts a reload, or one already runs. A stale read only keeps
         // an observed call counted as busy.

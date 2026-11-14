@@ -40,7 +40,7 @@ public protocol SummariesStorage: Sendable {
 public protocol SummariesGeneration: Sendable {
     func identify(_ job: Job) async throws -> [Identity]
     func notes(_ job: Job, identities: [Identity]) async throws -> String
-    /// Stops the job's running call, which then throws; does nothing when none runs.
+    /// Stops the job's running call and returns once it has ended; the call throws. Does nothing when none runs.
     func cancel(_ job: Job) async
 }
 

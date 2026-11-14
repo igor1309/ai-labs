@@ -93,6 +93,27 @@ import Testing
     @Test func refreshWithoutObservedCallsDeliversNothing() {
         assert(make(["c": .noting]), .refresh, delivers: nil)
     }
+    @Test func refreshReloadsStoppedJobsAnotherProcessMayRunAgain() {
+        assert(make(["a": .interrupted, "b": .failed]), .refresh) { $0.refreshing = true }
+    }
+    @Test func refreshDeliversReloadOfStoppedJobs() {
+        assert(make(["a": .interrupted, "b": .failed]), .refresh, delivers: .reload(["a", "b"]))
+    }
+    @Test func refreshSkipsAFailedCallWithoutAJob() {
+        assert(makeState(calls: ["a": .init(stage: .failed)]), .refresh)
+    }
+    @Test func refreshOfAFailedCallWithoutAJobDeliversNothing() {
+        assert(makeState(calls: ["a": .init(stage: .failed)]), .refresh, delivers: nil)
+    }
+    @Test func aReloadedInterruptedCallFollowsAnotherProcesssRetry() {
+        let record = SummariesSaved(stage: .observed, job: job("a"))
+        assert(make(["a": .interrupted]), .reloaded(["a": record])) {
+            $0.calls["a"] = .init(stage: .observed, job: job("a"), status: "observed:false")
+        }
+    }
+    @Test func aReloadedInterruptedCallDeliversNothing() {
+        assert(make(["a": .interrupted]), .reloaded(["a": .init(stage: .observed, job: job("a"))]), delivers: nil)
+    }
     @Test func refreshAfterTheEndDeliversNothing() {
         assert(make(["a": .observed], lifecycle: .ended), .refresh, delivers: nil)
     }
