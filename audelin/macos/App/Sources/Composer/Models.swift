@@ -140,10 +140,10 @@ actor SessionModel {
 
 /// The termination machine: publishes the quit intention and terminates once every participant settled.
 @MainActor
-func makeTermination(unsettled: Set<TerminationParticipant>,
+func makeTermination(relaunch: @escaping @Sendable () async -> Bool, unsettled: Set<TerminationParticipant>,
                      terminate: @escaping @Sendable () async -> Void) -> ObservableModel<TerminationState, TerminationEvent, TerminationEffect> {
 
-    let handler = TerminationEffectHandler(terminate: terminate)
+    let handler = TerminationEffectHandler(relaunch: relaunch, terminate: terminate)
     return ObservableModel(initialState: TerminationState(unsettled: unsettled), reduce: TerminationReducer.reduce,
                            handleEffect: { effect in oneEvent { await handler.handle(effect) } })
 }

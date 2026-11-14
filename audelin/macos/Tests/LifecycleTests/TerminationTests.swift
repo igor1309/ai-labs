@@ -23,6 +23,36 @@ struct TerminationReducerTests {
     @Test func aRepeatedSettledChangesNothing_state() { assert(makeQuitting(unsettled: [.storage]), .settled(.recording)) }
     @Test func aRepeatedSettledChangesNothing_effect() { assert(makeQuitting(unsettled: [.storage]), .settled(.recording), delivers: nil) }
 
+    @Test func quitWhileRelaunchingPublishesTheIntention_state() { assert(makeTermination(phase: .relaunching), .quit) { $0.phase = .quitting } }
+    @Test func quitWhileRelaunchingPublishesTheIntention_effect() { assert(makeTermination(phase: .relaunching), .quit, delivers: nil) }
+
+    @Test func anUnblockedRelaunchStarts_state() { assert(makeTermination(), .relaunchRequested(blockers: [])) { $0.phase = .relaunching } }
+    @Test func anUnblockedRelaunchStarts_effect() { assert(makeTermination(), .relaunchRequested(blockers: []), delivers: .relaunch) }
+
+    @Test(arguments: RelaunchBlocker.allCases)
+    func aBlockedRelaunchWaits_state(_ blocker: RelaunchBlocker) { assert(makeTermination(), .relaunchRequested(blockers: [blocker])) }
+    @Test(arguments: RelaunchBlocker.allCases)
+    func aBlockedRelaunchWaits_effect(_ blocker: RelaunchBlocker) { assert(makeTermination(), .relaunchRequested(blockers: [blocker]), delivers: nil) }
+
+    @Test(arguments: [TerminationState.Phase.relaunching, .quitting, .terminating, .terminated])
+    func aRelaunchOutsideRunningChangesNothing_state(_ phase: TerminationState.Phase) { assert(makeTermination(phase: phase), .relaunchRequested(blockers: [])) }
+    @Test(arguments: [TerminationState.Phase.relaunching, .quitting, .terminating, .terminated])
+    func aRelaunchOutsideRunningChangesNothing_effect(_ phase: TerminationState.Phase) { assert(makeTermination(phase: phase), .relaunchRequested(blockers: []), delivers: nil) }
+
+    @Test func aStartedRelaunchQuits_state() { assert(makeTermination(phase: .relaunching), .relaunched(true)) { $0.phase = .quitting } }
+    @Test func aStartedRelaunchQuits_effect() { assert(makeTermination(phase: .relaunching), .relaunched(true), delivers: nil) }
+
+    @Test func aStartedRelaunchWithNothingToSettleTerminates_state() { assert(makeTermination(phase: .relaunching, unsettled: []), .relaunched(true)) { $0.phase = .terminating } }
+    @Test func aStartedRelaunchWithNothingToSettleTerminates_effect() { assert(makeTermination(phase: .relaunching, unsettled: []), .relaunched(true), delivers: .terminate) }
+
+    @Test func aFailedRelaunchKeepsRunning_state() { assert(makeTermination(phase: .relaunching), .relaunched(false)) { $0.phase = .running } }
+    @Test func aFailedRelaunchKeepsRunning_effect() { assert(makeTermination(phase: .relaunching), .relaunched(false), delivers: nil) }
+
+    @Test(arguments: [TerminationState.Phase.running, .quitting, .terminating, .terminated], [false, true])
+    func aRelaunchResultOutsideRelaunchingChangesNothing_state(_ phase: TerminationState.Phase, _ started: Bool) { assert(makeTermination(phase: phase), .relaunched(started)) }
+    @Test(arguments: [TerminationState.Phase.running, .quitting, .terminating, .terminated], [false, true])
+    func aRelaunchResultOutsideRelaunchingChangesNothing_effect(_ phase: TerminationState.Phase, _ started: Bool) { assert(makeTermination(phase: phase), .relaunched(started), delivers: nil) }
+
     @Test(arguments: [TerminationState.Phase.quitting, .terminating, .terminated])
     func aRepeatedQuitChangesNothing_state(_ phase: TerminationState.Phase) { assert(makeTermination(phase: phase), .quit) }
     @Test(arguments: [TerminationState.Phase.quitting, .terminating, .terminated])
@@ -43,10 +73,21 @@ struct TerminationEffectHandlerTests {
     @Test func terminateDeliversTerminatedOnceTerminateReturns() async {
 
         let gate = Gate()
-        let sut = TerminationEffectHandler(terminate: { await gate.enter() })
+        let sut = TerminationEffectHandler(relaunch: { Issue.record("relaunched"); return false }, terminate: { await gate.enter() })
         async let event = sut.handle(.terminate)
         await gate.open()
         #expect(await event == .terminated)
+        #expect(await gate.entries == 1)
+    }
+
+    @Test(arguments: [false, true])
+    func relaunchDeliversWhetherTheNewInstanceStarted(_ started: Bool) async {
+
+        let gate = Gate()
+        let sut = TerminationEffectHandler(relaunch: { await gate.enter(); return started }, terminate: { Issue.record("terminated") })
+        async let event = sut.handle(.relaunch)
+        await gate.open()
+        #expect(await event == .relaunched(started))
         #expect(await gate.entries == 1)
     }
 }
