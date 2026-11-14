@@ -38,6 +38,8 @@ struct SummaryGeneration: SummaryJobs.Generation {
     }
 }
 
+extension SummaryGeneration: SummariesGeneration {}
+
 enum NotesResponse {
     private static let russian = ["О чём встреча", "Ключевые моменты", "Решения", "Задачи", "Открытые вопросы"]
     private static let english = ["What this was about", "Key points", "Decisions", "Actions", "Open questions"]

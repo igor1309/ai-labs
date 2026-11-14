@@ -22,6 +22,14 @@ import Testing
         #expect(calls[2].prompt.contains("A: Анна"))
         #expect(calls[3].prompt.contains("A: Анна"))
     }
+    @Test func theSummariesPortFallsBackAsTheJobAsks() async throws {
+        let transport = AttemptHTTP(outputs: ["malformed", speakers, russianNotes])
+        let generation: any SummariesGeneration = SummaryGeneration(runtime: runtime(transport), sink: SilentLog())
+        let identities = try await generation.identify(fixtureJob())
+        let notes = try await generation.notes(fixtureJob(), identities: identities)
+        #expect(identities.map(\.name) == ["Анна"] && notes.contains("API"))
+        #expect(await transport.calls.map(\.model) == ["primary", "fallback", "primary"])
+    }
     @Test func primaryOnlyGeneratesNotesAndIdentities() async throws {
         let transport = AttemptHTTP(outputs: [speakers, russianNotes])
         let generation = SummaryGeneration(runtime: runtime(transport), sink: SilentLog())
