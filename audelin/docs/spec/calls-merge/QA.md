@@ -2,8 +2,8 @@
 
 Adapter tests on a temporary calls folder through the real file system,
 with tracks of known length; failures and interruptions come from the
-injected disk binding failing a chosen step. Evidence: Missing for every
-row.
+injected disk binding failing a chosen step. A row without evidence is
+Missing.
 
 ## S-1 A merged call takes its parts' place
 
@@ -24,6 +24,11 @@ only a part had.
 A at 10:00 with 8 min tracks, B at 10:10 with 5 min tracks: 15 min. A at
 10:00 with 20 min tracks, B at 10:10 with 5 min: 20 min. A merged call
 merged again with C: its span reaches the nested parts' latest end.
+A part whose length cannot be read leaves the span unknown. Evidence:
+`CallsMergeTests.S4_aMergedCallsDurationSpansItsParts()`,
+`aLaterPartEndingLastSetsTheSpan()`, `aMergedPartsPartsCount()` and
+`aPartWithoutAKnownLengthLeavesTheSpanUnknown()`; a merged call's own
+listing is in `S1_onlyTopLevelCallsAreListed()`.
 
 ## S-5 A merge being prepared is not listed
 

@@ -67,14 +67,33 @@ public struct Calls: Sendable {
 
     public func list() throws -> [Call] {
         try folders(in: folder).map { url, name in
-            let lengths = ["microphone.caf", "call.caf"].compactMap { track -> TimeInterval? in
-                let trackURL = url.appendingPathComponent(track)
-                guard let info = try? values(trackURL), info.isSymbolicLink != true,
-                      let length = try? duration(trackURL), length.isFinite, length >= 0 else { return nil }
-                return length
-            }
-            return Call(id: name.id, title: name.title, start: name.start, duration: lengths.max())
+            Call(id: name.id, title: name.title, start: name.start, duration: try length(url, start: name.start))
         }.sorted { $0.id > $1.id }
+    }
+
+    /// A call's longer track; a merged call's span, from its start to the latest end of
+    /// any part, a merged part's parts included. None when a part's length is unknown.
+    /// A folder with a track of its own is a recorded call, never searched for parts.
+    private func length(_ url: URL, start: Date) throws -> TimeInterval? {
+        let tracks = ["microphone.caf", "call.caf"].map { url.appendingPathComponent($0) }
+        guard !tracks.contains(where: { (try? values($0)) != nil }) else { return trackLength(url) }
+        let parts = try folders(in: url)
+        guard !parts.isEmpty else { return nil }
+        var end: TimeInterval = 0
+        for (part, name) in parts {
+            guard let length = try length(part, start: name.start) else { return nil }
+            end = max(end, name.start.timeIntervalSince(start) + length)
+        }
+        return end
+    }
+
+    private func trackLength(_ url: URL) -> TimeInterval? {
+        ["microphone.caf", "call.caf"].compactMap { track -> TimeInterval? in
+            let trackURL = url.appendingPathComponent(track)
+            guard let info = try? values(trackURL), info.isSymbolicLink != true,
+                  let length = try? duration(trackURL), length.isFinite, length >= 0 else { return nil }
+            return length
+        }.max()
     }
 
     /// Resolves afresh, including when the title has changed in Finder.
