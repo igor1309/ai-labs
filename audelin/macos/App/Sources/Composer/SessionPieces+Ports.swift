@@ -37,6 +37,7 @@ extension SessionPieces {
 
         func open(in folder: SessionCallFolder) async throws { try await pieces.openTranscript(in: folder) }
         func close() async throws { try await pieces.closeTranscript() }
+        func finishFeed() async { await pieces.endReading() }
     }
 
     nonisolated var microphoneCapture: MicrophonePort { MicrophonePort(pieces: self) }
@@ -57,7 +58,8 @@ extension SessionPieces {
             microphoneTrack: LoggingTrack(base: microphoneTrack, log: .init(sink: sink, name: "microphoneTrack")),
             callTrack: LoggingTrack(base: callTrack, log: .init(sink: sink, name: "callTrack")),
             callText: LoggingCallText(base: self, log: .init(sink: sink, name: "callText")),
-            transcript: LoggingTranscript(base: transcript, log: .init(sink: sink, name: "transcript"))
+            transcript: LoggingTranscript(base: transcript, log: .init(sink: sink, name: "transcript")),
+            output: LoggingOutput(base: self, log: .init(sink: sink, name: "output"))
         )
     }
 }

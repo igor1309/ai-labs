@@ -3,7 +3,13 @@ import Testing
 
 struct RecordingMoveTests {
 
-    @Test func idleReservesStorage() { assert(makeIdle(), .reserveStorage) { $0.storageReserved = true } }
+    @Test func idleReservesStorage() { assert(makeIdle(), .reserveStorage(request: 1)) { $0.storageReserved = true; $0.reservations = [1: true] } }
+
+    @Test func aSecondRequestWhileReservedIsDenied() { assert(makeState(makeReserved()) { $0.reservations = [1: true] }, .reserveStorage(request: 2)) { $0.reservations = [1: true, 2: false] } }
+
+    @Test func aRepeatedRequestKeepsItsDecision() { assert(makeState(makeReserved()) { $0.reservations = [1: true] }, .reserveStorage(request: 1)) }
+
+    @Test func anAnsweredDecisionIsDropped() { assert(makeState(makeReserved()) { $0.reservations = [1: true, 2: false] }, .reservationAnswered(request: 2)) { $0.reservations = [1: true] } }
 
     @Test func userStartDuringAMoveIsQueued() { assert(makeReserved(), .userStart) { $0.pendingStart = .hand } }
 
@@ -11,14 +17,14 @@ struct RecordingMoveTests {
 
     @Test func releaseBeginsAQueuedUserStart() {
         assert(makeQueued(.hand), .releaseStorage) {
-            $0.storageReserved = false; $0.pendingStart = nil; $0.phase = .beginning
+            $0.storageReserved = false; $0.pendingStart = nil; $0.phase = .beginning; $0.stage = .preparing
             $0.lastSessionID = 1; $0.session = .init(id: 1, origin: .hand)
         }
     }
 
     @Test func releaseBeginsAQueuedCallStart() {
         assert(makeQueued(.call), .releaseStorage) {
-            $0.storageReserved = false; $0.pendingStart = nil; $0.phase = .beginning
+            $0.storageReserved = false; $0.pendingStart = nil; $0.phase = .beginning; $0.stage = .preparing
             $0.lastSessionID = 1; $0.session = .init(id: 1, origin: .call); $0.sessionBeganDuringCall = true
         }
     }
@@ -31,7 +37,7 @@ struct RecordingMoveTests {
 
     @Test func folderReturningAfterReleaseBeginsTheQueuedStart() {
         assert(makeState(makeQueuedWithoutFolder()) { $0.storageReserved = false }, .conditionChanged(.callsFolder, available: true)) {
-            $0.missing = []; $0.pendingStart = nil; $0.phase = .beginning
+            $0.missing = []; $0.pendingStart = nil; $0.phase = .beginning; $0.stage = .preparing
             $0.lastSessionID = 1; $0.session = .init(id: 1, origin: .hand)
         }
     }
@@ -47,5 +53,5 @@ struct RecordingMoveTests {
     @Test func automaticOffCancelsAQueuedCallStart() { assert(makeQueued(.call), .automaticChanged(false)) { $0.automatic = false; $0.pendingStart = nil } }
 
     @Test(arguments: [makeBeginning(), makeRunning(), makeEnding()])
-    func everyActivePhaseRejectsAStorageReservation(_ active: RecordingState) { assert(active, .reserveStorage) }
+    func everyActivePhaseRejectsAStorageReservation(_ active: RecordingState) { assert(active, .reserveStorage(request: 1)) { $0.reservations = [1: false] } }
 }

@@ -98,14 +98,16 @@ struct LoggingTests {
         }
     }
 
-    @Test func recordingSessionLogsBeginItsReportAndEnd() async throws {
+    @Test func recordingSessionLogsBeginItsAcceptanceAndEnd() async throws {
 
         try await withComposition { rig in
             try await rig.start()
             try await rig.stop()
+            // The wrapper logs its end once the session's end returns, which can follow the reported end.
+            await rig.log.wait { $0.message == "end id=1 finished" }
             let messages = rig.log.entries.all.map(\.message)
             #expect(messages.filter { $0 == "begin id=1 called" }.count == 1)
-            #expect(messages.contains { $0.hasPrefix("begin id=1 report=") && $0.contains("ready") })
+            #expect(messages.filter { $0 == "begin id=1 accepted" }.count == 1)
             #expect(messages.filter { $0 == "end id=1 called" }.count == 1)
             #expect(messages.filter { $0 == "end id=1 finished" }.count == 1)
             let order = ["begin id=1 called", "end id=1 called", "end id=1 finished"].compactMap(messages.firstIndex)
@@ -120,9 +122,8 @@ struct LoggingTests {
         }) { rig in
             await rig.menu.perform(.start)
             let state = try await rig.state { $0.phase == .idle && $0.cannotRecord != nil }
-            await rig.log.wait { $0.message.hasPrefix("begin id=1 report=") }
-            let report = try #require(rig.log.entries.all.first { $0.message.hasPrefix("begin id=1 report=") })
-            #expect(report.error == state.cannotRecord)
+            let reason = try #require(state.cannotRecord)
+            #expect(rig.log.entries.all.contains { $0.category == .recording && $0.message.hasPrefix("state ") && $0.error == reason })
         }
     }
 

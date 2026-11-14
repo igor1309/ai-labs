@@ -283,6 +283,18 @@ struct SessionReducerTests {
         assert(makeRecording(withDown: piecesStopped(before: piece)), .end, delivers: stopEffect(piece))
     }
 
+    @Test(arguments: [SessionState.Phase.ending, .ended])
+    func beginAfterEndIsIgnored_state(_ phase: SessionState.Phase) {
+
+        assert(makeState(phase), .begin(liveText: true))
+    }
+
+    @Test(arguments: [SessionState.Phase.ending, .ended])
+    func beginAfterEndIsIgnored_effect(_ phase: SessionState.Phase) {
+
+        assert(makeState(phase), .begin(liveText: true), delivers: nil)
+    }
+
     @Test func endWithOnlyFolderAndProcessesUpEnds_state() {
 
         let state = makeRecording(withDown: stopOrder)
@@ -517,5 +529,133 @@ struct SessionReducerTests {
 
         let state = makeHoldingLiveText(stale: stale).with { $0.phase = .ending }
         assert(state, .liveTextSet(request: state.pendingLiveText!, error: nil), delivers: .stopCapture(.microphone))
+    }
+}
+
+struct SessionReducerTextFeedTests {
+
+    private func makeStoppingCallTextWithoutTranscript() -> SessionState {
+        makeStopping(.callText).with { $0.transcript = .down; $0.textFeed = .up }
+    }
+
+    @Test func lastPieceDownWithoutATranscriptFinishesTheFeed_state() {
+
+        assert(makeStoppingCallTextWithoutTranscript(), .callTextStopped(error: nil)) {
+            $0.callText = .closed
+            $0.textFeed = .stopping
+        }
+    }
+
+    @Test func lastPieceDownWithoutATranscriptFinishesTheFeed_effect() {
+
+        assert(makeStoppingCallTextWithoutTranscript(), .callTextStopped(error: nil), delivers: .finishTextFeed)
+    }
+
+    @Test func transcriptClosedLeavesTheFeedToFinalization_state() {
+
+        let state = makeStopping(.transcript).with { $0.textFeed = .up }
+        assert(state, .transcriptClosed(error: nil)) {
+            $0.transcript = .closed
+            $0.folder = .closed
+            $0.processes = .closed
+            $0.phase = .ended
+        }
+    }
+
+    @Test func transcriptClosedLeavesTheFeedToFinalization_effect() {
+
+        let state = makeStopping(.transcript).with { $0.textFeed = .up }
+        assert(state, .transcriptClosed(error: nil), delivers: nil)
+    }
+
+    @Test func feedFinishedEndsTheSession_state() {
+
+        let state = makeStoppingCallTextWithoutTranscript().with { $0.callText = .closed; $0.textFeed = .stopping }
+        assert(state, .textFeedFinished) {
+            $0.textFeed = .closed
+            $0.folder = .closed
+            $0.processes = .closed
+            $0.phase = .ended
+        }
+    }
+
+    @Test func feedFinishedEndsTheSession_effect() {
+
+        let state = makeStoppingCallTextWithoutTranscript().with { $0.callText = .closed; $0.textFeed = .stopping }
+        assert(state, .textFeedFinished, delivers: nil)
+    }
+
+    @Test func feedFinishedWhileNotFinishingIsIgnored_state() {
+
+        assert(makeRecording(), .textFeedFinished)
+    }
+
+    @Test func feedFinishedWhileNotFinishingIsIgnored_effect() {
+
+        assert(makeRecording(), .textFeedFinished, delivers: nil)
+    }
+}
+
+struct SessionReducerOutputTests {
+
+    private func makeStoppingCallTextWithOutput() -> SessionState {
+        makeStopping(.callText).with { $0.transcript = .closed; $0.output = .up }
+    }
+
+    private func makeReleasing() -> SessionState {
+        makeStoppingCallTextWithOutput().with { $0.callText = .closed; $0.output = .stopping }
+    }
+
+    @Test func lastPieceDownReleasesTheOutput_state() {
+
+        assert(makeStoppingCallTextWithOutput(), .callTextStopped(error: nil)) {
+            $0.callText = .closed
+            $0.output = .stopping
+        }
+    }
+
+    @Test func lastPieceDownReleasesTheOutput_effect() {
+
+        assert(makeStoppingCallTextWithOutput(), .callTextStopped(error: nil), delivers: .releaseOutput)
+    }
+
+    @Test func feedFinishesBeforeTheOutputIsReleased_state() {
+
+        let state = makeStoppingCallTextWithOutput().with { $0.transcript = .down; $0.textFeed = .up }
+        assert(state, .callTextStopped(error: nil)) {
+            $0.callText = .closed
+            $0.textFeed = .stopping
+        }
+    }
+
+    @Test func feedFinishesBeforeTheOutputIsReleased_effect() {
+
+        let state = makeStoppingCallTextWithOutput().with { $0.transcript = .down; $0.textFeed = .up }
+        assert(state, .callTextStopped(error: nil), delivers: .finishTextFeed)
+    }
+
+    @Test func outputReleasedEndsTheSession_state() {
+
+        assert(makeReleasing(), .outputReleased) {
+            $0.output = .closed
+            $0.folder = .closed
+            $0.processes = .closed
+            $0.phase = .ended
+        }
+    }
+
+    @Test func outputReleasedEndsTheSession_effect() {
+
+        assert(makeReleasing(), .outputReleased, delivers: nil)
+    }
+
+    @Test func outputReleasedWhileNotReleasingIsIgnored_state() {
+
+        assert(makeRecording(), .outputReleased)
+    }
+
+    @Test func outputReleasedWhileNotReleasingIsIgnored_effect() {
+
+        assert(makeRecording(), .outputReleased, delivers: nil)
     }
 }
