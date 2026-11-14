@@ -18,6 +18,9 @@ func composeRecording(
     let sessions = RecordingSessions(preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: callApp, processes: processes, boundary: boundary, report: { id, report in
         guard let recording = destination.withLock({ $0 }) else { return }
         await recording.send(.sessionReported(id: id, report))
+    }, status: { id, status in
+        guard let recording = destination.withLock({ $0 }) else { return }
+        await recording.send(.sessionChanged(id: id, status))
     }, panel: panel, finalization: finalization, finalizationResources: finalizationResources, summaries: summaries)
     let log = { @Sendable state in StateLog(sink: sink).recording(state) }
     log(initial)

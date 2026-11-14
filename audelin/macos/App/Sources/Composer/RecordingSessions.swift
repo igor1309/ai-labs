@@ -25,7 +25,6 @@ actor RecordingSessions: RecordingSession {
         var faults: Set<RecordingFault> = []
         var reportedFaults: Set<RecordingFault> = []
         var callSilent = false
-        var reportedFolder = false
         var announcedEnding = false
         var reports: [RecordingSessionReport] = []
     }
@@ -34,6 +33,7 @@ actor RecordingSessions: RecordingSession {
     private let makePieces: @Sendable (UInt64) -> SessionPieces
     private let liveText: @Sendable () -> Bool
     private let report: @Sendable (UInt64, RecordingSessionReport) async -> Void
+    private let status: @Sendable (UInt64, RecordingSessionStatus) async -> Void
     private let summaries: SummaryCallbacks
     private let timeZone: @Sendable () -> TimeZone
     private let sink: any LogSink
@@ -46,6 +46,7 @@ actor RecordingSessions: RecordingSession {
         callApp: RecordingCallApp, processes: CoreAudioProcesses,
         boundary: ComposerBoundary,
         report: @escaping @Sendable (UInt64, RecordingSessionReport) async -> Void,
+        status: @escaping @Sendable (UInt64, RecordingSessionStatus) async -> Void,
         panel: AudelinPanel, finalization: TranscriptFinalizationModel, finalizationResources: FinalizationResources, summaries: SummaryCallbacks = .disabled
     ) {
         self.timeZone = boundary.time.timeZone
@@ -55,6 +56,7 @@ actor RecordingSessions: RecordingSession {
         self.summaries = summaries
         self.liveText = { preferences.read().liveText }
         self.report = report
+        self.status = status
         self.sink = boundary.log
     }
 
@@ -138,11 +140,9 @@ actor RecordingSessions: RecordingSession {
 
     private func receive(_ state: SessionState, id: UInt64) async -> Bool {
 
-        if let entry = running[id], !entry.reportedFolder, let folder = state.recordedFolder,
-           let callID = Calls.id(in: URL(fileURLWithPath: folder.id).lastPathComponent, timeZone: timeZone()) {
-            running[id]?.reportedFolder = true
-            await report(id, .callCreated(id: callID))
-        }
+        await status(id, RecordingSessionStatus(callID: state.recordedFolder.flatMap {
+            Calls.id(in: URL(fileURLWithPath: $0.id).lastPathComponent, timeZone: timeZone())
+        }))
         // Notes show the call as waiting once its text stops; a later finalized transcript supersedes this.
         if state.callText == .stopping || state.callText == .closed, let folder = state.recordedFolder, running[id]?.announcedEnding == false {
             running[id]?.announcedEnding = true

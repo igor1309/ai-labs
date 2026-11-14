@@ -235,7 +235,7 @@ struct CallsWiringTests {
         var state = RecordingState(missing: [])
         state = RecordingReducer.reduce(state, .userStart)
         let session = state.session!.id
-        state = RecordingReducer.reduce(state, .sessionReported(id: session, .callCreated(id: "A")))
+        state = RecordingReducer.reduce(state, .sessionChanged(id: session, .init(callID: "A")))
         #expect(recordedCallID(state) == "A")
         state = RecordingReducer.reduce(state, .sessionReported(id: session, .ready))
         #expect(recordedCallID(state) == "A")
@@ -244,7 +244,7 @@ struct CallsWiringTests {
         state = RecordingReducer.reduce(state, .sessionReported(id: session, .ended))
         #expect(recordedCallID(state) == nil)
         #expect(state.callID == nil)
-        state = RecordingReducer.reduce(state, .sessionReported(id: session, .callCreated(id: "stale")))
+        state = RecordingReducer.reduce(state, .sessionChanged(id: session, .init(callID: "stale")))
         #expect(state.callID == nil)
     }
 }

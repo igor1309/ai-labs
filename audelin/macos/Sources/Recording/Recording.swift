@@ -16,11 +16,22 @@ public enum RecordingFault: CaseIterable, Hashable, Sendable {
 public enum RecordingSessionReport: Equatable, Sendable {
 
     case ready
-    case callCreated(id: String)
     case cannotRecord(String)
     case failed(RecordingFault)
     case callSilent(Bool)
     case ended
+}
+
+/// What a running Session currently shows, translated for Recording.
+public struct RecordingSessionStatus: Equatable, Sendable {
+
+    /// The call the Session created, once its folder exists.
+    public var callID: String?
+
+    public init(callID: String? = nil) {
+
+        self.callID = callID
+    }
 }
 
 /// Compose begins and ends Sessions and translates their later reports into events.
@@ -104,6 +115,7 @@ public enum RecordingEvent: Equatable, Sendable {
     case automaticChanged(Bool)
     case conditionChanged(RecordingCondition, available: Bool)
     case sessionReported(id: UInt64, RecordingSessionReport)
+    case sessionChanged(id: UInt64, RecordingSessionStatus)
     case shutdown
 }
 
@@ -178,6 +190,11 @@ public enum RecordingReducer {
             if let origin = state.pendingStart { return begin(&state, origin: origin) }
             return state
 
+        case let .sessionChanged(id, status):
+            guard state.session?.id == id, let callID = status.callID else { return state }
+            state.callID = callID
+            return state
+
         case let .sessionReported(id, report):
             guard state.session?.id == id else {
                 if state.phase == .idle, id != 0, id == state.lastSessionID,
@@ -187,9 +204,6 @@ public enum RecordingReducer {
                 return state
             }
             switch report {
-            case let .callCreated(id):
-                state.callID = id
-                return state
             case let .failed(fault):
                 if state.phase == .beginning || state.phase == .recording || state.phase == .ending {
                     state.faults.insert(fault)

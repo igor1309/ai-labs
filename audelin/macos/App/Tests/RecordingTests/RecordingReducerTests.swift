@@ -16,6 +16,14 @@ struct RecordingReducerTests {
     @Test(arguments: [RecordingState.Phase.beginning, .recording, .ending], [false, true])
     func callSilenceFollowsTheCurrentSession(_ phase: RecordingState.Phase, _ value: Bool) { assert(makeState(makeRunning()) { $0.phase = phase; $0.callSilent = !value; $0.faults = [.microphone] }, .sessionReported(id: 1, .callSilent(value))) { $0.callSilent = value } }
 
+    @Test func theSessionsCreatedCallIsKept() { assert(makeRunning(), .sessionChanged(id: 1, .init(callID: "A"))) { $0.callID = "A" } }
+
+    @Test func aStatusWithoutACallKeepsTheCreatedCall() { assert(makeState(makeRunning()) { $0.callID = "A" }, .sessionChanged(id: 1, .init())) }
+
+    @Test func anotherSessionsCreatedCallIsIgnored() { assert(makeRunning(), .sessionChanged(id: 99, .init(callID: "A"))) }
+
+    @Test func aCreatedCallAfterEndIsIgnored() { assert(makeIdleAfter(1), .sessionChanged(id: 1, .init(callID: "A"))) }
+
     @Test func endingTheSessionClearsCallSilence() { assert(makeState(makeEnding()) { $0.callSilent = true }, .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.session = nil; $0.callSilent = false } }
 
     @Test func aNewBeginClearsCallSilence() { assert(makeState(makeIdle()) { $0.callSilent = true }, .userStart) { $0.phase = .beginning; $0.session = .init(id: 1, origin: .hand); $0.lastSessionID = 1; $0.callSilent = false } }
