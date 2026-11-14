@@ -26,24 +26,12 @@ final class TranscriptFinalizationModel {
             if next != state { feed.publish(next) }
             return (next, effect)
         }, handleEffect: { effect in
-            let states = feed.subscribe(from: .init())
-            return AsyncStream { output in
+            AsyncStream { output in
                 let work = Task {
                     if let event = await handler.handle(effect) { output.yield(event) }
                     output.finish()
                 }
-                // Cleanup has no file side effects. Once its call is final, its model work
-                // can stop without holding up quit; a late result is ignored by the reducer.
-                let cancellation = Task {
-                    guard case let .clean(call, _, _) = effect else { return }
-                    for await state in states {
-                        if let stage = state.calls[call]?.stage, stage == .finalized || stage == .failed {
-                            work.cancel()
-                            return
-                        }
-                    }
-                }
-                output.onTermination = { _ in work.cancel(); cancellation.cancel() }
+                output.onTermination = { _ in work.cancel() }
             }
         })
     }

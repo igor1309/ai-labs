@@ -60,6 +60,18 @@ struct TranscriptFinalizationPortsTests {
         await resources.published(call: "a")
     }
 
+    /// A stop that reaches the call before its cleanup starts keeps the cleanup from running.
+    @Test func cleanupStoppedBeforeItStartsDoesNotRun() async throws {
+        let raw = try await publishedCall(status: .finished, mine: [.init(text: line("shared words here", start: 1))],
+                                          theirs: [.init(text: line("shared words here", start: 0))])
+        let log = FixtureLog(), resources = FinalizationResources()
+        add(call: "a", to: resources, opened: openedTranscript(bytes: FinalizationBytes(), names: RecordingNames(), diarizer: .unused, sink: log), sink: log)
+        let sut = FinalizationCleanup(resources: resources)
+        await sut.stop(call: "a")
+        #expect(await sut.clean(call: "a", raw, far: nil) == nil)
+        await resources.published(call: "a")
+    }
+
     @Test(arguments: [false, true])
     func replacementRendersTheFarSideAndPropagatesFailure(fails: Bool) async throws {
         let raw = try await publishedCall(status: .finished, mine: [.init(text: line("raw mic", start: 1))],

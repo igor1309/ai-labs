@@ -56,5 +56,9 @@ func assert(_ state: State, _ event: Event, delivers expected: Effect?, sourceLo
 }
 
 func published(_ entries: [String] = ["entry"], finalWrite: Bool = true) -> Effect {
-    .publish([callID: .init(entries: entries, usable: !entries.isEmpty, finalWrite: finalWrite)])
+    .publish([callID: final(entries, finalWrite: finalWrite)])
+}
+
+func final(_ entries: [String] = ["entry"], finalWrite: Bool = true) -> FinalTranscript<String> {
+    .init(entries: entries, usable: !entries.isEmpty, finalWrite: finalWrite)
 }

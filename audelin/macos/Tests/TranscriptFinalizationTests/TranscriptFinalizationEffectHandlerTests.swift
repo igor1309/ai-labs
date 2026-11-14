@@ -60,6 +60,21 @@ struct TranscriptFinalizationEffectHandlerTests {
         #expect(await event == nil)
         #expect(await spies.finals.payloads == [finals])
     }
+
+    /// Cleanup work stops before the calls are published as written.
+    @Test func stopCleaningStopsEachCallsCleanupThenPublishes() async {
+        let (sut, spies) = makeHandler()
+        let finals = ["a": FinalTranscript(entries: ["e"], usable: true, finalWrite: true),
+                      "b": FinalTranscript(entries: ["f"], usable: true, finalWrite: true)]
+        async let event = sut.handle(.stopCleaning(finals))
+        await spies.stops.complete(with: ())
+        #expect(await spies.finals.payloads.isEmpty)
+        await spies.stops.complete(with: ())
+        await spies.finals.complete(with: ())
+        #expect(await event == nil)
+        #expect(await spies.stops.payloads == ["a", "b"])
+        #expect(await spies.finals.payloads == [finals])
+    }
 }
 
 private struct Refused: Error {}
@@ -71,13 +86,14 @@ private struct Replaced: Equatable { let call: String; let raw: String; let name
 private struct Spies {
     let diarizing = Spy<Diarized, String?>()
     let cleanup = Spy<Cleaned, String?>()
+    let stops = Spy<String, Void>()
     let replacement = Spy<Replaced, Result<Void, Refused>>()
     let finals = Spy<[String: FinalTranscript<String>], Void>()
 }
 
 private func makeHandler() -> (Handler, Spies) {
     let spies = Spies()
-    return (Handler(diarizing: Diarizing(spy: spies.diarizing), cleanup: Cleanup(spy: spies.cleanup),
+    return (Handler(diarizing: Diarizing(spy: spies.diarizing), cleanup: Cleanup(spy: spies.cleanup, stops: spies.stops),
                     replacement: Replacement(spy: spies.replacement), finals: Finals(spy: spies.finals)), spies)
 }
 
@@ -98,7 +114,9 @@ private struct Diarizing: TranscriptDiarizing {
 
 private struct Cleanup: MicrophoneCleanup {
     let spy: Spy<Cleaned, String?>
+    let stops: Spy<String, Void>
     func clean(call: String, _ raw: String, far: String?) async -> String? { await spy.call(.init(call: call, raw: raw, far: far)) }
+    func stop(call: String) async { await stops.call(call) }
 }
 
 private struct Replacement: TranscriptReplacement {

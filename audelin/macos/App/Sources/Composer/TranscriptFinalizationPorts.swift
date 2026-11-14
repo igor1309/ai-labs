@@ -16,9 +16,11 @@ struct FinalizationCleanup: MicrophoneCleanup {
     let resources: FinalizationResources
 
     func clean(call: String, _ raw: CallState, far: Transcript.Attributed?) async -> [TranscriptSegment]? {
-        guard let resource = await resources.resource(call: call) else { return nil }
-        return await resource.cleanup.run(raw)
+        guard let work = await resources.startCleaning(call: call, raw) else { return nil }
+        return await withTaskCancellationHandler { await work.value } onCancel: { work.cancel() }
     }
+
+    func stop(call: String) async { await resources.stopCleaning(call: call) }
 }
 
 struct FinalizationReplacement: TranscriptReplacement {

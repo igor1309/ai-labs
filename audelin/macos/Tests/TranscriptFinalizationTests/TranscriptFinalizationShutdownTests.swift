@@ -19,7 +19,7 @@ struct TranscriptFinalizationShutdownTests {
         }
     }
     @Test func cleaningCallIsFinalAsWritten_effect() {
-        assert(makeState(makeCall(.cleaning, far: "far")), .shutdown, delivers: published())
+        assert(makeState(makeCall(.cleaning, far: "far")), .shutdown, delivers: .stopCleaning([callID: final()]))
     }
 
     /// Diarizing and committing replace the file; the final form waits for that write.
@@ -84,8 +84,7 @@ struct TranscriptFinalizationShutdownTests {
         let (sut, spy) = makeSUT(stub: ["e"])
         let state = State(calls: ["a": makeCall(.cleaning, raw: "ra"), "b": makeCall(.cleaning, raw: "rb", far: "fb"), "c": makeCall(.diarizing)])
         let effect = sut.reduce(state, .shutdown).1
-        let final = FinalTranscript(entries: ["e"], usable: true, finalWrite: true)
-        #expect(effect == .publish(["a": final, "b": final]))
+        #expect(effect == .stopCleaning(["a": final(["e"]), "b": final(["e"])]))
         #expect(Set(spy.requests.map(\.raw)) == ["ra", "rb"])
         #expect(spy.requests.first { $0.raw == "rb" }?.far == "fb")
     }

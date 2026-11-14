@@ -84,6 +84,8 @@ public enum TranscriptFinalizationEffect<Raw: Equatable & Sendable, Names: Equat
     case commit(call: String, Raw, Names?, Far?, Heard)
     /// Each call's final form, published once.
     case publish([String: FinalTranscript<Entry>])
+    /// Stops each call's cleanup, then publishes its final form as written.
+    case stopCleaning([String: FinalTranscript<Entry>])
 }
 
 public struct TranscriptFinalizationReducer<Raw: Equatable & Sendable, Names: Equatable & Sendable, Far: Equatable & Sendable, Heard: Equatable & Sendable, Entry: Equatable & Sendable>: Sendable {
@@ -184,7 +186,7 @@ public struct TranscriptFinalizationReducer<Raw: Equatable & Sendable, Names: Eq
                 next.calls[id]?.stage = .finalized
                 finals[id] = final(call, finalWrite: true)
             }
-            return (next, finals.isEmpty ? nil : .publish(finals))
+            return (next, finals.isEmpty ? nil : .stopCleaning(finals))
         }
     }
 

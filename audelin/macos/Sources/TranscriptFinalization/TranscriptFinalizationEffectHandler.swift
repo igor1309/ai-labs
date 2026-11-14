@@ -13,6 +13,8 @@ public protocol MicrophoneCleanup<Raw, Far, Heard>: Sendable {
     associatedtype Heard: Equatable & Sendable
     /// The microphone side heard again; nil when cleanup keeps it as written.
     func clean(call: String, _ raw: Raw, far: Far?) async -> Heard?
+    /// Stops the call's cleanup; a clean still running returns nil.
+    func stop(call: String) async
 }
 
 /// Replaces a closed transcript's microphone side.
@@ -65,6 +67,10 @@ public struct TranscriptFinalizationEffectHandler<Raw: Equatable & Sendable, Nam
                 return .committed(call: call, succeeded: false)
             }
         case let .publish(transcripts):
+            await finals.publish(transcripts)
+            return nil
+        case let .stopCleaning(transcripts):
+            for call in transcripts.keys.sorted() { await cleanup.stop(call: call) }
             await finals.publish(transcripts)
             return nil
         }
