@@ -18,7 +18,7 @@ struct TranscriptStorageTests {
 
         var iterator = loads.stream.makeAsyncIterator()
         await iterator.next()
-        await file.close()
+        await file.writer.close()
     }
 }
 

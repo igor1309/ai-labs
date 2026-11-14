@@ -1,3 +1,4 @@
+import CallDiarizer
 import BlockingTestWork
 import Composer
 import Foundation
@@ -51,7 +52,7 @@ struct ComposeFixture: Sendable {
             now: { Date(timeIntervalSince1970: 0) }, timeZone: { .gmt }, sleep: clock.sleep,
             intervals: testIntervals)
         boundary.time = clock.time
-        boundary.transcripts = FileTranscriptStorage(diarizer: .unavailable)
+        boundary.transcripts = FileTranscriptStorage(diarizer: CallDiarizer.unavailable)
         boundary.preferredLanguages = { ["ru-RU"] }
         boundary.log = log
         boundary.trash = removeForTrash

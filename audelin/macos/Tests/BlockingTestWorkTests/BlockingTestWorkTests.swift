@@ -33,7 +33,7 @@ struct BlockingTestWorkTests {
         #expect(try await waiting.value == 15)
     }
 
-    @Test func cleanupRunsAfterAFailingBodyAndTheBodyErrorWins() async throws {
+    @Test func cleanupFollowsAFailingBodyAndTheBodyErrorWins() async throws {
 
         struct BodyFailure: Error {}
         struct CleanupFailure: Error {}

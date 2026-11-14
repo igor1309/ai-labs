@@ -1,3 +1,4 @@
+import CallDiarizer
 import BlockingTestWork
 import Composer
 import Foundation
@@ -23,7 +24,7 @@ struct BoundaryCompositionTests {
                 theirs: RehearsalRecognizer(SessionRecognizer(name: "unused")),
                 now: { Date(timeIntervalSince1970: 0) }, timeZone: { .gmt },
                 sleep: { _ in throw CancellationError() }, intervals: testIntervals)
-            boundary.transcripts = FileTranscriptStorage(diarizer: .unavailable)
+            boundary.transcripts = FileTranscriptStorage(diarizer: CallDiarizer.unavailable)
             boundary.time = ComposerTime(now: { Date(timeIntervalSince1970: 0) }, timeZone: { .gmt },
                 monotonicNow: { 0 }, sleep: { _ in throw CancellationError() },
                 after: { _, _ in BoundaryCancellation {} }, ticks: { AsyncStream { $0.finish() } })

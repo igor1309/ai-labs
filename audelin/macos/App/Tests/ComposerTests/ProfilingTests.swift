@@ -19,7 +19,6 @@ struct ProfilingTests {
             let failure = ProfileFailure()
             let hearing = Hearing(words: [.init("word", start: 0, end: 1)])
             let chunk = AudioChunk(samples: [0.25], sampleRate: 48_000)
-            let state = CallState(status: .listening, entries: [])
             let reading = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 2))).0
             let recognizer = ProfileRecognizer(
                 onHear: { value in
@@ -29,33 +28,21 @@ struct ProfilingTests {
                     return hearing
                 }, onFinish: { calls.append("finish"); return hearing }
             )
-            let file = ProfileFile(onWrite: { value in
-                #expect(value == state)
-                calls.append("write")
-                if fails { throw failure }
-            }, onClose: { calls.append("close") })
             let panel = SignpostedPanelUpdate(receive: { value in
                 #expect(value == reading)
                 calls.append("panel")
             }, intervals: intervals)
-            let transcript = SignpostedTranscriptFile(base: file, intervals: intervals)
             let decorated = SignpostedRecognizer(base: recognizer, intervals: intervals)
             await panel(reading)
-            do {
-                try await transcript.write(state)
-                #expect(!fails)
-            } catch { #expect(error as? ProfileFailure === failure) }
             do {
                 let result = try await decorated.hear(chunk)
                 #expect(!fails)
                 #expect(result == hearing)
             } catch { #expect(error as? ProfileFailure === failure) }
             #expect(try await decorated.finish() == hearing)
-            await transcript.close()
             #expect(calls.all == [
                 "begin PanelUpdate", "panel", "end PanelUpdate",
-                "begin TranscriptWrite", "write", "end TranscriptWrite",
-                "begin Hearing", "hear", "end Hearing", "finish", "close",
+                "begin Hearing", "hear", "end Hearing", "finish",
             ])
         }
     }
@@ -68,17 +55,6 @@ private struct ProfileRecognizer: Recognizer {
     let onFinish: @Sendable () async throws -> Hearing
     func hear(_ chunk: AudioChunk) async throws -> Hearing { try await onHear(chunk) }
     func finish() async throws -> Hearing { try await onFinish() }
-}
-
-private struct ProfileFile: SessionTranscriptFile {
-    let onWrite: @Sendable (CallState) async throws -> Void
-    let onClose: @Sendable () async -> Void
-    func write(_ state: CallState) async throws { try await onWrite(state) }
-    func close() async { await onClose() }
-    func attributeSpeakers() -> AttributedFar? { nil }
-    func replaceMicrophone(in state: CallState, with segments: [TranscriptSegment]) {
-        Issue.record("Unexpected microphone replacement")
-    }
 }
 
 final class ProfileIntervalSpy: Sendable {

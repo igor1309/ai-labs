@@ -55,10 +55,31 @@ public func compose(
                                               callText: { try await storage.text(id: $0) }),
         files: SummariesFilesPort(files: summaryFiles, makeID: { UUID().uuidString }),
         generation: SummaryGeneration(runtime: runtime, sink: boundary.log))
-    let cleanupRuns = CleanupRuns()
+    let resources = FinalizationResources()
+    let finals = AsyncStream<FinalTranscriptsPort.Publication>.makeStream()
+    let finalization = TranscriptFinalizationModel(diarizing: FinalizationDiarizing(resources: resources),
+        cleanup: FinalizationCleanup(resources: resources), replacement: FinalizationReplacement(resources: resources),
+        finals: FinalTranscriptsPort(output: finals.continuation))
+    let speakers = Task {
+        for await state in finalization.states() { await resources.showSpeakers(state) }
+    }
+    let publication = Task {
+        for await final in finals.stream {
+            await resources.showSpeakers(finalization.state)
+            if let call = Calls.id(in: URL(fileURLWithPath: final.call).lastPathComponent, timeZone: timeZone) {
+                if preferences.read().notes.enabled {
+                    summaries.completed(call: call, entries: final.transcript.entries,
+                                        finalWrite: final.transcript.finalWrite, usable: final.transcript.usable)
+                } else { summaries.forget(call: call) }
+            }
+            await resources.published(call: final.call)
+        }
+    }
     let menu = await AudelinMenu(storage: preferences, occupiedCallNames: { try storage.occupiedCallNames() }, boundary: boundary, processes: processes, panel: panel,
         openFolder: { _ = openCallsFolder($0) }, openURL: openURL, terminate: terminate,
-        sink: boundary.log, presentPanel: presentPanel, sleep: boundary.time.sleep, cleanupRuns: cleanupRuns, summaries: summaries, language: language)
+        sink: boundary.log, presentPanel: presentPanel, sleep: boundary.time.sleep,
+        finalization: finalization, finalizationResources: resources, summaries: summaries, language: language)
+    menu.installFinalizationSubscriptions(speakers: speakers, publication: publication, finish: { finals.continuation.finish() })
     menu.installFolderPicker(chooseCallsFolder)
     menu.installSettings(AudelinSettings(preferences: SummaryPreferences(storage: preferences),
                                         availability: SummaryAvailability(runtime: runtime), text: { language.language.settings }), present: presentSettings)
