@@ -62,3 +62,9 @@ A refresh that cannot read the call, or reads an unknown phase or a corrupt reco
 ## S-14 Call end starts the call's notes machine
 
 `swift test --filter CallNotesWiringTests/callEndShowsMakingThenTheNotes` ends a recorded call with automatic notes on and controlled generation held. The selected detail shows making, then the published notes after release.
+
+## S-15 A merged call gets fresh notes
+
+Parts A and B with done jobs, merged as A: A's and B's jobs are dropped and
+a submission for A carries both parts' entries; the request the fake
+runtime gets holds text of both. Evidence: Missing.
