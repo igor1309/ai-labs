@@ -279,6 +279,15 @@ struct SessionEffectHandlerTests {
         })
     }
 
+    @Test func finishTextFeedFinishesIt() async {
+
+        let (sut, spies) = makeSUT()
+        await expect(sut, with: .finishTextFeed, toDeliver: .textFeedFinished, on: {
+            await spies.feedFinish.complete()
+        })
+        #expect(spies.calls == [.finishTextFeed])
+    }
+
     @Test(arguments: [true, false])
     func setLiveTextPassesEnabledAndDeliversItsRequest(_ enabled: Bool) async {
 
@@ -367,6 +376,7 @@ private enum Call: Equatable, Sendable {
     case stopCallText
     case openTranscript(in: SessionCallFolder)
     case closeTranscript
+    case finishTextFeed
 }
 
 private typealias OperationSpy = Spy<Void, any Error>
@@ -386,7 +396,7 @@ private struct Spies {
     let callStart = OperationSpy(), callStop = OperationSpy()
     let microphoneTrack = TrackSpies(), callTrack = TrackSpies()
     let callTextStart = OperationSpy(), callTextSetEnabled = OperationSpy(), callTextStop = OperationSpy()
-    let transcriptOpen = OperationSpy(), transcriptClose = OperationSpy()
+    let transcriptOpen = OperationSpy(), transcriptClose = OperationSpy(), feedFinish = OperationSpy()
 
     var calls: [Call] { log.values }
     var callCount: Int { log.values.count }
@@ -517,6 +527,12 @@ private struct TranscriptSpy: SessionTranscript {
 
         spies.log.append(.closeTranscript)
         try await spies.transcriptClose.call()
+    }
+
+    func finishFeed() async {
+
+        spies.log.append(.finishTextFeed)
+        try? await spies.feedFinish.call()
     }
 }
 

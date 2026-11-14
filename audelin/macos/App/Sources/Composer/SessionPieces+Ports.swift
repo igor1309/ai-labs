@@ -37,6 +37,7 @@ extension SessionPieces {
 
         func open(in folder: SessionCallFolder) async throws { try await pieces.openTranscript(in: folder) }
         func close() async throws { try await pieces.closeTranscript() }
+        func finishFeed() async { await pieces.endReading() }
     }
 
     nonisolated var microphoneCapture: MicrophonePort { MicrophonePort(pieces: self) }

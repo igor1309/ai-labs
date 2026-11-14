@@ -85,6 +85,7 @@ struct LoggingTranscript: SessionTranscript {
         try await log.call("open", path: folder.id) { try await base.open(in: folder) }
     }
     func close() async throws { try await log.call("close") { try await base.close() } }
+    func finishFeed() async { try? await log.call("finishFeed") { await base.finishFeed() } }
 }
 
 struct LoggingRecordingSession: RecordingSession {

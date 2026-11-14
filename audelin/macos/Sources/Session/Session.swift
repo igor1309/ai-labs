@@ -81,6 +81,8 @@ public protocol SessionTranscript: Sendable {
 
     func open(in folder: SessionCallFolder) async throws
     func close() async throws
+    /// Ends the reading text feed of a session whose transcript never opened; finalization ends any other.
+    func finishFeed() async
 }
 
 /// A failure named in the session state.
@@ -178,6 +180,8 @@ public struct SessionState: Equatable, Sendable {
     public var callCapture: PieceStatus
     public var transcript: PieceStatus
     public var callText: PieceStatus
+    /// The reading text feed, open from the start; Session ends it only when no transcript opened.
+    public var textFeed: PieceStatus
     public var processSelection: SessionProcessSelection?
     public var failures: [SessionFailure]
     public var cannotRecord: String?
@@ -200,6 +204,7 @@ public struct SessionState: Equatable, Sendable {
         callCapture: PieceStatus = .down,
         transcript: PieceStatus = .down,
         callText: PieceStatus = .down,
+        textFeed: PieceStatus = .up,
         processSelection: SessionProcessSelection? = nil,
         failures: [SessionFailure] = [],
         cannotRecord: String? = nil,
@@ -222,6 +227,7 @@ public struct SessionState: Equatable, Sendable {
         self.callCapture = callCapture
         self.transcript = transcript
         self.callText = callText
+        self.textFeed = textFeed
         self.processSelection = processSelection
         self.failures = failures
         self.cannotRecord = cannotRecord
@@ -255,6 +261,7 @@ public enum SessionEvent: Equatable, Sendable {
     case captureStopped(SessionSide, error: String?)
     case trackClosed(SessionSide, error: String?)
     case transcriptClosed(error: String?)
+    case textFeedFinished
     case callTextStopped(error: String?)
     case liveTextSet(request: SessionState.LiveTextRequest, error: String?)
     case callTextStatusChanged(SessionState.LiveText)
@@ -275,6 +282,7 @@ public enum SessionEffect: Equatable, Sendable {
     case closeTrack(SessionSide)
     case stopCallText
     case closeTranscript
+    case finishTextFeed
     case setLiveText(SessionState.LiveTextRequest)
 }
 
@@ -544,6 +552,11 @@ public struct SessionReducer: Sendable {
             if let error { recordFailure(&state, .callText, error) }
             return nextDown(&state)
 
+        case .textFeedFinished:
+            guard state.textFeed == .stopping else { return (state, nil) }
+            state.textFeed = .closed
+            return nextDown(&state)
+
         case let .transcriptClosed(error):
             guard state.transcript == .stopping else { return (state, nil) }
             state.transcript = .closed
@@ -581,7 +594,7 @@ public struct SessionReducer: Sendable {
 
         guard state.phase == .ending else { return (state, nil) }
         let pieces = [state.folder, state.processes, state.microphoneCapture, state.callCapture,
-                      state.microphoneTrack, state.callTrack, state.callText, state.transcript]
+                      state.microphoneTrack, state.callTrack, state.callText, state.transcript, state.textFeed]
         guard !pieces.contains(.starting), !pieces.contains(.stopping), state.pendingLiveText == nil else { return (state, nil) }
         if state.microphoneCapture == .up { state.microphoneCapture = .stopping; return (state, .stopCapture(.microphone)) }
         if state.callCapture == .up { state.callCapture = .stopping; return (state, .stopCapture(.call)) }
@@ -589,6 +602,7 @@ public struct SessionReducer: Sendable {
         if state.callTrack == .up { state.callTrack = .stopping; return (state, .closeTrack(.call)) }
         if state.callText == .up { state.callText = .stopping; return (state, .stopCallText) }
         if state.transcript == .up { state.transcript = .stopping; return (state, .closeTranscript) }
+        if state.transcript == .down && state.textFeed == .up { state.textFeed = .stopping; return (state, .finishTextFeed) }
         if state.folder == .up { state.folder = .closed }
         if state.processes == .up { state.processes = .closed }
         state.phase = .ended
@@ -784,6 +798,9 @@ public final class SessionEffectHandler: Sendable {
         case let .setLiveText(request):
             let result = await result { try await self.callText.setEnabled(request.enabled) }
             return .liveTextSet(request: request, error: result)
+        case .finishTextFeed:
+            await transcript.finishFeed()
+            return .textFeedFinished
         }
     }
 

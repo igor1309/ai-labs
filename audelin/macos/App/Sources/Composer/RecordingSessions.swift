@@ -109,10 +109,7 @@ actor RecordingSessions: RecordingSession {
         if state.phase == .ended {
             await report(id, .ended)
             let subscription = entry.subscription, observation = entry.observation, session = entry.session
-            let pieces = entry.pieces
             Task {
-                // The session has sent all it will; a feed whose transcript never opened ends here too.
-                await pieces.finishReading()
                 Task { await self.panel.end(id: id) }
                 subscription.cancel()
                 await subscription.value

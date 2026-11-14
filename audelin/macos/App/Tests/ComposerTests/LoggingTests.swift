@@ -103,6 +103,8 @@ struct LoggingTests {
         try await withComposition { rig in
             try await rig.start()
             try await rig.stop()
+            // The wrapper logs its end once the session's end returns, which can follow the reported end.
+            await rig.log.wait { $0.message == "end id=1 finished" }
             let messages = rig.log.entries.all.map(\.message)
             #expect(messages.filter { $0 == "begin id=1 called" }.count == 1)
             #expect(messages.filter { $0 == "begin id=1 accepted" }.count == 1)

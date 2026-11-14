@@ -531,3 +531,67 @@ struct SessionReducerTests {
         assert(state, .liveTextSet(request: state.pendingLiveText!, error: nil), delivers: .stopCapture(.microphone))
     }
 }
+
+struct SessionReducerTextFeedTests {
+
+    private func makeStoppingCallTextWithoutTranscript() -> SessionState {
+        makeStopping(.callText).with { $0.transcript = .down; $0.textFeed = .up }
+    }
+
+    @Test func lastPieceDownWithoutATranscriptFinishesTheFeed_state() {
+
+        assert(makeStoppingCallTextWithoutTranscript(), .callTextStopped(error: nil)) {
+            $0.callText = .closed
+            $0.textFeed = .stopping
+        }
+    }
+
+    @Test func lastPieceDownWithoutATranscriptFinishesTheFeed_effect() {
+
+        assert(makeStoppingCallTextWithoutTranscript(), .callTextStopped(error: nil), delivers: .finishTextFeed)
+    }
+
+    @Test func transcriptClosedLeavesTheFeedToFinalization_state() {
+
+        let state = makeStopping(.transcript).with { $0.textFeed = .up }
+        assert(state, .transcriptClosed(error: nil)) {
+            $0.transcript = .closed
+            $0.folder = .closed
+            $0.processes = .closed
+            $0.phase = .ended
+        }
+    }
+
+    @Test func transcriptClosedLeavesTheFeedToFinalization_effect() {
+
+        let state = makeStopping(.transcript).with { $0.textFeed = .up }
+        assert(state, .transcriptClosed(error: nil), delivers: nil)
+    }
+
+    @Test func feedFinishedEndsTheSession_state() {
+
+        let state = makeStoppingCallTextWithoutTranscript().with { $0.callText = .closed; $0.textFeed = .stopping }
+        assert(state, .textFeedFinished) {
+            $0.textFeed = .closed
+            $0.folder = .closed
+            $0.processes = .closed
+            $0.phase = .ended
+        }
+    }
+
+    @Test func feedFinishedEndsTheSession_effect() {
+
+        let state = makeStoppingCallTextWithoutTranscript().with { $0.callText = .closed; $0.textFeed = .stopping }
+        assert(state, .textFeedFinished, delivers: nil)
+    }
+
+    @Test func feedFinishedWhileNotFinishingIsIgnored_state() {
+
+        assert(makeRecording(), .textFeedFinished)
+    }
+
+    @Test func feedFinishedWhileNotFinishingIsIgnored_effect() {
+
+        assert(makeRecording(), .textFeedFinished, delivers: nil)
+    }
+}

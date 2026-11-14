@@ -57,12 +57,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         return (output.stream, speakers.stream)
     }
 
-    /// A session without a transcript has no finalization publication to end its reading feed.
-    func finishReading() {
-        if transcriptFile == nil { endReading() }
-    }
-
-    private func endReading() {
+    func endReading() {
         readingOutput?.finish()
         readingSpeakers?.finish()
     }
@@ -159,7 +154,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     func closeTranscript() async throws {
         defer { news.continuation.finish() }
         await transcriptFile?.close()
-        guard let made, transcriptFile != nil else { endReading(); return }
+        guard let made, transcriptFile != nil else { return }
         await finalizationResources.captureNames(call: made.url.path)
         await finalization.send(.closed(call: made.url.path))
     }
