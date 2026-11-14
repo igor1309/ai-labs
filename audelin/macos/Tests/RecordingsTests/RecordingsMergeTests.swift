@@ -75,6 +75,37 @@ struct RecordingsMergeTests {
         assert(listed(), .refresh, delivers: .list, using: idle.reducer) { $0.isListing = true }
         #expect(idle.asked == 0)
     }
+
+    @Test func S4_fewerThanTwoCallsDoNotMerge() {
+        let idle = IdleSpy(answer: true)
+        assert(listed { $0.phase = .merging; $0.mergeSelection = ["A"] }, .confirmMerge, delivers: nil, using: idle.reducer)
+        assert(listed { $0.phase = .merging }, .confirmMerge, delivers: nil, using: idle.reducer)
+        #expect(idle.asked == 0)
+    }
+
+    @Test func S6_farApartCallsAskAgain() {
+        assert(listed { $0.phase = .merging; $0.mergeSelection = ["A", "C"] }, .confirmMerge, delivers: nil) {
+            $0.phase = .warnedFarApart
+        }
+    }
+
+    @Test func S8_goingBackAfterTheWarningKeepsTheSelection() {
+        assert(listed { $0.phase = .warnedFarApart; $0.mergeSelection = ["A", "C"] }, .goBackFromWarning, delivers: nil) {
+            $0.phase = .merging
+        }
+        assert(listed { $0.phase = .merging; $0.mergeSelection = ["A", "C"] }, .goBackFromWarning, delivers: nil)
+    }
+
+    @Test func theWarningTakesNoSelectionChange() {
+        assert(listed { $0.phase = .warnedFarApart; $0.mergeSelection = ["A", "C"] }, .toggleMergeSelection("B"), delivers: nil)
+    }
+
+    @Test(arguments: [
+        (["A", "B"], false), (["A", "C"], true), (["C", "B", "A"], false), (["A"], false), ([], false), (["A", "Z"], false),
+    ] as [([String], Bool)])
+    func callsAreFarApartWhenAnUnselectedCallLiesBetween(_ selected: [String], _ far: Bool) {
+        #expect(RecordingsReducer.farApart(calls, selected: Set(selected)) == far)
+    }
 }
 
 private let calls = ["C", "B", "A"].map { RecordedCall(id: $0, title: "", start: .distantPast, duration: 60) }

@@ -30,7 +30,7 @@ Merge mode, select A then B, unselect A: B selected, no effect. Evidence:
 ## S-4 Fewer than two calls do not merge
 
 Merge mode with A selected, confirm: no change, no effect; the query is
-not called.
+not called. Evidence: `RecordingsMergeTests.S4_fewerThanTwoCallsDoNotMerge()`.
 
 ## S-5 Neighbouring calls merge
 
@@ -40,7 +40,10 @@ merge. The handler asks the port for A and B.
 ## S-6 Far-apart calls ask again
 
 Merge mode with A and C, B between them in the full list, confirm: warned,
-no effect. With a search hiding B the result is the same.
+no effect. With a search hiding B the result is the same. Evidence:
+`RecordingsMergeTests.S6_farApartCallsAskAgain()`; the rule reads only the
+whole list, which a search does not change:
+`callsAreFarApartWhenAnUnselectedCallLiesBetween(_:_:)`.
 
 ## S-7 Merging anyway after the warning
 
@@ -50,6 +53,8 @@ and C, effect merge.
 ## S-8 Going back after the warning
 
 Warned about A and C, go back: merge mode with A and C selected, no effect.
+Evidence: `RecordingsMergeTests.S8_goingBackAfterTheWarningKeepsTheSelection()`
+and `theWarningTakesNoSelectionChange()`.
 
 ## S-9 Confirming while busy is refused
 

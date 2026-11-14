@@ -26,6 +26,8 @@ public struct RecordingsState: Equatable, Sendable {
         case countingMove, countFailed, askingMove, reservingMove, preparingMove, moving, storingFolder, releasingMove, failedMove, refusedMove
         /// Choosing calls to merge into one.
         case merging
+        /// Asking again before merging calls with an unselected call between them.
+        case warnedFarApart
     }
 
     public struct Failure: Equatable, Sendable {
@@ -68,6 +70,7 @@ public enum RecordingsEvent: Equatable, Sendable {
     case folderStored, folderStoreFailed(String)
     case askDelete(String), confirmDelete, cancelDelete, deleted(String), deleteFailed(id: String, reason: String)
     case enterMergeMode, leaveMergeMode, toggleMergeSelection(String)
+    case confirmMerge, mergeAnyway, goBackFromWarning
 }
 
 public enum RecordingsEffect: Equatable, Sendable {
@@ -173,9 +176,22 @@ public struct RecordingsReducer: Sendable {
         case let .toggleMergeSelection(id):
             guard state.phase == .merging, state.calls.contains(where: { $0.id == id }) else { return (state, nil) }
             if state.mergeSelection.remove(id) == nil { state.mergeSelection.insert(id) }
+        case .confirmMerge:
+            guard state.phase == .merging, state.mergeSelection.count >= 2 else { return (state, nil) }
+            if Self.farApart(state.calls, selected: state.mergeSelection) { state.phase = .warnedFarApart }
+        case .goBackFromWarning:
+            guard state.phase == .warnedFarApart else { return (state, nil) }
+            state.phase = .merging
         default: break
         }
         return (state, nil)
+    }
+
+    /// Selected calls are far apart when an unselected call of the whole list lies between two of them.
+    public static func farApart(_ calls: [RecordedCall], selected: Set<String>) -> Bool {
+        let places = calls.indices.filter { selected.contains(calls[$0].id) }
+        guard let first = places.first, let last = places.last else { return false }
+        return last - first + 1 > places.count
     }
 
     static func acceptsAction(_ state: RecordingsState) -> Bool {
