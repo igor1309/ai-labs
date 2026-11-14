@@ -37,6 +37,8 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     let boundary: ComposerBoundary
     let timeOrigin: Double
     var made: CallFolder.Made?
+    /// The names this recording's CallNames publishes, read by its transcript.
+    nonisolated let names = RecordingNames()
     var selections: [String: CaptureSelection] = [:]
     var sides: [SessionSide: Side]
     var transcriptFile: (any TranscriptWriter)?
@@ -130,8 +132,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     func openTranscript(in folder: SessionCallFolder) async throws {
 
         let made = try places(in: folder)
-        LiveNameBoard.shared.callTrack(made.callURL)
-        let file = try await boundary.transcripts.open(at: made.transcriptURL, sink: boundary.log)
+        let file = try await boundary.transcripts.open(at: made.transcriptURL, names: names, sink: boundary.log)
         transcriptFile = file.writer
         await finalizationResources.add(call: made.url.path, transcript: file, cleanup: TranscriptCleanup(
             recording: CleanupRecording(microphoneURL: made.microphoneURL, callURL: made.callURL),

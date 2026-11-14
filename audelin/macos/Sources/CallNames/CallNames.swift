@@ -53,6 +53,19 @@ public struct CallNamesState: Equatable, Sendable {
         }
     }
 
+    /// These names with the after-call result: `confirmed` maps rows to names and replaces
+    /// every live one; a name not seen before gets the next participant ID, in name order.
+    public func confirming(_ confirmed: [Int: String]) -> CallNamesState {
+        var next = self
+        next.rowNames = confirmed
+        for name in confirmed.values.sorted() where next.participantIDs[name] == nil {
+            next.participantOrder.append(name)
+            next.participantIDs[name] = "z\(next.participantOrder.count)"
+        }
+        next.confirmed = true
+        return next
+    }
+
     public enum Observation: Equatable, Sendable {
         case idle
         case observing
@@ -170,14 +183,7 @@ public struct CallNamesReducer: Sendable {
             let evidence = CallEvidence(roster: state.roster, spoken: state.spoken.map {
                 .init(name: $0.name, start: $0.start, end: $0.end)
             }, through: state.through)
-            let confirmed = confirm(rows, turns, evidence)
-            next.rowNames = confirmed
-            for name in confirmed.values.sorted() where next.participantIDs[name] == nil {
-                next.participantOrder.append(name)
-                next.participantIDs[name] = "z\(next.participantOrder.count)"
-            }
-            next.confirmed = true
-            return (next, nil)
+            return (state.confirming(confirm(rows, turns, evidence)), nil)
 
         case let .browser(event):
             var browser = state.browser.observation

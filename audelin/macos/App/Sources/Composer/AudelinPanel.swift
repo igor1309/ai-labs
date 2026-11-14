@@ -75,7 +75,7 @@ actor AudelinPanel {
     }
 
     func begin(id: UInt64, text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]> = AsyncStream { $0.finish() },
-               enableLiveText: @escaping @Sendable () async -> Void) async -> ReadingSubscription {
+               names published: RecordingNames = RecordingNames(), enableLiveText: @escaping @Sendable () async -> Void) async -> ReadingSubscription {
 
         let reading = await makeReading()
         current = (id, reading, enableLiveText)
@@ -84,7 +84,7 @@ actor AudelinPanel {
         let update = SignpostedPanelUpdate(receive: { [weak self] state in
             await self?.receive(state, id: id)
         }, intervals: intervals)
-        let made = await ReadingSubscription(reading: reading, text: text, speakers: speakers, now: now, ticks: ticks(), sink: sink,
+        let made = await ReadingSubscription(reading: reading, text: text, speakers: speakers, names: published, now: now, ticks: ticks(), sink: sink,
                                                   sources: callAppSources()) { state in
             await update(state)
         }
@@ -169,7 +169,7 @@ final class ReadingSubscription {
     private var ended = false
 
     init(
-        reading: ReadingInputs, text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]>,
+        reading: ReadingInputs, text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]>, names recording: RecordingNames,
         now: @escaping @Sendable () -> Double, ticks: AsyncStream<Void>, sink: any LogSink,
         sources: @Sendable (@escaping @Sendable () async -> Double?) -> [any CallAppObserver],
         receive: @escaping @Sendable (ReadingState) async -> Void
@@ -186,16 +186,12 @@ final class ReadingSubscription {
         let handler = CallNamesEffectHandler(sources: sources { await time.elapsed() })
         let names = ObservableModel(initialState: CallNamesState(), reduce: reducer.reduce, handleEffect: handler.handle)
         self.names = names
-        LiveNameBoard.shared.reset()
         let shown = ShownText(reading: reading)
         let published = Observations { names.state }
         naming = Task {
             for await state in published {
                 guard !Task.isCancelled else { return }
-                // The transcript writer and the after-call pass still read the board.
-                LiveNameBoard.shared.give(state.rowNames)
-                LiveNameBoard.shared.record(roster: state.roster, spoken: state.spoken.map { ($0.name, $0.start, $0.end) },
-                                            through: state.through)
+                recording.published(state)
                 shown.namesChanged(state.rowNames, confirmed: state.confirmed)
             }
         }
@@ -232,7 +228,7 @@ final class ReadingSubscription {
                 time.tick()
             }
         }
-        LiveNameBoard.shared.listen { [weak self] turns, rows in await self?.diarized(turns, rows: rows) }
+        recording.connect { [weak self] turns, rows in await self?.diarized(turns, rows: rows) }
     }
 
     private func diarized(_ turns: [DiarizedTurn], rows: [Row]) { names.event(.diarized(turns, rows: rows)) }

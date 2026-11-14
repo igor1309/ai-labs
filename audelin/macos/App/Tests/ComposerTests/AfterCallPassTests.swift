@@ -1,3 +1,4 @@
+import CallNames
 import CallDiarizer
 import Foundation
 import LiveText
@@ -40,26 +41,23 @@ struct AfterCallPassTests {
 
     @Test func aPassThatHearsNoOneKeepsTheLiveNamesTentative() async throws {
         try await withPassTrack { track in
-            let names = LiveNameBoard()
+            let names = RecordingNames()
             let (_, bytes, pass, raw) = try await zoomPass(track: track, binding: PassDiarizer(turns: { _ in [] }),
                                                           given: [1: "Anna", 2: "Boris"], names: names)
             #expect(await pass.diarize(call: track.path, raw) == nil)
             #expect(await bytes.calls == [])
-            #expect(names.snapshot().rows == [1: "Anna", 2: "Boris"])
+            #expect(names.snapshot().rowNames == [1: "Anna", 2: "Boris"])
             #expect(!names.snapshot().confirmed)
         }
     }
 
-    @Test func aZoomCallConfirmsItsRowNamesAndHandsItsTurnsToCallNames() async throws {
+    @Test func aZoomCallHandsItsTurnsToCallNames() async throws {
         try await withPassTrack { track in
-            let names = LiveNameBoard()
+            let names = RecordingNames()
             let heard = Values<[Int]>()
-            names.listen { turns, rows in if !turns.isEmpty { heard.append(rows.map(\.id)) } }
+            names.connect { turns, rows in if !turns.isEmpty { heard.append(rows.map(\.id)) } }
             let (_, _, pass, raw) = try await zoomPass(track: track, binding: Self.alternating, names: names)
             _ = await pass.diarize(call: track.path, raw)
-            let board = names.snapshot()
-            #expect(board.rows == [1: "Anna", 2: "Boris", 3: "Anna"])
-            #expect(board.confirmed)
             #expect(heard.all == [[1, 2, 3]])
         }
     }
@@ -98,10 +96,10 @@ struct AfterCallPassTests {
     @Test func tentativeNamesSurviveAFailedDiarizationAndALaterRewrite() async throws {
         try await withPassTrack { track in
             let binding = PassDiarizer(turns: { _ in throw PassFailure() })
-            let names = LiveNameBoard()
+            let names = RecordingNames()
             let (_, bytes, pass, raw) = try await zoomPass(track: track, binding: binding, given: [1: "Anna", 2: "Boris"], names: names)
             let attributed = await pass.diarize(call: track.path, raw)
-            #expect(names.snapshot().rows == [1: "Anna", 2: "Boris"])
+            #expect(names.snapshot().rowNames == [1: "Anna", 2: "Boris"])
             let state = CallState(status: .finished, entries: .init(tail: [far(1, 0, 3), far(2, 4, 7), far(3, 8, 11)]), finalCount: 3)
             let replacement = Transcript.microphoneReplacement(in: state, far: attributed, names: names.snapshot(), heard: [])
             let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: names, sink: PassLog(entries: Values<LogEntry>()))
@@ -214,7 +212,7 @@ struct AfterCallPassTests {
             #expect(await bytes.calls == ["replace"])
             #expect(await bytes.replaced.isEmpty)
             #expect(logs.all.map(\.message).contains { $0.hasPrefix("remote speakers not saved") })
-            let names = LiveNameBoard()
+            let names = RecordingNames()
             let state = CallState(status: .finished, entries: .init(tail: [far(1, 0, 1), far(2, 2, 3)]), finalCount: 2)
             let replacement = Transcript.microphoneReplacement(in: state, far: attributed, names: names.snapshot(), heard: [])
             let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: names, sink: PassLog(entries: Values<LogEntry>()))
@@ -253,11 +251,10 @@ struct AfterCallPassTests {
     private func unnamedPass(track: URL, binding: PassDiarizer, entries: [CallState.Entry],
                                format: any TranscriptRenderer = TranscriptFormat(), bytes: PassBytes = PassBytes())
         async throws -> (Values<LogEntry>, PassBytes, AfterCallPass, CallState) {
-        let names = LiveNameBoard()
-        names.callTrack(track)
+        let names = RecordingNames()
         let logs = Values<LogEntry>()
         let writer = WritingTranscript(file: bytes, format: format, names: names, sink: PassLog(entries: logs))
-        let pass = AfterCallPass(writer: writer, track: names.snapshot().callTrack, names: names, diarizer: binding, sink: PassLog(entries: logs))
+        let pass = AfterCallPass(writer: writer, track: track, names: names, diarizer: binding, sink: PassLog(entries: logs))
         let state = CallState(status: .finished, entries: .init(tail: entries), finalCount: entries.count)
         return (logs, bytes, pass, state)
     }
@@ -265,13 +262,14 @@ struct AfterCallPassTests {
     /// Anna and Boris take turns for four seconds each, as Zoom showed and the diarizer finds.
     private func zoomPass(track: URL, binding: PassDiarizer, given: [Int: String] = [:],
                             format: any TranscriptRenderer = TranscriptFormat(), bytes: PassBytes = PassBytes(),
-                            names: LiveNameBoard = LiveNameBoard()) async throws -> (Values<LogEntry>, PassBytes, AfterCallPass, CallState) {
-        names.record(roster: ["Anna", "Boris"], spoken: [("Anna", 0, 4), ("Boris", 4, 8), ("Anna", 8, 12), ("Boris", 12, 16)], through: 30)
-        names.callTrack(track)
-        names.give(given)
+                            names: RecordingNames = RecordingNames()) async throws -> (Values<LogEntry>, PassBytes, AfterCallPass, CallState) {
+        names.published(liveNames(given, roster: ["Anna", "Boris"], spoken: [
+            .init(name: "Anna", start: 0, end: 4), .init(name: "Boris", start: 4, end: 8),
+            .init(name: "Anna", start: 8, end: 12), .init(name: "Boris", start: 12, end: 16),
+        ], through: 30))
         let logs = Values<LogEntry>()
         let writer = WritingTranscript(file: bytes, format: format, names: names, sink: PassLog(entries: logs))
-        let pass = AfterCallPass(writer: writer, track: names.snapshot().callTrack, names: names, diarizer: binding, sink: PassLog(entries: logs))
+        let pass = AfterCallPass(writer: writer, track: track, names: names, diarizer: binding, sink: PassLog(entries: logs))
         let entries = [far(1, 0, 3), far(2, 4, 7), far(3, 8, 11)]
         let state = CallState(status: .finished, entries: .init(tail: entries), finalCount: entries.count)
         return (logs, bytes, pass, state)

@@ -1,3 +1,4 @@
+import CallNames
 import CallDiarizer
 import CallText
 import LiveText
@@ -24,11 +25,11 @@ enum Transcript {
     }
 
     static func replacingMicrophone(
-        in state: CallState, with heard: [TranscriptSegment], names: LiveNameBoard.Names? = nil
+        in state: CallState, with heard: [TranscriptSegment], names: CallNamesState? = nil
     ) -> [TranscriptFormat.Segment] {
 
         let call = state.entries.filter { $0.speaker == .theirs }.map { entry in
-            segment(from: entry, speaker: names.flatMap { board in board.rows[entry.text.id].flatMap { board.ids[$0] } })
+            segment(from: entry, speaker: names.flatMap { board in board.rowNames[entry.text.id].flatMap { board.participantIDs[$0] } })
         }
         let microphone = heard.map {
             TranscriptFormat.Segment(side: .mine, start: $0.start, settled: $0.settledText, pending: $0.pendingText)
@@ -88,9 +89,9 @@ enum Transcript {
     }
 
     /// Live names go to the file as tentative speakers; the after-call pass replaces them.
-    static func speakers(_ names: LiveNameBoard.Names) -> [TranscriptFormat.Speaker] {
+    static func speakers(_ names: CallNamesState) -> [TranscriptFormat.Speaker] {
 
-        names.order.map { .init(id: names.ids[$0]!, name: $0, state: names.confirmed ? "confirmed" : "tentative") }
+        names.participantOrder.map { .init(id: names.participantIDs[$0]!, name: $0, state: names.confirmed ? "confirmed" : "tentative") }
     }
 }
 
