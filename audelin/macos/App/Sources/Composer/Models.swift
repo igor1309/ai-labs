@@ -94,12 +94,12 @@ final class RecordingModel {
 }
 
 /// One Session's model, reducing on its own actor and running its effects through the handler.
-func makeSession(handler: SessionEffectHandler) async -> SessionInputs {
+func makeSession(handler: SessionEffectHandler) -> SessionInputs {
 
     let model = SessionModel()
-    await model.start(handler: handler)
+    Task { await model.start(handler: handler) }
     return SessionInputs(
-        send: { await model.send($0) },
+        send: { model.send($0) },
         states: { await model.states() },
         end: { await model.end() }
     )
@@ -112,9 +112,14 @@ actor SessionModel {
     // The state kept when the model is released at the end.
     private var ended: SessionState?
     private let feed = StateFeed<SessionState>()
+    // Events wait here in the order sent until the model takes them, including before it starts.
+    private let inbox = AsyncStream<SessionEvent>.makeStream()
+    private var delivery: Task<Void, Never>?
+    private var finished = false
 
     func start(handler: SessionEffectHandler) {
 
+        guard !finished else { return }
         let feed = feed
         model = ObservableModel(initialState: SessionState(), reduce: { state, event in
             guard !feed.finished else { return (state, nil) }
@@ -122,15 +127,22 @@ actor SessionModel {
             if next != state { feed.publish(next) }
             return (next, effect)
         }, handleEffect: { effect in oneEvent { await handler.handle(effect) } }, isolation: self)
+        delivery = Task {
+            for await event in inbox.stream { model?.event(event) }
+        }
     }
 
-    func send(_ event: SessionEvent) { model?.event(event) }
+    nonisolated func send(_ event: SessionEvent) { inbox.continuation.yield(event) }
 
     /// Starts with the current state and retains every change.
     func states() -> AsyncStream<SessionState> { feed.subscribe(from: model?.state ?? ended ?? .init()) }
 
     /// Finishes every states stream; later ones finish at once and later events change nothing.
-    func end() {
+    func end() async {
+        finished = true
+        // Events sent before the end still reach the model.
+        inbox.continuation.finish()
+        await delivery?.value
         feed.finish()
         // The model's loop holds this actor, so the model is released to end both.
         ended = model?.state

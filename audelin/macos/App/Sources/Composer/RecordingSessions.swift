@@ -10,11 +10,9 @@ actor RecordingSessions: RecordingSession {
 
     private struct Running {
 
-        let session: Task<SessionInputs, Never>
+        let session: SessionInputs
         let subscription: Task<Void, Never>
         let pieces: SessionPieces
-        // Each send waits for the one before it, so Session sees them in the order they were made.
-        var sends: Task<Void, Never>?
         var observation: Task<Void, Never>?
         var first: RecordingSessionReport?
         var beginners: [CheckedContinuation<RecordingSessionReport, Never>] = []
@@ -61,19 +59,19 @@ actor RecordingSessions: RecordingSession {
         if running[id] == nil {
             let pieces = makePieces(id)
             let handler = pieces.handler()
-            let session = Task { await makeSession(handler: handler) }
+            let session = makeSession(handler: handler)
             let enabled = liveText()
             let subscription = Task {
-                let forwarding = subscribe(pieces, to: await session.value)
+                let forwarding = subscribe(pieces, to: session)
                 await withTaskCancellationHandler { await forwarding.value } onCancel: { forwarding.cancel() }
             }
             running[id] = Running(session: session, subscription: subscription, pieces: pieces)
             running[id]?.observation = Task {
                 // Register before begin so even a short-lived state is retained.
-                let states = await session.value.states()
+                let states = await session.states()
                 let feed = await pieces.readingText()
                 let reading = await self.panel.begin(id: id, text: feed.text, speakers: feed.speakers, names: pieces.names, enableLiveText: {
-                    await self.send(.liveTextChanged(true), id: id)?.value
+                    await self.send(.liveTextChanged(true), id: id)
                 })
                 self.start(id: id, liveText: enabled)
                 var previous: ObservedSession?
@@ -116,21 +114,14 @@ actor RecordingSessions: RecordingSession {
         running[id] = entry
     }
 
-    private func send(_ event: SessionEvent, id: UInt64) -> Task<Void, Never>? {
+    private func send(_ event: SessionEvent, id: UInt64) {
 
-        guard var entry = running[id] else { return nil }
-        send(event, to: &entry)
-        running[id] = entry
-        return entry.sends
+        running[id]?.session.send(event)
     }
 
     private func send(_ event: SessionEvent, to entry: inout Running) {
 
-        let previous = entry.sends, session = entry.session
-        entry.sends = Task {
-            await previous?.value
-            await session.value.send(event)
-        }
+        entry.session.send(event)
     }
 
     private func receive(_ state: SessionState, id: UInt64) async -> Bool {
@@ -155,15 +146,14 @@ actor RecordingSessions: RecordingSession {
             if entry.first == nil { answer(.ended, entry: &entry) }
             else if !entry.endRequested { await report(id, .ended) }
             let subscription = entry.subscription, observation = entry.observation, session = entry.session
-            let sends = entry.sends, pieces = entry.pieces
+            let pieces = entry.pieces
             Task {
                 // The session has sent all it will; a feed whose transcript never opened ends here too.
                 await pieces.finishReading()
                 Task { await self.panel.end(id: id) }
                 subscription.cancel()
                 await subscription.value
-                await sends?.value
-                await session.value.end()
+                await session.end()
                 await observation?.value
                 self.forget(id: id)
             }
