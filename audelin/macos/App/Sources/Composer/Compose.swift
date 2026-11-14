@@ -49,10 +49,11 @@ public func compose(
     let made: @Sendable (Date) -> String = { date in
         date.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened, locale: language.language.callsList.locale, timeZone: timeZone))
     }
-    let summaries = AudelinSummaries(files: summaryFiles,
-                                     runtime: runtime, preferences: preferences, sink: boundary.log,
-                                     callText: { try await storage.text(id: $0) }, date: made,
-                                     text: language.language.callsList, status: { language.language.callsList.summaryStatus($0, $1) })
+    let summaries = SummariesModel(text: { language.language.callsList },
+        preparation: SummariesPreparationPort(notes: { preferences.read().notes }, makeID: { UUID().uuidString },
+                                              callText: { try await storage.text(id: $0) }),
+        files: SummariesFilesPort(files: summaryFiles, makeID: { UUID().uuidString }),
+        generation: SummaryGeneration(runtime: runtime, sink: boundary.log))
     let cleanupRuns = CleanupRuns()
     let menu = await AudelinMenu(storage: preferences, occupiedCallNames: { try storage.occupiedCallNames() }, boundary: boundary, processes: processes, panel: panel,
         openFolder: { _ = openCallsFolder($0) }, openURL: openURL, terminate: terminate,
@@ -70,15 +71,15 @@ public func compose(
                                   timeZone: timeZone, now: boundary.time.now, recordingState: { [weak menu] in menu?.state ?? .init() },
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
                                   present: presentCalls, summaryStatuses: { summaries.statuses }, summaryBadges: { summaries.badges },
-                                  notes: { try await summaries.notes(call: $0).map { (text: $0.text, made: made($0.made)) } },
-                                  notesState: { summaries.notesState(call: $0) },
-                                  makeSummary: { summaries.make(call: $0) }, cancelSummary: { await summaries.cancel(call: $0) },
+                                  notes: { try await summaryFiles.notes(call: $0).map { (text: $0.text, made: made($0.made)) } },
+                                  makeSummary: { summaries.make(call: $0) },
+                                  cancelSummary: { await summaries.cancel(call: $0) },
                                   copy: copyNotes, readCall: readCall,
                                   retryableSummaries: { summaries.retryable }, retrySummary: { try await summaries.retry(call: $0) },
                                   describe: { language.language.settings.callsFailure($0) },
                                   listText: language.language.callsList,
                                   callText: { try await storage.text(id: $0) }))
-    do { await summaries.recover(calls: try await storage.list().map(\.id)) }
+    do { summaries.recover(calls: try await storage.list().map(\.id)) }
     catch { boundary.log.write(.init(category: .session, message: "summary recovery listing failed")) }
     return menu
 }

@@ -1,3 +1,4 @@
+import CallDetail
 import AppKit
 import CallsListUI
 import CallsWindowUI

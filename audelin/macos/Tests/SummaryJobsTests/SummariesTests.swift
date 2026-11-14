@@ -4,9 +4,9 @@ import Testing
 
 @Suite struct SummariesTests {
     @Test func makingTheReducerRendersNothing() {
-        let format = FormatSpy()
-        _ = SummariesReducer(format: format.call)
-        #expect(format.payloads.isEmpty)
+        let format = FormatSpy(), badge = BadgeSpy()
+        _ = SummariesReducer(format: format.call, badge: badge.call)
+        #expect(format.payloads.isEmpty && badge.payloads.isEmpty)
     }
     @Test func aNewMachineAcceptsWithDispatchOnAndNoCalls() {
         let state = makeState()
@@ -33,6 +33,34 @@ import Testing
     }
     @Test func aSubmissionForAKnownCallDeliversNothing() {
         assert(makeState(calls: ["call": .init(stage: .claiming)]), .submit(makeSubmission()), delivers: nil)
+    }
+    @Test func anEndedRecordingWaitsForItsTranscript() {
+        assert(makeState(), .waiting("call")) { $0.calls["call"] = .init(stage: .waiting, status: "waiting:false") }
+        #expect(format.payloads == [.init(stage: .waiting, warning: false)])
+    }
+    @Test func anEndedRecordingDeliversNothing() {
+        assert(makeState(), .waiting("call"), delivers: nil)
+    }
+    @Test func waitingForAKnownCallChangesNothing() {
+        assert(makeState(calls: ["call": .init(stage: .claiming)]), .waiting("call"))
+        #expect(format.payloads.isEmpty)
+    }
+    @Test func waitingForAKnownCallDeliversNothing() {
+        assert(makeState(calls: ["call": .init(stage: .claiming)]), .waiting("call"), delivers: nil)
+    }
+    @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func waitingAfterShutdownChangesNothing(lifecycle: SummariesState.Lifecycle) {
+        assert(makeState(lifecycle: lifecycle), .waiting("call"))
+    }
+    @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func waitingAfterShutdownDeliversNothing(lifecycle: SummariesState.Lifecycle) {
+        assert(makeState(lifecycle: lifecycle), .waiting("call"), delivers: nil)
+    }
+    @Test func aSubmissionForAWaitingCallPreparesItsJob() {
+        assert(makeState(calls: ["call": .init(stage: .waiting)]), .submit(makeSubmission())) {
+            $0.calls["call"] = .init(stage: .preparing, submission: makeSubmission(), status: "preparing:false")
+        }
+    }
+    @Test func aSubmissionForAWaitingCallDeliversPrepare() {
+        assert(makeState(calls: ["call": .init(stage: .waiting)]), .submit(makeSubmission()), delivers: .prepare(makeSubmission()))
     }
     @Test(arguments: [SummariesState.Lifecycle.draining, .ended]) func aSubmissionAfterShutdownChangesNothing(lifecycle: SummariesState.Lifecycle) {
         assert(makeState(lifecycle: lifecycle), .submit(makeSubmission()))
@@ -84,7 +112,7 @@ import Testing
         let record = SummariesSaved(stage: saved, job: makeJob(), identities: [makeIdentity()], warning: true, notes: "notes", terminal: .succeeded)
         assert(makeClaiming(requested: true), .claimed("call", owned: owned, record)) {
             $0.calls["call"] = .init(stage: stage, job: makeJob(), identities: [makeIdentity()], warning: true, notes: "notes",
-                                     terminal: .succeeded, requested: true, status: "\(stage):true")
+                                     terminal: .succeeded, requested: true, status: "\(stage):true", retryable: stage == .failed)
         }
         #expect(format.payloads == [.init(stage: stage, warning: true)])
     }
@@ -101,7 +129,7 @@ import Testing
         assert(makePreparing(), .claimed("call", owned: true, .init(stage: .pending, job: makeJob())), delivers: nil)
     }
     @Test func aFailedClaimFailsTheCall() {
-        assert(makeClaiming(), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false" }
+        assert(makeClaiming(), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false"; $0.calls["call"]?.retryable = true }
     }
     @Test func aFailedClaimDeliversNothing() {
         assert(makeClaiming(), .storageFailed("call"), delivers: nil)
@@ -113,11 +141,11 @@ import Testing
     private func assert(_ state: SummariesState, _ event: SummariesEvent, changes: (inout SummariesState) -> Void = { _ in },
                         sourceLocation: SourceLocation = #_sourceLocation) {
         var expected = state; changes(&expected)
-        #expect(SummariesReducer(format: format.call).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
     }
     private func assert(_ state: SummariesState, _ event: SummariesEvent, delivers effect: SummariesEffect?,
                         sourceLocation: SourceLocation = #_sourceLocation) {
-        #expect(SummariesReducer(format: format.call).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
     }
 }
 
@@ -253,11 +281,11 @@ import Testing
     private func assert(_ state: SummariesState, _ event: SummariesEvent, changes: (inout SummariesState) -> Void = { _ in },
                         sourceLocation: SourceLocation = #_sourceLocation) {
         var expected = state; changes(&expected)
-        #expect(SummariesReducer(format: format.call).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
     }
     private func assert(_ state: SummariesState, _ event: SummariesEvent, delivers effect: SummariesEffect?,
                         sourceLocation: SourceLocation = #_sourceLocation) {
-        #expect(SummariesReducer(format: format.call).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
     }
 }
 
@@ -349,7 +377,7 @@ import Testing
         assert(makePending(), .started("call", owned: true), delivers: nil)
     }
     @Test func aFailedStartFailsTheCall() {
-        assert(makeStarting(), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false" }
+        assert(makeStarting(), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false"; $0.calls["call"]?.retryable = true }
     }
     @Test func aFailedStartDeliversNothing() {
         assert(makeStarting(), .storageFailed("call"), delivers: nil)
@@ -390,11 +418,11 @@ import Testing
     private func assert(_ state: SummariesState, _ event: SummariesEvent, changes: (inout SummariesState) -> Void = { _ in },
                         sourceLocation: SourceLocation = #_sourceLocation) {
         var expected = state; changes(&expected)
-        #expect(SummariesReducer(format: format.call).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
     }
     private func assert(_ state: SummariesState, _ event: SummariesEvent, delivers effect: SummariesEffect?,
                         sourceLocation: SourceLocation = #_sourceLocation) {
-        #expect(SummariesReducer(format: format.call).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
     }
 }
 
@@ -468,10 +496,16 @@ final class FormatSpy: Sendable {
 struct SpyFailure: Error {}
 final class PreparationSpy: SummariesPreparation {
     private let recorded = Mutex<[SummariesSubmission]>([])
+    private let read = Mutex<[String]>([])
     private let job: Job?
-    init(job: Job?) { self.job = job }
+    private let submission: Result<SummariesSubmission, SpyFailure>
+    init(job: Job?, submission: Result<SummariesSubmission, SpyFailure> = .success(makeSubmission(requested: true))) {
+        self.job = job; self.submission = submission
+    }
     var payloads: [SummariesSubmission] { recorded.withLock { $0 } }
+    var reads: [String] { read.withLock { $0 } }
     func job(for submission: SummariesSubmission) async -> Job? { recorded.withLock { $0.append(submission) }; return job }
+    func submission(call: String) async throws -> SummariesSubmission { read.withLock { $0.append(call) }; return try submission.get() }
 }
 final class ClaimsSpy: SummariesClaims {
     private let recorded = Mutex<[Job]>([])
@@ -501,4 +535,14 @@ final class StartsSpy: SummariesStarts {
     init(result: Result<Bool, SpyFailure> = .success(true)) { self.result = result }
     var payloads: [Job] { recorded.withLock { $0 } }
     func start(_ job: Job) async throws -> Bool { recorded.withLock { $0.append(job) }; return try result.get() }
+}
+/// Records each stage the reducer renders a badge for and answers with its stub.
+final class BadgeSpy: Sendable {
+    private let recorded = Mutex<[SummariesState.Call.Stage]>([])
+    private let stub: SummariesState.Call.Badge
+    init(stub: SummariesState.Call.Badge = .failed) { self.stub = stub }
+    var payloads: [SummariesState.Call.Stage] { recorded.withLock { $0 } }
+    var call: @Sendable (SummariesState.Call.Stage) -> SummariesState.Call.Badge {
+        { [self] stage in recorded.withLock { $0.append(stage) }; return stub }
+    }
 }

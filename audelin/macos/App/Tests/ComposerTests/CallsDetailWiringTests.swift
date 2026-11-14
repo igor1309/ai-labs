@@ -1,3 +1,4 @@
+import CallDetail
 import CallsListUI
 import Foundation
 import Observation

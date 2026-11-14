@@ -58,7 +58,7 @@ import Testing
     }
     @Test(arguments: [SummariesState.Call.Stage.failed, .interrupted]) func aFailedRetryRestoresTheStageAndMarksIt(stage: SummariesState.Call.Stage) {
         assert(makeRetrying(from: stage), .retryFailed("call")) {
-            $0.calls["call"]?.stage = stage; $0.calls["call"]?.retryFailed = true; $0.calls["call"]?.status = "\(stage):false"
+            $0.calls["call"]?.stage = stage; $0.calls["call"]?.retryFailed = true; $0.calls["call"]?.retryable = true; $0.calls["call"]?.status = "\(stage):false"
         }
         #expect(format.payloads == [.init(stage: stage, warning: false)])
     }
@@ -75,12 +75,12 @@ import Testing
         assert(make(.failed), event, delivers: nil)
     }
 
-    @Test(arguments: [SummariesState.Call.Stage.succeeded, .failed, .interrupted, .unavailable])
+    @Test(arguments: [SummariesState.Call.Stage.succeeded, .failed, .interrupted, .unavailable, .waiting])
     func forgettingASettledCallDropsIt(stage: SummariesState.Call.Stage) {
         assert(make(stage), .forget("call")) { $0.calls["call"] = nil }
         #expect(format.payloads.isEmpty)
     }
-    @Test(arguments: [SummariesState.Call.Stage.succeeded, .failed, .interrupted, .unavailable])
+    @Test(arguments: [SummariesState.Call.Stage.succeeded, .failed, .interrupted, .unavailable, .waiting])
     func forgettingASettledCallDeliversNothing(stage: SummariesState.Call.Stage) {
         assert(make(stage), .forget("call"), delivers: nil)
     }
@@ -103,11 +103,11 @@ import Testing
     private func assert(_ state: SummariesState, _ event: SummariesEvent, changes: (inout SummariesState) -> Void = { _ in },
                         sourceLocation: SourceLocation = #_sourceLocation) {
         var expected = state; changes(&expected)
-        #expect(SummariesReducer(format: format.call).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
     }
     private func assert(_ state: SummariesState, _ event: SummariesEvent, delivers effect: SummariesEffect?,
                         sourceLocation: SourceLocation = #_sourceLocation) {
-        #expect(SummariesReducer(format: format.call).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
     }
 }
 

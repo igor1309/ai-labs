@@ -3,10 +3,10 @@ import Testing
 
 @Suite struct SummariesCancelReducerTests {
     let format = FormatSpy()
-    static let running: [SummariesState.Call.Stage] = [.starting, .identifying, .checkpointing, .noting, .publishing, .saving]
+    static let running: [SummariesState.Call.Stage] = [.claiming, .starting, .identifying, .checkpointing, .noting, .publishing, .saving]
     /// Each running stage with a result that answers it.
     static let answers: [(SummariesState.Call.Stage, SummariesEvent)] = [
-        (.starting, .started("call", owned: true)), (.identifying, .identified("call", [])), (.identifying, .identificationFailed("call")),
+        (.claiming, .claimed("call", owned: true, .init(stage: .pending, job: makeJob()))), (.starting, .started("call", owned: true)), (.identifying, .identified("call", [])), (.identifying, .identificationFailed("call")),
         (.checkpointing, .checkpointed("call")), (.noting, .noted("call", "n")), (.noting, .notesFailed("call")),
         (.publishing, .published("call")), (.saving, .saved("call")),
     ]
@@ -15,25 +15,40 @@ import Testing
         assert(make(stage), .cancel("call")) { $0.calls["call"]?.cancelling = true; $0.calls["call"]?.status = "\(stage):false" }
         #expect(format.payloads == [.init(stage: stage, warning: false)])
     }
-    @Test(arguments: running) func aCancelOnARunningStageDeliversNothing(stage: SummariesState.Call.Stage) {
-        assert(make(stage), .cancel("call"), delivers: nil)
+    @Test(arguments: running) func aCancelOnARunningStageDeliversAbort(stage: SummariesState.Call.Stage) {
+        assert(make(stage), .cancel("call"), delivers: .abort(makeJob()))
+    }
+    @Test func anAbortChangesNothing() {
+        assert(make(.noting, cancelling: true), .aborted("call"))
+        #expect(format.payloads.isEmpty)
+    }
+    @Test func anAbortDeliversNothing() {
+        assert(make(.noting, cancelling: true), .aborted("call"), delivers: nil)
+    }
+    @Test func aCancelOnAStoredJobNotStartedDiscardsIt() {
+        assert(make(.pending), .cancel("call")) {
+            $0.calls["call"]?.stage = .discarding; $0.calls["call"]?.cancelling = true; $0.calls["call"]?.status = "discarding:false"
+        }
+    }
+    @Test func aCancelOnAStoredJobNotStartedDeliversDiscard() {
+        assert(make(.pending), .cancel("call"), delivers: .discard(makeJob()))
     }
     @Test func aSecondCancelChangesNothing() {
         assert(make(.noting, cancelling: true), .cancel("call"))
         #expect(format.payloads.isEmpty)
     }
     @Test(arguments: [SummariesState.Call.Stage.observed, .unavailable]) func aCancelOnAnUnrunJobInterruptsIt(stage: SummariesState.Call.Stage) {
-        assert(make(stage), .cancel("call")) { $0.calls["call"]?.stage = .interrupted; $0.calls["call"]?.status = "interrupted:false" }
+        assert(make(stage), .cancel("call")) { $0.calls["call"]?.stage = .interrupted; $0.calls["call"]?.status = "interrupted:false"; $0.calls["call"]?.retryable = true }
     }
     @Test(arguments: [SummariesState.Call.Stage.observed, .unavailable]) func aCancelOnAnUnrunJobDeliversNothing(stage: SummariesState.Call.Stage) {
         assert(make(stage), .cancel("call"), delivers: nil)
     }
-    @Test(arguments: [SummariesState.Call.Stage.succeeded, .failed, .interrupted, .pending, .retrying, .discarding])
+    @Test(arguments: [SummariesState.Call.Stage.succeeded, .failed, .interrupted, .retrying, .discarding])
     func aCancelOnAnotherStageChangesNothing(stage: SummariesState.Call.Stage) {
         assert(make(stage), .cancel("call"))
         #expect(format.payloads.isEmpty)
     }
-    @Test(arguments: [SummariesState.Call.Stage.succeeded, .failed, .interrupted, .pending, .retrying, .discarding])
+    @Test(arguments: [SummariesState.Call.Stage.succeeded, .failed, .interrupted, .retrying, .discarding])
     func aCancelOnAnotherStageDeliversNothing(stage: SummariesState.Call.Stage) {
         assert(make(stage), .cancel("call"), delivers: nil)
     }
@@ -47,14 +62,19 @@ import Testing
     }
     @Test func anObservedStartAfterACancelIsObserved() {
         assert(make(.starting, cancelling: true), .started("call", owned: false)) {
-            $0.calls["call"]?.stage = .observed; $0.calls["call"]?.status = "observed:false"
+            $0.calls["call"]?.stage = .observed; $0.calls["call"]?.cancelling = false; $0.calls["call"]?.status = "observed:false"
+        }
+    }
+    @Test func anUnownedClaimAfterACancelIsObservedWithoutTheCancel() {
+        assert(make(.claiming, cancelling: true), .claimed("call", owned: false, .init(stage: .pending, job: makeJob()))) {
+            $0.calls["call"] = .init(stage: .observed, job: makeJob(), status: "observed:false")
         }
     }
     @Test func anObservedStartAfterACancelDeliversNothing() {
         assert(make(.starting, cancelling: true), .started("call", owned: false), delivers: nil)
     }
     @Test func aStorageFailureAfterACancelFailsTheCall() {
-        assert(make(.noting, cancelling: true), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false" }
+        assert(make(.noting, cancelling: true), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.cancelling = false; $0.calls["call"]?.status = "failed:false"; $0.calls["call"]?.retryable = true }
     }
     @Test func aResultForAnotherStageAfterACancelChangesNothing() {
         assert(make(.noting, cancelling: true), .published("call"))
@@ -71,7 +91,7 @@ import Testing
         assert(make(.noting, cancelling: true), .discarded("call"))
     }
     @Test func aFailedDiscardFailsTheCall() {
-        assert(make(.discarding, cancelling: true), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false" }
+        assert(make(.discarding, cancelling: true), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.cancelling = false; $0.calls["call"]?.status = "failed:false"; $0.calls["call"]?.retryable = true }
     }
     @Test func aFailedDiscardDeliversNothing() {
         assert(make(.discarding, cancelling: true), .storageFailed("call"), delivers: nil)
@@ -83,11 +103,11 @@ import Testing
     private func assert(_ state: SummariesState, _ event: SummariesEvent, changes: (inout SummariesState) -> Void = { _ in },
                         sourceLocation: SourceLocation = #_sourceLocation) {
         var expected = state; changes(&expected)
-        #expect(SummariesReducer(format: format.call).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
     }
     private func assert(_ state: SummariesState, _ event: SummariesEvent, delivers effect: SummariesEffect?,
                         sourceLocation: SourceLocation = #_sourceLocation) {
-        #expect(SummariesReducer(format: format.call).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
     }
 }
 
@@ -108,6 +128,19 @@ import Testing
                                          storage: StorageSpy(), generation: generation).handle(.discard(makeJob()))
         #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && records.payloads.isEmpty
                 && starts.payloads.isEmpty && generation.payloads.isEmpty)
+    }
+    @Test func abortStopsTheJobsGenerationAndDeliversAborted() async {
+        let generation = GenerationsSpy()
+        let event = await SummariesEffectHandler(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: RecordsSpy(),
+                                                 starts: StartsSpy(), storage: StorageSpy(), generation: generation).handle(.abort(makeJob()))
+        #expect(event == .aborted("call") && generation.payloads == [.cancel(makeJob())])
+    }
+    @Test func abortDoesNothingElse() async {
+        let preparation = PreparationSpy(job: nil), claims = ClaimsSpy(), records = RecordsSpy(), starts = StartsSpy(), storage = StorageSpy()
+        _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: records, starts: starts,
+                                         storage: storage, generation: GenerationsSpy()).handle(.abort(makeJob()))
+        #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && records.payloads.isEmpty
+                && starts.payloads.isEmpty && storage.payloads.isEmpty)
     }
     @Test(arguments: [SummariesEffect.identify(makeJob()), .notes(makeJob(), []), .publish(makeJob(), "n", warning: false)])
     func otherEffectsDoNotDiscard(effect: SummariesEffect) async {

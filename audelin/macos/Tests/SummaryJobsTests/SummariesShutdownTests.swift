@@ -10,7 +10,7 @@ import Testing
         state.calls["call"]?.warning = true
         assert(state, .shutdown) {
             $0.lifecycle = .draining; $0.dispatch = false; $0.releasing = true
-            $0.calls["call"]?.stage = .interrupted; $0.calls["call"]?.status = "interrupted:true"
+            $0.calls["call"]?.stage = .interrupted; $0.calls["call"]?.status = "interrupted:true"; $0.calls["call"]?.retryable = true
         }
         #expect(format.payloads == [.init(stage: .interrupted, warning: true)])
     }
@@ -69,14 +69,50 @@ import Testing
     }
 
     @Test func refreshReloadsObservedCalls() {
-        assert(make(["b": .observed, "a": .observed, "c": .noting]), .refresh)
+        assert(make(["b": .observed, "a": .observed, "c": .noting]), .refresh) { $0.refreshing = true }
         #expect(format.payloads.isEmpty)
+    }
+    @Test func refreshWithoutObservedCallsChangesNothing() {
+        assert(make(["c": .noting]), .refresh)
+    }
+    @Test func aRefreshWhileOneRunsChangesNothing() {
+        var state = make(["a": .observed]); state.refreshing = true
+        assert(state, .refresh)
+    }
+    @Test func aRefreshWhileOneRunsDeliversNothing() {
+        var state = make(["a": .observed]); state.refreshing = true
+        assert(state, .refresh, delivers: nil)
+    }
+    @Test func aReloadEndsTheRefresh() {
+        var state = make(["a": .observed]); state.refreshing = true
+        assert(state, .reloaded([:])) { $0.refreshing = false }
     }
     @Test func refreshDeliversReloadOfObservedCalls() {
         assert(make(["b": .observed, "a": .observed, "c": .noting]), .refresh, delivers: .reload(["a", "b"]))
     }
     @Test func refreshWithoutObservedCallsDeliversNothing() {
         assert(make(["c": .noting]), .refresh, delivers: nil)
+    }
+    @Test func refreshReloadsStoppedJobsAnotherProcessMayRunAgain() {
+        assert(make(["a": .interrupted, "b": .failed]), .refresh) { $0.refreshing = true }
+    }
+    @Test func refreshDeliversReloadOfStoppedJobs() {
+        assert(make(["a": .interrupted, "b": .failed]), .refresh, delivers: .reload(["a", "b"]))
+    }
+    @Test func refreshSkipsAFailedCallWithoutAJob() {
+        assert(makeState(calls: ["a": .init(stage: .failed)]), .refresh)
+    }
+    @Test func refreshOfAFailedCallWithoutAJobDeliversNothing() {
+        assert(makeState(calls: ["a": .init(stage: .failed)]), .refresh, delivers: nil)
+    }
+    @Test func aReloadedInterruptedCallFollowsAnotherProcesssRetry() {
+        let record = SummariesSaved(stage: .observed, job: job("a"))
+        assert(make(["a": .interrupted]), .reloaded(["a": record])) {
+            $0.calls["a"] = .init(stage: .observed, job: job("a"), status: "observed:false")
+        }
+    }
+    @Test func aReloadedInterruptedCallDeliversNothing() {
+        assert(make(["a": .interrupted]), .reloaded(["a": .init(stage: .observed, job: job("a"))]), delivers: nil)
     }
     @Test func refreshAfterTheEndDeliversNothing() {
         assert(make(["a": .observed], lifecycle: .ended), .refresh, delivers: nil)
@@ -109,11 +145,11 @@ import Testing
     private func assert(_ state: SummariesState, _ event: SummariesEvent, changes: (inout SummariesState) -> Void = { _ in },
                         sourceLocation: SourceLocation = #_sourceLocation) {
         var expected = state; changes(&expected)
-        #expect(SummariesReducer(format: format.call).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
     }
     private func assert(_ state: SummariesState, _ event: SummariesEvent, delivers effect: SummariesEffect?,
                         sourceLocation: SourceLocation = #_sourceLocation) {
-        #expect(SummariesReducer(format: format.call).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
     }
 }
 
@@ -121,6 +157,12 @@ import Testing
 private func job(_ call: String) -> Job { var job = makeJob(); job.call = call; return job }
 
 @Suite struct SummariesShutdownEffectHandlerTests {
+    @Test func releaseStopsEveryJobsGeneration() async {
+        let generation = GenerationsSpy()
+        var other = makeJob(); other.call = "other"
+        _ = await makeSUT(generation: generation).handle(.release([makeJob(), other]))
+        #expect(generation.payloads == [.cancel(makeJob()), .cancel(other)])
+    }
     @Test func releaseFreesEveryJobAndDeliversReleased() async {
         let storage = StorageSpy()
         var other = makeJob(); other.call = "other"
@@ -146,10 +188,11 @@ private func job(_ call: String) -> Job { var job = makeJob(); job.call = call; 
         let sut = SummariesEffectHandler(preparation: preparation, claims: claims, records: RecordsSpy(), starts: starts,
                                          storage: StorageSpy(), generation: generation)
         _ = await sut.handle(.release([makeJob()])); _ = await sut.handle(.reload(["a"]))
-        #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && starts.payloads.isEmpty && generation.payloads.isEmpty)
+        #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && starts.payloads.isEmpty && generation.payloads == [.cancel(makeJob())])
     }
-    private func makeSUT(records: RecordsSpy = RecordsSpy(), storage: StorageSpy = StorageSpy()) -> SummariesEffectHandler {
+    private func makeSUT(records: RecordsSpy = RecordsSpy(), storage: StorageSpy = StorageSpy(),
+                         generation: GenerationsSpy = GenerationsSpy()) -> SummariesEffectHandler {
         .init(preparation: PreparationSpy(job: nil), claims: ClaimsSpy(), records: records, starts: StartsSpy(),
-              storage: storage, generation: GenerationsSpy())
+              storage: storage, generation: generation)
     }
 }

@@ -61,7 +61,7 @@ import Testing
     }
     @Test(arguments: [SummariesState.Call.Stage.succeeded, .failed]) func aSaveEndsInItsTerminal(terminal: SummariesState.Call.Stage) {
         assert(make(.saving, terminal: terminal), .saved("call")) {
-            $0.calls["call"]?.stage = terminal; $0.calls["call"]?.status = "\(terminal):false"
+            $0.calls["call"]?.stage = terminal; $0.calls["call"]?.status = "\(terminal):false"; $0.calls["call"]?.retryable = terminal == .failed
         }
         #expect(format.payloads == [.init(stage: terminal, warning: false)])
     }
@@ -71,7 +71,7 @@ import Testing
 
     @Test(arguments: [SummariesState.Call.Stage.starting, .identifying, .checkpointing, .noting, .publishing, .saving])
     func aStorageFailureFailsWork(stage: SummariesState.Call.Stage) {
-        assert(make(stage), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false" }
+        assert(make(stage), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false"; $0.calls["call"]?.retryable = true }
     }
     @Test(arguments: [SummariesState.Call.Stage.starting, .identifying, .checkpointing, .noting, .publishing, .saving])
     func aStorageFailureDeliversNothing(stage: SummariesState.Call.Stage) {
@@ -102,11 +102,11 @@ import Testing
     private func assert(_ state: SummariesState, _ event: SummariesEvent, changes: (inout SummariesState) -> Void = { _ in },
                         sourceLocation: SourceLocation = #_sourceLocation) {
         var expected = state; changes(&expected)
-        #expect(SummariesReducer(format: format.call).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
     }
     private func assert(_ state: SummariesState, _ event: SummariesEvent, delivers effect: SummariesEffect?,
                         sourceLocation: SourceLocation = #_sourceLocation) {
-        #expect(SummariesReducer(format: format.call).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
+        #expect(SummariesReducer(format: format.call, badge: { _ in .none }).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
     }
 }
 
@@ -204,7 +204,7 @@ final class StorageSpy: SummariesStorage {
     }
 }
 final class GenerationsSpy: SummariesGeneration {
-    enum Payload: Equatable, Sendable { case identify(Job), notes(Job, [Identity]) }
+    enum Payload: Equatable, Sendable { case identify(Job), notes(Job, [Identity]), cancel(Job) }
     private let recorded = Mutex<[Payload]>([])
     private let identities: [Identity], notes: String, fails: Bool
     init(identities: [Identity] = [], notes: String = "notes", fails: Bool = false) {
@@ -219,4 +219,5 @@ final class GenerationsSpy: SummariesGeneration {
         recorded.withLock { $0.append(.notes(job, identities)) }
         if fails { throw SpyFailure() }; return notes
     }
+    func cancel(_ job: Job) async { recorded.withLock { $0.append(.cancel(job)) } }
 }

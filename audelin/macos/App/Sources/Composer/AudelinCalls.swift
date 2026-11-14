@@ -1,6 +1,7 @@
+import CallDetail
+import IMRxObservation
 import SettingsUI
 import Calls
-import CallNotes
 import CallsListUI
 import CallsSearch
 import Foundation
@@ -20,45 +21,19 @@ struct RecordingsInputs {
     }
 }
 
-/// The selected call as the detail shows it.
-public struct CallsDetail: Equatable, Sendable {
-    public enum Content: Equatable, Sendable {
-        /// The notes' Markdown source.
-        case notes(String, made: String? = nil)
-        /// Why the notes cannot be read.
-        case unreadable(String)
-        case preparing
-        /// Preparing the summary failed; `canRetry` when Повторить итоги is offered.
-        case failed(reason: String, canRetry: Bool)
-        /// No summary.
-        case none
-    }
-    public let id: String
-    public let title: String
-    public let date: String
-    public let duration: String
-    public let content: Content
-
-    public init(id: String, title: String, date: String, duration: String, content: Content) {
-        self.id = id; self.title = title; self.date = date; self.duration = duration; self.content = content
-    }
-}
-
 /// What the detail asks of the call it shows.
 public enum CallsDetailEvent: Equatable, Sendable { case copy, open, rename, makeSummary, cancelSummary, retrySummary, delete }
 
 @MainActor @Observable
 public final class AudelinCalls {
     /// The selected call, nil when none is selected.
-    public private(set) var detail: CallsDetail?
-    /// The call the detail was last read for: the selection as the list showed it then.
-    @ObservationIgnored private var detailFor: String?
+    public var detail: CallsDetail? { detailModel.state.detail }
+    private let detailModel: ObservableModel<CallDetailState, CallDetailEvent, CallDetailEffect>
     private let copy: (String) -> Void
     private let readCall: () -> Void
     /// The window is too narrow for the call beside the list.
     private var narrow = false
     private let notes: (String) async throws -> (text: String, made: String?)?
-    private let notesState: (String) -> CallNotesState?
     private let makeSummary: (String) -> Void
     private let cancelSummary: (String) async -> Void
     private var selectedID: String?
@@ -66,7 +41,6 @@ public final class AudelinCalls {
     /// Each call's gist, read with its notes.
     private var gists: [String: String] = [:]
     private var notesScan: Task<Void, Never>?
-    private var loading: Task<Void, Never>?
 
     private let retryableSummaries: () -> Set<String>
     private let retrySummary: (String) async throws -> Void
@@ -99,7 +73,6 @@ public final class AudelinCalls {
          present: @escaping () -> Void, summaryStatuses: @escaping () -> [String: String] = { [:] },
          summaryBadges: @escaping () -> [String: CallsListState.Row.Summary] = { [:] },
          notes: @escaping (String) async throws -> (text: String, made: String?)? = { _ in nil },
-         notesState: @escaping (String) -> CallNotesState? = { _ in nil },
          makeSummary: @escaping (String) -> Void = { _ in },
          cancelSummary: @escaping (String) async -> Void = { _ in },
          copy: @escaping (String) -> Void = { _ in },
@@ -116,10 +89,13 @@ public final class AudelinCalls {
         self.retrySummary = retrySummary
         self.copy = copy
         self.readCall = readCall
-        self.notesState = notesState; self.makeSummary = makeSummary; self.cancelSummary = cancelSummary
+        self.makeSummary = makeSummary; self.cancelSummary = cancelSummary
         self.summaryStatuses = summaryStatuses
         self.summaryBadges = summaryBadges
         self.notes = notes
+        let handler = CallDetailEffectHandler(notes: { @MainActor id in try await notes(id) })
+        detailModel = ObservableModel(initialState: .init(), reduce: CallDetailReducer().reduce,
+                                      handleEffect: { effect in oneEvent { await handler.handle(effect) } })
         self.inputs = inputs; self.timeZone = timeZone; self.now = now; self.recordingState = recordingState
         self.location = location; self.openFolder = openFolder; self.present = present
     }
@@ -148,9 +124,8 @@ public final class AudelinCalls {
             state.rows[index].summary = badges[state.rows[index].id] ?? .none
             state.rows[index].canRetrySummary = retryable.contains(state.rows[index].id)
             state.rows[index].hasNotes = withNotes.contains(state.rows[index].id)
-            let machine = notesState(state.rows[index].id)
             state.rows[index].canMakeSummary = state.rows[index].editable && !state.rows[index].hasNotes
-                && state.rows[index].summary == .none && (machine == nil || machine == .pending)
+                && state.rows[index].summary == .none
             state.rows[index].gist = gists[state.rows[index].id]
             state.rows[index].match = found[state.rows[index].id]
         }
@@ -180,9 +155,10 @@ public final class AudelinCalls {
     /// cancels the older reading. Rows join as their calls are read.
     private func search(_ text: String) {
         searchTask?.cancel()
+        let previousSelection = state.selectedID
         query = text
         textMatches = [:]
-        defer { followSelection() }
+        defer { followSelection(previousSelection) }
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             searching = false
             searchTask = nil
@@ -197,8 +173,9 @@ public final class AudelinCalls {
                 let match = read.flatMap { read in
                     CallsSearch.match(text, title: "", transcript: read.transcript.map { .init(start: $0.start, words: $0.words) }, notes: read.notes)
                 }
+                let previousSelection = state.selectedID
                 textMatches[id] = .some(match?.snippet)
-                followSelection()
+                followSelection(previousSelection)
             }
             searching = false
         }
@@ -246,10 +223,10 @@ public final class AudelinCalls {
     private func scanNotes() {
         notesScan?.cancel()
         notesScan = Task { [notes] in
-            for await (ids, _, _) in Observations({
-                let ids = self.inputs.state().calls.map(\.id)
-                return (ids, self.summaryStatuses(), ids.map(self.notesState))
+            for await (ids, _, _, _) in Observations({
+                (self.inputs.state().calls.map(\.id), self.summaryStatuses(), self.summaryBadges(), self.retryableSummaries())
             }) {
+                connectDetailInputs()
                 var found = Set<String>(), gists: [String: String] = [:]
                 for id in ids {
                     // A closed window stops the scan between reads.
@@ -263,46 +240,43 @@ public final class AudelinCalls {
                 if Task.isCancelled { return }
                 withNotes = found
                 self.gists = gists
-                // The detail follows what the reload found.
-                updateDetail()
+                if let id = state.selectedID { detailModel.event(.notesChanged(id: id)) }
             }
         }
     }
 
-    /// A search that hides or shows the selected call empties or refills the detail.
-    private func followSelection() {
-        if state.selectedID != detailFor { updateDetail() }
+    /// A search can hide or restore the selected call while its text is being read.
+    private func followSelection(_ previous: String?) {
+        if state.selectedID != previous { selectDetail() }
     }
 
-    /// Reads the selected call's notes into the detail.
-    private func updateDetail() {
-        loading?.cancel()
+    private func selectDetail() { detailModel.event(.selectionChanged(detailSelection())) }
+
+    /// Maps the list's display values into the detail's input contract.
+    private func detailSelection() -> CallDetailState.Call? {
         let state = state
-        detailFor = state.selectedID
-        guard let id = selectedID, let index = state.rows.firstIndex(where: { $0.id == id }) else {
-            loading = nil
-            detail = nil
-            return
-        }
+        guard let id = state.selectedID, let index = state.rows.firstIndex(where: { $0.id == id }) else { return nil }
         let row = state.rows[index]
         let opening = state.rows[...index].last(where: { $0.day != nil })?.day
         let date = [opening?.title, row.time].compactMap { $0 }.joined(separator: ", ")
-        let status = summaryStatuses()[id] ?? ""
-        loading = Task { [notes] in
-            let read: CallsDetail.Content?
-            do { read = try await notes(id).map { .notes($0.text, made: $0.made) } } catch { read = .unreadable(error.localizedDescription) }
-            guard !Task.isCancelled else { return }
-            let content: CallsDetail.Content
-            switch (read, notesState(id), row.summary) {
-            case let (read?, _, _): content = read
-            case (nil, .loading?, _): content = .preparing
-            case let (nil, .failure(failure)?, _): content = .failed(reason: failure.reason, canRetry: row.canRetrySummary && row.editable)
-            case (nil, _, .pending): content = .preparing
-            case (nil, _, .failed): content = .failed(reason: status, canRetry: row.canRetrySummary && row.editable)
-            case (nil, _, .none): content = .none
-            }
-            detail = .init(id: id, title: row.displayTitle, date: date, duration: row.duration, content: content)
+        let badge: CallDetailState.Call.Summary.Badge
+        switch row.summary {
+        case .none: badge = .none
+        case .pending: badge = .pending
+        case .failed: badge = .failed
         }
+        return .init(id: id, title: row.displayTitle, date: date, duration: row.duration, editable: row.editable,
+                     summary: .init(badge: badge, status: row.summaryStatus, canRetry: row.canRetrySummary))
+    }
+
+    /// Connects summary updates separately from changes to the selected call's display fields.
+    private func connectDetailInputs() {
+        let call = detailSelection()
+        if var previous = detailModel.state.selected, let call, previous.id == call.id {
+            previous.summary = call.summary
+            if previous == call { detailModel.event(.summaryChanged(id: call.id, summary: call.summary)) }
+            else { detailModel.event(.selectionChanged(call)) }
+        } else { detailModel.event(.selectionChanged(call)) }
     }
 
     /// The detail's buttons and menu act on the call it shows, as the list's own actions do.
@@ -324,7 +298,7 @@ public final class AudelinCalls {
         let index = selectedID.flatMap { id in rows.firstIndex { $0.id == id } }
         let next = index.map { min(max($0 + step, 0), rows.count - 1) } ?? (step > 0 ? 0 : rows.count - 1)
         selectedID = rows[next].id
-        updateDetail()
+        selectDetail()
     }
 
     /// Ends an inline rename by saving its title, as leaving the field does in Finder.
@@ -365,7 +339,7 @@ public final class AudelinCalls {
         case let .select(id):
             if editing?.id != id { commitRename() }
             selectedID = id
-            updateDetail()
+            selectDetail()
         case let .search(text): search(text)
         case .selectNext: commitRename(); move(by: 1, in: snapshot.rows)
         case .selectPrevious: commitRename(); move(by: -1, in: snapshot.rows)
@@ -373,12 +347,12 @@ public final class AudelinCalls {
             guard snapshot.rows.contains(where: { $0.id == id }) else { return }
             if editing?.id != id { commitRename() }
             selectedID = id
-            updateDetail()
-            // The call's window opens on this call's detail, not the one shown before.
-            // A reload may replace the load meanwhile; wait for the one that stands.
-            while let current = loading {
-                await current.value
-                if loading == current { break }
+            let revision = detailModel.state.revision
+            selectDetail()
+            // The selection event is asynchronous; open only after its latest read has answered.
+            for await (detailState, visibleID) in Observations({ (self.detailModel.state, self.state.selectedID) }) {
+                guard visibleID == id else { return }
+                if detailState.revision > revision, detailState.selected?.id == id, detailState.notes != .notRead { break }
             }
             guard selectedID == id, detail?.id == id else { return }
             readCall()

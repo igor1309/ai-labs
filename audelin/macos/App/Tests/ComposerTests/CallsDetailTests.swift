@@ -1,3 +1,4 @@
+import CallDetail
 import CallsListUI
 import Foundation
 import Observation
@@ -72,6 +73,16 @@ struct CallsDetailTests {
         await sut.waitDetail { $0?.content == .notes("# Ready") }
     }
 
+    @Test func aBadgeChangeWithoutAStatusChangeReachesTheDetail() async {
+        let sut = Fixture()
+        sut.calls.show()
+        await sut.calls.send(.read(a))
+
+        sut.summaries.badges[a] = .pending
+
+        await sut.waitDetail { $0?.content == .preparing }
+    }
+
     @Test func aSearchThatHidesTheSelectedCallEmptiesTheDetailAndClearingItBringsItBack() async throws {
         let sut = Fixture(notes: [a: "# A notes"])
         await sut.calls.send(.select(a))
@@ -85,6 +96,32 @@ struct CallsDetailTests {
 
         await sut.calls.send(.search(""))
         await sut.waitDetail { $0?.content == .notes("# A notes") }
+        #expect(sut.calls.state.selectedID == a)
+    }
+
+    @Test func aRetryOfferThatChangesAloneReachesTheShownDetail() async {
+        let sut = Fixture()
+        sut.calls.show()
+        sut.summaries.badges = [b: .failed]
+        sut.summaries.statuses = [b: "Лимит запросов"]
+        sut.summaries.retryable = [b]
+        await sut.calls.send(.select(b))
+        await sut.waitDetail { $0?.content == .failed(reason: "Лимит запросов", canRetry: true) }
+
+        sut.summaries.retryable = []
+
+        await sut.waitDetail { $0?.content == .failed(reason: "Лимит запросов", canRetry: false) }
+    }
+
+    @Test func aSearchThatMatchesTheSelectedCallByItsNotesBringsItsDetailBack() async {
+        let sut = Fixture(notes: [a: "# A notes about budgets"])
+        await sut.calls.send(.select(a))
+        await sut.waitDetail { $0?.content == .notes("# A notes about budgets") }
+
+        await sut.calls.send(.search("budgets"))
+
+        await sut.waitDetail { $0?.content == .notes("# A notes about budgets") && sut.calls.state.search?.searching == false }
+        #expect(sut.calls.state.rows.map(\.id) == [a])
         #expect(sut.calls.state.selectedID == a)
     }
 
@@ -236,7 +273,8 @@ private struct Unreadable: LocalizedError { var errorDescription: String? { "н�
             makeSummary: { [unowned self] in made.append($0) }, cancelSummary: { [unowned self] in cancelled.append($0) },
             copy: { [unowned self] in copies.append($0) }, readCall: { [unowned self] in readCalls += 1; readDetails.append(calls.detail?.id) },
             retryableSummaries: { [summaries] in summaries.retryable },
-            retrySummary: { [unowned self] in retried.append($0) })
+            retrySummary: { [unowned self] in retried.append($0) },
+            callText: { [unowned self] id in .init(notes: self.notes[id], transcript: []) })
     }
 
     func waitHeld() async { while release == nil { await Task.yield() } }

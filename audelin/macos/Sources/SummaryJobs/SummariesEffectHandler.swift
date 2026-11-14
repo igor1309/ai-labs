@@ -1,7 +1,9 @@
-/// Turns a submission into a job from the notes preferences.
+/// Turns a submission into a job from the notes preferences, and a stored call into a submission.
 public protocol SummariesPreparation: Sendable {
     /// The job for the submission, or none when notes are off and the user did not ask for them.
     func job(for submission: SummariesSubmission) async -> Job?
+    /// The call's stored transcript as a submission the user asked for.
+    func submission(call: String) async throws -> SummariesSubmission
 }
 
 /// Takes a job into storage, or finds the one already there.
@@ -38,6 +40,8 @@ public protocol SummariesStorage: Sendable {
 public protocol SummariesGeneration: Sendable {
     func identify(_ job: Job) async throws -> [Identity]
     func notes(_ job: Job, identities: [Identity]) async throws -> String
+    /// Stops the job's running call and returns once it has ended; the call throws. Does nothing when none runs.
+    func cancel(_ job: Job) async
 }
 
 /// Hands each effect to its collaborator and answers with the event its result means; it keeps nothing.
@@ -55,6 +59,9 @@ public struct SummariesEffectHandler: Sendable {
     }
     public func handle(_ effect: SummariesEffect) async -> SummariesEvent {
         switch effect {
+        case let .read(call):
+            do { return .submit(try await preparation.submission(call: call)) }
+            catch { return .readFailed(call) }
         case let .start(job):
             do { return .started(job.call, owned: try await starts.start(job)) }
             catch { await storage.release(job); return .storageFailed(job.call) }
@@ -74,8 +81,11 @@ public struct SummariesEffectHandler: Sendable {
             return event
         case let .discard(job):
             return await stored(job, .discarded(job.call)) { try await storage.discard(job) }
+        case let .abort(job):
+            await generation.cancel(job)
+            return .aborted(job.call)
         case let .release(jobs):
-            for job in jobs { await storage.release(job) }
+            for job in jobs { await generation.cancel(job); await storage.release(job) }
             return .released
         case let .reload(calls):
             var results: [String: SummariesSaved?] = [:]

@@ -1,3 +1,4 @@
+import CallDetail
 import BlockingTestWork
 import CallsListUI
 import Foundation
@@ -179,7 +180,7 @@ struct SummaryCompositionTests {
             let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
             let runtime = Job.Runtime(kind: "compatibleAPI", model: "saved", program: "", endpoint: "http://127.0.0.1/v1", credentialVariable: "")
             let job = Job(id: "interrupted", call: id, input: "saved-input", entries: [.init(label: "A", time: "0", text: "saved transcript")], speakers: false, primary: runtime)
-            _ = try await files.claim(SummaryJobStore(files: files).record(job, phase: "interrupted"))
+            _ = try await files.claim(SummariesFilesPort.record(job, phase: "interrupted"))
             let http = ControlledHTTP(hold: true)
             let rig = try await fixture(root: root, storage: ControlledTranscripts(), http: http)
             do {
@@ -222,7 +223,7 @@ struct SummaryCompositionTests {
             let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
             let runtime = Job.Runtime(kind: "compatibleAPI", model: "saved", program: "", endpoint: "http://127.0.0.1/v1", credentialVariable: "")
             let job = Job(id: "interrupted", call: id, input: "saved", entries: [.init(label: "A", time: "0", text: "spoken")], speakers: false, primary: runtime)
-            _ = try await files.claim(SummaryJobStore(files: files).record(job, phase: "interrupted"))
+            _ = try await files.claim(SummariesFilesPort.record(job, phase: "interrupted"))
             let rig = try await fixture(root: root, storage: ControlledTranscripts(), http: ControlledHTTP(hold: false))
             do {
                 let calls = try #require(rig.menu.calls)
@@ -255,7 +256,7 @@ struct SummaryCompositionTests {
             let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
             let runtime = Job.Runtime(kind: "compatibleAPI", model: "saved", program: "", endpoint: "http://127.0.0.1/v1", credentialVariable: "")
             let job = Job(id: "interrupted", call: id, input: "saved-input", entries: [.init(label: "A", time: "0", text: "saved transcript")], speakers: false, primary: runtime)
-            _ = try await files.claim(SummaryJobStore(files: files).record(job, phase: "interrupted"))
+            _ = try await files.claim(SummariesFilesPort.record(job, phase: "interrupted"))
             let http = ControlledHTTP(hold: true)
             let rig = try await fixture(root: root, storage: ControlledTranscripts(), http: http)
             do {
@@ -296,7 +297,7 @@ struct SummaryCompositionTests {
             let owner = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
             let runtime = Job.Runtime(kind: "compatibleAPI", model: "saved", program: "", endpoint: "http://127.0.0.1/v1", credentialVariable: "")
             let job = Job(id: "other-owner", call: id, input: "saved-input", entries: [.init(label: "A", time: "0", text: "saved transcript")], speakers: false, primary: runtime)
-            let record = try SummaryJobStore(files: owner).record(job, phase: "pending")
+            let record = try SummariesFilesPort.record(job, phase: "pending")
             _ = try await owner.claim(record)
             #expect(try await owner.start(record))
             let http = ControlledHTTP(hold: false)

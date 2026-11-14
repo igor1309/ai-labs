@@ -64,7 +64,7 @@ TARGETS = {
     "GlassLedger": ("ui", "design tokens for both views", 2),
     "MenuBar": ("ui", "menu entries and panel presence", 3),
     "Lifecycle": ("machines", "drains recording before termination", 3),
-    "CallNotes": ("machines", "shows one call's notes and makes them on request", 3),
+    "CallDetail": ("machines", "decides the selected call's\nnotes and summary display", 10),
     "CallAudioAccess": ("machines", "keeps reception evidence fresh", 4),
     "Recording": ("machines", "decides whether a recording runs", 2),
     "Session": ("machines", "brings one recording's\npieces up and down", 0),

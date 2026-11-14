@@ -382,18 +382,16 @@ import Testing
         try await withComposeFolder { root in
             let id = "1970.01.01-0000", folder = root.appendingPathComponent("1970.01.01-0000")
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases")), store = SummaryJobStore(files: files)
+            let files = Files(locations: SummaryStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
+            let store = SummariesFilesPort(files: files, makeID: { "fresh" })
             let slot = Job.Runtime(kind: "compatibleAPI", model: "saved-model", program: "", endpoint: "http://127.0.0.1", credentialVariable: "REFERENCE_ONLY")
             let job = Job(id: "job", call: id, input: "input", entries: [.init(label: "A", time: "0", text: "spoken")], speakers: false, primary: slot, fallback: slot)
             #expect(try await store.claim(job).owned)
-            let pending = try #require(try await files.load(call: id))
-            #expect(try store.state(pending).job == job)
+            #expect(try await store.load(call: id)?.job == job)
             #expect(try await store.start(job))
-            let active = try #require(try await files.load(call: id))
-            #expect(try store.state(active).phase == .running)
+            #expect(try await files.load(call: id)?.phase == "running")
             await store.release(job)
-            let interrupted = try #require(try await files.load(call: id))
-            #expect(try store.state(interrupted).phase == .interrupted)
+            #expect(try await store.load(call: id)?.stage == .interrupted)
             #expect(try await store.start(job) == false)
         }
     }
