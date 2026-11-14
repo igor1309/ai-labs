@@ -1,4 +1,3 @@
-import CallNames
 import Foundation
 
 /// Per-call handles only. The machine holds every stage and every transcript value.
@@ -7,26 +6,34 @@ final class FinalizationResources {
     struct Resource: Sendable {
         let transcript: OpenedTranscript
         let cleanup: TranscriptCleanup
-        var names: CallNamesState
         let speakers: @Sendable ([Int: Int]) async -> Void
         let finishReading: @Sendable () async -> Void
     }
 
     private var calls: [String: Resource] = [:]
-    private var draining: [CheckedContinuation<Void, Never>] = []
+    /// The running cleanup of each call, and the calls whose cleanup was stopped.
+    private var cleaning: [String: Task<[TranscriptSegment]?, Never>] = [:]
+    private var stopped: Set<String> = []
 
     func add(call: String, transcript: OpenedTranscript, cleanup: TranscriptCleanup,
              speakers: @escaping @Sendable ([Int: Int]) async -> Void,
              finishReading: @escaping @Sendable () async -> Void) {
-        calls[call] = Resource(transcript: transcript, cleanup: cleanup, names: transcript.names.snapshot(),
-                               speakers: speakers, finishReading: finishReading)
+        calls[call] = Resource(transcript: transcript, cleanup: cleanup, speakers: speakers, finishReading: finishReading)
     }
 
     func resource(call: String) -> Resource? { calls[call] }
 
-    func captureNames(call: String) {
-        guard let resource = calls[call] else { return }
-        calls[call]?.names = resource.transcript.names.snapshot()
+    /// Starts the call's cleanup unless it was stopped already; nil when there is nothing to run.
+    func startCleaning(call: String, _ raw: CallState) -> Task<[TranscriptSegment]?, Never>? {
+        guard let resource = calls[call], !stopped.contains(call) else { return nil }
+        let work = Task { await resource.cleanup.run(raw) }
+        cleaning[call] = work
+        return work
+    }
+
+    func stopCleaning(call: String) {
+        stopped.insert(call)
+        cleaning.removeValue(forKey: call)?.cancel()
     }
 
     func showSpeakers(_ state: TranscriptFinalizationModel.State) async {
@@ -38,16 +45,8 @@ final class FinalizationResources {
     /// Publication releases the handles only after its consumers have accepted the final form.
     func published(call: String) async {
         guard let resource = calls.removeValue(forKey: call) else { return }
+        cleaning.removeValue(forKey: call)
+        stopped.remove(call)
         await resource.finishReading()
-        if calls.isEmpty {
-            let waiting = draining
-            draining.removeAll()
-            for answer in waiting { answer.resume() }
-        }
-    }
-
-    /// Quit keeps final transcript delivery ahead of the summaries machine's shutdown.
-    func drain() async {
-        if !calls.isEmpty { await withCheckedContinuation { draining.append($0) } }
     }
 }

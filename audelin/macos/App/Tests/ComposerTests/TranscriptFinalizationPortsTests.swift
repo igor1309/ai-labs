@@ -60,23 +60,28 @@ struct TranscriptFinalizationPortsTests {
         await resources.published(call: "a")
     }
 
+    /// A stop that reaches the call before its cleanup starts keeps the cleanup from running.
+    @Test func cleanupStoppedBeforeItStartsDoesNotRun() async throws {
+        let raw = try await publishedCall(status: .finished, mine: [.init(text: line("shared words here", start: 1))],
+                                          theirs: [.init(text: line("shared words here", start: 0))])
+        let log = FixtureLog(), resources = FinalizationResources()
+        add(call: "a", to: resources, opened: openedTranscript(bytes: FinalizationBytes(), names: RecordingNames(), diarizer: .unused, sink: log), sink: log)
+        let sut = FinalizationCleanup(resources: resources)
+        await sut.stop(call: "a")
+        #expect(await sut.clean(call: "a", raw, far: nil) == nil)
+        await resources.published(call: "a")
+    }
+
     @Test(arguments: [false, true])
-    func replacementRendersTheFarSideAndClosedNamesAndPropagatesFailure(fails: Bool) async throws {
+    func replacementRendersTheFarSideAndPropagatesFailure(fails: Bool) async throws {
         let raw = try await publishedCall(status: .finished, mine: [.init(text: line("raw mic", start: 1))],
                                           theirs: [.init(text: line("raw far", start: 0))])
-        let far = AttributedFar(far: [.init(side: .theirs, start: 0, settled: "their words", pending: "", speaker: "d0"),
-                                     .init(side: .theirs, start: 2, settled: "later words", pending: "", speaker: "d1")],
-                                speakers: [.init(id: "d0", name: "Vera", state: "confirmed"), .init(id: "d1", name: nil, state: "diarized")])
-        let bytes = FinalizationBytes(fails: fails), log = FixtureLog(), names = RecordingNames()
+        let bytes = FinalizationBytes(fails: fails), log = FixtureLog()
         let resources = FinalizationResources()
-        names.published(liveNames([0: "Anna"]))
-        add(call: "a", to: resources, opened: openedTranscript(bytes: bytes, names: names, diarizer: .unused, sink: log), sink: log)
-        resources.captureNames(call: "a")
-        names.published(liveNames([0: "Boris"]))
+        add(call: "a", to: resources, opened: openedTranscript(bytes: bytes, names: RecordingNames(), diarizer: .unused, sink: log), sink: log)
         let sut = FinalizationReplacement(resources: resources)
-        let heard = [line("my answer", start: 3)]
         do {
-            try await sut.replace(call: "a", raw, far: far, heard: heard)
+            try await sut.replace(call: "a", raw, names: liveNames([0: "Boris"]), far: attributedFar, heard: [line("my answer", start: 3)])
             #expect(!fails)
         } catch { #expect(fails && error as? FinalizationFailure == .failed) }
         if fails {
@@ -91,12 +96,21 @@ struct TranscriptFinalizationPortsTests {
             // An attributed far side names its own speakers; the names taken at close are not read.
             #expect(!text.contains("raw mic") && !text.contains("raw far") && !text.contains("Anna") && !text.contains("Boris"))
         }
-        // Without attribution the replacement uses the same closed names snapshot.
-        if !fails {
-            try await sut.replace(call: "a", raw, far: nil, heard: heard)
-            let text = try #require(await bytes.replacements.last)
-            #expect(text.contains("- Them: Anna") && !text.contains("Vera") && !text.contains("Boris"))
-        }
+        await resources.published(call: "a")
+    }
+
+    /// Without attribution the replacement renders with the names the commit carries, not the ones the recording publishes later.
+    @Test func replacementWithoutAttributionUsesTheNamesTakenAtClose() async throws {
+        let raw = try await publishedCall(status: .finished, mine: [.init(text: line("raw mic", start: 1))],
+                                          theirs: [.init(text: line("raw far", start: 0))])
+        let bytes = FinalizationBytes(), log = FixtureLog(), names = RecordingNames()
+        let resources = FinalizationResources()
+        add(call: "a", to: resources, opened: openedTranscript(bytes: bytes, names: names, diarizer: .unused, sink: log), sink: log)
+        names.published(liveNames([0: "Boris"]))
+        try await FinalizationReplacement(resources: resources).replace(
+            call: "a", raw, names: liveNames([0: "Anna"]), far: nil, heard: [line("my answer", start: 3)])
+        let text = try #require(await bytes.replacements.first)
+        #expect(text.contains("- Them: Anna") && !text.contains("Vera") && !text.contains("Boris"))
         await resources.published(call: "a")
     }
 
@@ -124,17 +138,26 @@ struct TranscriptFinalizationPortsTests {
         }
     }
 
-    @Test func finalTranscriptsPublishesEachCallWithoutChangingItsFlagsOrEntries() async throws {
-        let stream = AsyncStream<FinalTranscriptsPort.Publication>.makeStream()
-        defer { stream.continuation.finish() }
-        let sut = FinalTranscriptsPort(output: stream.continuation)
+    /// Each call is delivered unchanged, and its handles are released only after its delivery returns.
+    @Test func finalTranscriptsDeliversEachCallThenReleasesItsHandles() async throws {
+        let resources = FinalizationResources(), log = FixtureLog()
+        let events = Values<String>()
+        let opened = openedTranscript(bytes: FinalizationBytes(), names: RecordingNames(), diarizer: .unused, sink: log)
+        for call in ["a", "b"] {
+            resources.add(call: call, transcript: opened, cleanup: unusedCleanup(sink: log), speakers: { _ in },
+                          finishReading: { events.append("released \(call)") })
+        }
+        let received = Values<FinalTranscript<Job.Entry>>()
+        let sut = FinalTranscriptsPort(resources: resources, deliver: { call, transcript in
+            received.append(transcript)
+            events.append("delivered \(call)")
+        })
         let finals = ["a": FinalTranscript(entries: [Job.Entry(label: "Me", time: "3", text: "answer")], usable: true, finalWrite: true),
                       "b": FinalTranscript<Job.Entry>(entries: [], usable: false, finalWrite: false)]
         await sut.publish(finals)
-        var iterator = stream.stream.makeAsyncIterator()
-        var received: [String: FinalTranscript<Job.Entry>] = [:]
-        for _ in finals { let value = try #require(await iterator.next()); received[value.call] = value.transcript }
-        #expect(received == finals)
+        #expect(received.all == [finals["a"]!, finals["b"]!])
+        #expect(events.all == ["delivered a", "released a", "delivered b", "released b"])
+        #expect(resources.resource(call: "a") == nil && resources.resource(call: "b") == nil)
     }
 
     @Test func publishedCallReleasesItsHandlesAndFinishesOnlyItsReadingFeed() async throws {
@@ -152,10 +175,14 @@ struct TranscriptFinalizationPortsTests {
         #expect(resources.resource(call: "b") != nil)
         #expect(finished.all == ["a"])
         await resources.published(call: "b")
-        await resources.drain()
         #expect(finished.all == ["a", "b"])
     }
 }
+
+private let attributedFar = AttributedFar(
+    far: [.init(side: .theirs, start: 0, settled: "their words", pending: "", speaker: "d0"),
+          .init(side: .theirs, start: 2, settled: "later words", pending: "", speaker: "d1")],
+    speakers: [.init(id: "d0", name: "Vera", state: "confirmed"), .init(id: "d1", name: nil, state: "diarized")])
 
 private func line(_ text: String, start: Double) -> TranscriptSegment {
     let words = text.split(separator: " ").enumerated().map {

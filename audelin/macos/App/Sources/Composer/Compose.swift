@@ -56,31 +56,27 @@ public func compose(
         files: SummariesFilesPort(files: summaryFiles, makeID: { UUID().uuidString }),
         generation: SummaryGeneration(runtime: runtime, sink: boundary.log))
     let resources = FinalizationResources()
-    let finals = AsyncStream<FinalTranscriptsPort.Publication>.makeStream()
+    // The machine owns this port, and the port reads the machine's speakers: the box holds it weakly.
+    let finalizationForSpeakers = WeakFinalization()
     let finalization = TranscriptFinalizationModel(diarizing: FinalizationDiarizing(resources: resources),
         cleanup: FinalizationCleanup(resources: resources), replacement: FinalizationReplacement(resources: resources),
-        finals: FinalTranscriptsPort(output: finals.continuation))
+        finals: FinalTranscriptsPort(resources: resources, deliver: { call, transcript in
+            if let state = await finalizationForSpeakers.model?.state { await resources.showSpeakers(state) }
+            if let id = Calls.id(in: URL(fileURLWithPath: call).lastPathComponent, timeZone: timeZone) {
+                await summaries.send(.finalized(id, entries: transcript.entries, finalWrite: transcript.finalWrite,
+                                                usable: transcript.usable, notesOn: preferences.read().notes.enabled))
+            }
+        }))
+    finalizationForSpeakers.model = finalization
     let speakers = Task {
         for await state in finalization.states() { await resources.showSpeakers(state) }
-    }
-    let publication = Task {
-        for await final in finals.stream {
-            await resources.showSpeakers(finalization.state)
-            if let call = Calls.id(in: URL(fileURLWithPath: final.call).lastPathComponent, timeZone: timeZone) {
-                summaries.send(.finalized(call, entries: final.transcript.entries,
-                                          finalWrite: final.transcript.finalWrite, usable: final.transcript.usable,
-                                          notesOn: preferences.read().notes.enabled))
-            }
-            await resources.published(call: final.call)
-        }
     }
     let menu = await AudelinMenu(storage: preferences, occupiedCallNames: { try storage.occupiedCallNames() }, boundary: boundary, processes: processes, panel: panel,
         openFolder: { _ = openCallsFolder($0) }, openURL: openURL, terminate: terminate,
         sink: boundary.log, presentPanel: presentPanel, sleep: boundary.time.sleep,
         finalization: finalization, finalizationResources: resources, summaries: summaries, language: language)
-    menu.installFinalizationSubscriptions(speakers: speakers, publication: publication,
-                                          transactions: subscribeTransactions(storage.transactions(), to: summaries),
-                                          finish: { finals.continuation.finish() })
+    menu.installFinalizationSubscriptions(speakers: speakers,
+                                          transactions: subscribeTransactions(storage.transactions(), to: summaries))
     menu.installFolderPicker(chooseCallsFolder)
     menu.installSettings(AudelinSettings(preferences: SummaryPreferences(storage: preferences),
                                         availability: SummaryAvailability(runtime: runtime), text: { language.language.settings }), present: presentSettings)
@@ -129,4 +125,8 @@ func summaryExecutable(path: String, home: String) -> ClaudeExecutable {
         return FileManager.default.fileExists(atPath: program, isDirectory: &directory)
             && !directory.boolValue && FileManager.default.isExecutableFile(atPath: program)
     })
+}
+
+@MainActor final class WeakFinalization {
+    weak var model: TranscriptFinalizationModel?
 }

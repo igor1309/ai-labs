@@ -1,3 +1,4 @@
+import CallNames
 @testable import Composer
 import Recording
 import Testing
@@ -14,9 +15,9 @@ struct MergeIdleTests {
         #expect(!idleToMerge(recording: phase, finishing: [], notesBusy: false))
     }
 
-    @Test(arguments: [TranscriptFinalizationState<CallState, Transcript.Attributed, [TranscriptSegment]>.Stage.writing,
+    @Test(arguments: [TranscriptFinalizationState<CallState, CallNamesState, Transcript.Attributed, [TranscriptSegment]>.Stage.writing,
                       .diarizing, .cleaning, .committing])
-    func busyWhileATranscriptIsBeingFinished(stage: TranscriptFinalizationState<CallState, Transcript.Attributed, [TranscriptSegment]>.Stage) {
+    func busyWhileATranscriptIsBeingFinished(stage: TranscriptFinalizationState<CallState, CallNamesState, Transcript.Attributed, [TranscriptSegment]>.Stage) {
         #expect(!idleToMerge(recording: .idle, finishing: [.finalized, stage], notesBusy: false))
     }
 

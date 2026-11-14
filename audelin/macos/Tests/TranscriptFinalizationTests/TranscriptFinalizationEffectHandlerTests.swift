@@ -1,7 +1,7 @@
 import Testing
 import TranscriptFinalization
 
-typealias Handler = TranscriptFinalizationEffectHandler<String, String, String, String>
+typealias Handler = TranscriptFinalizationEffectHandler<String, String, String, String, String>
 
 @Suite(.timeLimit(.minutes(1)))
 struct TranscriptFinalizationEffectHandlerTests {
@@ -38,26 +38,41 @@ struct TranscriptFinalizationEffectHandlerTests {
 
     @Test func commitDeliversSuccessOnceReplaced() async {
         let (sut, spies) = makeHandler()
-        await expect(sut, with: .commit(call: callID, "raw", "far", "heard"), toDeliver: .committed(call: callID, succeeded: true), on: {
+        await expect(sut, with: .commit(call: callID, "raw", "names", "far", "heard"), toDeliver: .committed(call: callID, succeeded: true), on: {
             await spies.replacement.complete(with: .success(()))
         })
-        #expect(await spies.replacement.payloads == [.init(call: callID, raw: "raw", far: "far", heard: "heard")])
+        #expect(await spies.replacement.payloads == [.init(call: callID, raw: "raw", names: "names", far: "far", heard: "heard")])
     }
 
     @Test func failedReplacementDeliversFailure() async {
         let (sut, spies) = makeHandler()
-        await expect(sut, with: .commit(call: callID, "raw", nil, "heard"), toDeliver: .committed(call: callID, succeeded: false), on: {
+        await expect(sut, with: .commit(call: callID, "raw", nil, nil, "heard"), toDeliver: .committed(call: callID, succeeded: false), on: {
             await spies.replacement.complete(with: .failure(Refused()))
         })
     }
 
-    @Test func publishHandsEveryFinalOverAndDeliversNothing() async {
+    @Test func publishHandsEveryFinalOverAndDeliversPublished() async {
         let (sut, spies) = makeHandler()
         let finals = ["a": FinalTranscript(entries: ["e"], usable: true, finalWrite: true),
                       "b": FinalTranscript<String>(entries: [], usable: false, finalWrite: false)]
         async let event = sut.handle(.publish(finals))
         await spies.finals.complete(with: ())
-        #expect(await event == nil)
+        #expect(await event == .published(calls: ["a", "b"]))
+        #expect(await spies.finals.payloads == [finals])
+    }
+
+    /// Cleanup work stops before the calls are published as written.
+    @Test func stopCleaningStopsEachCallsCleanupThenPublishes() async {
+        let (sut, spies) = makeHandler()
+        let finals = ["a": FinalTranscript(entries: ["e"], usable: true, finalWrite: true),
+                      "b": FinalTranscript(entries: ["f"], usable: true, finalWrite: true)]
+        async let event = sut.handle(.stopCleaning(finals))
+        await spies.stops.complete(with: ())
+        #expect(await spies.finals.payloads.isEmpty)
+        await spies.stops.complete(with: ())
+        await spies.finals.complete(with: ())
+        #expect(await event == .published(calls: ["a", "b"]))
+        #expect(await spies.stops.payloads == ["a", "b"])
         #expect(await spies.finals.payloads == [finals])
     }
 }
@@ -66,18 +81,19 @@ private struct Refused: Error {}
 
 private struct Diarized: Equatable { let call: String; let raw: String }
 private struct Cleaned: Equatable { let call: String; let raw: String; let far: String? }
-private struct Replaced: Equatable { let call: String; let raw: String; let far: String?; let heard: String }
+private struct Replaced: Equatable { let call: String; let raw: String; let names: String?; let far: String?; let heard: String }
 
 private struct Spies {
     let diarizing = Spy<Diarized, String?>()
     let cleanup = Spy<Cleaned, String?>()
+    let stops = Spy<String, Void>()
     let replacement = Spy<Replaced, Result<Void, Refused>>()
     let finals = Spy<[String: FinalTranscript<String>], Void>()
 }
 
 private func makeHandler() -> (Handler, Spies) {
     let spies = Spies()
-    return (Handler(diarizing: Diarizing(spy: spies.diarizing), cleanup: Cleanup(spy: spies.cleanup),
+    return (Handler(diarizing: Diarizing(spy: spies.diarizing), cleanup: Cleanup(spy: spies.cleanup, stops: spies.stops),
                     replacement: Replacement(spy: spies.replacement), finals: Finals(spy: spies.finals)), spies)
 }
 
@@ -98,13 +114,15 @@ private struct Diarizing: TranscriptDiarizing {
 
 private struct Cleanup: MicrophoneCleanup {
     let spy: Spy<Cleaned, String?>
+    let stops: Spy<String, Void>
     func clean(call: String, _ raw: String, far: String?) async -> String? { await spy.call(.init(call: call, raw: raw, far: far)) }
+    func stop(call: String) async { await stops.call(call) }
 }
 
 private struct Replacement: TranscriptReplacement {
     let spy: Spy<Replaced, Result<Void, Refused>>
-    func replace(call: String, _ raw: String, far: String?, heard: String) async throws {
-        try await spy.call(.init(call: call, raw: raw, far: far, heard: heard)).get()
+    func replace(call: String, _ raw: String, names: String?, far: String?, heard: String) async throws {
+        try await spy.call(.init(call: call, raw: raw, names: names, far: far, heard: heard)).get()
     }
 }
 

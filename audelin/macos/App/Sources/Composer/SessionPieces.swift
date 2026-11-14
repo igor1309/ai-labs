@@ -137,6 +137,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         let made = try places(in: folder)
         let file = try await boundary.transcripts.open(at: made.transcriptURL, names: names, sink: boundary.log)
         transcriptFile = file.writer
+        await finalization.send(.opened(call: made.url.path))
         await finalizationResources.add(call: made.url.path, transcript: file, cleanup: TranscriptCleanup(
             recording: CleanupRecording(microphoneURL: made.microphoneURL, callURL: made.callURL),
             duration: { [microphone = sides[.microphone]!.audio, call = sides[.call]!.audio] in
@@ -164,8 +165,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         defer { news.continuation.finish() }
         await transcriptFile?.close()
         guard let made, transcriptFile != nil else { return }
-        await finalizationResources.captureNames(call: made.url.path)
-        await finalization.send(.closed(call: made.url.path))
+        await finalization.send(.closed(call: made.url.path, names: names.snapshot()))
     }
 
     func start(enabled: Bool) async throws {

@@ -6,6 +6,7 @@
 - LAB-1468: Each recording's session decides its own start-up, end and teardown, and Recording orders each session's begin and end in its own state; ending a recording during start-up or before its transcript opens takes the same path. Behaviour is unchanged.
 - LAB-1533: Names the after-call pass confirms reach the finished call in the panel, shown as confirmed rather than tentative.
 - LAB-1418: The calls window can merge calls: a toolbar control enters merge mode, the user marks calls and confirms, and their transcripts join into one call whose notes are made again; audio stays as it was, calls far apart ask first, and merging waits until Audelin is idle.
+- LAB-1484: Transcript finalization keeps the speaker names taken when a transcript closes, stops cleanup itself on quit, and settles only once every recording's final transcript has reached notes; quit waits on that alone. Behaviour is unchanged.
 - LAB-1470: The panel's live text feed is a generic latest-text operator, given the rule that a listening state replaces the text; behaviour is unchanged.
 - LAB-1466: One state machine per recording names the far-side rows from Zoom's Talking indicator or the browser extension and confirms them after the call; the panel and the transcript take their names from it.
 - LAB-1467: Recognising each call side, including keeping audio already heard when live text is switched off and back on, now belongs to Live text instead of the app's composition; behaviour is unchanged.

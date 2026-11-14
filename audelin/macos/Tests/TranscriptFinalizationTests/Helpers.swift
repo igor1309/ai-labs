@@ -2,21 +2,22 @@ import Synchronization
 import Testing
 import TranscriptFinalization
 
-typealias State = TranscriptFinalizationState<String, String, String>
-typealias Event = TranscriptFinalizationEvent<String, String, String>
-typealias Effect = TranscriptFinalizationEffect<String, String, String, String>
-typealias Reducer = TranscriptFinalizationReducer<String, String, String, String>
+typealias State = TranscriptFinalizationState<String, String, String, String>
+typealias Event = TranscriptFinalizationEvent<String, String, String, String>
+typealias Effect = TranscriptFinalizationEffect<String, String, String, String, String>
+typealias Reducer = TranscriptFinalizationReducer<String, String, String, String, String>
 
 let callID = "call"
 
-func makeState(_ call: State.Call? = nil, shuttingDown: Bool = false) -> State {
-    State(calls: call.map { [callID: $0] } ?? [:], shuttingDown: shuttingDown)
+func makeState(_ call: State.Call? = nil, shuttingDown: Bool = false, settled: Bool = false) -> State {
+    State(calls: call.map { [callID: $0] } ?? [:], shuttingDown: shuttingDown, settled: settled)
 }
 
 func makeCall(
-    _ stage: State.Stage = .writing, saved: Bool = true, raw: String? = "raw", far: String? = nil, heard: String? = nil
+    _ stage: State.Stage = .writing, saved: Bool = true, raw: String? = "raw", names: String? = nil, far: String? = nil, heard: String? = nil,
+    published: Bool = false
 ) -> State.Call {
-    .init(stage: stage, latestWriteSucceeded: saved, raw: raw, far: far, heard: heard)
+    .init(stage: stage, latestWriteSucceeded: saved, raw: raw, names: names, far: far, heard: heard, published: published)
 }
 
 /// Records each entries request and answers with `stub`.
@@ -56,5 +57,9 @@ func assert(_ state: State, _ event: Event, delivers expected: Effect?, sourceLo
 }
 
 func published(_ entries: [String] = ["entry"], finalWrite: Bool = true) -> Effect {
-    .publish([callID: .init(entries: entries, usable: !entries.isEmpty, finalWrite: finalWrite)])
+    .publish([callID: final(entries, finalWrite: finalWrite)])
+}
+
+func final(_ entries: [String] = ["entry"], finalWrite: Bool = true) -> FinalTranscript<String> {
+    .init(entries: entries, usable: !entries.isEmpty, finalWrite: finalWrite)
 }

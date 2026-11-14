@@ -3,6 +3,9 @@ import TranscriptFinalization
 
 struct TranscriptFinalizationReducerTests {
 
+    @Test func openingStartsTheCall_state() { assert(makeState(), .opened(call: callID)) { $0.calls[callID] = .init() } }
+    @Test func openingStartsTheCall_effect() { assert(makeState(), .opened(call: callID), delivers: nil) }
+
     @Test func firstWriteStartsTheCall_state() { assert(makeState(), .wrote(call: callID, "a")) { $0.calls[callID] = makeCall(raw: "a") } }
     @Test func firstWriteStartsTheCall_effect() { assert(makeState(), .wrote(call: callID, "a"), delivers: nil) }
 
@@ -17,21 +20,27 @@ struct TranscriptFinalizationReducerTests {
     }
     @Test func writeFailureMarksLatestWrite_effect() { assert(makeState(makeCall()), .writeFailed(call: callID), delivers: nil) }
 
-    @Test func closingASavedCallDiarizes_state() { assert(makeState(makeCall()), .closed(call: callID)) { $0.calls[callID]?.stage = .diarizing } }
-    @Test func closingASavedCallDiarizes_effect() { assert(makeState(makeCall()), .closed(call: callID), delivers: .diarize(call: callID, "raw")) }
+    @Test func closingASavedCallDiarizes_state() { assert(makeState(makeCall()), .closed(call: callID, names: "names")) {
+        $0.calls[callID]?.stage = .diarizing
+        $0.calls[callID]?.names = "names"
+    } }
+    @Test func closingASavedCallDiarizes_effect() { assert(makeState(makeCall()), .closed(call: callID, names: "names"), delivers: .diarize(call: callID, "raw")) }
 
     @Test func closingAfterAFailedWriteIsFinalAsSaved_state() {
-        assert(makeState(makeCall(saved: false)), .closed(call: callID)) { $0.calls[callID]?.stage = .failed }
+        assert(makeState(makeCall(saved: false)), .closed(call: callID, names: "names")) {
+            $0.calls[callID]?.stage = .failed
+            $0.calls[callID]?.names = "names"
+        }
     }
     @Test func closingAfterAFailedWriteIsFinalAsSaved_effect() {
-        assert(makeState(makeCall(saved: false)), .closed(call: callID), delivers: published(finalWrite: false))
+        assert(makeState(makeCall(saved: false)), .closed(call: callID, names: "names"), delivers: published(finalWrite: false))
     }
 
     @Test func closingWithoutAWriteIsFinalAndEmpty_state() {
-        assert(makeState(), .closed(call: callID)) { $0.calls[callID] = makeCall(.failed, saved: false, raw: nil) }
+        assert(makeState(), .closed(call: callID, names: "names")) { $0.calls[callID] = makeCall(.failed, saved: false, raw: nil, names: "names") }
     }
     @Test func closingWithoutAWriteIsFinalAndEmpty_effect() {
-        assert(makeState(), .closed(call: callID), delivers: published([], finalWrite: false))
+        assert(makeState(), .closed(call: callID, names: "names"), delivers: published([], finalWrite: false))
     }
 
     @Test func diarizedFarSideIsCleaned_state() {
@@ -52,13 +61,14 @@ struct TranscriptFinalizationReducerTests {
     }
 
     @Test func heardMicrophoneIsCommitted_state() {
-        assert(makeState(makeCall(.cleaning, far: "far")), .cleaned(call: callID, "heard")) {
+        assert(makeState(makeCall(.cleaning, names: "names", far: "far")), .cleaned(call: callID, "heard")) {
             $0.calls[callID]?.stage = .committing
             $0.calls[callID]?.heard = "heard"
         }
     }
     @Test func heardMicrophoneIsCommitted_effect() {
-        assert(makeState(makeCall(.cleaning, far: "far")), .cleaned(call: callID, "heard"), delivers: .commit(call: callID, "raw", "far", "heard"))
+        assert(makeState(makeCall(.cleaning, names: "names", far: "far")), .cleaned(call: callID, "heard"),
+               delivers: .commit(call: callID, "raw", "names", "far", "heard"))
     }
 
     @Test func keptMicrophoneIsFinal_state() {
@@ -88,11 +98,14 @@ struct TranscriptFinalizationReducerTests {
 
     @Test func callsAreIndependent_state() {
         let state = State(calls: ["other": makeCall(.diarizing), callID: makeCall()])
-        assert(state, .closed(call: callID)) { $0.calls[callID]?.stage = .diarizing }
+        assert(state, .closed(call: callID, names: "names")) {
+            $0.calls[callID]?.stage = .diarizing
+            $0.calls[callID]?.names = "names"
+        }
     }
     @Test func callsAreIndependent_effect() {
         let state = State(calls: ["other": makeCall(.diarizing), callID: makeCall()])
-        assert(state, .closed(call: callID), delivers: .diarize(call: callID, "raw"))
+        assert(state, .closed(call: callID, names: "names"), delivers: .diarize(call: callID, "raw"))
     }
 
     /// Each stage takes only its own result; a final call takes nothing.
@@ -104,7 +117,7 @@ struct TranscriptFinalizationEntriesTests {
 
     @Test func noEntriesAreMadeBeforeTheFinalForm() {
         let (sut, spy) = makeSUT()
-        for (state, event) in [(makeState(), Event.wrote(call: callID, "a")), (makeState(makeCall()), .closed(call: callID)),
+        for (state, event) in [(makeState(), Event.wrote(call: callID, "a")), (makeState(makeCall()), .closed(call: callID, names: "names")),
                                (makeState(makeCall(.diarizing)), .diarized(call: callID, "far")),
                                (makeState(makeCall(.cleaning)), .cleaned(call: callID, "heard"))] + outOfStage {
             _ = sut.reduce(state, event)
@@ -135,7 +148,7 @@ struct TranscriptFinalizationEntriesTests {
 
     @Test func failedWriteEntriesAreTheLastSavedText() {
         let (sut, spy) = makeSUT(stub: ["saved"])
-        let effect = sut.reduce(makeState(makeCall(saved: false)), .closed(call: callID)).1
+        let effect = sut.reduce(makeState(makeCall(saved: false)), .closed(call: callID, names: "names")).1
         #expect(spy.requests == [.init(raw: "raw", far: nil, heard: nil)])
         #expect(effect == published(["saved"], finalWrite: false))
     }
@@ -143,7 +156,7 @@ struct TranscriptFinalizationEntriesTests {
     /// Without any saved text there is nothing to map.
     @Test func noSavedTextMakesNoEntries() {
         let (sut, spy) = makeSUT()
-        _ = sut.reduce(makeState(), .closed(call: callID))
+        _ = sut.reduce(makeState(), .closed(call: callID, names: "names"))
         #expect(spy.requests.isEmpty)
     }
 
@@ -155,12 +168,12 @@ struct TranscriptFinalizationEntriesTests {
 
 let outOfStage: [(State, Event)] = {
     let all: [Event] = [
-        .wrote(call: callID, "x"), .writeFailed(call: callID), .closed(call: callID), .diarized(call: callID, "f"),
-        .cleaned(call: callID, "h"), .committed(call: callID, succeeded: true),
+        .wrote(call: callID, "x"), .writeFailed(call: callID), .closed(call: callID, names: "names"), .diarized(call: callID, "f"),
+        .cleaned(call: callID, "h"), .committed(call: callID, succeeded: true), .published(calls: [callID]), .opened(call: callID),
     ]
-    let accepted: [State.Stage: Set<Int>] = [.writing: [0, 1, 2], .diarizing: [3], .cleaning: [4], .committing: [5], .finalized: [], .failed: []]
+    let accepted: [State.Stage: Set<Int>] = [.writing: [0, 1, 2], .diarizing: [3], .cleaning: [4], .committing: [5], .finalized: [6], .failed: [6]]
     let stages: [State.Stage] = [.writing, .diarizing, .cleaning, .committing, .finalized, .failed]
     return stages.flatMap { stage in
         all.indices.filter { !accepted[stage]!.contains($0) }.map { (makeState(makeCall(stage, heard: stage == .committing ? "h" : nil)), all[$0]) }
-    } + all.indices.filter { $0 >= 3 }.map { (makeState(), all[$0]) }
+    } + all.indices.filter { (3...6).contains($0) }.map { (makeState(), all[$0]) }
 }()

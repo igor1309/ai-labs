@@ -1,3 +1,4 @@
+import CallNames
 import SummaryJobs
 import TranscriptFinalization
 
@@ -15,17 +16,19 @@ struct FinalizationCleanup: MicrophoneCleanup {
     let resources: FinalizationResources
 
     func clean(call: String, _ raw: CallState, far: Transcript.Attributed?) async -> [TranscriptSegment]? {
-        guard let resource = await resources.resource(call: call) else { return nil }
-        return await resource.cleanup.run(raw)
+        guard let work = await resources.startCleaning(call: call, raw) else { return nil }
+        return await withTaskCancellationHandler { await work.value } onCancel: { work.cancel() }
     }
+
+    func stop(call: String) async { await resources.stopCleaning(call: call) }
 }
 
 struct FinalizationReplacement: TranscriptReplacement {
     let resources: FinalizationResources
 
-    func replace(call: String, _ raw: CallState, far: Transcript.Attributed?, heard: [TranscriptSegment]) async throws {
+    func replace(call: String, _ raw: CallState, names: CallNamesState?, far: Transcript.Attributed?, heard: [TranscriptSegment]) async throws {
         guard let resource = await resources.resource(call: call) else { throw CancellationError() }
-        let replacement = Transcript.microphoneReplacement(in: raw, far: far, names: resource.names, heard: heard)
+        let replacement = Transcript.microphoneReplacement(in: raw, far: far, names: names ?? .init(), heard: heard)
         do {
             try await resource.transcript.writer.replaceWhole(replacement.segments, speakers: replacement.speakers)
         } catch {
@@ -35,15 +38,15 @@ struct FinalizationReplacement: TranscriptReplacement {
     }
 }
 
+/// Returns once each call's final transcript is delivered and the call's handles are released.
 struct FinalTranscriptsPort: FinalTranscripts {
-    struct Publication: Sendable {
-        let call: String
-        let transcript: FinalTranscript<Job.Entry>
-    }
-
-    let output: AsyncStream<Publication>.Continuation
+    let resources: FinalizationResources
+    let deliver: @Sendable (String, FinalTranscript<Job.Entry>) async -> Void
 
     func publish(_ finals: [String: FinalTranscript<Job.Entry>]) async {
-        for (call, transcript) in finals { output.yield(.init(call: call, transcript: transcript)) }
+        for (call, transcript) in finals.sorted(by: { $0.key < $1.key }) {
+            await deliver(call, transcript)
+            await resources.published(call: call)
+        }
     }
 }

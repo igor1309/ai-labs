@@ -13,15 +13,19 @@ public protocol MicrophoneCleanup<Raw, Far, Heard>: Sendable {
     associatedtype Heard: Equatable & Sendable
     /// The microphone side heard again; nil when cleanup keeps it as written.
     func clean(call: String, _ raw: Raw, far: Far?) async -> Heard?
+    /// Stops the call's cleanup; a clean still running returns nil.
+    func stop(call: String) async
 }
 
 /// Replaces a closed transcript's microphone side.
-public protocol TranscriptReplacement<Raw, Far, Heard>: Sendable {
+public protocol TranscriptReplacement<Raw, Names, Far, Heard>: Sendable {
     associatedtype Raw: Equatable & Sendable
+    associatedtype Names: Equatable & Sendable
     associatedtype Far: Equatable & Sendable
     associatedtype Heard: Equatable & Sendable
     /// Replaces atomically; a failure keeps the file's previous bytes.
-    func replace(call: String, _ raw: Raw, far: Far?, heard: Heard) async throws
+    /// `names` are the ones taken at close.
+    func replace(call: String, _ raw: Raw, names: Names?, far: Far?, heard: Heard) async throws
 }
 
 /// Takes each call's final transcript.
@@ -31,40 +35,44 @@ public protocol FinalTranscripts<Entry>: Sendable {
 }
 
 /// Hands each effect to its collaborator and answers with the event its result means; it keeps nothing.
-public struct TranscriptFinalizationEffectHandler<Raw: Equatable & Sendable, Far: Equatable & Sendable, Heard: Equatable & Sendable, Entry: Equatable & Sendable>: Sendable {
+public struct TranscriptFinalizationEffectHandler<Raw: Equatable & Sendable, Names: Equatable & Sendable, Far: Equatable & Sendable, Heard: Equatable & Sendable, Entry: Equatable & Sendable>: Sendable {
 
-    public typealias Event = TranscriptFinalizationEvent<Raw, Far, Heard>
-    public typealias Effect = TranscriptFinalizationEffect<Raw, Far, Heard, Entry>
+    public typealias Event = TranscriptFinalizationEvent<Raw, Names, Far, Heard>
+    public typealias Effect = TranscriptFinalizationEffect<Raw, Names, Far, Heard, Entry>
 
     private let diarizing: any TranscriptDiarizing<Raw, Far>
     private let cleanup: any MicrophoneCleanup<Raw, Far, Heard>
-    private let replacement: any TranscriptReplacement<Raw, Far, Heard>
+    private let replacement: any TranscriptReplacement<Raw, Names, Far, Heard>
     private let finals: any FinalTranscripts<Entry>
 
     public init(
         diarizing: any TranscriptDiarizing<Raw, Far>, cleanup: any MicrophoneCleanup<Raw, Far, Heard>,
-        replacement: any TranscriptReplacement<Raw, Far, Heard>, finals: any FinalTranscripts<Entry>
+        replacement: any TranscriptReplacement<Raw, Names, Far, Heard>, finals: any FinalTranscripts<Entry>
     ) {
         self.diarizing = diarizing; self.cleanup = cleanup; self.replacement = replacement; self.finals = finals
     }
 
-    /// The event that completes the effect; none for a publication.
-    public func handle(_ effect: Effect) async -> Event? {
+    /// The event that completes the effect.
+    public func handle(_ effect: Effect) async -> Event {
         switch effect {
         case let .diarize(call, raw):
             return .diarized(call: call, await diarizing.diarize(call: call, raw))
         case let .clean(call, raw, far):
             return .cleaned(call: call, await cleanup.clean(call: call, raw, far: far))
-        case let .commit(call, raw, far, heard):
+        case let .commit(call, raw, names, far, heard):
             do {
-                try await replacement.replace(call: call, raw, far: far, heard: heard)
+                try await replacement.replace(call: call, raw, names: names, far: far, heard: heard)
                 return .committed(call: call, succeeded: true)
             } catch {
                 return .committed(call: call, succeeded: false)
             }
         case let .publish(transcripts):
             await finals.publish(transcripts)
-            return nil
+            return .published(calls: Set(transcripts.keys))
+        case let .stopCleaning(transcripts):
+            for call in transcripts.keys.sorted() { await cleanup.stop(call: call) }
+            await finals.publish(transcripts)
+            return .published(calls: Set(transcripts.keys))
         }
     }
 }
