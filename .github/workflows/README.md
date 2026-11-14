@@ -113,10 +113,11 @@ There is no trunk-push deploy path for RexLab.
 ## Audelin
 
 - `audelin-install.yml` runs on a trunk push that changes Audelin's app code, `bundle.sh` or `install.sh`, and on manual dispatch. On the self-hosted `local-mac` runner it builds the app and replaces `/Applications/Audelin.app` with `install.sh --update`: a running Audelin relaunches itself into the new build once it is idle, never during a recording or a folder move; a quit Audelin is not opened. A failure arrives in the CI Telegram chat. It is no required check, so while the runner is offline the run waits queued and nothing else is held. Signing needs the owner's login keychain, so the runner's launch agent must not set `SessionCreate` (`svc.sh install` adds it; `audelin/README.md` says how to remove it).
+- `audelin-release.yml` runs Mondays at 04:00 UTC (07:00 Moscow) and on manual dispatch. On the `local-mac` runner `audelin/macos/scripts/release.sh` builds Audelin signed with Developer ID, notarizes and staples it, and publishes it as a release of the public `igor1309/audelin` repository with `PUBLIC_REPO_PAT`; a week with no app change publishes nothing. A failure arrives in the CI Telegram chat.
 
 ## Shared Infrastructure
 
 - **Path detection**: `dorny/paths-filter@v4` in the `changes` job
 - **Failure notifications**: all pipelines route failures through `notify-telegram-failure.yml`
 - **Concurrency**: scheduled workflows use `concurrency` groups to prevent overlap
-- **Timezone**: cron schedules target Moscow morning (UTC+3), and `ci-weekly.yml` Sunday night and `audelin-nightly.yml` every night, documented in each file
+- **Timezone**: cron schedules target Moscow morning (UTC+3), and `ci-weekly.yml` Sunday night `audelin-nightly.yml` every night and `audelin-release.yml` Monday morning, documented in each file

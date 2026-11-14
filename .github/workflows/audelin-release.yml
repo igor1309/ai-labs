@@ -1,0 +1,49 @@
+name: Audelin Release
+
+# Publishes a Developer ID signed, notarized Audelin to the releases of the
+# public igor1309/audelin repository, not this one. Mondays at 04:00 UTC
+# (07:00 Moscow time). A week with no app change publishes nothing.
+# Signing and the notarytool profile live in the owner's login keychain, so
+# it runs on the self-hosted Mac.
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"   # Monday 07:00 MSK
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audelin-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: [self-hosted, local-mac]
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: trunk
+          fetch-depth: 0
+
+      - name: Build, notarize and publish
+        env:
+          GH_TOKEN: ${{ secrets.PUBLIC_REPO_PAT }}
+        run: sh audelin/macos/scripts/release.sh
+
+  notify:
+    if: ${{ always() && !cancelled() && needs.release.result == 'failure' }}
+    needs: [release]
+    uses: ./.github/workflows/notify-telegram-failure.yml
+    with:
+      title: "Audelin Release"
+      ref_label: "branch"
+      ref_value: "trunk"
+      job_results: |
+        release=${{ needs.release.result }}
+    secrets:
+      CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
+      CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
