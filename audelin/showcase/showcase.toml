@@ -16,6 +16,8 @@ include = [
   "macos/App/AppIcon/**",
   "macos/App/Audelin.entitlements",
   "macos/scripts/bundle.sh",
+  "macos/Vendor/FluidAudio/**",
+  "THIRD-PARTY-NOTICES.md",
   "macos/PreviewApps/Package.swift",
   "macos/PreviewApps/Package.resolved",
   "macos/PreviewApps/Sources/**",
