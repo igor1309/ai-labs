@@ -14,6 +14,7 @@ struct SegmentsScalingTests {
         // cost a little.
         let runs = (0..<5).map { _ in (secondsPerHearing(after: 300), secondsPerHearing(after: 30_000)) }
         let earlies = runs.map(\.0), lates = runs.map(\.1)
+        for (index, run) in runs.enumerated() { print("DIAG run \(index) early \(run.0.seconds * 1e6) late \(run.1.seconds * 1e6)") }
         let early = (seconds: earlies.map(\.seconds).min()!, lost: earlies.map(\.lost).max()!)
         let late = (seconds: lates.map(\.seconds).min()!, lost: lates.map(\.lost).max()!)
         #expect(early.lost == 0, "\(early.lost) words lost after 300")
