@@ -4,7 +4,11 @@ public struct MoveCall: Equatable, Sendable {
     public var id: String
     public var title: String
     public var bytes: Int64
-    public init(id: String, title: String, bytes: Int64) { self.id = id; self.title = title; self.bytes = bytes }
+    /// The call already lives in the destination folder, through any symlink.
+    public var inDestination: Bool
+    public init(id: String, title: String, bytes: Int64, inDestination: Bool = false) {
+        self.id = id; self.title = title; self.bytes = bytes; self.inDestination = inDestination
+    }
 }
 
 public struct MoveText: Equatable, Sendable {
@@ -52,7 +56,7 @@ extension RecordingsReducer {
         case let .movePrepared(calls):
             guard state.phase == .countingMove || state.phase == .preparingMove, var move = state.move else { return (state, nil) }
             let completed = Set(move.completed.map(\.id))
-            move.remaining = calls.filter { !completed.contains($0.id) }.sorted { $0.id < $1.id }
+            move.remaining = calls.filter { !$0.inDestination && !completed.contains($0.id) }.sorted { $0.id < $1.id }
             move.totalCalls = move.completed.count + move.remaining.count
             move.totalBytes = move.movedBytes + move.remaining.reduce(0) { $0 + $1.bytes }
             move.progress = move.totalCalls == 0 ? 0 : Double(move.completed.count) / Double(move.totalCalls)

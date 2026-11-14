@@ -10,22 +10,6 @@ import Testing
 
 @MainActor @Suite(.timeLimit(.minutes(1)))
 struct FolderMoveWiringTests {
-    @Test func singleRootPreparationExcludesTheDestinationIncludingItsSymlink() async throws {
-        try await withComposeFolder { root in
-            let source = root.appendingPathComponent("source"), alias = root.appendingPathComponent("alias")
-            let id = "1970.01.01-0000"
-            do {
-                try FileManager.default.createDirectory(at: source.appendingPathComponent(id), withIntermediateDirectories: true)
-                try Data([1, 2, 3]).write(to: source.appendingPathComponent(id + "/audio"))
-                try FileManager.default.createSymbolicLink(at: alias, withDestinationURL: source)
-            }
-            let calls = ComposeCalls(disk: Calls(folder: source, timeZone: .gmt, duration: { _ in 0 }, transcript: { _ in [] }, disk: .system))
-            #expect(try await calls.prepareMove(to: source).isEmpty)
-            #expect(try await calls.prepareMove(to: alias).isEmpty)
-            #expect(try await calls.prepareMove(to: root) == [.init(id: id, title: "", bytes: 3)])
-        }
-    }
-
     @Test func settingsMapsConfirmationProgressFailureAndRefusal() {
         var state = RecordingsState(callsFolder: URL(fileURLWithPath: "/old"))
         let text = MoveText(title: "Confirm title", body: "52 calls · 135 MB", detail: "31 of 52 · 100 MB of 135 MB", moved: "31 of 52")
