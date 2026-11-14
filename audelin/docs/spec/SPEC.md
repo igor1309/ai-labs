@@ -72,6 +72,11 @@ Feature: Live text of calls
     Given Audelin is running and no call is recording
     When I open Audelin again
     Then the calls list shows
+
+  Scenario: S-22 Merging calls that were one call
+    Given one call was saved as several because it was cut off
+    When I merge them in the calls window
+    Then I can read them as one call with one set of notes
 ```
 
 Opening a running menu bar app again is the way back to it when its icon is
@@ -91,3 +96,4 @@ Panel presentation is owned by `live-panel/SPEC.md`; recording-problem copy and 
 Optional post-call notes are owned by `call-summaries/SPEC.md`; recording and notes are independent.
 The calls window is owned by `calls-window/SPEC.md`, choosing a call in it by `calls-list/SPEC.md`, reading it beside the list by `summary-preview/SPEC.md`, making its notes on request by `call-notes/SPEC.md`.
 Installed-update notification and call-safe restart are owned by `installed-update/SPEC.md`.
+Merging calls is owned by `merge-calls/SPEC.md`.

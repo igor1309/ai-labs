@@ -11,6 +11,7 @@ Observer: the application composing recording, storage and summary jobs.
 - Before permitting an update, reread observed calls, including interrupted calls another instance can retry. Unresolved ownership stays protected on missing, unreadable or invalid records; a confirmed inactive record releases protection. Observer refresh never replaces a locally executing job.
 - Explicit retry replaces only the current interrupted or failed attempt with a fresh identity, using its saved input and runtime settings. Refusal or storage failure is shown to the caller; a later retry clears that call’s previous retry error.
 - A transcript read failure before submission retries reading through the call's notes machine; there is no stored attempt to retry. One request starts one attempt.
+- A merge outcome drops every part's job, done ones included, as a delete does, then submits the joined transcript under the merged call's id as a closed call's is; the parts' earlier notes never stand for the merged call.
 - Storage coordinates publication with existing rename/delete/move operations, resolving call identity even before a whole-folder move commits its new preference.
 
 ```gherkin
@@ -88,4 +89,8 @@ Feature: Coordinate notes and recording
     When I read that call while generation is held
     Then I see making followed by its notes when generation completes
 
+  Scenario: S-15 A merge replaces every part's notes job
+    Given parts whose notes are done, and one whose notes are waiting to start, merged into a call
+    When the merge outcome arrives
+    Then no part's waiting notes run, and I can dispatch notes for the joined transcript of every part
 ```

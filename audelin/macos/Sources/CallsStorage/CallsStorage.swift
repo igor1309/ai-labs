@@ -55,8 +55,14 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
         }
     }
 
+    /// Puts back every merge interrupted in the calls folder, then recovers the moves the journal records.
     public func restore() async throws {
         try await perform { [self] in
+            try state.withLock { state in
+                // A calls folder that is not there, such as one on an unmounted volume, holds no merge.
+                guard FileManager.default.fileExists(atPath: state.recordingFolder.path) else { return }
+                try makeCalls(state.recordingFolder).recoverInterruptedMerges()
+            }
             guard let journal else { return }
             let data: Data
             do { data = try Data(contentsOf: journal) }
@@ -157,6 +163,26 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
                 next.owners.removeValue(forKey: id)
                 try save(next)
                 state.journal = next
+            }
+        }
+    }
+    /// A call's saved transcript as written, for a merge to read back.
+    public func savedTranscript(id: String) async throws -> Data {
+        try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).savedTranscript(id: id) } }
+    }
+    /// Merges calls of the calls folder into one, the earliest part's, with the joined
+    /// transcript `write` puts in the folder it is given; returns the merged call's id.
+    /// A call that a folder move holds or left in another folder is not merged.
+    public func merge(ids: [String], write: @Sendable (URL) throws -> Void) async throws -> String {
+        try await perform { [self] in
+            try state.withLock { state in
+                for id in ids {
+                    recover(&state, id: id)
+                    guard state.journal.moves[id] == nil,
+                          sameRoot(try location(id: id, state: state).deletingLastPathComponent(), state.recordingFolder)
+                    else { throw CocoaError(.fileWriteUnknown) }
+                }
+                return try makeCalls(state.recordingFolder).merge(ids: ids, write: write)
             }
         }
     }

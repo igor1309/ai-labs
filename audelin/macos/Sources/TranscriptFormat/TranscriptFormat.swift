@@ -4,7 +4,7 @@ import Foundation
 /// construct a fresh value to render a replacement from nothing.
 public struct TranscriptFormat: Sendable {
 
-    public enum Failure: Error, Equatable { case invalidStart }
+    public enum Failure: Error, Equatable { case invalidStart, invalidGap }
 
     /// Words from one side, starting at a time in seconds from the call's beginning.
     public struct Segment: Sendable, Equatable {
@@ -12,6 +12,8 @@ public struct TranscriptFormat: Sendable {
         public enum Side: Sendable {
 
             case mine, theirs
+            /// Where the call was cut off: a row with no side and no words.
+            case gap
         }
 
         public let side: Side
@@ -22,6 +24,8 @@ public struct TranscriptFormat: Sendable {
         /// The diarized speaker's stable generic ID on the other side; never a name, so a
         /// final row never needs rewriting when names change.
         public let speaker: String?
+        /// How long a gap row says the call was cut off, in seconds; none for words.
+        public let gapLength: Double?
 
         public init(side: Side, start: Double, settled: String, pending: String, filledInLater: Bool = false, speaker: String? = nil) {
 
@@ -31,6 +35,21 @@ public struct TranscriptFormat: Sendable {
             self.settled = settled
             self.pending = pending
             self.filledInLater = filledInLater
+            gapLength = nil
+        }
+
+        /// A row saying the call was cut off at `start` for `length` seconds.
+        public static func gap(at start: Double, length: Double) -> Segment { Segment(gapAt: start, length: length) }
+
+        private init(gapAt start: Double, length: Double) {
+
+            side = .gap
+            self.start = start
+            settled = ""
+            pending = ""
+            filledInLater = false
+            speaker = nil
+            gapLength = length
         }
     }
 
@@ -146,6 +165,7 @@ public struct TranscriptFormat: Sendable {
     /// the lone speaker's rows become `Them 1` when a second is listed.
     public static func label(_ segment: Segment, speakerIDs: [String]) -> String {
 
+        if segment.side == .gap { return "Gap" }
         guard segment.side == .theirs else { return "Me" }
         guard speakerIDs.count > 1, let id = segment.speaker, let index = speakerIDs.firstIndex(of: id) else { return "Them" }
         return "Them \(index + 1)"
@@ -168,35 +188,102 @@ public struct TranscriptFormat: Sendable {
     /// Lines before the first part, and the Speakers section, are skipped.
     public static func entries(_ markdown: String) -> [Entry] {
 
-        var entries: [Entry] = []
-        var current: (label: String, start: Double, lines: [Substring])?
+        parts(markdown).parts.filter { $0.gap == nil }.map { Entry(label: $0.label, start: $0.start, words: $0.words) }
+    }
+
+    /// A saved transcript read back as fully as it was rendered: each part with words and
+    /// the speakers' current names, so rendering it again gives the same transcript.
+    public struct Saved: Sendable, Equatable {
+
+        public let segments: [Segment]
+        public let speakers: [Speaker]
+
+        public init(segments: [Segment], speakers: [Speaker]) { self.segments = segments; self.speakers = speakers }
+    }
+
+    /// Reads back what rendering needs to render a saved transcript again. A `Them N`
+    /// row is given the Nth listed speaker's ID; a plain `Them` row the only listed
+    /// speaker's, or none. Words come back settled, as final text was rendered.
+    public static func read(_ markdown: String) -> Saved {
+
+        let (parts, speakers) = parts(markdown)
+        let ids = speakers.map(\.id)
+        let segments = parts.map { part -> Segment in
+            if let length = part.gap { return .gap(at: part.start, length: length) }
+            guard part.label != "Me" else {
+                return Segment(side: .mine, start: part.start, settled: part.words, pending: "", filledInLater: part.later)
+            }
+            let speaker: String?
+            if part.label == "Them" { speaker = ids.count == 1 ? ids[0] : nil } else {
+                let index = Int(part.label.dropFirst("Them ".count)).map { $0 - 1 }
+                speaker = index.flatMap { ids.indices.contains($0) ? ids[$0] : nil }
+            }
+            return Segment(side: .theirs, start: part.start, settled: part.words, pending: "", filledInLater: part.later, speaker: speaker)
+        }
+        return Saved(segments: segments, speakers: speakers)
+    }
+
+    private struct Part { let label: String; let start: Double; let later: Bool; let words: String; var gap: Double? = nil }
+
+    private static func parts(_ markdown: String) -> (parts: [Part], speakers: [Speaker]) {
+
+        var parts: [Part] = []
+        var speakers: [Speaker] = []
+        var current: (label: String, start: Double, later: Bool, lines: [Substring])?
         func close() {
             guard let part = current else { return }
             let words = part.lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-            if !words.isEmpty { entries.append(Entry(label: part.label, start: part.start, words: words)) }
+            if part.label == "Gap" {
+                if let length = gapLength(words) { parts.append(Part(label: "Gap", start: part.start, later: false, words: "", gap: length)) }
+            } else if !words.isEmpty { parts.append(Part(label: part.label, start: part.start, later: part.later, words: words)) }
             current = nil
         }
         let normalized = markdown.replacingOccurrences(of: "\r\n", with: "\n")
+        var inSpeakers = false
         for line in normalized.split(separator: "\n", omittingEmptySubsequences: false) {
-            if let header = header(line) {
+            if inSpeakers {
+                if let block = speakerList(line) { speakers = block }
+            } else if let header = header(line) {
                 close()
-                current = (header.label, header.start, [])
+                current = (header.label, header.start, header.later, [])
             } else if line == "## Speakers" {
                 close()
-                break
+                inSpeakers = true
             } else {
                 current?.lines.append(line)
             }
         }
         close()
-        return entries
+        return (parts, speakers)
     }
 
-    private static func header(_ line: Substring) -> (label: String, start: Double)? {
+    /// A gap row's text, `Cut off for HH:MM:SS.`, read back as seconds.
+    private static func gapLength(_ text: String) -> Double? {
 
-        guard let match = line.wholeMatch(of: /\*\*(Me|Them|Them [1-9][0-9]*)\*\* ([0-9]{2,}):([0-5][0-9]):([0-5][0-9])( \(filled in later\))?/),
+        guard let match = text.wholeMatch(of: /Cut off for ([0-9]{2,}):([0-5][0-9]):([0-5][0-9])\./),
+              let h = Double(match.1), let m = Double(match.2), let s = Double(match.3) else { return nil }
+        return h * 3_600 + m * 60 + s
+    }
+
+    private static func clock(_ seconds: Int) -> String {
+
+        String(format: "%02lld:%02lld:%02lld", seconds / 3_600, seconds / 60 % 60, seconds % 60)
+    }
+
+    private static func speakerList(_ line: Substring) -> [Speaker]? {
+
+        let prefix = "<!-- audelin-speakers ", suffix = " -->"
+        guard line.hasPrefix(prefix), line.hasSuffix(suffix) else { return nil }
+        struct Metadata: Decodable { let speakers: [Speaker] }
+        let json = line.dropFirst(prefix.count).dropLast(suffix.count)
+        return try? JSONDecoder().decode(Metadata.self, from: Data(json.utf8)).speakers
+    }
+
+    private static func header(_ line: Substring) -> (label: String, start: Double, later: Bool)? {
+
+        guard let match = line.wholeMatch(of: /\*\*(Me|Them|Them [1-9][0-9]*|Gap)\*\* ([0-9]{2,}):([0-5][0-9]):([0-5][0-9])( \(filled in later\))?/),
               let h = Double(match.2), let m = Double(match.3), let s = Double(match.4) else { return nil }
-        return (String(match.1), h * 3_600 + m * 60 + s)
+        return (String(match.1), h * 3_600 + m * 60 + s, match.5 != nil)
     }
 
     /// A readable Speakers section and one versioned machine-readable block after it.
@@ -237,12 +324,17 @@ public struct TranscriptFormat: Sendable {
             guard segment.start.isFinite, segment.start >= 0, segment.start < Double(Int.max) else {
                 throw Failure.invalidStart
             }
-            let seconds = Int(segment.start.rounded(.down))
-            let time = String(format: "%02lld:%02lld:%02lld", seconds / 3_600, seconds / 60 % 60, seconds % 60)
-            let later = segment.filledInLater ? " (filled in later)" : ""
-            let words = [segment.settled, segment.pending].filter { !$0.isEmpty }.joined(separator: " ")
+            let time = TranscriptFormat.clock(Int(segment.start.rounded(.down)))
             self.segment = segment
             label = side
+            if let length = segment.gapLength {
+                guard length.isFinite, length >= 0, length < Double(Int.max) else { throw Failure.invalidGap }
+                text = "**Gap** \(time)\nCut off for \(TranscriptFormat.clock(Int(length.rounded(.down))))."
+                hasWords = false
+                return
+            }
+            let later = segment.filledInLater ? " (filled in later)" : ""
+            let words = [segment.settled, segment.pending].filter { !$0.isEmpty }.joined(separator: " ")
             text = "**\(side)** \(time)\(later)\n\(words)"
             hasWords = !words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }

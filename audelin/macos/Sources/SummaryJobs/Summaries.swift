@@ -112,6 +112,8 @@ public enum SummariesEvent: Equatable, Sendable {
     case retryFailed(String)
     /// Drops a settled call from the machine.
     case forget(String)
+    /// Drops a merged part's job: a settled one as `forget` does, a stored one not started yet by discarding it.
+    case drop(String)
     /// The user's wish to stop a call's notes; a running stage is discarded when its result arrives.
     case cancel(String)
     case discarded(String)
@@ -188,6 +190,7 @@ public struct SummariesReducer: Sendable {
     static let inFlight: Set<SummariesState.Call.Stage> = [.reading, .recovering, .preparing, .claiming, .retrying]
     static let working: Set<SummariesState.Call.Stage> = [.claiming, .starting, .identifying, .checkpointing, .noting, .publishing, .saving, .discarding]
     public func reduce(_ state: SummariesState, _ event: SummariesEvent) -> (SummariesState, SummariesEffect?) {
+        if case let .drop(id) = event { return reduce(state, state.calls[id]?.stage == .pending ? .cancel(id) : .forget(id)) }
         var (next, effect) = step(state, event)
         if next == state && effect == nil { return (state, nil) }
         for (id, work) in next.calls where work != state.calls[id] {
@@ -240,6 +243,11 @@ public struct SummariesReducer: Sendable {
         case let .finalized(id, entries, finalWrite, usable, notesOn: true) where state.lifecycle == .accepting && state.calls[id]?.stage == .recovering
                                                               && state.calls[id]?.submission == nil:
             // A finalized transcript waits for recovery; a saved job takes precedence over it.
+            next.calls[id]?.submission = .init(call: id, entries: entries, finalWrite: finalWrite, usable: usable)
+            return (next, nil)
+        case let .finalized(id, entries, finalWrite, usable, notesOn: true) where state.lifecycle == .accepting && state.calls[id]?.stage == .discarding
+                                                              && state.calls[id]?.submission == nil:
+            // A merged call's transcript waits for its parts' job to be discarded.
             next.calls[id]?.submission = .init(call: id, entries: entries, finalWrite: finalWrite, usable: usable)
             return (next, nil)
         case let .waiting(id, notesOn: true) where state.lifecycle == .accepting && state.calls[id] == nil:
@@ -324,6 +332,10 @@ public struct SummariesReducer: Sendable {
         case let .saved(id) where state.calls[id]?.stage == .saving:
             call = id
             next.calls[id]?.stage = state.calls[id]?.terminal ?? .failed
+        case let .storageFailed(id) where state.lifecycle == .accepting && state.calls[id]?.stage == .discarding
+                                          && state.calls[id]?.submission != nil:
+            // The merged call's own job replaces the part's, so a part's job that cannot be discarded does not hold it up.
+            return reduce(state, .discarded(id))
         case let .storageFailed(id) where state.calls[id].map({ SummariesReducer.working.contains($0.stage) }) ?? false:
             call = id
             next.calls[id]?.stage = .failed; next.calls[id]?.cancelling = false
@@ -376,8 +388,14 @@ public struct SummariesReducer: Sendable {
             call = id
             next.calls[id]?.stage = .interrupted
         case let .discarded(id) where state.calls[id]?.stage == .discarding:
-            next.calls[id] = nil
-            return (next, nil)
+            // A merged call's joined transcript waits for its earliest part's job to be discarded.
+            guard let submission = state.calls[id]?.submission, state.lifecycle == .accepting else {
+                next.calls[id] = nil
+                return (next, nil)
+            }
+            call = id
+            next.calls[id] = .init(stage: .preparing, requested: submission.requested, submission: submission)
+            effect = .prepare(submission)
         case .shutdown where state.lifecycle == .accepting:
             next.lifecycle = .draining; next.dispatch = false
             var jobs: [Job] = []

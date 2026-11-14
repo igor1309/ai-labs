@@ -83,6 +83,11 @@
 "calls.invalidTitle" = "The title contains a character that isn’t allowed.";
 "calls.trashFailed" = "Couldn’t move “%1$@” to the Trash; the folder stays where it was. %2$@";
 "calls.sizeMismatch" = "The copied files’ sizes don’t match the originals.";
+"calls.unknownLength" = "Call “%@” has no known length, so it can’t be merged.";
+"calls.unreadableTranscript" = "The transcript of call “%1$@” can’t be read. %2$@";
+"calls.mergeFailed" = "Couldn’t merge the calls; every call is where it was. %@";
+"calls.mergeBusy" = "Audelin is busy; merge calls once it is idle.";
+"calls.mergeMoveFailed" = "Couldn’t move “%1$@” into the merged call; every call is where it was. %2$@";
 "window.title" = "Audelin Settings";
 "folder.pickerFailedReason" = "The folder picker didn’t appear. Try again; if that doesn’t help, restart Audelin.";
 "calls.refreshFailed" = "%1$@ Couldn’t update the list: %2$@";
