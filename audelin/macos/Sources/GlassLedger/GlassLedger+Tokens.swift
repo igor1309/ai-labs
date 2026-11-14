@@ -71,7 +71,7 @@ public struct GlassLedger: Equatable, Sendable {
         surface: .hex(0xFFFFFF, 0xFF),
         text: .hex(0x16181D, 0xFF),
         sub: .hex(0x5A606A, 0xFF),
-        gutter: .hex(0x8A909A, 0xFF),
+        gutter: .hex(0x686E78, 0xFF),
         them: .hex(0xC27A06, 0xFF),
         me: .hex(0x0E9F92, 0xFF),
         selBg: .hex(0x0E9F92, 0xFF),
