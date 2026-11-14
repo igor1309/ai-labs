@@ -111,7 +111,9 @@ never touches the selected calls, so nothing is blocked or refused.
 **Transcript join** is a plain component and an operator in the sense of
 the transcript pipeline: given each part's start and rows, it puts them in
 time order on the merged call's clock and puts a gap between parts. It
-reads only times, keeps no state and owns no ports. **Transcript format**,
+reads only times and speaker keys, giving each part's speakers a key of
+that part so two parts' speakers are never taken for one; it keeps no
+state and owns no ports. **Transcript format**,
 the format's one writer and reader, gains a gap row, and reads a saved
 transcript back as fully as it writes it, so a part's rows are written
 again as they were.
