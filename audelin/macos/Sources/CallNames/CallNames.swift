@@ -86,6 +86,8 @@ public enum CallNamesEvent: Equatable, Sendable {
     case browserConnected(Int)
     case browserDisconnected(Int)
     case rows([Row], now: Double)
+    /// The after-call pass's speaker turns over the closed call, with its remote rows.
+    case diarized([DiarizedTurn], rows: [Row])
 }
 
 public enum CallNamesEffect: Equatable, Sendable {}
@@ -97,10 +99,15 @@ public struct CallNamesReducer: Sendable {
     public typealias Effect = CallNamesEffect
 
     private let name: @Sendable (Double, Double, [Participant], [Activity], Double) -> String?
+    private let confirm: @Sendable ([Row], [DiarizedTurn], CallEvidence) -> [Int: String]
 
-    /// Production supplies `LiveNames.match`; row-name memory belongs only to `State.rowNames`.
-    public init(name: @escaping @Sendable (Double, Double, [Participant], [Activity], Double) -> String?) {
-        self.name = name
+    /// Production supplies `LiveNames.match` and `AfterCallNames.names`; row-name memory
+    /// belongs only to `State.rowNames`.
+    public init(
+        name: @escaping @Sendable (Double, Double, [Participant], [Activity], Double) -> String?,
+        confirm: @escaping @Sendable ([Row], [DiarizedTurn], CallEvidence) -> [Int: String]
+    ) {
+        self.name = name; self.confirm = confirm
     }
 
     public func reduce(_ state: State, _ event: Event) -> (State, Effect?) {
@@ -110,7 +117,7 @@ public struct CallNamesReducer: Sendable {
             let evidence = publish(&next, now: now)
             let roster = evidence.members.map { Participant(id: $0.id, name: $0.name, isLocal: $0.isLocal) }
             let activities = evidence.intervals.map {
-                Activity(participantID: $0.memberID, start: $0.start, end: $0.end, uncertainty: 0.5)
+                Activity(participantID: $0.memberID, start: $0.start, end: $0.end, uncertainty: AfterCallNames.uncertainty)
             }
             for row in rows.sorted(by: { $0.id < $1.id }) where next.rowNames[row.id] == nil {
                 guard let given = name(row.start, row.end, roster, activities, next.through) else { continue }
@@ -120,6 +127,21 @@ public struct CallNamesReducer: Sendable {
                     next.participantIDs[given] = "z\(next.participantOrder.count)"
                 }
             }
+            return (next, nil)
+
+        case let .diarized(turns, rows):
+            // Without speaker turns or call-app evidence there is nothing to confirm: names stay tentative.
+            guard !turns.isEmpty, !state.spoken.isEmpty else { return (state, nil) }
+            let evidence = CallEvidence(roster: state.roster, spoken: state.spoken.map {
+                .init(name: $0.name, start: $0.start, end: $0.end)
+            }, through: state.through)
+            let confirmed = confirm(rows, turns, evidence)
+            next.rowNames = confirmed
+            for name in confirmed.values.sorted() where next.participantIDs[name] == nil {
+                next.participantOrder.append(name)
+                next.participantIDs[name] = "z\(next.participantOrder.count)"
+            }
+            next.confirmed = true
             return (next, nil)
 
         case let .browser(event):
@@ -164,7 +186,7 @@ public struct CallNamesReducer: Sendable {
                 case .lost: break
                 }
             case let .tick(now): zoom.tick(now: now)
-            case .rows, .browser, .browserConnected, .browserDisconnected: break
+            case .rows, .diarized, .browser, .browserConnected, .browserDisconnected: break
             }
             next.zoom = .init(zoom)
             if next.zoom != state.zoom { publish(&next) }

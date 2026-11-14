@@ -56,9 +56,35 @@ final class NamingSpy: Sendable {
     }
 }
 
+final class ConfirmSpy: Sendable {
+    struct Request: Equatable, Sendable {
+        let rows: [Row]
+        let turns: [DiarizedTurn]
+        let evidence: CallEvidence
+    }
+
+    let stub: [Int: String]
+    private let recorded = Mutex<[Request]>([])
+
+    init(stub: [Int: String]) { self.stub = stub }
+
+    var requests: [Request] { recorded.withLock { $0 } }
+
+    func confirm(_ rows: [Row], _ turns: [DiarizedTurn], _ evidence: CallEvidence) -> [Int: String] {
+        recorded.withLock { $0.append(.init(rows: rows, turns: turns, evidence: evidence)) }
+        return stub
+    }
+}
+
 func makeSUT(stubs: [String?] = []) -> (sut: Reducer, spy: NamingSpy) {
+    let (sut, spy, _) = makeConfirmingSUT(stubs: stubs)
+    return (sut, spy)
+}
+
+func makeConfirmingSUT(stubs: [String?] = [], confirmed: [Int: String] = [:]) -> (sut: Reducer, spy: NamingSpy, confirm: ConfirmSpy) {
     let spy = NamingSpy(stubs: stubs)
-    return (Reducer(name: spy.name), spy)
+    let confirm = ConfirmSpy(stub: confirmed)
+    return (Reducer(name: spy.name, confirm: confirm.confirm), spy, confirm)
 }
 
 @discardableResult

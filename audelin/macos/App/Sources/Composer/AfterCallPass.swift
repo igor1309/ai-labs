@@ -1,5 +1,6 @@
 import CallDiarizer
 import Foundation
+import SpeakerNaming
 import TranscriptFormat
 
 protocol WholeTranscriptReplacing: Sendable {
@@ -31,10 +32,13 @@ struct AfterCallPass: Sendable {
         var clusters: [Int: String] = [:]
         if zoom {
             let rows = state.entries.filter { $0.speaker != .mine }.map { (id: $0.text.id, start: $0.text.start, end: $0.text.end) }
-            let confirmed = AfterCallNames.names(rows: rows, turns: result.turns, board: board)
+            let turns = result.turns.map { DiarizedTurn(speaker: $0.speaker, start: $0.start, end: $0.end) }
+            let evidence = CallEvidence(roster: board.roster, spoken: board.spoken.map { .init(name: $0.name, start: $0.start, end: $0.end) },
+                                        through: board.through)
+            let confirmed = AfterCallNames.names(rows: rows, turns: turns, evidence: evidence)
             names.confirm(confirmed)
             await names.announce(confirmed)
-            clusters = AfterCallNames.clusterNames(turns: result.turns, board: board)
+            clusters = AfterCallNames.clusterNames(turns: turns, evidence: evidence)
             sink.write(.init(category: .session, message: "after-call names confirmed=\(clusters.count) turns=\(result.turns.count)"))
         }
         var attributed = Composer.Transcript.attributed(result.pieces, in: state, names: clusters)

@@ -23,7 +23,7 @@ public struct BrowserChannel: Sendable {
 actor CallLiveNames {
 
     /// The indicator lags speech and is polled; each interval edge is trusted only this far.
-    static let uncertainty = 0.5
+    static let uncertainty = AfterCallNames.uncertainty
     static let interval = Duration.milliseconds(500)
 
     private let windows = ZoomWindows()
