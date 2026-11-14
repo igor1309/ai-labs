@@ -60,8 +60,7 @@ stands. MenuBar is UI that also holds the pure reducer for panel presence.
 
 ### Open
 
-The composer does not yet follow rule 4. It holds decisions the sections
-below give to the root: the shutdown order. It also holds state across events
+The composer does not yet follow rule 4. It holds state across events
 (`RecordingConditions`, `NewestText`, `CallLiveNames`,
 `LiveNameBoard`). Each becomes a component or machine of its own, or is
 shown to be only mapping. No check yet fails on an import that a target's
@@ -88,9 +87,26 @@ validation/save/load outcomes and its preference/availability ports.
 The root maps those ports and decorates attempts with fallback and logging.
 It subscribes SummaryJobs to TranscriptFinalization's final transcripts
 (Transcript finalization), so a call's notes start from its final form.
-Root lifecycle integration stops dispatch, drains recording, shuts
-TranscriptFinalization down and waits for it to settle, cancels and joins
-active summary resources, then allows termination.
+On quit, SummaryJobs stops dispatch and shuts down once TranscriptFinalization
+has settled, so the last final transcripts reach it first (Shutdown).
+
+## Shutdown
+
+Lifecycle owns termination policy only. On quit it publishes a quit
+intention. The root sends shutdown to each participant: it stops call
+detection and shuts Recording down, which ends a running session and settles
+once idle; Recordings stops its actions and settles once no folder move holds
+the calls folder; TranscriptFinalization settles each call; SummaryJobs ends
+its work. Each publishes its own settled outcome, the root sends it to
+Lifecycle, and Lifecycle allows termination once all have settled. After a
+startup failure Recording does not exist, and the same path waits for the
+rest. Lifecycle reads no participant and drives none.
+
+An update that replaced the app relaunches it only through Lifecycle. The root
+reports what blocks a relaunch now (an open folder picker, a calls window
+action, notes being made); Lifecycle starts the relaunch only while running
+with nothing blocking. The relaunch reserves the calls folder, so no recording
+starts behind it, and a started relaunch publishes the same quit intention.
 
 ### Calls storage
 
