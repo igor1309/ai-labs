@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mizan — BLE-оплата iPhone в приложении вашего банка</title>
+<meta name="description" content="Встраивание BLE-оплаты в iOS-приложение среднего банка: поверх SDK «Волны» или партнёрского решения. Рабочий прототип на iPad и iPhone, открытый код.">
+<style>
+  :root {
+    --bg: #0e1013; --panel: #171a1f; --line: #262a31;
+    --text: #e9ebee; --muted: #9aa1ab;
+    --host: #f26b1d; --client: #2ec4d6;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-snap-type: y proximity; scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 17px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  section { min-height: 100vh; padding: 12vh 6vw 10vh; scroll-snap-align: start;
+    border-bottom: 1px solid var(--line); display: flex; flex-direction: column; justify-content: center; }
+  .wrap { max-width: 1040px; margin: 0 auto; width: 100%; }
+  .eyebrow { font: 600 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--host); margin-bottom: 20px; }
+  h1 { font-size: clamp(36px, 6vw, 68px); line-height: 1.05; margin: 0 0 24px; letter-spacing: -.02em; }
+  h2 { font-size: clamp(28px, 4vw, 44px); line-height: 1.1; margin: 0 0 28px; letter-spacing: -.01em; }
+  h3 { font-size: 19px; margin: 0 0 8px; }
+  p.lead { font-size: clamp(18px, 2vw, 22px); color: var(--muted); max-width: 760px; margin: 0 0 28px; }
+  .accent { color: var(--client); }
+  .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 22px 22px 18px; }
+  .card p { margin: 0; color: var(--muted); }
+  .card.host { border-top: 3px solid var(--host); }
+  .card.client { border-top: 3px solid var(--client); }
+  ul.points { padding: 0; margin: 0; list-style: none; max-width: 820px; }
+  ul.points li { padding: 14px 0 14px 28px; border-top: 1px solid var(--line); position: relative; }
+  ul.points li::before { content: ""; position: absolute; left: 4px; top: 25px; width: 8px; height: 8px;
+    border-radius: 50%; background: var(--client); }
+  .num { font: 700 clamp(40px, 5vw, 56px)/1 -apple-system, sans-serif; color: var(--client); margin-bottom: 8px; }
+  .shots { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+  .shots img { border-radius: 12px; border: 1px solid var(--line); display: block; }
+  .shots .ipad { width: min(620px, 100%); }
+  .shots .phone { width: min(180px, 30%); }
+  .note { color: var(--muted); font-size: 14px; margin-top: 18px; }
+  .note a, a { color: var(--client); }
+  .steps { counter-reset: s; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .steps .card { counter-increment: s; }
+  .steps .card h3::before { content: counter(s) " · "; color: var(--host); }
+  .cta { display: inline-block; margin-top: 12px; padding: 14px 26px; border-radius: 999px;
+    background: var(--client); color: #04161a; font-weight: 700; text-decoration: none; }
+  .cta.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); margin-left: 10px; }
+  .tag { display:inline-block; font: 600 12px/1 ui-monospace, Menlo, monospace; color:#04161a; background: var(--host);
+    padding: 6px 10px; border-radius: 6px; margin-bottom: 14px; }
+  .card.limit { border-left: 3px solid var(--host); }
+  footer { padding: 40px 6vw; color: var(--muted); font-size: 13px; }
+  footer ol { padding-left: 18px; }
+  sup a { text-decoration: none; font-size: 12px; }
+  @media (max-width: 640px) {
+    section { padding: 10vh 6vw 8vh; }
+    .shots .phone { width: 31%; }
+    .cta.ghost { margin: 10px 0 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 1. Обложка -->
+<section>
+  <div class="wrap">
+    <div class="eyebrow">Mizan · для розницы и эквайринга среднего банка</div>
+    <h1>Помогу встроить <span class="accent">BLE-оплату iPhone</span> в приложение вашего банка.</h1>
+    <p class="lead">Начнём с разбора: что уже закрывает выбранный SDK или партнёр, где у кассы срывается платёж и сколько работы остаётся. В подтверждение — рабочий прототип на реальных iPad и iPhone с открытым кодом.</p>
+    <div>
+      <a class="cta" href="#contact">Обсудить разбор</a>
+      <a class="cta ghost" href="#proof">Посмотреть прототип</a>
+    </div>
+  </div>
+</section>
+
+<!-- 2. Задача банка -->
+<section>
+  <div class="wrap">
+    <div class="eyebrow">Задача банка</div>
+    <h2>Оплата iPhone у кассы — уже по Bluetooth. Вопрос в том, как подключиться вам.</h2>
+    <ul class="points">
+      <li>Apple Pay не поддерживает российские банковские карты.<sup><a href="#s1">1</a></sup></li>
+      <li>НСПК развивает «Волну» — оплату через СБП по Bluetooth Low Energy — и публикует для банков «СБП Volna SDK для iOS».<sup><a href="#s2">2</a></sup> ВТБ запустил оплату на «Волне», ПСБ завершил внедрение в январе 2026 года.<sup><a href="#s3">3</a></sup></li>
+      <li>Сбер развивает «Вжух» и открывает его партнёрам: Т-Банк запустил совместимый T-Pay для iPhone, в августе 2026 года присоединился Совкомбанк.<sup><a href="#s4">4</a></sup></li>
+    </ul>
+    <p class="note">SDK даёт протокол. Остаётся работа в самом приложении: выбрать именно свою кассу, показать клиенту каждый исход, связать операцию с банковским контуром и проверить всё на устройствах. Проект имеет смысл, если у банка достаточно активных клиентов на iPhone и доступна инфраструктура приёма; это оцениваем на разборе.</p>
+  </div>
+</section>
+
+<!-- 3. Что сложно -->
+<section>
+  <div class="wrap">
+    <div class="eyebrow">Где срывается BLE-оплата</div>
+    <h2>Протокол — половина дела. Остальное — в деталях у кассы.</h2>
+    <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))">
+      <div class="card client"><h3>Своя касса, не соседняя</h3><p>В замерах Mizan сглаженный уровень сигнала менялся на 5–13 дБ в секунду при неподвижном телефоне. Выбор «по самому сильному» на расстоянии вытянутой руки мигает между кассой и «поднесите ближе».</p></div>
+      <div class="card client"><h3>Каждый исход — понятен обоим</h3><p>Отказ, отмена кассиром, тайм-аут, обрыв связи, выключенный Bluetooth. При обрыве после подтверждения интерфейс должен отличать отказ от неизвестного результата, а итог — подтверждать банковский контур.</p></div>
+      <div class="card host"><h3>Ограничения платформы</h3><p>Размер сообщения ограничен согласованным MTU. В роли кассы iPad не может сам разорвать соединение через Core Bluetooth — завершать операцию приходится иначе.</p></div>
+      <div class="card host"><h3>Защита операции</h3><p>Сумма и решение не читаются в эфире, сообщение одной операции не повторяется в другой, в журналах нет секретов. Подлинность кассы — отдельная задача, её решают вместе с банком и платёжной системой.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. Прототип и его границы -->
+<section id="proof">
+  <div class="wrap">
+    <div class="eyebrow">Mizan BLE · технический прототип</div>
+    <h2>Что работает и чего прототип не доказывает.</h2>
+    <div class="tag">Технический прототип. Платёж имитируется</div>
+    <div class="shots">
+      <img class="ipad" src="img/host-advertising.webp" alt="Касса на iPad: сумма зафиксирована, идёт обратный отсчёт">
+      <img class="phone" src="img/client-find.webp" alt="iPhone нашёл кассу рядом">
+      <img class="phone" src="img/client-review.webp" alt="Клиент видит сумму и подтверждает или отклоняет">
+    </div>
+    <div class="grid" style="margin-top:28px">
+      <div><div class="num">1,1–1,3 с</div><p>от соединения до суммы на экране iPhone в замерах на iPad Pro 11" и iPhone 15 Pro. Поиск кассы и банковская обработка сюда не входят.</p></div>
+      <div><div class="num">387</div><p>Swift-тестов проверяют логику прототипа: каждый шаг операции — конечный автомат, исходы — таблицы «событие → состояние».</p></div>
+      <div><div class="num">15</div><p>сценарных прогонов на симуляторе с имитацией радио проверяют экраны и то, что в журнале нет суммы, ключа или идентификатора устройства.</p></div>
+    </div>
+    <div class="grid" style="margin-top:28px">
+      <div class="card limit"><h3>Свой протокол, не «Волна»</h3><p>Mizan показывает BLE-взаимодействие двух устройств. В проекте банка работа идёт поверх SDK НСПК или партнёра.</p></div>
+      <div class="card limit"><h3>Кассу не аутентифицирует</h3><p>Сообщения шифруются ключом каждой операции (P-256 ECDH, HKDF, AES-GCM), повторы отклоняются. Но подлинность кассы и получателя не подтверждается: для денег нужна отдельная схема.</p></div>
+      <div class="card limit"><h3>Только открытое приложение</h3><p>Фоновый сценарий в Mizan не реализован. Совместимость с терминалами и устойчивость в торговой точке проверяются отдельно.</p></div>
+    </div>
+    <p class="note">Код: <a href="https://github.com/igor1309/mizan-ble">github.com/igor1309/mizan-ble</a>. Открытый репозиторий позволяет оценить инженерный подход, но не заменяет аудит. Подробный разбор — в трёх статьях на <a href="https://igor1309.dev/articles/2026/2026-10-18-mizan-ble-a-payment-between-an-ipad-and-an-iphone/">igor1309.dev</a>.</p>
+  </div>
+</section>
+
+<!-- 5. Предложение -->
+<section>
+  <div class="wrap">
+    <div class="eyebrow">Что я предлагаю</div>
+    <h2>Интеграция поверх готового решения. И одна гипотеза.</h2>
+    <div class="grid">
+      <div class="card client">
+        <h3>А. BLE-оплата в iOS-приложении банка</h3>
+        <p>Встраиваю выбранный банком SDK «Волны» или партнёрское решение: выбор кассы, все исходы операции на экране, связь с банковским контуром, тесты и прогоны без радио, проверка на устройствах. На разборе определяем, что уже закрывает поставщик и где нужна дополнительная работа.</p>
+      </div>
+      <div class="card host">
+        <h3>Б. Приём без отдельного POS-терминала</h3>
+        <p>Гипотеза для точек без POS: рынки, курьеры, небольшие кафе. «Волна» сегодня рассчитана на Bluetooth-терминалы, SoftPOS на Android работает по NFC. На первом этапе сравниваем готовые решения, QR СБП и собственную реализацию, проверяем устройства и экономику.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6. Формат и условия -->
+<section>
+  <div class="wrap">
+    <div class="eyebrow">Формат и условия</div>
+    <h2>Сначала платный разбор. Решение о разработке — отдельно.</h2>
+    <div class="steps">
+      <div class="card"><h3>Разбор, 2 недели</h3><p>[Цена], [объём участия]. Вместе с ИБ и комплаенсом банка: применимые требования ЦБ и платёжной системы, границы обработки данных, модель угроз. Результат — схема интеграции, зависимости, риски, критерии пилота и оценка бюджета.</p></div>
+      <div class="card"><h3>Пилот в тестовом контуре</h3><p>Ориентир — 6–8 недель после разбора и получения доступов. Одна точка, сотрудники банка с iPhone. Замеры: время у кассы, доля успешных оплат. Промышленный запуск оценивается отдельно.</p></div>
+      <div class="card"><h3>Передача</h3><p>Код, спецификации, тесты и прогоны — команде банка. Объём сопровождения и передача знаний фиксируются в договоре.</p></div>
+    </div>
+    <ul class="points" style="margin-top:28px">
+      <li><b>От банка:</b> владелец продукта, backend, ИБ, ответственный за терминальную интеграцию, доступ к тестовому контуру и SDK.</li>
+      <li><b>ИИ-инструменты</b> — по политике банка: до начала работ согласуем разрешённые инструменты, доступные им материалы и порядок проверки изменений. Код проходит ревью в процессе банка.</li>
+      <li><b>До доступа к материалам банка</b> подтверждаем отсутствие конфликта интересов, права на результаты, лицензии зависимостей и условия конфиденциальности.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 7. Контакт -->
+<section id="contact">
+  <div class="wrap">
+    <div class="eyebrow">Контакт</div>
+    <h2>Игорь Маляров</h2>
+    <p class="lead">Руковожу iOS-разработкой в банке. Работаю как внешний iOS-инженер с загрузкой [X]. Пишу о разработке на <a href="https://igor1309.dev">igor1309.dev</a>.</p>
+    <a class="cta" href="https://t.me/igor1309">Написать в Telegram</a>
+    <a class="cta ghost" href="https://github.com/igor1309/mizan-ble">Код Mizan BLE</a>
+  </div>
+</section>
+
+<footer>
+  <ol>
+    <li id="s1"><a href="https://www.rbc.ru/technology_and_media/04/04/2024/660e43199a79471f9fcea327">РБК, 4 апреля 2024: Apple Pay и российские карты, позиция ФАС</a></li>
+    <li id="s2"><a href="https://nspk.ru/cards-mir/soft">НСПК: программное обеспечение, «СБП Volna SDK для ОС iOS»</a></li>
+    <li id="s3"><a href="https://www.vedomosti.ru/finance/news/2026/06/03/1202168-vtb-zapustil-beskontaktnuyu">Ведомости, 3 июня 2026: ВТБ запустил оплату по Bluetooth</a>; <a href="https://habr.com/ru/news/1006346/">Хабр: внедрение «Волны» в банках</a></li>
+    <li id="s4"><a href="https://amp.rbc.ru/rbcnews/rbcfreenews/68c2e0719a794763e0b430d5">РБК: Т-Банк запустил оплату iPhone, совместимую с «Вжухом»</a>; <a href="https://asros.ru/news/members/vzhukh-i-eshche-odin-bank-k-tekhnologii-sbera-prisoedinilsya-sovkombank/">АСРОС, 26 августа 2026: к «Вжуху» присоединился Совкомбанк</a></li>
+  </ol>
+  <p>Mizan BLE — технический прототип; оплата в нём имитируется. «Вжух» — продукт ПАО Сбербанк, «Волна» — технология АО «НСПК»; упомянуты для описания рынка.</p>
+</footer>
+
+</body>
+</html>
