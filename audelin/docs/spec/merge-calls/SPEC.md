@@ -25,20 +25,20 @@ Feature: Merging calls that were one call
     And the calls list is in merge mode
 
   Scenario: S-1 Merging neighbouring calls
-    Given I selected calls that are next to each other in the list
+    Given calls next to each other in the list are selected
     When I confirm the merge
     Then I can read them as one call
     And I can see where the call was cut off
     And I can read one set of notes for the whole call
 
   Scenario: S-2 Merging calls far apart asks again
-    Given I selected calls with another call between them in the list
+    Given calls with another call between them in the list are selected
     When I confirm the merge
     Then I am warned that a call may have been selected by mistake
     And I can merge them anyway or go back to my selection
 
   Scenario: S-3 A merge that fails
-    Given I selected calls to merge
+    Given calls are selected
     When the merge cannot be completed
     Then I can still read each call as before
     And I can read why the merge failed
