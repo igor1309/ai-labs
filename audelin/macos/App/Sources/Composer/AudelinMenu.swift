@@ -19,7 +19,6 @@ private struct MenuApplication {
     let states: () async -> AsyncStream<RecordingState>
     let failures: AsyncStream<any Error>
     let send: (RecordingEvent) async -> Void
-    let drainTranscriptOutput: () async -> Void
     let stopDelivery: () async -> Void
     let end: @Sendable () async -> Void
     let reserveStorage: () async -> Bool
@@ -147,7 +146,6 @@ public final class AudelinMenu {
             application = MenuApplication(
                 states: { await recording.inputs.states() }, failures: recording.detectionFailures,
                 send: { await recording.inputs.send($0) },
-                drainTranscriptOutput: { await recording.inputs.drainTranscriptOutput() },
                 stopDelivery: { await recording.stopDelivery() }, end: { await recording.inputs.end() },
                 reserveStorage: { await recording.reserveStorage() }, releaseStorage: { await recording.releaseStorage() },
                 panelStates: { await recording.panel.states() },
@@ -319,14 +317,16 @@ public final class AudelinMenu {
     private func shutDown(application: MenuApplication?, finalization: TranscriptFinalizationModel) {
 
         let termination = termination
-        let recordingSettled = Task {
-            if let application {
+        if let application {
+            Task {
                 await application.stopDelivery()
                 await application.send(.shutdown)
                 for await state in await application.states() where state.shutdown == .settled { break }
-                await application.drainTranscriptOutput()
                 termination.event(.settled(.recording))
             }
+        } else {
+            // Without Recording no transcript output ends, so finalization is told directly.
+            finalization.send(.shutdown)
         }
         if let calls {
             Task { await calls.drainMove(); termination.event(.settled(.storage)) }
@@ -334,8 +334,7 @@ public final class AudelinMenu {
             termination.event(.settled(.storage))
         }
         Task { [summaries] in
-            await recordingSettled.value
-            await finalization.shutdown()
+            await finalization.settled()
             termination.event(.settled(.finalization))
             await summaries?.shutdown()
             termination.event(.settled(.summaries))

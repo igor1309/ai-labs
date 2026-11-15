@@ -15,7 +15,7 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)))
 struct TranscriptFinalizationCompositionTests {
-    @Test func subscriptionMapsEveryValueAndDrainsTheLastDelivery() async {
+    @Test func subscriptionMapsEveryValueThenSendsShutdownWhenTheOutputEnds() async {
         let output = AsyncStream<RecordingTranscript>.makeStream()
         let received = Values<TranscriptFinalizationModel.Event>()
         let deliveringClose = Signal(), acceptClose = Signal()
@@ -40,7 +40,7 @@ struct TranscriptFinalizationCompositionTests {
         #expect(received.all == prefix)
         acceptClose.send()
         await delivery.value
-        #expect(received.all == prefix + [.closed(call: "second", names: names)])
+        #expect(received.all == prefix + [.closed(call: "second", names: names), .shutdown])
     }
 
     @MainActor @Test

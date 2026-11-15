@@ -4,8 +4,6 @@ import Recording
 struct RecordingInputs: Sendable {
 
     var transcriptOutput: AsyncStream<RecordingTranscript> = AsyncStream { $0.finish() }
-    /// Returns after the composer has forwarded the entire transcript output.
-    var drainTranscriptOutput: @Sendable () async -> Void = {}
     var reserveStorage: @Sendable () async -> Bool = { false }
     var releaseStorage: @Sendable () async -> Void = {}
     var send: @Sendable (RecordingEvent) async -> Void
