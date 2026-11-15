@@ -227,9 +227,12 @@ Its own ports read published notes and the catalogue, read and save the
 keep choice, and open the templates folder. Formatting is injected as pure
 dependencies. Its effect handler only dispatches these operations and
 returns their outcomes. It publishes generation and cancellation
-intentions; root subscriptions deliver them to SummaryJobs and return
-progress and publication notifications. It never drives that machine from
-an effect, reads its internals or waits for its work. Changing the
+intentions as plain values (call, template, action), the only route for
+these actions; root subscriptions deliver them to SummaryJobs and return
+progress and publication notifications. It keeps no record of an
+intention's outcome beyond the progress SummaryJobs publishes. It never
+drives that machine from an effect, reads its internals or waits for its
+work. Changing the
 selected call does not stop generation. Superseded reads cannot replace
 the shown call; failed or cancelled regeneration leaves the existing pair
 readable with its outcome. Copy uses the shown version.
@@ -338,10 +341,10 @@ ready to open.
 ### Making a call's notes on request
 
 The user can make notes for a call that has none, cancel them while they
-are being made and retry a failed summary. The composer sends these
-actions to SummaryJobs, whose work continues when another call is selected.
-CallDetail publishes the shown call's intentions; its effect handler never
-starts, cancels or retries generation. Calls lists folders and reads
+are being made and retry a failed summary. CallDetail publishes these as
+the shown call's intentions, and the composer routes them to SummaryJobs,
+whose work continues when another call is selected. CallDetail's effect
+handler never starts, cancels or retries generation. Calls lists folders and reads
 transcripts through Transcript format.
 
 ## Merging calls
