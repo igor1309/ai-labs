@@ -10,13 +10,13 @@ struct RecordingsTests {
         assert(idle, .rename(id: "A", title: "New"), delivers: .rename(id: "A", title: "New")) {
             $0.phase = .renaming("A")
         }
-        assert(renaming, .renamed("A"), delivers: .list) {
+        assert(renaming, .renamed("A"), delivers: .list(request: 1)) {
             $0.phase = .idle
-            $0.isListing = true
+            $0.isListing = true; $0.listRequest = 1
         }
         let call = RecordedCall(id: "A", title: "New", start: .distantPast, duration: 5)
         let listing = makeState { $0.isListing = true }
-        assert(listing, .listed([call]), delivers: nil) {
+        assert(listing, .listed(request: 0, [call]), delivers: nil) {
             $0.calls = [call]
             $0.isListing = false
         }
@@ -27,10 +27,10 @@ struct RecordingsTests {
 
     @Test func S2_aFailedRenameIsNamed() async {
         let renaming = makeState { $0.phase = .renaming("A") }
-        assert(renaming, .renameFailed(id: "A", reason: "disk"), delivers: .list) {
+        assert(renaming, .renameFailed(id: "A", reason: "disk"), delivers: .list(request: 1)) {
             $0.phase = .idle
             $0.failure = .init(id: "A", reason: "disk")
-            $0.isListing = true
+            $0.isListing = true; $0.listRequest = 1
         }
         let spy = CallsSpy()
         await expect(RecordingsEffectHandler(calls: spy, reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { $0 is DiskFailure ? "disk" : "other" }), with: .rename(id: "A", title: "New"), toDeliver: .renameFailed(id: "A", reason: "disk"), on: { await spy.complete(.failure(DiskFailure())) })
@@ -49,14 +49,14 @@ struct RecordingsTests {
         let asking = makeState { $0.phase = .askingDelete("A") }
         let deleting = makeState { $0.phase = .deleting("A") }
         assert(asking, .confirmDelete, delivers: .delete("A")) { $0.phase = .deleting("A") }
-        assert(deleting, .deleted("A"), delivers: .list) {
+        assert(deleting, .deleted("A"), delivers: .list(request: 1)) {
             $0.phase = .idle
-            $0.isListing = true
+            $0.isListing = true; $0.listRequest = 1
         }
-        assert(deleting, .deleteFailed(id: "A", reason: "disk"), delivers: .list) {
+        assert(deleting, .deleteFailed(id: "A", reason: "disk"), delivers: .list(request: 1)) {
             $0.phase = .idle
             $0.failure = .init(id: "A", reason: "disk")
-            $0.isListing = true
+            $0.isListing = true; $0.listRequest = 1
         }
         for failed in [false, true] {
             let spy = CallsSpy()
@@ -93,19 +93,39 @@ struct RecordingsTests {
     }
 
     @Test func listingDeliversAdapterDataAndFailure() async {
-        let call = RecordedCall(id: "A", title: "Zoom", start: .distantPast, duration: nil)
+        let call = RecordedCall(id: "A", title: "Zoom", start: .distantPast, duration: nil, tags: .known(["клиент"]))
         for failed in [false, true] {
             let spy = CallsSpy()
-            await expect(RecordingsEffectHandler(calls: spy, reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { _ in "disk" }), with: .list, toDeliver: failed ? .listFailed("disk") : .listed([call]), on: { await spy.complete(failed ? .failure(DiskFailure()) : .success([call])) })
-            #expect(await spy.received == [.list])
+            await expect(RecordingsEffectHandler(calls: spy, reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { _ in "disk" }), with: .list(request: 4), toDeliver: failed ? .listFailed(request: 4, "disk") : .listed(request: 4, [call]), on: { await spy.complete(failed ? .failure(DiskFailure()) : .success([call])) })
+            #expect(await spy.received == [.list(request: 0)])
+        }
+    }
+
+    @Test func onlyTheAnswerToTheLatestListRequestApplies() {
+        let tagged = RecordedCall(id: "A", title: "Zoom", start: .distantPast, duration: nil, tags: .known(["клиент"]))
+        let unreadable = RecordedCall(id: "B", title: "Meet", start: .distantPast, duration: nil, tags: .unreadable)
+        let listing = makeState { $0.isListing = true; $0.listRequest = 2 }
+        assert(listing, .listed(request: 1, [tagged]), delivers: nil)
+        assert(listing, .listFailed(request: 1, "denied"), delivers: nil)
+        assert(listing, .listed(request: 2, [tagged, unreadable]), delivers: nil) {
+            $0.calls = [tagged, unreadable]
+            $0.isListing = false
+        }
+    }
+
+    @Test func aReloadAfterAnActionIsANewRequest() {
+        let renaming = makeState { $0.phase = .renaming("A"); $0.isListing = true; $0.listRequest = 3 }
+        assert(renaming, .renamed("A"), delivers: .list(request: 4)) {
+            $0.phase = .idle
+            $0.listRequest = 4
         }
     }
 
     @Test func failureStaysAcrossTheReloadAndClearsAtTheNextAction() {
         let failed = makeState { $0.failure = .init(id: "A", reason: "disk") }
         let refreshing = makeState { $0.failure = .init(id: "A", reason: "disk"); $0.isListing = true }
-        assert(refreshing, .listed([]), delivers: nil) { $0.isListing = false }
-        assert(refreshing, .listFailed("denied"), delivers: nil) {
+        assert(refreshing, .listed(request: 0, []), delivers: nil) { $0.isListing = false }
+        assert(refreshing, .listFailed(request: 0, "denied"), delivers: nil) {
             $0.isListing = false
             $0.failure = .init(id: "A", reason: "disk Не удалось обновить список: denied")
         }
@@ -132,7 +152,7 @@ struct RecordingsTests {
             $0.calls = [RecordedCall(id: "kept", title: "Kept", start: .distantPast, duration: 5)]
             $0.recordingID = "recording"
         }
-        assert(state, .listFailed(" refresh error "), delivers: nil, using: reducer) {
+        assert(state, .listFailed(request: 0, " refresh error "), delivers: nil, using: reducer) {
             $0.isListing = false
             $0.failure = .init(id: id, reason: "composed message")
         }
@@ -142,7 +162,7 @@ struct RecordingsTests {
     @Test func listFailureWithoutPriorFailureDoesNotComposeMessage() {
         let spy = FailureMessageSpy(result: "unused")
         let state = makeState { $0.isListing = true }
-        assert(state, .listFailed("denied"), delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" })) {
+        assert(state, .listFailed(request: 0, "denied"), delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" })) {
             $0.isListing = false
             $0.failure = .init(id: nil, reason: "denied")
         }
@@ -159,8 +179,8 @@ struct RecordingsTests {
             $0.phase = .askingDelete("A"); $0.recordingID = "A"; $0.failure = failed.failure
         }
         let cases: [(RecordingsState, [RecordingsEvent])] = [
-            (makeState(), [.clearFailure, .recordingChanged(nil), .listFailed("denied")]),
-            (failed, [.listed([]), .listFailed("denied"), .renamed("A"), .renameFailed(id: "A", reason: "disk"),
+            (makeState(), [.clearFailure, .recordingChanged(nil), .listFailed(request: 0, "denied")]),
+            (failed, [.listed(request: 0, []), .listFailed(request: 0, "denied"), .renamed("A"), .renameFailed(id: "A", reason: "disk"),
                       .cancelDelete, .confirmDelete, .deleted("A"), .deleteFailed(id: "A", reason: "disk")]),
             (renaming, [.rename(id: "B", title: "New"), .askDelete("B"), .confirmDelete, .cancelDelete,
                         .refresh, .renamed("B"), .renameFailed(id: "B", reason: "disk")]),
@@ -190,11 +210,11 @@ struct RecordingsTests {
         let call = RecordedCall(id: "A", title: "New", start: .distantPast, duration: 5)
         assert(failed, .recordingChanged("B"), delivers: nil, using: reducer) { $0.recordingID = "B" }
         assert(failed, .clearFailure, delivers: nil, using: reducer) { $0.failure = nil }
-        assert(failed, .refresh, delivers: .list, using: reducer) {
-            $0.isListing = true
+        assert(failed, .refresh, delivers: .list(request: 1), using: reducer) {
+            $0.isListing = true; $0.listRequest = 1
             $0.failure = nil
         }
-        assert(listing, .listed([call]), delivers: nil, using: reducer) {
+        assert(listing, .listed(request: 0, [call]), delivers: nil, using: reducer) {
             $0.isListing = false
             $0.calls = [call]
         }
@@ -202,14 +222,14 @@ struct RecordingsTests {
             $0.phase = .renaming("B")
             $0.failure = nil
         }
-        assert(renaming, .renamed("A"), delivers: .list, using: reducer) {
+        assert(renaming, .renamed("A"), delivers: .list(request: 1), using: reducer) {
             $0.phase = .idle
-            $0.isListing = true
+            $0.isListing = true; $0.listRequest = 1
         }
-        assert(renaming, .renameFailed(id: "A", reason: "disk"), delivers: .list, using: reducer) {
+        assert(renaming, .renameFailed(id: "A", reason: "disk"), delivers: .list(request: 1), using: reducer) {
             $0.phase = .idle
             $0.failure = .init(id: "A", reason: "disk")
-            $0.isListing = true
+            $0.isListing = true; $0.listRequest = 1
         }
         assert(failed, .askDelete("B"), delivers: nil, using: reducer) {
             $0.phase = .askingDelete("B")
@@ -220,14 +240,14 @@ struct RecordingsTests {
             $0.phase = .deleting("A")
             $0.failure = nil
         }
-        assert(deleting, .deleted("A"), delivers: .list, using: reducer) {
+        assert(deleting, .deleted("A"), delivers: .list(request: 1), using: reducer) {
             $0.phase = .idle
-            $0.isListing = true
+            $0.isListing = true; $0.listRequest = 1
         }
-        assert(deleting, .deleteFailed(id: "A", reason: "disk"), delivers: .list, using: reducer) {
+        assert(deleting, .deleteFailed(id: "A", reason: "disk"), delivers: .list(request: 1), using: reducer) {
             $0.phase = .idle
             $0.failure = .init(id: "A", reason: "disk")
-            $0.isListing = true
+            $0.isListing = true; $0.listRequest = 1
         }
         #expect(spy.calls == [])
     }
@@ -307,7 +327,7 @@ private actor CallsSpy: RecordingsCalls {
         if answer == nil { await withCheckedContinuation { started = $0 } }
         answer?.resume(with: result); answer = nil
     }
-    func list() async throws -> [RecordedCall] { try await call(.list) }
+    func list() async throws -> [RecordedCall] { try await call(.list(request: 0)) }
     func rename(id: String, title: String) async throws { _ = try await call(.rename(id: id, title: title)) }
     func delete(id: String) async throws { _ = try await call(.delete(id)) }
     func prepareMove(to destination: URL) async throws -> [MoveCall] { _ = try await call(.prepareMove(destination)); return [] }

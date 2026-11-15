@@ -125,8 +125,8 @@ extension RecordingsReducer {
             state.callsFolderAvailable = true
             state.phase = state.failure == nil ? .idle : .failedMove
             if state.failure == nil { state.move = nil }
-            state.isListing = true
-            return (state, .list)
+            let list = RecordingsReducer.requestList(&state)
+            return (state, list)
         case .cancelMove:
             guard [.askingMove, .countFailed, .failedMove, .refusedMove].contains(state.phase) else { return (state, nil) }
             state.phase = .idle
