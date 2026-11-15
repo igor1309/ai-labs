@@ -43,8 +43,8 @@ import Testing
                 try Data().write(to: folder.appendingPathComponent("call.caf"))
                 try await seedPair(id, folder: folder, files: files)
             }
-            #expect(try await storage.merge(ids: [first, second]) {
-                try Data("joined".utf8).write(to: $0.appendingPathComponent("transcript.md"))
+            #expect(try await storage.merge(ids: [first, second]) { merged, _ in
+                try Data("joined".utf8).write(to: merged.appendingPathComponent("transcript.md"))
             } == first)
             #expect(try await files.versions(call: first) == nil)
             #expect(try await storage.savedTranscript(id: first) == Data("joined".utf8))

@@ -66,7 +66,7 @@ Behaviour: Escape and the toolbar control each send leave merge mode.
 Evidence: a click then reads a call,
 `CallsListMergeTests.S9_afterMergeModeAClickReadsACallAgain()`; Escape,
 `CallsListMergeBarTests.S9_escapeLeavesMergeMode()`; the control while
-merging is named «Готово», `CallsToolbarTests.theMergeButtonReportsItsActionAndNamesWhatItDoes()`.
+merging is named «Отменить», `CallsToolbarTests.theMergeButtonReportsItsActionAndNamesWhatItDoes()`.
 What its action sends: leave merge mode while merging,
 `MergeSelectionWiringTests.theToolbarControlEntersAndLeavesMergeModeAndActsOnlyWhenItCan()`.
 

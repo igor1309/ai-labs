@@ -98,10 +98,85 @@ public struct SummaryPreviewView: View {
                 .textSelection(.enabled)
             Text("\(state.date) · \(state.duration)").font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.sub)
                 .textSelection(.enabled)
+            tagsLine(state.tags).padding(.top, tokens.space8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, tokens.space12).padding(.leading, tokens.space28).padding(.trailing, tokens.space28 + tokens.space40)
         .padding(.bottom, tokens.space12)
+    }
+
+    /// «Теги:» and the call's tags with «Изменить», or the field editing them with its hint.
+    @ViewBuilder private func tagsLine(_ tags: SummaryPreviewState.Tags) -> some View {
+        HStack(spacing: tokens.space8) {
+            Text(text(.tags)).foregroundStyle(tokens.sub)
+            switch tags {
+            case let .shown(names):
+                if names.isEmpty {
+                    Text(text(.noTags)).foregroundStyle(tokens.gutter)
+                    Text("·").foregroundStyle(tokens.gutter)
+                } else {
+                    ForEach(names, id: \.self) { chip($0, removable: false) }
+                }
+                Button { event(.editTags) } label: {
+                    Text(text(names.isEmpty ? .addTags : .editTags)).foregroundStyle(tokens.me)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("preview.editTags")
+                .accessibilityLabel(text(names.isEmpty ? .addTags : .editTags))
+            case let .editing(field):
+                tagsField(field)
+                if field.saving {
+                    ProgressView().controlSize(.small)
+                    Text(text(.savingTags)).foregroundStyle(tokens.gutter)
+                } else if let failure = field.failure {
+                    Text(failure).foregroundStyle(tokens.rec).lineLimit(1)
+                        .accessibilityIdentifier("preview.tagsFailure")
+                } else {
+                    Text(text(.tagsHint)).foregroundStyle(tokens.gutter).lineLimit(1)
+                }
+            }
+        }
+        .font(tokens.ui(tokens.typeSmall))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("preview.tags")
+        .accessibilityValue(tagsValue(tags))
+    }
+
+    private func tagsValue(_ tags: SummaryPreviewState.Tags) -> String {
+        switch tags {
+        case let .shown(names): names.isEmpty ? text(.noTags) : names.joined(separator: ", ")
+        case let .editing(field): (field.tags + (field.entry.isEmpty ? [] : [field.entry])).joined(separator: ", ")
+        }
+    }
+
+    /// One chip per tag, then the entry with the completion after it in `gutter`.
+    private func tagsField(_ field: SummaryPreviewState.TagsField) -> some View {
+        HStack(spacing: tokens.space6) {
+            ForEach(field.tags, id: \.self) { chip($0, removable: !field.saving) }
+            TagEntry(entry: field.entry, completion: field.completion, placeholder: text(.newTag),
+                     tokens: tokens, disabled: field.saving, event: event)
+        }
+        .padding(.horizontal, tokens.space6).padding(.vertical, tokens.space4)
+        .fixedSize()
+        .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
+        .overlay(RoundedRectangle(cornerRadius: tokens.radiusControl).stroke(tokens.me))
+    }
+
+    private func chip(_ name: String, removable: Bool) -> some View {
+        HStack(spacing: tokens.space4) {
+            Text(name).foregroundStyle(tokens.text).lineLimit(1).fixedSize()
+            if removable {
+                Button { event(.removeTag(name)) } label: { Image(systemName: "xmark").foregroundStyle(tokens.sub) }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("preview.removeTag.\(name)")
+                    .accessibilityLabel(text(.removeTag, name))
+            }
+        }
+        .padding(.horizontal, tokens.space8).padding(.vertical, tokens.space2)
+        .background(tokens.chip, in: .rect(cornerRadius: tokens.radiusControl))
+        .fixedSize()
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("preview.tag.\(name)")
     }
 
     /// The notes, then when they were made under their last line.
@@ -209,6 +284,37 @@ public struct SummaryPreviewView: View {
                              (before: tokens.space12, after: tokens.space6)],
             labelLevels: [2]
         )
+    }
+}
+
+/// The tag being typed: Return saves, Esc cancels, Tab takes the completion.
+private struct TagEntry: View {
+    let entry: String
+    let completion: String
+    let placeholder: String
+    let tokens: GlassLedger
+    let disabled: Bool
+    let event: (SummaryPreviewEvent) -> Void
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 0) {
+            TextField(placeholder, text: Binding(get: { entry }, set: { event(.typeTag($0)) }))
+                .textFieldStyle(.plain).foregroundStyle(tokens.text)
+                .fixedSize()
+                .focused($focused)
+                .disabled(disabled)
+                .onSubmit { event(.submitTags) }
+                .onExitCommand { event(.cancelTags) }
+                .onKeyPress(.tab) {
+                    guard !completion.isEmpty else { return .ignored }
+                    event(.completeTag)
+                    return .handled
+                }
+                .accessibilityIdentifier("preview.tagEntry")
+            Text(completion).foregroundStyle(tokens.gutter).accessibilityHidden(true)
+        }
+        .onAppear { focused = true }
     }
 }
 

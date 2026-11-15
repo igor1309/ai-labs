@@ -9,6 +9,7 @@ no component test reaches.
 |---|---|
 | `sh scripts/live-calls-summary.sh` | A call's notes are made, shown and written, and a cancel leaves no notes or job file. |
 | `sh scripts/live-calls-merge.sh` | Merging calls in the calls window, end to end (below). |
+| `sh scripts/live-calls-tags.sh` | Tags typed in the detail are written to the call's folder and shown in its row and the strip; a chip filters the list; merged calls keep both parts' tags. |
 | `sh scripts/live-browser-names.sh` | A rehearsed call with recorded Telemost extension events names the remote speakers in the panel and the transcript. |
 
 ## Running

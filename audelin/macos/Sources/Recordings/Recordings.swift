@@ -2,6 +2,7 @@ import Foundation
 
 /// The list and operations this machine needs; Compose supplies the disk adapter.
 public protocol RecordingsCalls: Sendable {
+    /// The calls with their tags; a call whose tags cannot be read says so.
     func list() async throws -> [RecordedCall]
     func rename(id: String, title: String) async throws
     func delete(id: String) async throws
@@ -9,16 +10,22 @@ public protocol RecordingsCalls: Sendable {
     func move(id: String, to: URL) async throws -> Int64
     /// Merges the calls into one and returns the merged call's id, or throws why not.
     func merge(ids: [String]) async throws -> String
+    /// Replaces a call's tags.
+    func setTags(id: String, tags: [String]) async throws
 }
 
 public struct RecordedCall: Equatable, Sendable {
+    /// A call's tags as listed, or that its tags file could not be read.
+    public enum Tags: Equatable, Sendable { case known([String]), unreadable }
+
     public let id: String
     public let title: String
     public let start: Date
     public let duration: TimeInterval?
+    public let tags: Tags
 
-    public init(id: String, title: String, start: Date, duration: TimeInterval?) {
-        self.id = id; self.title = title; self.start = start; self.duration = duration
+    public init(id: String, title: String, start: Date, duration: TimeInterval?, tags: Tags = .known([])) {
+        self.id = id; self.title = title; self.start = start; self.duration = duration; self.tags = tags
     }
 }
 
@@ -42,6 +49,8 @@ public struct RecordingsState: Equatable, Sendable {
 
     public var calls: [RecordedCall] = []
     public var isListing = false
+    /// The latest list request; only its answer applies.
+    public var listRequest = 0
     public var phase: Phase = .idle
     public var recordingID: String?
     public var failure: Failure?
@@ -61,20 +70,42 @@ public struct RecordingsState: Equatable, Sendable {
     public var mergedCallID: String?
     /// Audelin is idle enough to merge, as compose last said; not until it says so.
     public var mergeAvailable = false
+    /// The tags save under way, one at a time.
+    public var tagsSave: TagsSave?
+    /// How the last tags request ended, echoing its request id, for the list to apply.
+    public var tagsOutcome: TagsOutcome?
 
-    public init(calls: [RecordedCall] = [], isListing: Bool = false, phase: Phase = .idle,
+    public struct TagsSave: Equatable, Sendable {
+        public let request: Int
+        public let id: String
+        public let tags: [String]
+        public init(request: Int, id: String, tags: [String]) { self.request = request; self.id = id; self.tags = tags }
+    }
+
+    public struct TagsOutcome: Equatable, Sendable {
+        public enum Result: Equatable, Sendable { case saved, failed(String) }
+        public let request: Int
+        public let id: String
+        public let result: Result
+        public init(request: Int, id: String, result: Result) { self.request = request; self.id = id; self.result = result }
+    }
+
+    public init(calls: [RecordedCall] = [], isListing: Bool = false, listRequest: Int = 0, phase: Phase = .idle,
                 recordingID: String? = nil, failure: Failure? = nil, callsFolder: URL? = nil,
                 callsFolderAvailable: Bool = true, moveToken: UInt64? = nil, stopping: Bool = false, stopped: Bool = false, move: CallsFolderMove? = nil,
-                mergeSelection: Set<String> = [], mergedCallID: String? = nil, mergeAvailable: Bool = false) {
-        self.calls = calls; self.isListing = isListing; self.phase = phase; self.recordingID = recordingID
+                mergeSelection: Set<String> = [], mergedCallID: String? = nil, mergeAvailable: Bool = false,
+                tagsSave: TagsSave? = nil, tagsOutcome: TagsOutcome? = nil) {
+        self.calls = calls; self.isListing = isListing; self.listRequest = listRequest; self.phase = phase; self.recordingID = recordingID
         self.failure = failure; self.callsFolder = callsFolder; self.callsFolderAvailable = callsFolderAvailable; self.moveToken = moveToken; self.stopping = stopping; self.stopped = stopped; self.move = move
         self.mergeSelection = mergeSelection; self.mergedCallID = mergedCallID; self.mergeAvailable = mergeAvailable
+        self.tagsSave = tagsSave; self.tagsOutcome = tagsOutcome
     }
 }
 
 public enum RecordingsEvent: Equatable, Sendable {
     case stopActions
-    case refresh, clearFailure, listed([RecordedCall]), listFailed(String)
+    /// A list answer names the request it answers.
+    case refresh, clearFailure, listed(request: Int, [RecordedCall]), listFailed(request: Int, String)
     case recordingChanged(String?)
     case rename(id: String, title: String), renamed(String), renameFailed(id: String, reason: String)
     case chooseFolder(URL), movePrepared([MoveCall]), movePreparationFailed(String)
@@ -87,13 +118,18 @@ public enum RecordingsEvent: Equatable, Sendable {
     case confirmMerge, mergeAnyway, goBackFromWarning, merged(String), mergeFailed(String)
     /// Whether Audelin is idle enough to merge, sent whenever it changes.
     case mergeAvailability(Bool)
+    /// Sets a call's tags under the caller's request id, which the outcome echoes.
+    case setTags(request: Int, id: String, tags: [String])
+    case tagsSet(request: Int, id: String), tagsSetFailed(request: Int, id: String, reason: String)
 }
 
 public enum RecordingsEffect: Equatable, Sendable {
     case prepareMove(URL), reserveMove, releaseMove(token: UInt64), moveCall(id: String, to: URL), storeFolder(URL)
-    case list, rename(id: String, title: String), delete(String)
+    /// Lists the calls under a new request id.
+    case list(request: Int), rename(id: String, title: String), delete(String)
     /// The calls to merge, in list order.
     case merge([String])
+    case setTags(request: Int, id: String, tags: [String])
 }
 
 public struct RecordingsReducer: Sendable {
@@ -102,7 +138,7 @@ public struct RecordingsReducer: Sendable {
     let moveText: @Sendable (CallsFolderMove) -> MoveText
     private let busyMessage: @Sendable () -> String
 
-    /// `busyMessage` says Audelin is not idle enough to merge.
+    /// `busyMessage` says Audelin is not idle enough to merge, or that a move or merge holds the calls.
     public init(failureMessage: @escaping @Sendable (String, String) -> String, moveText: @escaping @Sendable (CallsFolderMove) -> MoveText,
                 busyMessage: @escaping @Sendable () -> String) {
         self.failureMessage = failureMessage
@@ -112,7 +148,7 @@ public struct RecordingsReducer: Sendable {
 
     public func reduce(_ state: RecordingsState, _ event: RecordingsEvent) -> (RecordingsState, RecordingsEffect?) {
         var (next, effect) = reduceEvent(state, event)
-        if next.stopping, next.moveToken == nil, ![.reservingMove, .releasingMove, .runningMerge].contains(next.phase) { next.stopped = true }
+        if next.stopping, next.moveToken == nil, next.tagsSave == nil, ![.reservingMove, .releasingMove, .runningMerge].contains(next.phase) { next.stopped = true }
         return (next, effect)
     }
 
@@ -134,15 +170,15 @@ public struct RecordingsReducer: Sendable {
             }
         case .refresh:
             guard state.phase == .idle, !state.isListing else { return (state, nil) }
-            state.isListing = true
             state.failure = nil
-            return (state, .list)
-        case let .listed(calls):
-            guard state.isListing else { return (state, nil) }
+            let list = Self.requestList(&state)
+            return (state, list)
+        case let .listed(request, calls):
+            guard state.isListing, request == state.listRequest else { return (state, nil) }
             state.calls = calls
             state.isListing = false
-        case let .listFailed(reason):
-            guard state.isListing else { return (state, nil) }
+        case let .listFailed(request, reason):
+            guard state.isListing, request == state.listRequest else { return (state, nil) }
             state.isListing = false
             if let failure = state.failure {
                 state.failure = .init(id: failure.id, reason: failureMessage(failure.reason, reason))
@@ -157,16 +193,16 @@ public struct RecordingsReducer: Sendable {
         case let .renamed(id):
             guard state.phase == .renaming(id) else { return (state, nil) }
             state.phase = .idle
-            state.isListing = true
-            return (state, .list)
+            let list = Self.requestList(&state)
+            return (state, list)
         case let .renameFailed(id, reason):
             guard state.phase == .renaming(id) else { return (state, nil) }
             // The disk can differ from the list after a failed mutation: reload it,
             // keeping the reason until the next action.
             state.phase = .idle
             state.failure = .init(id: id, reason: reason)
-            state.isListing = true
-            return (state, .list)
+            let list = Self.requestList(&state)
+            return (state, list)
         case let .askDelete(id):
             guard Self.acceptsAction(state), id != state.recordingID else { return (state, nil) }
             state.phase = .askingDelete(id)
@@ -182,16 +218,16 @@ public struct RecordingsReducer: Sendable {
         case let .deleted(id):
             guard state.phase == .deleting(id) else { return (state, nil) }
             state.phase = .idle
-            state.isListing = true
-            return (state, .list)
+            let list = Self.requestList(&state)
+            return (state, list)
         case let .deleteFailed(id, reason):
             guard state.phase == .deleting(id) else { return (state, nil) }
             // The disk can differ from the list after a failed mutation: reload it,
             // keeping the reason until the next action.
             state.phase = .idle
             state.failure = .init(id: id, reason: reason)
-            state.isListing = true
-            return (state, .list)
+            let list = Self.requestList(&state)
+            return (state, list)
         case .enterMergeMode:
             guard Self.acceptsAction(state) else { return (state, nil) }
             guard state.mergeAvailable else {
@@ -227,8 +263,27 @@ public struct RecordingsReducer: Sendable {
             state.phase = .idle
             state.mergeSelection = []
             state.mergedCallID = id
-            state.isListing = true
-            return (state, .list)
+            let list = Self.requestList(&state)
+            return (state, list)
+        case let .setTags(request, id, tags):
+            guard Self.admitsTags(state) else {
+                state.tagsOutcome = .init(request: request, id: id, result: .failed(busyMessage()))
+                return (state, nil)
+            }
+            state.tagsSave = .init(request: request, id: id, tags: tags)
+            state.tagsOutcome = nil
+            return (state, .setTags(request: request, id: id, tags: tags))
+        case let .tagsSet(request, id):
+            guard state.tagsSave?.request == request else { return (state, nil) }
+            state.tagsSave = nil
+            state.tagsOutcome = .init(request: request, id: id, result: .saved)
+            // A list requested before the save can hold the old tags: only a fresh one applies.
+            let list = Self.requestList(&state)
+            return (state, list)
+        case let .tagsSetFailed(request, id, reason):
+            guard state.tagsSave?.request == request else { return (state, nil) }
+            state.tagsSave = nil
+            state.tagsOutcome = .init(request: request, id: id, result: .failed(reason))
         case let .mergeFailed(reason):
             guard state.phase == .runningMerge else { return (state, nil) }
             state.phase = .merging
@@ -255,6 +310,22 @@ public struct RecordingsReducer: Sendable {
         let places = calls.indices.filter { selected.contains(calls[$0].id) }
         guard let first = places.first, let last = places.last else { return false }
         return last - first + 1 > places.count
+    }
+
+    /// Asks for a fresh list under a new request id, so an answer to an earlier one never applies.
+    static func requestList(_ state: inout RecordingsState) -> RecordingsEffect {
+        state.isListing = true
+        state.listRequest += 1
+        return .list(request: state.listRequest)
+    }
+
+    /// A tags write is admitted while no move or merge holds the calls and no other save runs.
+    static func admitsTags(_ state: RecordingsState) -> Bool {
+        guard !state.stopping, state.tagsSave == nil, state.moveToken == nil, state.callsFolderAvailable else { return false }
+        switch state.phase {
+        case .idle, .askingDelete, .renaming, .deleting, .merging, .warnedFarApart: return true
+        default: return false
+        }
     }
 
     static func acceptsAction(_ state: RecordingsState) -> Bool {
@@ -303,9 +374,9 @@ public struct RecordingsEffectHandler: Sendable {
         case let .storeFolder(destination):
             do { try await storeFolder(destination); return .folderStored }
             catch { return .folderStoreFailed(describe(error)) }
-        case .list:
-            do { return .listed(try await calls.list()) }
-            catch { return .listFailed(describe(error)) }
+        case let .list(request):
+            do { return .listed(request: request, try await calls.list()) }
+            catch { return .listFailed(request: request, describe(error)) }
         case let .rename(id, title):
             do { try await calls.rename(id: id, title: title); return .renamed(id) }
             catch { return .renameFailed(id: id, reason: describe(error)) }
@@ -315,6 +386,9 @@ public struct RecordingsEffectHandler: Sendable {
         case let .merge(ids):
             do { return .merged(try await calls.merge(ids: ids)) }
             catch { return .mergeFailed(describe(error)) }
+        case let .setTags(request, id, tags):
+            do { try await calls.setTags(id: id, tags: tags); return .tagsSet(request: request, id: id) }
+            catch { return .tagsSetFailed(request: request, id: id, reason: describe(error)) }
         }
     }
 }

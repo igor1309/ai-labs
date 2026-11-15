@@ -29,6 +29,8 @@ public struct CallsListState: Equatable, Sendable {
         public let editable: Bool
         /// Where the call matches the search; nil when no search is on.
         public var match: Match?
+        /// The call's tags, drawn as `#tag` text at the end of its second line.
+        public var tags: [String]
 
         /// A search match: ranges are character offsets into `displayTitle` and the snippet's text.
         public struct Match: Equatable, Sendable {
@@ -52,8 +54,9 @@ public struct CallsListState: Equatable, Sendable {
 
         public init(id: String, title: String, displayTitle: String, day: Day?, time: String, duration: String, editable: Bool,
                     summaryStatus: String = "", hasNotes: Bool = false, gist: String? = nil, canRetrySummary: Bool = false, canMakeSummary: Bool = false, summary: Summary = .none,
-                    match: Match? = nil) {
+                    match: Match? = nil, tags: [String] = []) {
             self.match = match
+            self.tags = tags
             self.summary = summary
             self.canRetrySummary = canRetrySummary
             self.canMakeSummary = canMakeSummary
@@ -96,7 +99,16 @@ public struct CallsListState: Equatable, Sendable {
         }
     }
 
+    /// A chip of the filter strip: a tag in use, and whether it is chosen.
+    public struct TagChip: Equatable, Sendable {
+        public let name: String
+        public let on: Bool
+        public init(name: String, on: Bool) { self.name = name; self.on = on }
+    }
+
     public var rows: [Row]
+    /// The filter strip's chips, most used first; empty, and the strip hidden, when no call has tags.
+    public var tagStrip: [TagChip]
     /// Merge mode; nil when a click reads a call.
     public var merge: Merge?
     public var search: Search?
@@ -114,8 +126,10 @@ public struct CallsListState: Equatable, Sendable {
     public var narrow: Bool
 
     public init(rows: [Row] = [], editing: Editing? = nil, deleteID: String? = nil, deleteBody: String? = nil, busy: Bool = false, failure: String? = nil,
-                selectedID: String? = nil, narrow: Bool = false, search: Search? = nil, searchText: String = "", merge: Merge? = nil) {
+                selectedID: String? = nil, narrow: Bool = false, search: Search? = nil, searchText: String = "", merge: Merge? = nil,
+                tagStrip: [TagChip] = []) {
         self.merge = merge
+        self.tagStrip = tagStrip
         self.searchText = searchText
         self.search = search
         self.rows = rows; self.editing = editing; self.deleteID = deleteID; self.deleteBody = deleteBody; self.busy = busy; self.failure = failure
@@ -138,4 +152,6 @@ public enum CallsListEvent: Equatable, Sendable {
     case confirmMerge, leaveMerge
     /// The far-apart warning's two choices.
     case mergeAnyway, goBackFromWarning
+    /// A chip of the filter strip was clicked.
+    case toggleTag(String)
 }

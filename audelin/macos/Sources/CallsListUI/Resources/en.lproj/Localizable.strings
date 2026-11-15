@@ -41,7 +41,7 @@
 "merge.marked" = "Marked";
 "merge.unmarked" = "Not marked";
 "merge.title" = "Merging";
-"merge.done" = "Done";
+"merge.cancel" = "Cancel";
 "merge.confirm" = "Merge %d";
 "merge.running" = "Merging…";
 "merge.needsTwo" = "Mark at least two calls to merge";
@@ -49,3 +49,6 @@
 "merge.anyway" = "Merge anyway";
 "merge.back" = "Go back";
 "merge.warningBody" = "There are unmarked calls between “%@” and “%@”. They will stay separate.";
+"tags.chipOn" = "Chosen";
+"tags.chipOff" = "Not chosen";
+"tags.strip" = "Tags";

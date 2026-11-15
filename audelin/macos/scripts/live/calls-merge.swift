@@ -157,8 +157,9 @@ extension Driver {
         let control = try wait("calls.merge") {
             descendants(root).first { string($0, kAXIdentifierAttribute) == "calls.merge" }
         }
-        let error = AXUIElementPerformAction(control, kAXPressAction as CFString)
-        guard error == .success else { throw LiveFailure("Press calls.merge: \(error.rawValue)") }
+        // The control can report a failure for a press it acted on, as its icon changes;
+        // each caller waits on what the press does instead.
+        _ = AXUIElementPerformAction(control, kAXPressAction as CFString)
     }
 }
 
