@@ -46,7 +46,7 @@ platform; anything else breaks rule 1. The lanes of
 
 | Kind | May import | Targets |
 |---|---|---|
-| Machine | nothing | Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, NotesMenu, CallsList, TranscriptFinalization, RecordingConditions, CallNames, AgentsOffer |
+| Machine | nothing | Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, NotesMenu, CallsList, TranscriptFinalization, RecordingConditions, CallNames |
 | Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, LatestText, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch, CallTags |
 | Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, TemplateFiles, NotesGeneration, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, TagsFile, AgentsFile, Calls, CallsStorage, Preferences |
 | Shared helper | nothing | SplitRows, CallFolderName, AudioConversion, ModelLoading |
@@ -496,7 +496,7 @@ the tags line and its editing field. They render state and send events.
 Settings → General offers to write an `AGENTS.md` that explains the
 recordings root to an AI agent (LAB-1647, `docs/spec/agents-file/`, text in
 `docs/agents-md.md`). New responsibilities: knowing whether the root has the
-file and writing it, deciding what the General row shows, and drawing it.
+file and writing it, and drawing the General row.
 
 **AgentsFile** is the only reader and writer of the root's `AGENTS.md`. It
 is given a folder and answers whether the file is there, or that the folder
@@ -507,29 +507,23 @@ compares the bytes it writes with `docs/agents-md.md`, so a change to the
 call folder layout that updates the doc fails until the resource follows.
 It knows nothing of calls, Settings or when to write.
 
-**AgentsOffer** is a small machine that decides the row. Its state is
-hidden, offered, writing, or failed with a reason. It asks its check port
-when General is shown and after a write, and its create port when the user
-presses the button; a check answer applies only if it answers the latest
-check, so a slow check never brings back a row a write just hid. It owns
-these two ports and its outcome words; it never sees a folder or a file.
-
-**SettingsUI** draws the row from an optional part of General's state (the
-reason replaces the hint when the write failed; the button is disabled only
-while writing) and sends one event, create. It reads no file.
+**No machine decides the row.** Whether the file is there is the disk's
+state, read when General is built; nothing is kept but the reason of the
+last failed write, which the menu composition already keeps for a failed
+folder picker in the same way. A write is one quick synchronous call, so
+there is no pending write and no stale answer to order.
 
 **Construction, ownership and connections.** The menu composition, which
-already holds Settings' state, constructs and holds one AgentsOffer for the
-app's life. It answers both ports with AgentsFile on the current calls
-folder from preferences, off the main actor, and maps AgentsFile's answers
-into AgentsOffer's words; an unavailable folder maps to hidden, since
-Recording conditions shows that state. It sends shown when Settings opens
-on General or General is selected, maps the machine's state into
-SettingsUI's row with localised text, and routes create. Nothing else
-constructs AgentsFile, so no recording, merge, tag or launch path can
-write the file. Calls lists only call folders, so the file in the root is
-never a call; CallsStorage and Recordings do not learn of it, and a folder
-move leaves it behind, so the new root is offered again.
+already builds Settings' state, constructs and holds AgentsFile for the
+app's life. Building General's state asks AgentsFile about the current
+calls folder from preferences: absent shows the row, present or an
+unavailable folder hides it (Recording conditions shows the latter). The
+create event writes; success clears the kept failure, a failure keeps its
+reason for the row, and the next build of General shows the result.
+Nothing else constructs AgentsFile, so no recording, merge, tag or launch
+path can write the file. Calls lists only call folders, so the file in the
+root is never a call; CallsStorage and Recordings do not learn of it, and a
+folder move leaves it behind, so the new root is offered again.
 
 ## Transcript pipeline
 
