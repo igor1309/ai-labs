@@ -60,7 +60,6 @@ final class AudelinRecording: Sendable {
     }
     func releaseStorage() async {
         await conditions.setStorageMoving(false)
-        await refresh()
         await inputs.releaseStorage()
     }
 

@@ -14,16 +14,32 @@ func makeReadings(_ disk: DiskReadings = roomy, microphone: Bool = true, at take
 }
 
 func makeState(
-    readings: ConditionReadings? = nil, access: Bool? = nil, moving: Bool = false, published: [RecordingCondition: Bool] = [:]
+    readings: ConditionReadings? = nil, access: Bool? = nil, moving: Bool = false, moves: UInt64 = 0,
+    awaitedReading: UInt64? = nil, published: [RecordingCondition: Availability] = [:]
 ) -> State {
-    State(readings: readings, callAudioAccess: access, storageMoving: moving, published: published)
+    State(readings: readings, callAudioAccess: access, storageMoving: moving, moves: moves,
+          awaitedReading: awaitedReading, published: published)
 }
 
 /// Every condition read at time 1 and published as available.
-func makeAvailableState(moving: Bool = false) -> State {
-    makeState(readings: makeReadings(), access: true, moving: moving, published: [
-        .microphoneAccess: true, .callAudioAccess: true, .callsFolder: !moving, .room: true,
+func makeAvailableState() -> State {
+    makeState(readings: makeReadings(), access: true, published: [
+        .microphoneAccess: .available, .callAudioAccess: .available, .callsFolder: .available, .room: .available,
     ])
+}
+
+/// A move holds the calls folder: the first move since launch.
+func makeMovingState() -> State {
+    var state = makeAvailableState()
+    state.storageMoving = true; state.moves = 1; state.published[.callsFolder] = .moving
+    return state
+}
+
+/// The first move let the calls folder go and its reading is awaited.
+func makeAwaitingState() -> State {
+    var state = makeMovingState()
+    state.storageMoving = false; state.awaitedReading = 1
+    return state
 }
 
 func assert(

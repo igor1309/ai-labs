@@ -20,25 +20,25 @@ final class RecordingConditionsModel {
 
     init(read: @escaping @Sendable () -> ConditionReadings, accessStates: @escaping @Sendable () async -> AsyncStream<Bool>,
          publication: any ConditionPublication) {
-        let handler = RecordingConditionsEffectHandler(publication: publication)
+        let handler = RecordingConditionsEffectHandler(publication: publication, read: read)
         let (stream, publications) = AsyncStream.makeStream(of: Publication.self)
         self.read = read
         self.publications = publications
-        // Effects are queued in the order they are reduced, so Recording hears each condition's changes in order.
-        forwarding = Task {
-            for await item in stream {
-                switch item {
-                case let .effect(effect): _ = await handler.handle(effect)
-                case let .handled(done): done.resume()
-                }
-            }
-        }
         let reducer = RecordingConditionsReducer()
         let model = ObservableModel<State, Event, Effect>(initialState: .init(), reduce: reducer.reduce, handleEffect: { effect in
             publications.yield(.effect(effect))
             return AsyncStream { $0.finish() }
         })
         self.model = model
+        // Effects are queued in the order they are reduced, so Recording hears each condition's changes in order.
+        forwarding = Task { @MainActor [weak model] in
+            for await item in stream {
+                switch item {
+                case let .effect(effect): if let event = await handler.handle(effect) { model?.event(event) }
+                case let .handled(done): done.resume()
+                }
+            }
+        }
         access = Task { @MainActor [weak model] in
             for await available in await accessStates() { model?.event(.callAudioAccess(available)) }
         }
@@ -51,10 +51,11 @@ final class RecordingConditionsModel {
         await published { ($0.readings?.takenAt ?? -.infinity) >= readings.takenAt }
     }
 
-    /// Returns once the move's effect on the calls folder is published.
+    /// Returns once the move's effect on the calls folder is published: at a move's end,
+    /// once the reading it asks for has decided the folder.
     func setStorageMoving(_ moving: Bool) async {
         model.event(.storageMoving(moving))
-        await published { $0.storageMoving == moving }
+        await published { moving ? $0.storageMoving : !$0.storageMoving && $0.awaitedReading == nil }
     }
 
     private func published(_ reduced: @escaping @MainActor (State) -> Bool) async {
@@ -91,10 +92,10 @@ private struct RecordingPublication: ConditionPublication {
     let send: @Sendable (RecordingEvent) async -> Void
     let sink: any LogSink
 
-    func publish(_ condition: RecordingConditions.RecordingCondition, available: Bool) async {
+    func publish(_ condition: RecordingConditions.RecordingCondition, _ availability: Availability) async {
         let mapped = recordingCondition(condition)
-        sink.write(.init(category: .conditions, message: "condition=\(mapped) available=\(available)"))
-        await send(.conditionChanged(mapped, available: available))
+        sink.write(.init(category: .conditions, message: "condition=\(mapped) available=\(logged(availability))"))
+        await send(.conditionChanged(mapped, available: availability == .available))
     }
 }
 
@@ -104,5 +105,13 @@ private func recordingCondition(_ condition: RecordingConditions.RecordingCondit
     case .callAudioAccess: .callAudioAccess
     case .callsFolder: .callsFolder
     case .room: .room
+    }
+}
+
+private func logged(_ availability: Availability) -> String {
+    switch availability {
+    case .available: "true"
+    case .unavailable: "false"
+    case .moving: "moving"
     }
 }
