@@ -22,3 +22,12 @@
 "preview.tagsHint" = "Return — сохранить, Esc — отменить";
 "preview.savingTags" = "Сохраняю…";
 "preview.removeTag" = "Убрать тег %@";
+"preview.notesMenu" = "Шаблон итогов";
+"preview.makeSection" = "СДЕЛАТЬ";
+"preview.makeAgainSection" = "СДЕЛАТЬ ЗАНОВО";
+"preview.keepPrevious" = "Сохранять прежние итоги";
+"preview.previous" = "Предыдущие";
+"preview.current" = "Текущие";
+"preview.templateLine" = "Шаблон: %@";
+"preview.remaking" = "Делаю заново · %@…";
+"preview.remakeFailed" = "Не удалось сделать итоги заново";

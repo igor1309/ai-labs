@@ -2,6 +2,8 @@
 
 ## 2026-11-15
 
+- LAB-1628: The notes menu chooses an available template and saves the keep-previous choice. Notes show their template, switch between Previous and Current, and stay readable beside regeneration progress, cancellation and failures.
+
 - LAB-1627: Notes jobs accept a chosen template again, keep the global keep-previous choice per run, and preserve published notes on failure or cancellation. Pending runs retain their saved template instructions.
 - LAB-1609: Automatic update relaunch waits for every final transcript to finish processing, saving and reaching notes.
 - LAB-1653: A tag typed but not yet entered is saved with the others when the selection moves to another call, as it is on Return.

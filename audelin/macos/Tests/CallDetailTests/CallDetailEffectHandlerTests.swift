@@ -7,16 +7,16 @@ struct CallDetailEffectHandlerTests {
     @Test func readDeliversTextAndMadeDate() async {
         let (sut, spy) = makeSUT()
         await expect(sut, with: .read(id: "selected call", revision: 3),
-                     toDeliver: .readFinished(id: "selected call", revision: 3, result: .read(text: "# Notes", made: "10:15")),
-                     on: { await spy.complete(.success((text: "# Notes", made: "10:15"))) })
+                     toDeliver: .readFinished(id: "selected call", revision: 3, result: .read(.init(current: .init(text: "# Notes", made: "10:15")))),
+                     on: { await spy.complete(.success(.init(current: .init(text: "# Notes", made: "10:15")))) })
         #expect(await spy.ids == ["selected call"])
     }
 
     @Test func readPreservesEmptyTextAndMissingDate() async {
         let (sut, spy) = makeSUT()
         await expect(sut, with: .read(id: "undated call", revision: 4),
-                     toDeliver: .readFinished(id: "undated call", revision: 4, result: .read(text: "", made: nil)),
-                     on: { await spy.complete(.success((text: "", made: nil))) })
+                     toDeliver: .readFinished(id: "undated call", revision: 4, result: .read(.init(current: .init(text: "", made: nil)))),
+                     on: { await spy.complete(.success(.init(current: .init(text: "", made: nil)))) })
         #expect(await spy.ids == ["undated call"])
     }
 
@@ -55,10 +55,10 @@ private func expect(_ sut: CallDetailEffectHandler, with effect: CallDetailEffec
 
 private actor NotesSpy {
     private(set) var ids: [String] = []
-    private var pending: CheckedContinuation<(text: String, made: String?)?, any Error>?
+    private var pending: CheckedContinuation<CallNotesPair?, any Error>?
     private var started: CheckedContinuation<Void, Never>?
 
-    func read(_ id: String) async throws -> (text: String, made: String?)? {
+    func read(_ id: String) async throws -> CallNotesPair? {
         ids.append(id)
         return try await withCheckedThrowingContinuation { continuation in
             pending = continuation
@@ -67,7 +67,7 @@ private actor NotesSpy {
         }
     }
 
-    func complete(_ result: Result<(text: String, made: String?)?, any Error>) async {
+    func complete(_ result: Result<CallNotesPair?, any Error>) async {
         if pending == nil { await withCheckedContinuation { started = $0 } }
         pending?.resume(with: result)
         pending = nil

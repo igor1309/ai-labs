@@ -22,3 +22,12 @@
 "preview.tagsHint" = "Return to save, Esc to cancel";
 "preview.savingTags" = "Saving…";
 "preview.removeTag" = "Remove tag %@";
+"preview.notesMenu" = "Notes template";
+"preview.makeSection" = "MAKE";
+"preview.makeAgainSection" = "MAKE AGAIN";
+"preview.keepPrevious" = "Keep previous notes";
+"preview.previous" = "Previous";
+"preview.current" = "Current";
+"preview.templateLine" = "Template: %@";
+"preview.remaking" = "Making again · %@…";
+"preview.remakeFailed" = "Couldn’t make the notes again";

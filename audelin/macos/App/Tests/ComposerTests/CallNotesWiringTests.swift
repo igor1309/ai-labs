@@ -509,3 +509,48 @@ private func seedPublishedPair(_ files: Files) async throws {
         old = completed
     }
 }
+
+extension CallNotesWiringTests {
+    @Test func menuChoiceDisablesTemplatesDuringTheRunAndPublicationShowsCurrent() async throws {
+        try await withNotesComposition { rig, http in
+            let calls = try #require(rig.menu.calls)
+            try savedCall(a, in: rig.root); try writeDaily(in: rig.root)
+            try await seedPublishedPair(templateSummaryFiles(rig.root))
+            await rig.menu.perform(.showCalls); await rows(calls, count: 1); await calls.send(.read(a))
+            await calls.send(detail: .chooseNotesVersion(.previous))
+            await detail(calls) { $0?.version == .previous }
+            let previous = calls.detail?.content
+            await calls.send(detail: .notesMenuOpened)
+            for await menu in Observations({ calls.notesMenu }) where menu.templates.map(\.name).contains("Daily") { break }
+            #expect(calls.notesMenu.section == "СДЕЛАТЬ ЗАНОВО" && calls.notesMenu.offersKeeping)
+            await calls.send(detail: .chooseNotesTemplate("Daily")); await http.started.next()
+            await calls.send(detail: .notesMenuOpened)
+            for await menu in Observations({ calls.notesMenu }) where menu.facts?.busy == true && menu.templates.allSatisfy({ !$0.enabled }) { break }
+            #expect(calls.detail?.content == previous)
+            #expect(calls.detail?.progress == "Делаю заново · Daily…")
+            #expect(await http.bodies.last?.contains("Daily instructions from the file") == true)
+            await calls.send(detail: .chooseNotesTemplate("Default"))
+            try await http.succeed()
+            await detail(calls) { $0?.version == .current && $0?.pair?.current.text == generatedNotes && $0?.progress == nil }
+            #expect(calls.detail?.template == "Daily")
+            #expect(await http.bodies.count == 1)
+        }
+    }
+
+    @Test func menuCancelReachesTheJobsAndKeepsThePublishedPair() async throws {
+        try await withNotesComposition { rig, http in
+            let calls = try #require(rig.menu.calls)
+            try savedCall(a, in: rig.root)
+            let files = templateSummaryFiles(rig.root)
+            try await seedPublishedPair(files)
+            let pair = try await files.versions(call: a)
+            await rig.menu.perform(.showCalls); await rows(calls, count: 1); await calls.send(.read(a))
+            await calls.send(detail: .makeSummaryWithTemplate("Default")); await http.started.next()
+            await detail(calls) { $0?.progress != nil }
+            await calls.send(detail: .cancelNotes)
+            await detail(calls) { $0?.progress == nil }
+            #expect(try await files.versions(call: a) == pair)
+            #expect(try await files.load(call: a) == nil)
+        }
+    }
+}

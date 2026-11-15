@@ -8,20 +8,20 @@ machine's output.
 
 Reducer: no notes + menu opened → effect read catalogue; answered → make
 section, no keep item. Effect: read catalogue delivers the fake catalogue.
-Evidence: Missing.
+Evidence: `NotesMenuTests.sectionAndKeepFollowTheShownCall and openingRefreshesTheCatalogueEveryTime, paired with effectReadsTheCatalogueAndPreservesItsRevision`.
 
 ## S-2 Make again with notes
 
-As S-1 with notes → make-again section, keep item on. Evidence: Missing.
+As S-1 with notes → make-again section, keep item on. Evidence: `NotesMenuTests.sectionAndKeepFollowTheShownCall and openingRefreshesTheCatalogueEveryTime, paired with effectReadsTheCatalogueAndPreservesItsRevision`.
 
 ## S-3 Choosing a template
 
 Reducer: template chosen Daily → intention (call, Daily, generate), no
-effect. Effect: none. Read back the output's one value. Evidence: Missing.
+effect. Effect: none. Read back the output's one value. Evidence: `NotesMenuTests.choosingAnyListedTemplatePublishesOneIntention`.
 
 ## S-4 Choosing the shown notes' template
 
-As S-3 with Default on notes made with Default. Evidence: Missing.
+As S-3 with Default on notes made with Default. Evidence: `NotesMenuTests.choosingAnyListedTemplatePublishesOneIntention`.
 
 ## S-5 An unusable template
 
@@ -35,11 +35,11 @@ As S-5 with every file unusable → built-in Default enabled. Evidence: Missing.
 ## S-10 Toggling keep
 
 Reducer: keep toggled → saving, effect save off; answered → off. Effect:
-fake keep port records off and delivers saved. Evidence: Missing.
+fake keep port records off and delivers saved. Evidence: `NotesMenuTests.keepWaitsForTheSaveBeforeChanging, paired with effectSavesExactlyTheRequestedKeepValue`.
 
 ## S-11 A failed keep save
 
-As S-10 with the fake failing → on with reason. Evidence: Missing.
+As S-10 with the fake failing → on with reason. Evidence: `NotesMenuTests.keepWaitsForTheSaveBeforeChanging, paired with effectReturnsTheSaveFailure`.
 
 ## S-14 Opening the folder
 
@@ -61,4 +61,4 @@ Effect: the fake fails the read. Evidence: Missing.
 
 Reducer: facts changed busy + menu opened → every template disabled; a
 template chosen while busy publishes no intention. Effect: read catalogue as
-S-1. Evidence: Missing.
+S-1. Evidence: `NotesMenuTests.busyFactsDisableEveryTemplateAndPublishNoChoice, paired with effectReadsTheCatalogueAndPreservesItsRevision`.

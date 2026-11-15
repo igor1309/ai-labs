@@ -51,6 +51,7 @@ let package = Package(
             name: "CallsWindowShell",
             dependencies: [
                 .product(name: "CallDetail", package: "macos"),
+                .product(name: "NotesMenu", package: "macos"),
                 "Composer",
                 .product(name: "GlassLedger", package: "macos"),
                 .product(name: "CallsListUI", package: "macos"),
@@ -92,6 +93,7 @@ let package = Package(
                 .product(name: "LatestText", package: "macos"),
                 .product(name: "RecordingConditions", package: "macos"),
                 .product(name: "CallDetail", package: "macos"),
+                .product(name: "NotesMenu", package: "macos"),
                 .product(name: "BleedCleanup", package: "macos"),
                 .product(name: "SummarySettings", package: "macos"),
                 .product(name: "SummaryPreviewUI", package: "macos"),
@@ -155,6 +157,7 @@ let package = Package(
             name: "CallsWindowShellTests",
             dependencies: [
                 .product(name: "CallDetail", package: "macos"),
+                .product(name: "NotesMenu", package: "macos"),
                 "CallsWindowShell", "Composer",
                 .product(name: "CallsListUI", package: "macos"),
                 .product(name: "CallsWindowUI", package: "macos"),
@@ -167,6 +170,7 @@ let package = Package(
             dependencies: [
                 .product(name: "RecordingConditions", package: "macos"),
                 .product(name: "CallDetail", package: "macos"),
+                .product(name: "NotesMenu", package: "macos"),
                 "Composer", "Audelin",
                 .product(name: "CallAudioAccess", package: "macos"),
                 .product(name: "CallFolder", package: "macos"),

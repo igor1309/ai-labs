@@ -13,6 +13,29 @@ public struct SummaryPreviewState: Equatable, Sendable {
         case none
     }
 
+    public enum Version: Equatable, Sendable { case previous, current }
+    public struct Menu: Equatable, Sendable {
+        public struct Template: Equatable, Sendable {
+            public var id: String
+            public var name: String
+            public var enabled: Bool
+            public init(id: String, name: String, enabled: Bool) { self.id = id; self.name = name; self.enabled = enabled }
+        }
+        public var catalogueRevision: Int
+        public var section: String
+        public var templates: [Template]
+        public var keeping: Bool?
+        public var saving: Bool
+        public var failure: String?
+        public init(section: String, templates: [Template], keeping: Bool?, saving: Bool = false, failure: String? = nil, catalogueRevision: Int = 0) {
+            self.catalogueRevision = catalogueRevision; self.section = section; self.templates = templates; self.keeping = keeping; self.saving = saving; self.failure = failure
+        }
+    }
+    public var menu: Menu?
+    public var version: Version?
+    public var templateName: String?
+    public var progress: String?
+    public var failure: String?
     public var title: String
     public var date: String
     public var duration: String
@@ -22,9 +45,11 @@ public struct SummaryPreviewState: Equatable, Sendable {
     /// The header's tags line.
     public var tags: Tags
 
-    public init(title: String, date: String, duration: String, notes: Notes, canRetry: Bool = false, tags: Tags = .shown([])) {
+    public init(title: String, date: String, duration: String, notes: Notes, canRetry: Bool = false, tags: Tags = .shown([]), menu: Menu? = nil,
+                version: Version? = nil, templateName: String? = nil, progress: String? = nil, failure: String? = nil) {
         self.title = title; self.date = date; self.duration = duration; self.notes = notes; self.canRetry = canRetry
         self.tags = tags
+        self.menu = menu; self.version = version; self.templateName = templateName; self.progress = progress; self.failure = failure
     }
 
     /// The tags line under the header: the call's tags with «Изменить», or the field editing them.
@@ -55,6 +80,7 @@ public struct SummaryPreviewState: Equatable, Sendable {
 /// What the user asks of the call shown.
 public enum SummaryPreviewEvent: Equatable, Sendable {
     /// Copy the notes' Markdown source.
+    case openNotesMenu, chooseTemplate(String), toggleKeeping, chooseVersion(SummaryPreviewState.Version)
     case copy
     /// Show the call's folder in Finder.
     case open

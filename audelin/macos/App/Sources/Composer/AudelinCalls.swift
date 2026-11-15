@@ -1,4 +1,6 @@
 import CallDetail
+import NotesMenu
+import SummaryPreviewUI
 import IMRxObservation
 import SettingsUI
 import Calls
@@ -25,6 +27,7 @@ struct RecordingsInputs {
 
 /// What the detail asks of the call it shows.
 public enum CallsDetailEvent: Equatable, Sendable {
+    case notesMenuOpened, chooseNotesTemplate(String), toggleKeeping, chooseNotesVersion(CallNotesVersion), cancelNotes
     case makeSummaryWithTemplate(String)
     case copy, open, rename, makeSummary, cancelSummary, retrySummary, delete
     /// The tags line: open the field, type, take the completion, remove a chip, save, cancel.
@@ -43,12 +46,15 @@ public enum CallsDetailTags: Equatable, Sendable {
 public final class AudelinCalls {
     /// The selected call, nil when none is selected.
     public var detail: CallsDetail? { detailModel.state.detail }
+    public var notesMenu: NotesMenuState { menuModel.state }
+    private let menuModel: ObservableModel<NotesMenuState, NotesMenuEvent, NotesMenuEffect>
+    private var notesConnections: [Task<Void, Never>] = []
     private let detailModel: ObservableModel<CallDetailState, CallDetailEvent, CallDetailEffect>
     private let copy: (String) -> Void
     private let readCall: () -> Void
     /// The window is too narrow for the call beside the list.
     private var narrow = false
-    private let notes: (String) async throws -> (text: String, made: String?)?
+    private let notes: (String) async throws -> CallNotesPair?
     private let makeWithTemplate: (String, String) -> Void
     private let saveKeeping: (Bool) throws -> Void
     private let readKeeping: () -> Bool
@@ -67,6 +73,7 @@ public final class AudelinCalls {
     private let retryableSummaries: () -> Set<String>
     private let retrySummary: (String) async throws -> Void
     private let summaryStatuses: () -> [String: String]
+    private let summaryTemplates: () -> [String: String]
     private let summaryBadges: () -> [String: CallsListState.Row.Summary]
     private let inputs: RecordingsInputs
     private let location: (String) async throws -> URL
@@ -91,9 +98,14 @@ public final class AudelinCalls {
          location: @escaping (String) async throws -> URL, openFolder: @escaping (URL) -> Bool,
          present: @escaping () -> Void, summaryStatuses: @escaping () -> [String: String] = { [:] },
          summaryBadges: @escaping () -> [String: CallsListState.Row.Summary] = { [:] },
-         notes: @escaping (String) async throws -> (text: String, made: String?)? = { _ in nil },
+         notes: @escaping (String) async throws -> CallNotesPair? = { _ in nil },
          makeSummary: @escaping (String) -> Void = { _ in },
          makeWithTemplate: @escaping (String, String) -> Void = { _, _ in },
+         catalogue: @escaping @Sendable () async -> [NotesMenuState.Template] = { [.init(id: "Default", name: "Default", enabled: true)] },
+         previewText: @escaping @Sendable () -> SummaryPreviewText = { .init(language: .russian) },
+         summaryTemplates: @escaping () -> [String: String] = { [:] },
+         publications: @escaping () -> [String: String] = { [:] },
+         keepingChanges: AsyncStream<Bool> = AsyncStream { $0.finish() },
          readKeeping: @escaping () -> Bool = { true },
          saveKeeping: @escaping (Bool) throws -> Void = { _ in },
          cancelSummary: @escaping (String) async -> Void = { _ in },
@@ -113,15 +125,64 @@ public final class AudelinCalls {
         self.readCall = readCall
         self.makeWithTemplate = makeWithTemplate; self.readKeeping = readKeeping; self.saveKeeping = saveKeeping
         self.makeSummary = makeSummary; self.cancelSummary = cancelSummary
+        self.summaryTemplates = summaryTemplates
         self.summaryStatuses = summaryStatuses
         self.summaryBadges = summaryBadges
         self.notes = notes
         let handler = CallDetailEffectHandler(notes: { @MainActor id in try await notes(id) })
-        detailModel = ObservableModel(initialState: .init(), reduce: CallDetailReducer().reduce,
+        detailModel = ObservableModel(initialState: .init(), reduce: CallDetailReducer(progress: { previewText()(.remaking, $0) }).reduce,
                                       handleEffect: { effect in oneEvent { await handler.handle(effect) } })
         self.inputs = inputs; self.timeZone = timeZone; self.now = now; self.recordingState = recordingState
         self.location = location; self.openFolder = openFolder; self.present = present
+        let menuHandler = NotesMenuEffectHandler(catalogue: catalogue, save: { @MainActor in try saveKeeping($0) })
+        menuModel = ObservableModel(initialState: .init(keeping: readKeeping()),
+                                    reduce: NotesMenuReducer(section: { previewText()($0 ? .makeAgainSection : .makeSection) }).reduce,
+                                    handleEffect: { effect in oneEvent { await menuHandler.handle(effect) } })
+        notesConnections = [
+            Task { @MainActor [weak self] in
+                var seen: [String: String] = [:]
+                for await current in Observations({ publications() }) {
+                    guard let self else { return }
+                    for (call, publication) in current where seen[call] != publication {
+                        detailModel.event(.publicationNotified(id: call))
+                    }
+                    seen = current
+                }
+            },
+            Task { @MainActor [weak self] in
+                for await facts in Observations({ self?.detailModel.state.menuFacts }) {
+                    guard let self else { return }
+                    menuModel.event(.factsChanged(facts.map { .init(call: $0.call, hasNotes: $0.hasNotes, template: $0.template, busy: $0.busy) }))
+                }
+            },
+            Task { @MainActor [weak self] in
+                var seen = 0
+                for await (count, intention) in Observations({ (self?.menuModel.state.intentions ?? 0, self?.menuModel.state.intention) }) {
+                    guard let self else { return }
+                    guard count > seen, let intention else { continue }
+                    seen = count
+                    makeWithTemplate(intention.call, intention.template)
+                }
+            },
+            Task { @MainActor [weak self] in
+                var seen = 0
+                for await (count, call) in Observations({ (self?.detailModel.state.cancellations ?? 0, self?.detailModel.state.cancelCall) }) {
+                    guard self != nil else { return }
+                    guard count > seen, let call else { continue }
+                    seen = count
+                    await cancelSummary(call)
+                }
+            },
+            Task { @MainActor [weak self] in
+                for await keeping in keepingChanges {
+                    guard let self else { return }
+                    menuModel.event(.keepingChanged(keeping))
+                }
+            },
+        ]
     }
+
+    isolated deinit { notesConnections.forEach { $0.cancel() } }
 
     public var state: CallsListState {
         var recordings = inputs.state()
@@ -353,7 +414,7 @@ public final class AudelinCalls {
                     do {
                         guard let text = try await notes(id) else { continue }
                         found.insert(id)
-                        gists[id] = NotesMarkdown.gist(text.text)
+                        gists[id] = NotesMarkdown.gist(text.current.text)
                     } catch { found.insert(id) }
                 }
                 if Task.isCancelled { return }
@@ -385,7 +446,7 @@ public final class AudelinCalls {
         case .failed: badge = .failed
         }
         return .init(id: id, title: row.displayTitle, date: date, duration: row.duration, editable: row.editable,
-                     summary: .init(badge: badge, status: row.summaryStatus, canRetry: row.canRetrySummary))
+                     summary: .init(badge: badge, status: row.summaryStatus, canRetry: row.canRetrySummary, template: summaryTemplates()[id]))
     }
 
     /// Connects summary updates separately from changes to the selected call's display fields.
@@ -402,6 +463,11 @@ public final class AudelinCalls {
     public func send(detail event: CallsDetailEvent) async {
         guard let shown = detail else { return }
         switch event {
+        case .notesMenuOpened: menuModel.event(.opened)
+        case let .chooseNotesTemplate(template): menuModel.event(.choose(template))
+        case .toggleKeeping: menuModel.event(.toggleKeeping)
+        case let .chooseNotesVersion(version): detailModel.event(.versionChosen(version))
+        case .cancelNotes: detailModel.event(.cancelChosen)
         case .copy: if case let .notes(source, _) = shown.content { copy(source) }
         case .open: await send(.open(shown.id))
         case .rename: await send(.beginRename(shown.id))

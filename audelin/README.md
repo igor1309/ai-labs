@@ -26,6 +26,10 @@ subscription authentication and remains subject to managed organization policy.
 Provider availability, quota and factual faithfulness are not guaranteed by
 configuration checks or structural validation.
 
+The notes menu lists available templates and saves whether to keep previous notes.
+The detail shows each version’s template and lets you switch between Previous and Current,
+with progress and cancellation beside readable notes during regeneration.
+
 Build: `cd audelin/macos && sh scripts/bundle.sh`. Install and automatic updates: see below.
 Components: `macos/`; composer, app, rehearsal and their integration tests: `macos/App/`.
 Build and test each package from its directory with `swift build --build-tests` and `swift test`.

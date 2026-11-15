@@ -8,9 +8,10 @@ public struct CallDetailState: Equatable, Sendable {
             public var badge: Badge
             public var status: String
             public var canRetry: Bool
+            public var template: String?
 
-            public init(badge: Badge, status: String, canRetry: Bool) {
-                self.badge = badge; self.status = status; self.canRetry = canRetry
+            public init(badge: Badge, status: String, canRetry: Bool, template: String? = nil) {
+                self.badge = badge; self.status = status; self.canRetry = canRetry; self.template = template
             }
         }
 
@@ -29,11 +30,24 @@ public struct CallDetailState: Equatable, Sendable {
 
     public enum Notes: Equatable, Sendable {
         case notRead
-        case read(text: String, made: String?)
+        case read(CallNotesPair)
         case absent
         case unreadable(reason: String)
     }
 
+    public struct MenuFacts: Equatable, Sendable {
+        public var call: String
+        public var hasNotes: Bool
+        public var template: String?
+        public var busy: Bool
+        public init(call: String, hasNotes: Bool, template: String?, busy: Bool) {
+            self.call = call; self.hasNotes = hasNotes; self.template = template; self.busy = busy
+        }
+    }
+    public var showCurrentAfterRead: Bool
+    public var menuFacts: MenuFacts?
+    public var cancelCall: String?
+    public var cancellations: Int
     public var selected: Call?
     public var notes: Notes
     public var detail: CallsDetail?
@@ -47,13 +61,19 @@ public struct CallDetailState: Equatable, Sendable {
     public var opens: Int
 
     public init(selected: Call? = nil, notes: Notes = .notRead, detail: CallsDetail? = nil, revision: Int = 0,
-                pendingOpen: String? = nil, opened: String? = nil, opens: Int = 0) {
+                pendingOpen: String? = nil, opened: String? = nil, opens: Int = 0, menuFacts: MenuFacts? = nil,
+                cancelCall: String? = nil, cancellations: Int = 0, showCurrentAfterRead: Bool = false) {
         self.selected = selected; self.notes = notes; self.detail = detail; self.revision = revision
         self.pendingOpen = pendingOpen; self.opened = opened; self.opens = opens
+        self.showCurrentAfterRead = showCurrentAfterRead
+        self.menuFacts = menuFacts; self.cancelCall = cancelCall; self.cancellations = cancellations
     }
 }
 
 public enum CallDetailEvent: Equatable, Sendable {
+    case publicationNotified(id: String)
+    case versionChosen(CallNotesVersion)
+    case cancelChosen
     case selectionChanged(CallDetailState.Call?)
     case summaryChanged(id: String, summary: CallDetailState.Call.Summary)
     case notesChanged(id: String)
@@ -67,14 +87,35 @@ public enum CallDetailEffect: Equatable, Sendable {
 }
 
 public struct CallDetailReducer: Sendable {
-    public init() {}
+    private let progress: @Sendable (String) -> String
+    public init(progress: @escaping @Sendable (String) -> String) { self.progress = progress }
 
     public func reduce(_ state: CallDetailState, _ event: CallDetailEvent) -> (CallDetailState, CallDetailEffect?) {
         var state = state
         switch event {
+        case let .publicationNotified(id):
+            guard state.selected?.id == id else { return (state, nil) }
+            state.showCurrentAfterRead = true
+        case let .versionChosen(version):
+            guard var detail = state.detail, let pair = detail.pair,
+                  detail.id == state.selected?.id, version != detail.version,
+                  let notes = version == .current ? pair.current : pair.previous else { return (state, nil) }
+            detail.version = version
+            detail.content = .notes(notes.text, made: notes.made)
+            detail.template = notes.templateName
+            state.detail = detail
+            state.menuFacts?.template = notes.templateID
+            return (state, nil)
+        case .cancelChosen:
+            guard let call = state.selected, call.summary.badge == .pending else { return (state, nil) }
+            state.cancelCall = call.id
+            state.cancellations += 1
+            return (state, nil)
         case let .selectionChanged(call):
             if call?.id != state.pendingOpen { state.pendingOpen = nil }
+            state.showCurrentAfterRead = false
             state.selected = call
+            if call == nil { state.menuFacts = nil }
             state.notes = .notRead
             guard call != nil else {
                 state.detail = nil
@@ -89,9 +130,14 @@ public struct CallDetailReducer: Sendable {
             guard let call = state.selected, call.id == id, revision == state.revision,
                   state.notes == .notRead, result != .notRead else { return (state, nil) }
             state.notes = result
+            var version = CallNotesVersion.current
             let content: CallsDetail.Content
             switch result {
-            case let .read(text, made): content = .notes(text, made: made)
+            case let .read(pair):
+                let previous = !state.showCurrentAfterRead && state.detail?.id == id && state.detail?.pair == pair && state.detail?.version == .previous
+                version = previous ? .previous : .current
+                let notes = previous ? pair.previous ?? pair.current : pair.current
+                content = .notes(notes.text, made: notes.made)
             case let .unreadable(reason): content = .unreadable(reason)
             case .absent:
                 switch call.summary.badge {
@@ -101,7 +147,20 @@ public struct CallDetailReducer: Sendable {
                 }
             case .notRead: return (state, nil)
             }
+            state.showCurrentAfterRead = false
             state.detail = .init(id: call.id, title: call.title, date: call.date, duration: call.duration, content: content)
+            if case let .read(pair) = result {
+                let previous = version == .previous
+                state.detail?.pair = pair
+                state.detail?.version = previous ? .previous : .current
+                let shown = previous ? pair.previous ?? pair.current : pair.current
+                state.detail?.template = shown.templateName
+                state.detail?.progress = call.summary.badge == .pending ? progress(call.summary.template ?? pair.current.templateName) : nil
+                state.detail?.failure = call.summary.badge == .failed ? call.summary.status : nil
+                state.menuFacts = .init(call: id, hasNotes: true, template: shown.templateID, busy: call.summary.badge == .pending)
+            } else {
+                state.menuFacts = .init(call: id, hasNotes: false, template: nil, busy: call.summary.badge == .pending)
+            }
             if state.pendingOpen == id { open(id, &state) }
             return (state, nil)
         case let .openRequested(id):
@@ -125,9 +184,9 @@ public struct CallDetailReducer: Sendable {
 
 /// Reads notes and returns their outcome; display decisions belong to the reducer.
 public struct CallDetailEffectHandler: Sendable {
-    private let notes: @Sendable (String) async throws -> (text: String, made: String?)?
+    private let notes: @Sendable (String) async throws -> CallNotesPair?
 
-    public init(notes: @escaping @Sendable (String) async throws -> (text: String, made: String?)?) {
+    public init(notes: @escaping @Sendable (String) async throws -> CallNotesPair?) {
         self.notes = notes
     }
 
@@ -136,7 +195,7 @@ public struct CallDetailEffectHandler: Sendable {
         case let .read(id, revision):
             let result: CallDetailState.Notes
             do {
-                if let read = try await notes(id) { result = .read(text: read.text, made: read.made) }
+                if let read = try await notes(id) { result = .read(read) }
                 else { result = .absent }
             } catch { result = .unreadable(reason: error.localizedDescription) }
             return .readFinished(id: id, revision: revision, result: result)
