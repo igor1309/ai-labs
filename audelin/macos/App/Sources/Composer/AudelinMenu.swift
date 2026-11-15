@@ -144,7 +144,7 @@ public final class AudelinMenu {
             let recording = try await AudelinRecording(preferences: storage, occupiedCallNames: occupiedCallNames, boundary: boundary,
                                                        processes: processes, panel: panel, finalization: finalization, finalizationResources: finalizationResources, summaries: summaries?.callbacks(timeZone: boundary.time.timeZone(), notesOn: { storage.read().notes.enabled }) ?? .disabled)
             application = MenuApplication(
-                states: { await recording.inputs.states() }, failures: recording.detectionFailures,
+                states: { await recording.inputs.ownStates() }, failures: recording.detectionFailures,
                 send: { await recording.inputs.send($0) },
                 stopDelivery: { await recording.stopDelivery() }, end: { await recording.inputs.end() },
                 reserveStorage: { await recording.reserveStorage() }, releaseStorage: { await recording.releaseStorage() },
