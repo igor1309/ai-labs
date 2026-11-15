@@ -298,3 +298,40 @@ struct CallsStorageListEnrichmentTests {
         }
     }
 }
+
+@Suite(.timeLimit(.minutes(1)))
+struct CallsStorageTagWriteTests {
+
+    @Test func aTagWriteGetsTheCallsResolvedFolder() async throws {
+        try await withStorageFolder { temporaryRoot in
+            let root = temporaryRoot.resolvingSymlinksInPath()
+            let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("destination")
+            let id = "1970.01.01-0000"
+            for folder in [source.appendingPathComponent(id), destination] {
+                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            }
+            let storage = makeStorage(folder: source, journal: root.appendingPathComponent("moves.json"))
+            _ = try await storage.prepareMove(to: destination)
+            _ = try await storage.move(id: id, to: destination)
+            try await storage.writeTags(id: id) { try Data("клиент\n".utf8).write(to: $0.appendingPathComponent("tags.txt")) }
+            #expect(try String(contentsOf: destination.appendingPathComponent(id + "/tags.txt"), encoding: .utf8) == "клиент\n")
+        }
+    }
+
+    @Test func aCallAMoveStillHoldsIsNotWritten() async throws {
+        try await withStorageFolder { temporaryRoot in
+            let root = temporaryRoot.resolvingSymlinksInPath()
+            let id = "1970.01.01-0000", source = root.appendingPathComponent("source"), target = root.appendingPathComponent("target")
+            let original = source.appendingPathComponent(id), copy = target.appendingPathComponent(id)
+            let journal = root.appendingPathComponent("moves.json")
+            do {
+                for folder in [original, copy] { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
+                let move = Calls.Move(source: original, target: copy, temporary: target.appendingPathComponent(".audelin-move-test"), phase: .publishing)
+                try JSONEncoder().encode(CallsJournal(moves: [id: move])).write(to: journal)
+            }
+            let storage = makeStorage(folder: source, journal: journal, writeJournal: { _, _ in throw CocoaError(.fileWriteNoPermission) })
+            try await storage.restore()
+            await #expect(throws: (any Error).self) { try await storage.writeTags(id: id) { _ in Issue.record("written") } }
+        }
+    }
+}

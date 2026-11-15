@@ -176,6 +176,19 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
             }
         }
     }
+    /// Changes a call's tags: `write` gets the call's resolved folder within this storage's
+    /// turn. A call a folder move is still copying is not written.
+    public func writeTags(id: String, _ write: @Sendable (URL) throws -> Void) async throws {
+        try await perform { [self] in
+            try state.withLock { state in
+                recover(&state, id: id)
+                if let move = state.journal.moves[id], ![.source, .destination].contains(move.phase) {
+                    throw CocoaError(.fileWriteUnknown)
+                }
+                try write(location(id: id, state: state))
+            }
+        }
+    }
     /// A call's saved transcript as written, for a merge to read back.
     public func savedTranscript(id: String) async throws -> Data {
         try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).savedTranscript(id: id) } }
