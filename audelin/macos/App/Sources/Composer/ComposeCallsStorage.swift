@@ -1,6 +1,7 @@
 import Calls
 import CallsStorage
 import Foundation
+import Recording
 import Recordings
 import SummaryJobs
 import TrackFile
@@ -15,6 +16,23 @@ func callsStorage(folder: URL, timeZone: TimeZone, journal: URL? = nil, trash: @
     return CallsStorage(folder: folder, journal: journal, writeJournal: writeJournal,
                         makeCalls: { [disk] in Calls(folder: $0, timeZone: timeZone, duration: TrackFile.duration(at:),
                                                      transcript: transcriptLines, disk: disk) })
+}
+
+/// Recording's port to the calls-folder claim, answered by the one CallsStorage.
+struct RecordingFolderClaim: Sendable {
+    let take: @Sendable () async -> CallsFolderAnswer
+    let release: @Sendable (UInt64) async -> Void
+
+    init(storage: CallsStorage) {
+        take = {
+            switch storage.takeFolder(for: .recording) {
+            case let .granted(token): .granted(token: token.rawValue)
+            case .refused(by: .move): .refusedByMove
+            case .refused: .refused
+            }
+        }
+        release = { storage.releaseFolder(CallsFolderToken(rawValue: $0)) }
+    }
 }
 
 /// A saved transcript's lines, read by the format's one reader.

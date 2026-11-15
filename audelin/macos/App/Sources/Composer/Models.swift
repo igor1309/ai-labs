@@ -36,6 +36,7 @@ func oneEvent<Event: Sendable>(_ handle: @escaping @Sendable () async -> Event) 
 @MainActor
 func makeRecording(
     initial: RecordingState, log: @escaping @Sendable (RecordingState) -> Void,
+    folderClaim: RecordingFolderClaim,
     callAudioReady: @escaping @Sendable () async -> Bool,
     liveText: @escaping @Sendable () -> Bool,
     callAudioReleased: @escaping @Sendable () async -> Void,
@@ -43,7 +44,8 @@ func makeRecording(
     status: @escaping @Sendable (SessionState) -> RecordingSessionStatus
 ) -> RecordingInputs {
 
-    let handler = RecordingEffectHandler(prepareCallAudio: callAudioReady, liveText: liveText,
+    let handler = RecordingEffectHandler(claimFolder: folderClaim.take, releaseFolder: folderClaim.release,
+                                         prepareCallAudio: callAudioReady, liveText: liveText,
                                          releaseCallAudio: callAudioReleased, runPiece: runPiece)
     let model = RecordingModel(initial: initial, reducer: RecordingReducer(session: SessionReducer.reduce, status: status),
                                handler: handler, log: log)

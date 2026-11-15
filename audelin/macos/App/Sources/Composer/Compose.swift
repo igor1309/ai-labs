@@ -72,7 +72,7 @@ public func compose(
     let speakers = Task {
         for await state in finalization.states() { await resources.showSpeakers(state) }
     }
-    let menu = await AudelinMenu(storage: preferences, occupiedCallNames: { try storage.occupiedCallNames() }, boundary: boundary, processes: processes, panel: panel,
+    let menu = await AudelinMenu(storage: preferences, folderClaim: RecordingFolderClaim(storage: storage), occupiedCallNames: { try storage.occupiedCallNames() }, boundary: boundary, processes: processes, panel: panel,
         openFolder: { _ = openCallsFolder($0) }, openURL: openURL, terminate: terminate,
         sink: boundary.log, presentPanel: presentPanel, sleep: boundary.time.sleep,
         finalization: finalization, finalizationResources: resources, summaries: summaries, language: language)

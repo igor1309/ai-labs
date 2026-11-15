@@ -26,5 +26,5 @@ struct RecordingReservationTests {
 
 private func makeHandler() -> RecordingEffectHandler {
 
-    RecordingEffectHandler(prepareCallAudio: { false }, liveText: { false }, releaseCallAudio: {}, runPiece: { _, _ in .outputReleased })
+    RecordingEffectHandler(claimFolder: { .granted(token: 1) }, releaseFolder: { _ in }, prepareCallAudio: { false }, liveText: { false }, releaseCallAudio: {}, runPiece: { _, _ in .outputReleased })
 }

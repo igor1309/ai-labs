@@ -11,6 +11,16 @@ public enum RecordingFault: CaseIterable, Hashable, Sendable {
     case microphone, callAudio, diskFull
 }
 
+/// The calls-folder claim's answer to Recording's take.
+public enum CallsFolderAnswer: Equatable, Sendable {
+
+    case granted(token: UInt64)
+    /// A folder move has the folder: the start waits for the move to end.
+    case refusedByMove
+    /// Another holder, such as a relaunch, has the folder: the start ends.
+    case refused
+}
+
 public enum RecordingSessionReport: Equatable, Sendable {
 
     case ended
@@ -89,14 +99,25 @@ public struct RecordingState: Equatable, Sendable {
     public var stage: Stage?
     /// The current session's pieces, as the Session reducer leaves them.
     public var pieces: SessionState?
+    /// The calls-folder claim's token while the current session holds it.
+    public var folderToken: UInt64?
+    /// A folder move holds the calls folder, as RecordingConditions last said.
+    public var folderMoving = false
+    /// How many moves have ended, as RecordingConditions told.
+    public var moveEnds: UInt64 = 0
+    /// `moveEnds` when the current take began: a move that ended since then makes a move's refusal stale.
+    public var claimSince: UInt64 = 0
 
-    /// One session's line of work: get call audio, bring the pieces up and down, release call audio.
+    /// One session's line of work: claim the calls folder, get call audio, bring the pieces up and
+    /// down, release call audio, release the calls folder.
     public enum Stage: Equatable, Sendable {
 
+        case claiming
         case preparing
         /// The pieces are coming up, running or going down, as `pieces` says.
         case pieces
         case releasing
+        case releasingClaim
     }
 
     public enum Shutdown: Equatable, Sendable {
@@ -125,6 +146,12 @@ public enum RecordingEvent: Equatable, Sendable {
     case userStop
     case automaticChanged(Bool)
     case conditionChanged(RecordingCondition, available: Bool)
+    /// A folder move holds the calls folder; the next calls-folder condition ends the move.
+    case callsFolderMoving
+    /// The calls-folder claim answered the session's take.
+    case folderClaimed(id: UInt64, CallsFolderAnswer)
+    /// Call audio was released for the session.
+    case callAudioReleased(id: UInt64)
     case sessionReported(id: UInt64, RecordingSessionReport)
     case shutdown
     /// Call audio was checked and reserved for the session, or could not be; live text as preferred then.
@@ -135,6 +162,8 @@ public enum RecordingEvent: Equatable, Sendable {
 
 public enum RecordingEffect: Equatable, Sendable {
 
+    case claimFolder(id: UInt64)
+    case releaseFolder(id: UInt64, token: UInt64)
     case prepareCallAudio(id: UInt64)
     case releaseCallAudio(id: UInt64)
     /// Work for one of the session's pieces.
@@ -159,6 +188,12 @@ public struct RecordingReducer: Sendable {
         var state = state
         if let id = state.session?.id {
             switch event {
+            case let .folderClaimed(reported, answer) where reported == id && state.stage == .claiming:
+                return claimed(state, id, answer)
+            case let .callAudioReleased(reported) where reported == id && state.stage == .releasing:
+                guard let token = state.folderToken else { return advance(Self.policy(state, .sessionReported(id: id, .ended))) }
+                state.stage = .releasingClaim
+                return (state, .releaseFolder(id: id, token: token))
             case let .callAudioPrepared(reported, ready, liveText) where reported == id && state.stage == .preparing:
                 if !ready { state.missing.insert(.callAudioAccess) }
                 guard ready, state.phase != .ending else { return Self.release(&state, id) }
@@ -166,14 +201,44 @@ public struct RecordingReducer: Sendable {
                 return advancePieces(state, id, .begin(liveText: liveText))
             case let .session(reported, event) where reported == id && state.stage == .pieces:
                 return advancePieces(state, id, event)
-            case .callAudioPrepared, .session:
+            case .callAudioPrepared, .session, .folderClaimed, .callAudioReleased:
                 return (state, nil)
             default:
                 break
             }
-        } else if case .callAudioPrepared = event { return (state, nil) }
-        else if case .session = event { return (state, nil) }
+        } else {
+            switch event {
+            case .callAudioPrepared, .session, .folderClaimed, .callAudioReleased: return (state, nil)
+            default: break
+            }
+        }
         return advance(Self.policy(state, event))
+    }
+
+    /// A grant goes on to call audio, or is released at once after a stop; a move's refusal keeps
+    /// the start waiting, or takes again if that move has already ended; any other refusal ends it.
+    private func claimed(_ state: RecordingState, _ id: UInt64, _ answer: CallsFolderAnswer) -> (RecordingState, RecordingEffect?) {
+
+        var state = state
+        switch answer {
+        case let .granted(token):
+            state.folderToken = token
+            if state.phase == .ending {
+                state.stage = .releasingClaim
+                return (state, .releaseFolder(id: id, token: token))
+            }
+            state.stage = .preparing
+            return (state, .prepareCallAudio(id: id))
+        case .refusedByMove where state.phase != .ending:
+            if state.moveEnds > state.claimSince, !state.folderMoving {
+                state.claimSince = state.moveEnds
+                return (state, .claimFolder(id: id))
+            }
+            state.pendingStart = state.session?.origin
+        case .refusedByMove, .refused:
+            break
+        }
+        return advance(Self.policy(state, .sessionReported(id: id, .ended)))
     }
 
     /// Starts the next piece of the current session's work, one at a time.
@@ -186,8 +251,9 @@ public struct RecordingReducer: Sendable {
             // Ended before any work started: nothing to bring down or release.
             return advance(Self.policy(state, .sessionReported(id: id, .ended)))
         case nil where state.phase == .beginning || state.phase == .recording:
-            state.stage = .preparing
-            return (state, .prepareCallAudio(id: id))
+            state.stage = .claiming
+            state.claimSince = state.moveEnds
+            return (state, .claimFolder(id: id))
         case .pieces? where state.phase == .ending && !Self.goingDown(state.pieces):
             return advancePieces(state, id, .end)
         default:
@@ -242,7 +308,7 @@ public struct RecordingReducer: Sendable {
 
         var state = state
         switch event {
-        case .callAudioPrepared, .session:
+        case .callAudioPrepared, .session, .folderClaimed, .callAudioReleased:
             return state
         case .shutdown:
             guard state.shutdown == nil else { return state }
@@ -272,7 +338,7 @@ public struct RecordingReducer: Sendable {
                 state.pendingCall = true
                 return state
             }
-            if state.storageReserved, state.shutdown == nil {
+            if state.storageReserved || state.folderMoving, state.shutdown == nil {
                 if state.pendingStart == nil { state.pendingStart = .call }
                 return state
             }
@@ -288,7 +354,7 @@ public struct RecordingReducer: Sendable {
             return end(&state)
 
         case .userStart:
-            if state.storageReserved, state.shutdown == nil { state.pendingStart = .hand; return state }
+            if state.storageReserved || state.folderMoving, state.shutdown == nil { state.pendingStart = .hand; return state }
             return begin(&state, origin: .hand)
 
         case .userStop:
@@ -305,7 +371,17 @@ public struct RecordingReducer: Sendable {
             }
             return state
 
+        case .callsFolderMoving:
+            state.folderMoving = true
+            return state
+
         case let .conditionChanged(condition, available):
+            if condition == .callsFolder, state.folderMoving {
+                // The move is over: a lost folder refuses the start that waited for it.
+                state.folderMoving = false
+                state.moveEnds += 1
+                if !available { state.pendingStart = nil }
+            }
             if available { state.missing.remove(condition) }
             else { state.missing.insert(condition) }
             if !available && (condition == .callsFolder || condition == .room) {
@@ -320,6 +396,7 @@ public struct RecordingReducer: Sendable {
             case .ended:
                 state.stage = nil
                 state.pieces = nil
+                state.folderToken = nil
                 state.phase = .idle
                 state.callSilent = false
                 state.callID = nil
@@ -337,7 +414,7 @@ public struct RecordingReducer: Sendable {
     private static func begin(_ state: inout RecordingState, origin: RecordingState.Origin) -> RecordingState {
 
         // Call-audio evidence is refreshed while preparing, including when the last reading failed.
-        guard state.shutdown == nil, !state.storageReserved, state.phase == .idle, state.missing.subtracting([.callAudioAccess]).isEmpty else { return state }
+        guard state.shutdown == nil, !state.storageReserved, !state.folderMoving, state.phase == .idle, state.missing.subtracting([.callAudioAccess]).isEmpty else { return state }
         state.pendingStart = nil
         state.callID = nil
         state.lastSessionID += 1
@@ -363,18 +440,25 @@ public struct RecordingReducer: Sendable {
 /// Dispatches each Recording effect to its collaborator and answers with the event it ends in.
 public final class RecordingEffectHandler: Sendable {
 
+    private let claimFolder: @Sendable () async -> CallsFolderAnswer
+    private let releaseFolder: @Sendable (UInt64) async -> Void
     private let prepareCallAudio: @Sendable () async -> Bool
     private let liveText: @Sendable () -> Bool
     private let releaseCallAudio: @Sendable () async -> Void
     private let runPiece: @Sendable (UInt64, SessionEffect) async -> SessionEvent
 
     /// `liveText` reads the preference a session begins with; `runPiece` runs one piece's work
-    /// for the session with that id and answers with its result.
-    public init(prepareCallAudio: @escaping @Sendable () async -> Bool,
+    /// for the session with that id and answers with its result; `claimFolder` takes the calls-folder
+    /// claim for a recording and `releaseFolder` releases the token it granted.
+    public init(claimFolder: @escaping @Sendable () async -> CallsFolderAnswer,
+                releaseFolder: @escaping @Sendable (UInt64) async -> Void,
+                prepareCallAudio: @escaping @Sendable () async -> Bool,
                 liveText: @escaping @Sendable () -> Bool,
                 releaseCallAudio: @escaping @Sendable () async -> Void,
                 runPiece: @escaping @Sendable (UInt64, SessionEffect) async -> SessionEvent) {
 
+        self.claimFolder = claimFolder
+        self.releaseFolder = releaseFolder
         self.prepareCallAudio = prepareCallAudio
         self.liveText = liveText
         self.releaseCallAudio = releaseCallAudio
@@ -384,12 +468,17 @@ public final class RecordingEffectHandler: Sendable {
     public func handle(_ effect: RecordingEffect) async -> RecordingEvent {
 
         switch effect {
+        case let .claimFolder(id):
+            return .folderClaimed(id: id, await claimFolder())
+        case let .releaseFolder(id, token):
+            await releaseFolder(token)
+            return .sessionReported(id: id, .ended)
         case let .prepareCallAudio(id):
             let ready = await prepareCallAudio()
             return .callAudioPrepared(id: id, ready: ready, liveText: liveText())
         case let .releaseCallAudio(id):
             await releaseCallAudio()
-            return .sessionReported(id: id, .ended)
+            return .callAudioReleased(id: id)
         case let .session(id, effect):
             return .session(id: id, await runPiece(id, effect))
         }

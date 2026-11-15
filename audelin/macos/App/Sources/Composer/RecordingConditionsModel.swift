@@ -95,7 +95,10 @@ private struct RecordingPublication: ConditionPublication {
     func publish(_ condition: RecordingConditions.RecordingCondition, _ availability: Availability) async {
         let mapped = recordingCondition(condition)
         sink.write(.init(category: .conditions, message: "condition=\(mapped) available=\(logged(availability))"))
-        await send(.conditionChanged(mapped, available: availability == .available))
+        switch availability {
+        case .moving: await send(.callsFolderMoving)
+        case .available, .unavailable: await send(.conditionChanged(mapped, available: availability == .available))
+        }
     }
 }
 

@@ -177,7 +177,9 @@ private func withPieces(folderFails: Bool = false, _ body: @Sendable (PiecesRig)
         let finalization = await TranscriptFinalizationModel(diarizing: FinalizationDiarizing(resources: resources),
             cleanup: FinalizationCleanup(resources: resources), replacement: FinalizationReplacement(resources: resources),
             finals: SessionFinals(resources: resources))
-        let recording = await composeRecording(preferences: preferences, occupiedCallNames: { [] }, callApp: app, processes: processes, boundary: boundary,
+        let recording = await composeRecording(preferences: preferences,
+                                               folderClaim: RecordingFolderClaim(storage: callsStorage(folder: preferences.read().callsFolder, timeZone: .current, trash: { _ in })),
+                                               occupiedCallNames: { [] }, callApp: app, processes: processes, boundary: boundary,
                                                panel: panel, finalization: finalization, finalizationResources: resources,
                                                summaries: SummaryCallbacks(waiting: { waiting.append($0) }))
         for condition in [RecordingCondition.callAudioAccess, .microphoneAccess, .callsFolder, .room] {

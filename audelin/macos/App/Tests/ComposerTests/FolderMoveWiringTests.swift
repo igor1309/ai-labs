@@ -91,7 +91,7 @@ struct FolderMoveWiringTests {
             await spy.waitForMove()
             #expect(await spy.moved == ["A"])
             #expect(!inputs.state().callsFolderAvailable)
-            let reserved = try await rig.state { $0.storageReserved && $0.missing.contains(.callsFolder) }
+            let reserved = try await rig.state { $0.storageReserved && $0.folderMoving }
             #expect(reserved.phase == .idle)
             await rig.menu.perform(.start)
             let held = try await rig.state { $0.pendingStart == .hand }

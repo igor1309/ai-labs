@@ -259,6 +259,7 @@ struct CallsWiringTests {
         var state = RecordingState(missing: [])
         state = reducer.reduce(state, .userStart).0
         let session = state.session!.id
+        state = reducer.reduce(state, .folderClaimed(id: session, .granted(token: 1))).0
         state = reducer.reduce(state, .callAudioPrepared(id: session, ready: true, liveText: false)).0
         state = report(.init(callID: "A"), state, session)
         #expect(recordedCallID(state) == "A")

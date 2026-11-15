@@ -144,48 +144,48 @@ rows drive a spy of the claim port and read the delivered event.
 
 ## S-18 A start claims the calls folder before call audio
 
-Missing.
+Evidence: `aStartClaimsTheCallsFolder`; `RecordingClaimTests.aGrantGoesOnToCallAudio_state`, `_effect`; handler: `aClaimAnswersWithTheClaimsAnswerForItsSession`.
 
 ## S-19 A start refused by a relaunch begins nothing
 
-Missing.
+Evidence: `aStartRefusedByARelaunchEnds_state`, `_effect`.
 
 ## S-20 A start refused by a move begins after it
 
-Missing.
+Evidence: `aStartRefusedByAMoveWaits_state`, `_effect`; `theEndOfTheMoveBeginsAWaitingStart_state`, `_effect`; `aLostFolderAfterTheMoveDropsAWaitingStart_state`, `_effect`.
 
 ## S-21 A start refused by a move that has already ended claims again
 
-Missing.
+Evidence: `aRefusalByAMoveThatHasEndedClaimsAgain_state`, `_effect`.
 
 ## S-22 A start while the folder moves begins after the move
 
-Missing.
+Evidence: `aStartWhileTheFolderMovesWaits_state`, `_effect`; `aCallWhileTheFolderMovesWaits_state`, `_effect`; compose: `composedMoveHoldsAStartUntilReleaseAndRefreshesTheList`.
 
 ## S-23 A stop drops a start waiting for a move
 
-Missing.
+Evidence: `aStopDropsAWaitingStart_state`, `_effect`.
 
 ## S-24 A call's end drops its start waiting for a move
 
-Missing.
+Evidence: `aCallsEndDropsItsWaitingStart_state`, `_effect`.
 
 ## S-25 A start by hand outlasts a call's end while waiting
 
-Missing.
+Evidence: `aWaitingStartByHandOutlastsTheCallsEnd_state`, `_effect`.
 
 ## S-26 Late news of a move does not end a recording
 
-Missing.
+Evidence: `lateNewsOfAMoveDoesNotEndARecording_state`, `_effect`.
 
 ## S-27 The claim is released last
 
-Missing.
+Evidence: `releasedCallAudioReleasesTheClaim_state`, `_effect`; `theReleasedClaimEndsTheSession_state`, `_effect`; handler: `releaseAnswersThatCallAudioIsReleased`, `aClaimReleaseReleasesItsTokenAndEndsTheSession`.
 
 ## S-28 A stop during the take releases a late grant
 
-Missing.
+Evidence: `aStopDuringTheTakeWaitsForIt_state`, `_effect`; `aGrantAfterAStopIsReleased_state`, `_effect`; `aRefusalAfterAStopEndsTheStart_state`, `_effect`.
 
 ## S-29 Automatic recording turned off drops only a call's waiting start
 
-Missing.
+Evidence: `automaticOffDropsOnlyACallsWaitingStart_state`, `_effect`.
