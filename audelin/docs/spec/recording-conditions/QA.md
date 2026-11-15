@@ -6,32 +6,32 @@ Run: `cd audelin/macos && ../scripts/swift-test-bounded.sh 600 --filter Recordin
 
 ## S-1 A move makes the folder moving
 
-Missing.
+Evidence: `aMoveMakesTheFolderMoving_state`, `_effect`; `aMoveBeforeAnyReadingMakesTheFolderMoving_state`, `_effect`; `readingDuringAMoveKeepsTheFolderMoving_state`, `_effect`.
 
 ## S-2 A lost folder that starts moving is published again
 
-Missing.
+Evidence: `aLostFolderThatStartsMovingIsPublishedAgain_state`, `_effect`.
 
 ## S-3 The end of a move waits for a fresh reading
 
-Missing.
+Evidence: `theEndOfAMoveAsksForAReading_state`, `_effect`; handler: `aReadingAfterAMoveDeliversTheReadingForThatMove`.
 
 ## S-4 A fresh reading ends the move
 
-Missing.
+Evidence: `theAwaitedReadingEndsTheMove_state`, `_effect`.
 
 ## S-5 A fresh reading can find the folder lost
 
-Missing.
+Evidence: `theAwaitedReadingCanFindTheFolderLost_state`, `_effect`.
 
 ## S-6 Another reading does not end the move
 
-Missing.
+Evidence: `anotherReadingDoesNotEndTheMove_state`, `_effect`.
 
 ## S-7 An earlier move's reading does not end a later move
 
-Missing.
+Evidence: `aNewMoveSupersedesTheAwaitedReading_state`, `_effect`; `anEarlierMovesReadingDoesNotEndALaterMove_state`, `_effect`.
 
 ## S-8 Only the latest move's reading ends moving
 
-Missing.
+Evidence: `onlyTheLatestMovesReadingEndsMoving_state`, `_effect`.
