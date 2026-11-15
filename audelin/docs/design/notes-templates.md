@@ -6,19 +6,18 @@ dark instances under it, and the board "Notes templates — components" in
 [../spec/notes-templates/SPEC.md](../spec/notes-templates/SPEC.md); what
 Daily writes is [../spec/daily-notes/SPEC.md](../spec/daily-notes/SPEC.md).
 
-## Notes bar
+## Regenerate menu
 
-- The first line of the summary is the notes bar. Left: «Шаблон: <name>»
-  (`gutter`, `type-caption`). Right: the Сохранять прежние check box and the
-  Сделать заново pull-down button (`btn`, `chip` while open).
-- Сделать заново opens a menu headed ШАБЛОН that lists every template; the
-  check marks the template of the shown notes. Choosing any template, the
-  checked one included, makes the notes again with it.
-- Сохранять прежние is one choice for every call, on by default. It is the
-  only control for keeping; it does not choose a template.
-- Копировать stays alone in the summary's top-right corner.
-- A call without notes shows «Нет итогов» and a Сделать pull-down with the
-  same menu, and no check box.
+- Two icon buttons sit in the summary's top-right corner, fixed while the
+  text scrolls: the regenerate menu button (SF Symbol
+  `arrow.triangle.2.circlepath`; lucide `refresh-cw` stands in) and
+  Копировать. A call without notes shows only the menu button.
+- The menu has one section of buttons, headed СДЕЛАТЬ ЗАНОВО when the call
+  has notes and СДЕЛАТЬ when it has none. Each button is a template;
+  choosing one makes the notes with it. No template carries a check.
+- Below a separator, Сохранять прежние итоги is a check item for every
+  call, on by default: on keeps the shown notes as Предыдущие, off
+  overwrites them. A call without notes has no such item.
 
 ## Broken templates
 
@@ -30,10 +29,10 @@ Daily writes is [../spec/daily-notes/SPEC.md](../spec/daily-notes/SPEC.md).
 
 ## Which template, and Previous / Current
 
-- The notes bar names the template; the date line under the notes
-  repeats it. Notes made
+- A line above the summary reads «Шаблон: <name>» (`gutter`,
+  `type-caption`); the date line under the notes repeats it. Notes made
   before templates read Default.
-- When a previous set is kept, the bar leads with a Предыдущие / Текущие
+- When a previous set is kept, the line leads with a Предыдущие / Текущие
   segmented control; Текущие is selected after new notes.
 
 ## Making notes again
@@ -49,12 +48,12 @@ Daily writes is [../spec/daily-notes/SPEC.md](../spec/daily-notes/SPEC.md).
 
 | Frame | What it shows |
 |---|---|
-| Calls — regenerate menu | Notes by Default, Сделать заново open, keep on |
-| Calls — generate menu, no notes | «Нет итогов» and Сделать open; no check box |
+| Calls — regenerate menu | Notes by Default, menu open, keep on |
+| Calls — generate menu, no notes | Menu open with СДЕЛАТЬ; no keep item |
 | Calls — regenerate menu, broken template | Daily disabled with its reason; Открыть папку шаблонов |
 | Calls — regenerate menu, no usable files | Only Default enabled; why the files cannot be used |
 | Calls — notes kept, current | Предыдущие / Текущие, Текущие selected, Шаблон: Daily |
 | Calls — remaking notes | Old notes dimmed under the making line |
 | Calls — remake failed | Error banner over the kept notes |
 
-Open: a keyboard shortcut for Сделать заново.
+Open: keyboard shortcuts for the menu's items.

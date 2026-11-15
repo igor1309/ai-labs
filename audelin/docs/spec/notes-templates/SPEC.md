@@ -15,10 +15,9 @@ Oracle: the owner's rulings on LAB-1615.
   stay; Default still works when no file is usable.
 - **An unusable template stays listed, disabled, with its reason** and a way
   to open the folder, so a broken edit is never silent. Its file is untouched.
-- **Making notes again is a button on the notes' first line** whose menu
-  lists the templates; Копировать stays alone.
-- **Keeping previous notes is one check box for all calls, beside that
-  button,** not in Settings, where it is easy to miss. It starts on.
+- **Making notes is a menu beside «Копировать»** whose buttons are the
+  templates.
+- **Keeping previous notes is one check item for all calls, in that menu,** not in Settings, where it is easy to miss. It starts on.
 - **At most Previous and Current per call.** Each new set moves Current to
   Previous and drops the older Previous. No older history.
 - **Notes made before templates existed read as made with Default.**
@@ -61,9 +60,9 @@ Feature: Choosing how a call's notes are written
     When new notes are made
     Then I can read only the new notes
 
-  Scenario: S-8 The keep choice is beside making notes again
+  Scenario: S-8 The keep choice is beside the templates
     Given the shown call has notes
-    When I look beside the button that makes them again
+    When I open the template menu
     Then I can turn keeping previous notes on or off for every call
 
   Scenario: S-9 A failure keeps the notes I had
