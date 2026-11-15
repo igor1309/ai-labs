@@ -86,13 +86,15 @@ public func compose(
                                 await summaries.merged(call: call, parts: parts, entries: entries,
                                                        notesOn: preferences.read().notes.enabled)
                             })
+    let moveClaim = MoveFolderClaim(storage: storage)
     let recordings = makeRecordings(handler: RecordingsEffectHandler(calls: disk,
-                                      reserve: { [weak menu] in await menu?.reserveCallsFolder() ?? false },
-                                      release: { [weak menu] in await menu?.releaseCallsFolder() },
+                                      reserve: moveClaim.take, release: moveClaim.release,
                                       storeFolder: { destination in
                                           try await storage.commitFolder(destination) { try preferences.updateCallsFolder(destination) }
                                       }, describe: { language.language.settings.callsFailure($0) }), text: { language.language.settings },
                                       initial: .init(callsFolder: preferences.read().callsFolder))
+    menu.installMoveHold(subscribeMoveHold({ recordings.state().callsFolderAvailable },
+                                           to: { [weak menu] moving in await menu?.callsFolderMoving(moving) }))
     menu.installMergeAvailability(subscribeMergeAvailability({ [weak menu] in
         idleToMerge(recording: menu?.state.phase ?? .idle, finishing: finalization.state.calls.values.map(\.stage),
                     notesBusy: summaries.busy)
@@ -120,6 +122,18 @@ public func compose(
 }
 
 /// Sends Recordings whether Audelin is idle enough to merge: the current value at once, then each change.
+/// Sends RecordingConditions whether a folder move holds the calls folder, whenever Recordings changes it.
+@MainActor func subscribeMoveHold(_ available: @escaping @MainActor () -> Bool,
+                                  to send: @escaping @MainActor (Bool) async -> Void) -> Task<Void, Never> {
+    Task {
+        var last = true
+        for await available in Observations({ available() }) where available != last {
+            last = available
+            await send(!available)
+        }
+    }
+}
+
 @MainActor func subscribeMergeAvailability(_ idle: @escaping @MainActor () -> Bool,
                                            to send: @escaping @MainActor (RecordingsEvent) -> Void) -> Task<Void, Never> {
     Task {

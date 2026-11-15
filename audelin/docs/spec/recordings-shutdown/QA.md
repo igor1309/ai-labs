@@ -10,7 +10,8 @@ Evidence: `stoppingWithNoMoveSettlesAtOnce`.
 
 ## S-2 A quit during the take releases a late grant
 
-Missing.
+Evidence: `aGrantAfterTheQuitMovesNoCallAndReleasesAtOnceBeforeSettling`,
+`stoppingSettlesWhenTheMoveIsRefused`.
 
 ## S-3 A quit during a move waits for its release
 

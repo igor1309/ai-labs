@@ -75,10 +75,12 @@ struct FolderMoveWiringTests {
     @Test func composedMoveHoldsAStartUntilReleaseAndRefreshesTheList() async throws {
         try await withComposition { rig in
             let spy = CallsMoveSpy()
-            let inputs = makeRecordings(handler: .init(calls: spy,
-                reserve: { await rig.menu.reserveCallsFolder() },
-                release: { await rig.menu.releaseCallsFolder() }, storeFolder: { await spy.store($0) }, describe: russianSettings.callsFailure),
+            let claim = MoveFolderClaim(storage: callsStorage(folder: rig.root, timeZone: .gmt, trash: { _ in }))
+            let inputs = makeRecordings(handler: .init(calls: spy, reserve: claim.take, release: claim.release,
+                storeFolder: { await spy.store($0) }, describe: russianSettings.callsFailure),
                 text: russianSettingsText, initial: .init(callsFolder: rig.root))
+            let hold = subscribeMoveHold({ inputs.state().callsFolderAvailable }, to: { await rig.menu.callsFolderMoving($0) })
+            defer { hold.cancel() }
             let calls = AudelinCalls(inputs: inputs, timeZone: .gmt, now: Date.init, recordingState: { rig.menu.state },
                                     location: { _ in rig.root }, openFolder: { _ in true }, present: {})
             rig.menu.installCalls(calls)
@@ -91,7 +93,7 @@ struct FolderMoveWiringTests {
             await spy.waitForMove()
             #expect(await spy.moved == ["A"])
             #expect(!inputs.state().callsFolderAvailable)
-            let reserved = try await rig.state { $0.storageReserved && $0.folderMoving }
+            let reserved = try await rig.state { $0.folderMoving }
             #expect(reserved.phase == .idle)
             await rig.menu.perform(.start)
             let held = try await rig.state { $0.pendingStart == .hand }
@@ -117,10 +119,12 @@ struct FolderMoveWiringTests {
     @Test func aFailedMoveReleasesTheHeldStartKeepsTheSettingAndRetriesTheRest() async throws {
         try await withComposition { rig in
             let spy = CallsMoveSpy()
-            let inputs = makeRecordings(handler: .init(calls: spy,
-                reserve: { await rig.menu.reserveCallsFolder() },
-                release: { await rig.menu.releaseCallsFolder() }, storeFolder: { await spy.store($0) }, describe: russianSettings.callsFailure),
+            let claim = MoveFolderClaim(storage: callsStorage(folder: rig.root, timeZone: .gmt, trash: { _ in }))
+            let inputs = makeRecordings(handler: .init(calls: spy, reserve: claim.take, release: claim.release,
+                storeFolder: { await spy.store($0) }, describe: russianSettings.callsFailure),
                 text: russianSettingsText, initial: .init(callsFolder: rig.root))
+            let hold = subscribeMoveHold({ inputs.state().callsFolderAvailable }, to: { await rig.menu.callsFolderMoving($0) })
+            defer { hold.cancel() }
             let calls = AudelinCalls(inputs: inputs, timeZone: .gmt, now: Date.init, recordingState: { rig.menu.state },
                                     location: { _ in rig.root }, openFolder: { _ in true }, present: {})
             rig.menu.installCalls(calls)

@@ -67,7 +67,9 @@ moved before are not moved again.
 
 Recording, folder picked: refused while recording, no effect. The
 recording ends: idle. A confirmed move refused the claim by a relaunch:
-refused, no call moves. The relaunch case is Missing.
+refused, no call moves: `recordingRefusesBothTheChoiceAndALateConfirmationAndReservationCanRefuse`;
+compose: `CallsStorageWiringTests` (move claim through `MoveFolderClaim`). A
+relaunch holding the claim is Missing until Lifecycle takes it.
 
 ## S-12 No recording during a move
 
@@ -76,5 +78,7 @@ is granted, and stops publishing it when the release is answered, after a
 moved, failed or stopped move. Compose: while a move holds the folder, the
 calls folder condition reads moving, and reads the disk again when the
 move ends; a call start during the move begins no recording until then.
-Missing.
+Evidence: `confirmsReservesAndMovesOldestFirstBeforeStoringAndRefreshing`,
+`failedMoveKeepsTheOldSettingAndRetryIncludesOnlyRemainingAndNewCalls`;
+compose: `FolderMoveWiringTests`.
 

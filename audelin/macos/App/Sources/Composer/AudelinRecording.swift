@@ -58,6 +58,9 @@ final class AudelinRecording: Sendable {
         await conditions.setStorageMoving(true)
         return true
     }
+    /// Tells RecordingConditions whether a folder move holds the calls folder.
+    func storageMoving(_ moving: Bool) async { await conditions.setStorageMoving(moving) }
+
     func releaseStorage() async {
         await conditions.setStorageMoving(false)
         await inputs.releaseStorage()
