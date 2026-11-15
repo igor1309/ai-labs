@@ -9,7 +9,8 @@ designing, specifying or building anything.
    collaborator as an interface of its own, shaped by the role that
    collaborator plays for it, so it changes only for its own reasons. It
    imports no other component, no concrete implementation and no other
-   component's interface, except as the kinds below allow.
+   component's interface. Composition translates between them; UI may
+   compose other UI and its chosen toolkit.
 2. **The outside world lives only in adapters.** That covers the disk and
    file formats, audio devices, the recognition model, the OS and the UI
    toolkit. A component knows none of them. Each file format has exactly
@@ -19,9 +20,9 @@ designing, specifying or building anything.
    composition root translates between them. Content a component only
    relays is not read: an operator is generic over it and names only what
    it reads (Transcript pipeline).
-4. **The composition root builds and subscribes; it decides nothing.** It is
-   a responsibility and can span several modules (the composer packages
-   and the app). It chooses what answers each interface (a fake, a stub or
+4. **The composition root builds, chooses and connects.** This
+   responsibility can span several modules (the composer packages and the
+   app). It chooses what answers each interface (a fake, a stub or
    the real framework), maps types between ports, subscribes one machine's
    output to another's events and applies decorators. A composer owns the
    interfaces at its boundary and imports whatever it keeps inside. A rule
@@ -30,8 +31,8 @@ designing, specifying or building anything.
    tests.
 5. **Decisions over time are state machines.** A component that keeps state
    across events and others observe on the way is a machine: a pure reducer
-   and an effect handler (`docs/app-shape.md`). One that runs once in a
-   fixed order, keeps nothing between runs and is observed by no one is a
+   and an effect handler. One that runs once in a fixed order, keeps
+   nothing between runs and is observed by no one is a
    plain component. One line of work is one machine: its state holds every
    stage, and its stages are collaborators behind its effect handler, never
    machines that drive each other.
@@ -48,7 +49,7 @@ platform; anything else breaks rule 1. The lanes of
 |---|---|---|
 | Machine | nothing | Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, CallsList, TranscriptFinalization, RecordingConditions, CallNames |
 | Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, LatestText, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch |
-| Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, Calls, CallsStorage, Preferences |
+| Adapter | a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, TemplateFiles, NotesGeneration, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, Calls, CallsStorage, Preferences |
 | Shared helper | nothing | SplitRows, CallFolderName, AudioConversion, ModelLoading |
 | UI | GlassLedger, NotesMarkdown, other UI | PanelUI, SettingsUI, MenuBar, CallsListUI, CallsWindowUI, SummaryPreviewUI, NotesMarkdown, GlassLedger |
 | Composition | anything | Composer, LiveAudio, RecordedCapture, CallsWindowShell, Audelin |
@@ -104,43 +105,166 @@ than its own.
 
 ## Optional call notes
 
-The user overview delegates panel presentation to Live panel and optional
-post-call notes to Call summaries. Existing panel scenario identities and
-wording are preserved as that responsibility is separated from the overview.
+SummaryJobs owns making a call's notes; CallDetail owns reading and acting
+on the notes shown. Template files, model answers, published notes and
+preferences each have one boundary owner. The components below own their
+interfaces, including failures; composition translates between them.
 
-SummaryJobs is one state machine for the whole line of a call's notes:
-recovering a saved job, submitting, claiming, dispatching, generating,
-publishing and saving, stopping dispatch and shutdown. Its state holds every
-call's stage; storage, generation and preferences are its collaborators. No
-coordinator, per-call job model or registry of models sits beside it. It
-owns its consumer-owned ports.
-It answers whether a call has notes and where they stand, for any call in
-the calls folder, not only one recorded in this session. Its input is a
-call's final transcript: handed over when a recording's transcript is made
-final, or read from the stored transcript when the user asks for notes,
-retries or a saved job is recovered. It knows nothing of how a transcript
-is made final.
-It decides which calls get notes: a call the user asked for always does, a
-finished recording only while notes are on, which the preferences port
-reports with each prepared job. It holds made notes in a deferred stage while
-a calls-storage transaction runs and publishes them, one at a time, once it
-ends. After shutdown it publishes settled once nothing it started is in
-flight.
-SpeakerIdentification accepts supported identity evidence without rewriting the
-transcript. SummaryRuntime adapts one bounded process or compatible HTTP
-attempt; SummaryFiles owns durable job records and complete note publication.
-Each keeps its own types. SummarySettings owns editable configuration, rendered
-validation/save/load outcomes and its preference/availability ports.
+### Generation
 
-The root maps those ports and decorates attempts with fallback and logging.
-The root sends SummaryJobs each final transcript TranscriptFinalization
-publishes (Transcript finalization), so a call's automatic notes start from
-its final form, and sends it whether a calls-storage transaction is running.
-On quit the root sends SummaryJobs stop dispatch at once, and shutdown only
-after TranscriptFinalization publishes settled, so the last final
-transcripts reach it first (Shutdown). Neither machine waits on the other.
-Root storage integration coordinates publication with call rename, deletion,
-merging and calls-folder moves.
+**SummaryJobs** is one state machine for the whole generation line, from
+recovering or accepting a request through preparing, claiming, generating,
+validating and committing its result, including cancellation and shutdown.
+Its observable state holds every call's progress, resolved template,
+retention choice, candidate notes and outstanding work. A pure reducer
+advances it; its effect handler only dispatches to collaborators and sends
+back their results. No stage has another machine or job bookkeeping
+outside this state.
+
+Its own ports resolve a template, read the final transcript and generation
+preferences, claim and recover attempts, identify speakers, make validated
+notes, and commit or discard an attempt. It offers progress, failures,
+cancellation availability and completed-publication notifications keyed by
+call. It admits another run after success, as well as a first run or
+retry, and excludes overlapping attempts for a call. An explicit request
+runs regardless of whether automatic notes are enabled. Automatic notes
+use Default; there is no automatic template selection.
+
+Preparing a new run resolves the selected template afresh and captures it
+and the global keep choice for that run. Durable attempts keep this
+resolved content so recovery uses the same instructions and heading
+requirements. Existing notes are independent of an attempt: failure or
+cancellation leaves both published versions intact. Only an accepted,
+successful publication changes them. SummaryJobs chooses rotation while
+keeping is on and replacement while off, and orders cancellation and
+completion. It defers publication while calls storage is moving or
+committing and publishes settled on shutdown only once its outstanding
+work has ended.
+
+**TemplateFiles** owns Audelin's template folder, its format, parsing and
+usability checks. It offers a catalogue with each entry's availability and
+reason, resolution of an entry into instructions and heading requirements,
+and opening the folder. Its dependencies are its own disk and
+folder-opening bindings. It writes shipped Default and Daily only when the
+folder is absent; an existing folder is never replenished. A bad file
+remains an unusable entry and is never rewritten. Folder failures are
+reported too. A built-in Default can always be resolved independently of
+those files; an unusable Default file remains visible with its reason
+alongside that fallback. A missing or broken explicitly chosen template is
+reported, never silently replaced by another template.
+
+Default's shipped content preserves the existing notes contract. Daily's
+content asks for continuation, owned actions, blockers, planned fixes and
+meetings, distinguishing agreements from suggestions and marking unstated
+information and topics not discussed. These are template contents, owned
+only by TemplateFiles, rather than generation branches or headings
+repeated in composition or the answer reader.
+
+**NotesGeneration** is the adapter for the notes request and model-answer
+contract. It offers one validated notes attempt from a transcript,
+accepted speaker evidence and resolved template instructions and heading
+requirements. It owns faithful base instructions, request construction,
+Markdown answer parsing and structural validation against that template's
+required and optional headings and nonempty sections. Its own text-attempt
+port is answered by SummaryRuntime through composition. It keeps no work
+between calls. Structural validation does not establish the truth of model
+claims. The root decorates a complete validated attempt with runtime
+fallback and logging, so an invalid answer can try the configured fallback
+too. SummaryRuntime continues to own bounded process and HTTP execution;
+SpeakerIdentification continues to validate identity evidence.
+SummarySettings owns editable runtime configuration, rendered validation,
+load and save outcomes, and its preference and availability ports.
+
+### Published notes and the keep choice
+
+**SummaryFiles** owns all durable attempts and published notes, including
+their encoding, recovery and compatibility with older calls. Its own ports
+locate a call within a storage transaction and perform disk operations. It
+offers attempt storage and publication, and reads Previous and Current
+with their text, made date and template identity and display name. Saved
+template attribution survives edits or removal of the template file. An
+older call's notes read as Current made with Default, without requiring a
+rewrite.
+
+Publication commits the successful attempt and the complete pair together,
+applying the requested rotation or replacement. Rotation moves Current to
+Previous and drops the older Previous; replacement keeps only new Current.
+A failed publication or discarded attempt leaves the pair unchanged.
+SummaryFiles owns this durable boundary and its recovery; it reads no
+preferences. Readers see a complete pair whose completion agrees with what
+was published. CallsStorage provides transaction exclusion with rename,
+deletion, merges and folder moves; it does not interpret notes or template
+metadata.
+
+**Preferences** owns persistence and missing-value defaults for the one
+global keep choice, initially on. It offers reading, updating only that
+choice and observing successful changes through its settings-storage
+binding. Other preference updates preserve it. Toggling it does not prune
+saved notes; it affects subsequent runs. The menu edits it through
+CallDetail's preference port; SummaryJobs reads it through its own port.
+SummarySettings and SettingsUI do not own or display this choice.
+
+SummaryFiles is the only reader of published notes. **Calls** offers call
+folders and transcripts, without reading notes files. **CallsStorage**
+continues to expose those transcript reads and folder transactions.
+Composition supplies search and list gists with Current from SummaryFiles
+alongside the transcript from CallsStorage; neither interprets note
+storage or exposes Previous as another call.
+
+### Presentation and menu
+
+**CallDetail** is the state machine for the shown call, including the
+template menu and Previous/Current selection. Its state holds the
+published pair, shown version and template attribution, catalogue and
+unusable-entry reasons, keep choice and preference outcomes, and rendered
+progress or failure alongside existing notes. Its pure reducer decides
+first-notes versus make-again availability. Opening the menu refreshes the
+catalogue. Choosing a template publishes a request for that call and
+template; making again publishes a request for the template of the shown
+version. A removed or unusable template cannot be used for make-again;
+Default remains available.
+
+Its own ports read published notes and the catalogue, read and save the
+keep choice, and open the templates folder. Formatting is injected as pure
+dependencies. Its effect handler only dispatches these operations and
+returns their outcomes. It publishes generation and cancellation
+intentions; root subscriptions deliver them to SummaryJobs and return
+progress and publication notifications. It never drives that machine from
+an effect, reads its internals or waits for its work. Changing the
+selected call does not stop generation. Superseded reads cannot replace
+the shown call; failed or cancelled regeneration leaves the existing pair
+readable with its outcome. Copy uses the shown version.
+
+**SummaryPreviewUI** renders supplied detail, version choices, template
+attribution and the menu button beside Copy, including disabled templates
+and reasons, the folder action and global keep control. It emits user
+interactions and owns only layout, styling and toolkit behaviour, with no
+observable model or availability policy.
+
+### Construction, ownership and connections
+
+The **Composer** composition root constructs the app-lifetime SummaryJobs
+machine, TemplateFiles, NotesGeneration, SummaryFiles and Preferences. The
+app retains the assembled machines, boundaries and subscriptions until
+shutdown; collaborators are retained through the supplied consumer ports.
+It constructs CallDetail for the lifetime of each detail presentation and
+holds it with the calls-window composition. CallDetail's state supplies
+SummaryPreviewUI, held by its view hierarchy. The root constructs and
+holds Calls and CallsStorage with the calls composition for the app
+lifetime. No instance is built per job.
+
+Composer maps each consumer's ports to these concrete pieces and
+subscribes intentions, progress, publication notifications and global
+preference changes. **CallsWindowShell** constructs the detail view from
+supplied presentation values and maps its interactions back to CallDetail;
+the app owns that window and its view hierarchy. Both composition packages
+keep mappings and subscriptions, without prompt, validation, persistence
+format or menu policy.
+
+The root sends SummaryJobs final transcripts from TranscriptFinalization
+and storage-transaction availability. On quit it stops dispatch, then
+sends shutdown after TranscriptFinalization publishes settled, so the last
+final transcripts arrive first. Neither machine waits on the other.
 
 ## Shutdown
 
@@ -184,18 +308,11 @@ state and releases it through its own effect, also when it stops before
 its claim was answered. The claim enforces exclusion only; whether Audelin
 is idle and when to relaunch are decided by Recordings and Lifecycle.
 
-SummaryFiles is also the one reader of published notes: it gives a call's
-notes text and made date, none, or why they cannot be read. CallDetail is the
-state machine for what the calls window shows beside the list. Its state
-holds the selected call's display fields and summary status, the notes read
-for it and the rendered detail. Its pure reducer decides between notes,
-unreadable notes, a pending or failed summary and no summary. A selection,
-summary update or notes change asks its effect handler to read notes;
-superseded answers cannot replace the current detail. The previous detail
-stays visible until the selected call's read answers, and no selection
-clears it. Asked to open the selected call in its own window, CallDetail
-holds the request until that call's read answers, then publishes the call
-as ready to open; another selection drops the request.
+CallDetail also owns opening the shown call in its own window. It holds
+the request until that call's notes read answers, then publishes the call
+as ready to open; another selection drops the request. The previous detail
+stays visible until the selected call's read answers; clearing selection
+clears it.
 
 CallsList is the state machine for the list's own actions. Its state holds
 the selection, which a search can hide and show again, the inline rename
@@ -222,9 +339,8 @@ ready to open.
 The user can make notes for a call that has none, cancel them while they
 are being made and retry a failed summary. The composer sends these
 actions to SummaryJobs, whose work continues when another call is selected.
-CallDetail only decides what the selected call shows; its effect handler
-reads notes and never starts, cancels or retries their generation. Calls
-lists folders and reads transcripts through Transcript format.
+CallDetail publishes the shown call's intentions; its effect handler never
+starts, cancels or retries generation. Calls lists folders and reads transcripts through Transcript format.
 
 ## Merging calls
 
