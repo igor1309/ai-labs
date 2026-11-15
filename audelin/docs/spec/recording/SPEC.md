@@ -59,16 +59,17 @@ effect handler, and its result comes back as a Recording event.
   reports what happened to the live file, in one ordered stream for the
   life of Recording, each value keyed by the call's folder, none dropped
   or merged:
-  - **opened**, once the transcript file is open, with what making it
-    final needs: the file, the two track files and how far audio was
-    captured on each side;
+  - **opened**, once the transcript file is open;
   - **wrote** with the call text saved, once a live save returns, or
     **write failed** when it throws;
   - **closed** with the speaker names, read once, after the file closes.
 
   A recording whose transcript never opened sends nothing. Values of one
   call come in that order, and one call's closed comes before the next
-  call's opened. Recording knows nothing of who reads the output: compose
+  call's opened. The output holds values only: the handles needed to make
+  a transcript final (its writer, the track files, how far audio was
+  captured) go to compose's resource store when the file opens, before
+  opened is sent, and are not part of the output. Recording knows nothing of who reads the output: compose
   subscribes it and sends each value on, so no piece of a recording
   sends to another machine.
 - **Shutdown settles after the transcript output.** On shutdown the current
