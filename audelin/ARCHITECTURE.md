@@ -217,11 +217,12 @@ template menu and Previous/Current selection. Its state holds the
 published pair, shown version and template attribution, catalogue and
 unusable-entry reasons, keep choice and preference outcomes, and rendered
 progress or failure alongside existing notes. Its pure reducer decides
-first-notes versus make-again availability. Opening the menu refreshes the
-catalogue. Choosing a template publishes a request for that call and
-template; making again publishes a request for the template of the shown
-version. A removed or unusable template cannot be used for make-again;
-Default remains available.
+whether the menu's section is make (no notes) or make again (notes), and
+whether the keep item is offered (only with notes). Opening the menu
+refreshes the catalogue. Every menu action is a template: choosing one
+publishes a request for that call and template, the template of the shown
+notes included. An unusable template cannot be chosen; Default remains
+available.
 
 Its own ports read published notes and the catalogue, read and save the
 keep choice, and open the templates folder. Formatting is injected as pure
@@ -238,8 +239,9 @@ the shown call; failed or cancelled regeneration leaves the existing pair
 readable with its outcome. Copy uses the shown version.
 
 **SummaryPreviewUI** renders supplied detail, version choices, template
-attribution and the menu button beside Copy, including disabled templates
-and reasons, the folder action and global keep control. It emits user
+attribution and the regenerate menu button trailing Copy: one section of
+template items headed make or make again, disabled templates with reasons,
+the folder action and the global keep check item. It emits user
 interactions and owns only layout, styling and toolkit behaviour, with no
 observable model or availability policy.
 
