@@ -429,41 +429,52 @@ Recordings.
 ## Call tags
 
 The user tags calls by hand and finds them by tags (LAB-1617,
-`docs/spec/call-tags/`). Five responsibilities are new: the tags file,
-the tag rules, changing a call's tags, editing them, and keeping parts'
-tags on a merge.
+`docs/spec/call-tags/`). New responsibilities: the tags file, the tag
+rules, matching tags in search, the filter and the tags editor, changing
+a call's tags, and keeping the parts' tags on a merge.
 
 **TagsFile** is the only reader and writer of a call's `tags.txt`; outward
-it speaks a call's tags as words. It writes through CallsStorage's
-location and transaction port, as SummaryFiles does, so a tag write never
-lands in a moving folder. Calls keeps listing folders without reading it.
+it speaks a call's tags as words, and tells an absent file (no tags) from
+an unreadable one. It reads and writes in a folder it is given; every
+write runs inside a CallsStorage operation, so it never lands in a moving
+folder.
 
 **CallTags** is a plain operator holding the tag rules: folding case and
 ё/е, trimming and deduplicating, taking `#tag` words out of a query,
 keeping calls that have every chosen tag, and the tags in use, most used
-first. It keeps its own folding; CallsSearch never learns of tags, since
-the composition passes a call's tags to it as more title text.
+first. It keeps its own folding.
 
-**Recordings owns changing a call's tags,** through one new port: set this
-call's tags, reporting set or why not. A tag write changes a listed call,
-as rename does, and must exclude a move or a merge, which one state
-already holds. It reloads its list after the write.
+**CallsSearch matches tags as tags.** Its contract takes a call's tags
+beside its title and reports tag matches apart from title matches, so title
+ranges stay ranges into the shown title and no phrase spans title and tag.
 
-**CallsList holds the tags being edited,** as it holds the inline rename:
-its reducer commits the draft when the selection moves, drops it on
-cancel, and publishes a set-tags request the composer routes to
-Recordings, sending the outcome back as an event.
+**Recordings owns the listed calls' tags and changing them.** Its list
+port answers each call with its tags or that they are unreadable; the
+composition answers it with Calls' listing and a TagsFile read per call in
+one CallsStorage operation. Every reload therefore refreshes tags: opening
+the window, a save, a merge, a rename, and a refresh, which also picks up
+an edit made outside the app. A list answer is applied only if it answers
+the latest list request, so an older read never overwrites a newer save.
+Its one new port, set this call's tags, reports set or why not; it admits
+the write only when no move or merge holds the calls and reloads after it.
 
-The calls composition holds the chosen filter tags beside the search
-query, and both reset when the calls window opens. On each change it asks
-CallTags to split the query, filter the listed calls and list the strip's
-tags. It supplies each row's and the detail's tags from TagsFile alongside
-the list, as it supplies gists from SummaryFiles.
+**CallsList owns the filter and the tags editor.** Its state holds the
+query, the chosen tags (both reset when the window is shown) and the
+editor: the call being edited, the draft, and the submitted tags while a
+save is pending. It asks CallTags to split the query and filter the list.
+Return or a selection move submits the draft for that call; the draft is
+kept until the outcome for that call and those tags arrives, so a failed
+save shows the failure with the draft still there to retry, and a late
+outcome for another call or older tags is ignored. A call saved out of the
+active filter leaves the list once the save succeeds. The composer only
+routes the request to Recordings and its outcome back.
 
-**A merge keeps its parts' tags** through a decorator at the root over
-Recordings' merge port: it reads the parts' tags through TagsFile before
-the merge and writes their union to the merged call after it. Neither
-Recordings nor Calls learns of tags.
+**A merge writes the union of the parts' tags before it publishes.** In
+the merge's write step, inside the prepared folder and within the same
+CallsStorage operation, the composition reads each part's tags and writes
+their union with TagsFile beside the joined transcript. A tags write
+failure fails the merge and puts every part back, as a transcript write
+failure does. Calls and Recordings do not learn of tags.
 
 CallsListUI draws row tags and the filter strip; the detail header draws
 the tags line and its editing field. They render state and send events.

@@ -41,3 +41,17 @@ both; a failed merge writes no tags.
 ## S-10 No filter without tags
 
 With no `tags.txt` in any call, the strip's tags are empty.
+
+## Review rows (LAB-1617 architecture challenge)
+
+- **Merge tag failure:** a TagsFile write failing in the merge's write
+  step leaves no merged call, every part back in place with its own
+  `tags.txt`, and the merge reported failed.
+- **Tag-only search:** a call matched only by its tag `бюджет` is found
+  with a tag match and no title ranges.
+- **Stale read:** a list answer older than the latest request, arriving
+  after a save, is ignored; the saved tags stay shown.
+- **Failed save after moving selection:** a save that fails after the
+  selection moved shows the failure for the edited call, with its draft.
+- **External edit:** a `tags.txt` changed outside the app shows after a
+  refresh; an unreadable one shows as unreadable, an absent one as no tags.
