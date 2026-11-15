@@ -39,7 +39,7 @@ public final class AudelinCalls {
     private let makeSummary: (String) -> Void
     private let cancelSummary: (String) async -> Void
     /// The list's selection and rename editing.
-    private let list = SyncModel<CallsListMachineState, CallsListMachineEvent>(initialState: .init(), reduce: CallsListReducer(splitQuery: { let query = CallTags.query($0); return (query.tags, query.text) }, tagKey: CallTags.key).reduce)
+    private let list = SyncModel<CallsListMachineState, CallsListMachineEvent>(initialState: .init(), reduce: CallsListReducer(splitQuery: { let query = CallTags.query($0); return (query.tags, query.text) }, tagKey: CallTags.key, normalizeTags: CallTags.normalized).reduce)
     private var withNotes: Set<String> = []
     /// Each call's gist, read with its notes.
     private var gists: [String: String] = [:]
@@ -336,6 +336,7 @@ public final class AudelinCalls {
         for request in list.state.requests {
             switch request {
             case let .rename(id, title): inputs.send(.rename(id: id, title: title))
+            case let .setTags(request, id, tags): inputs.send(.setTags(request: request, id: id, tags: tags))
             case .clearFailure: inputs.send(.clearFailure)
             case let .retrySummary(id):
                 let succeeded: Bool

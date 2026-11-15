@@ -83,7 +83,10 @@ private final class Spy<Payload: Sendable, Answer: Sendable>: Sendable {
 
 private func makeSUT(split: Spy<String, (tags: [String], text: String)>,
                      key: Spy<String, String> = .init(transform: { $0.lowercased() })) -> CallsListReducer {
-    CallsListReducer(splitQuery: { split.call($0) }, tagKey: { key.call($0) })
+    CallsListReducer(splitQuery: { split.call($0) }, tagKey: { key.call($0) }, normalizeTags: { _ in
+        Issue.record("No tags are saved while filtering")
+        return []
+    })
 }
 
 private func makeState(query: String = "", chosenTags: [String] = [], filterTags: [String] = [],

@@ -14,6 +14,23 @@ public struct CallsListMachineState: Equatable, Sendable {
         }
     }
 
+    /// The one call whose tags are being edited, its draft, and while a save is pending its request id.
+    public struct TagsEditor: Equatable, Sendable {
+        public var id: String
+        public var draft: [String]
+        public var pending: Int?
+        /// Why the last save failed; the draft stays for a retry.
+        public var failure: String?
+        public init(id: String, draft: [String], pending: Int? = nil, failure: String? = nil) {
+            self.id = id; self.draft = draft; self.pending = pending; self.failure = failure
+        }
+    }
+
+    /// How a tags save ended, as Recordings answers it, echoing the request id.
+    public enum TagsOutcome: Equatable, Sendable {
+        case saved, failed(String)
+    }
+
     public struct Editing: Equatable, Sendable {
         public var id: String
         public var title: String
@@ -30,6 +47,7 @@ public struct CallsListMachineState: Equatable, Sendable {
         case clearFailure
         case retrySummary(String)
         case openFolder(String)
+        case setTags(request: Int, id: String, tags: [String])
     }
 
     /// Why the list's own last action failed.
@@ -70,14 +88,18 @@ public struct CallsListMachineState: Equatable, Sendable {
     public var filterTags: [String]
     /// The query without its `#tag` words, searched for in titles, tags, transcripts and notes.
     public var searchText: String
+    public var tagsEditor: TagsEditor?
+    /// The last tags request id given; each submit takes the next.
+    public var tagsRequest: Int
 
     public init(rows: [Row] = [], busy: Bool = false, selectedID: String? = nil, editing: Editing? = nil,
                 retrying: Set<String> = [], failure: Failure? = nil, opening: Bool = false,
                 requests: [Request] = [], asked: Int = 0, query: String = "", chosenTags: [String] = [],
-                filterTags: [String] = [], searchText: String = "") {
+                filterTags: [String] = [], searchText: String = "", tagsEditor: TagsEditor? = nil, tagsRequest: Int = 0) {
         self.rows = rows; self.busy = busy; self.selectedID = selectedID; self.editing = editing
         self.retrying = retrying; self.failure = failure; self.opening = opening; self.requests = requests; self.asked = asked
         self.query = query; self.chosenTags = chosenTags; self.filterTags = filterTags; self.searchText = searchText
+        self.tagsEditor = tagsEditor; self.tagsRequest = tagsRequest
     }
 }
 
@@ -100,20 +122,28 @@ public enum CallsListMachineEvent: Equatable, Sendable {
     case search(String)
     /// A chip of the filter strip was clicked: its tag is chosen, or no longer.
     case toggleTag(String)
+    /// Starts editing a call's tags; unavailable while another call's save is pending.
+    case beginTags(String)
+    case editTags([String])
+    case cancelTags, submitTags
+    case tagsFinished(request: Int, CallsListMachineState.TagsOutcome)
 }
 
 public struct CallsListReducer: Sendable {
     private let splitQuery: @Sendable (String) -> (tags: [String], text: String)
     private let tagKey: @Sendable (String) -> String
+    private let normalizeTags: @Sendable ([String]) -> [String]
 
     /// `splitQuery` takes a query's `#tag` words out of its text; `tagKey` is the form two tags
-    /// are compared in.
+    /// are compared in; `normalizeTags` makes a draft the tags to save.
     public init(splitQuery: @escaping @Sendable (String) -> (tags: [String], text: String),
-                tagKey: @escaping @Sendable (String) -> String) {
-        self.splitQuery = splitQuery; self.tagKey = tagKey
+                tagKey: @escaping @Sendable (String) -> String,
+                normalizeTags: @escaping @Sendable ([String]) -> [String]) {
+        self.splitQuery = splitQuery; self.tagKey = tagKey; self.normalizeTags = normalizeTags
     }
 
     public func reduce(_ state: CallsListMachineState, _ event: CallsListMachineEvent) -> CallsListMachineState {
+        let asked = state.asked
         var state = state
         switch event {
         case let .rowsChanged(rows, busy):
@@ -125,7 +155,7 @@ public struct CallsListReducer: Sendable {
             guard !state.busy, let row = state.rows.first(where: { $0.id == id }), row.editable else { return state }
             state.editing = .init(id: id, title: row.title)
             state.failure = nil
-            ask([.clearFailure], &state)
+            ask([.clearFailure], &state, since: asked)
         case let .editTitle(title): state.editing?.title = title
         case .cancelRename: state.editing = nil
         case .askDelete:
@@ -139,6 +169,7 @@ public struct CallsListReducer: Sendable {
             state.chosenTags = []
             state.filterTags = []
             state.searchText = ""
+            if state.tagsEditor?.pending == nil { state.tagsEditor = nil }
         case let .search(query):
             state.query = query
             filter(&state)
@@ -150,12 +181,35 @@ public struct CallsListReducer: Sendable {
                 state.chosenTags.append(tag)
             }
             filter(&state)
-        case .submitRename: commitRename(&state)
+        case .submitRename: commitRename(&state, since: asked)
+        case let .beginTags(id):
+            guard !state.busy, let row = state.rows.first(where: { $0.id == id }), row.editable else { return state }
+            if let editor = state.tagsEditor {
+                guard editor.id != id else { return state }
+                guard editor.pending == nil else { return state }
+            }
+            state.tagsEditor = .init(id: id, draft: row.tags)
+        case let .editTags(draft):
+            state.tagsEditor?.draft = draft
+        case .cancelTags:
+            guard state.tagsEditor?.pending == nil else { return state }
+            state.tagsEditor = nil
+        case .submitTags: submitTags(&state, since: asked)
+        case let .tagsFinished(request, outcome):
+            guard let editor = state.tagsEditor, editor.pending == request else { return state }
+            switch outcome {
+            case .saved: state.tagsEditor = nil
+            case let .failed(reason):
+                state.tagsEditor?.pending = nil
+                state.tagsEditor?.failure = reason
+            }
         case let .select(id):
-            if state.editing?.id != id { commitRename(&state) }
+            if state.editing?.id != id { commitRename(&state, since: asked) }
+            if state.tagsEditor?.id != id { submitTags(&state, since: asked, moving: true) }
             state.selectedID = id
         case .selectNext, .selectPrevious:
-            commitRename(&state)
+            commitRename(&state, since: asked)
+            submitTags(&state, since: asked, moving: true)
             guard !state.rows.isEmpty else { return state }
             let step = event == .selectNext ? 1 : -1
             let index = state.rows.firstIndex { $0.id == state.selectedID }
@@ -167,13 +221,13 @@ public struct CallsListReducer: Sendable {
                   row.editable, row.canRetry else { return state }
             state.retrying.insert(id)
             state.failure = nil
-            ask([.clearFailure, .retrySummary(id)], &state)
+            ask([.clearFailure, .retrySummary(id)], &state, since: asked)
         case let .open(id):
             guard !state.busy, !state.opening else { return state }
             state.editing = nil
             state.failure = nil
             state.opening = true
-            ask([.clearFailure, .openFolder(id)], &state)
+            ask([.clearFailure, .openFolder(id)], &state, since: asked)
         case let .openFinished(id, outcome):
             guard state.opening else { return state }
             state.opening = false
@@ -189,6 +243,16 @@ public struct CallsListReducer: Sendable {
         return state
     }
 
+    /// Saves the draft under a new request id; an answer to an earlier one no longer applies.
+    /// Return always submits; a selection move submits only a draft not already pending.
+    private func submitTags(_ state: inout CallsListMachineState, since asked: Int, moving: Bool = false) {
+        guard let editor = state.tagsEditor, !moving || editor.pending == nil else { return }
+        state.tagsRequest += 1
+        let tags = normalizeTags(editor.draft)
+        state.tagsEditor = .init(id: editor.id, draft: editor.draft, pending: state.tagsRequest)
+        ask([.setTags(request: state.tagsRequest, id: editor.id, tags: tags)], &state, since: asked)
+    }
+
     private func filter(_ state: inout CallsListMachineState) {
         let split = splitQuery(state.query)
         var keys = Set<String>()
@@ -196,14 +260,16 @@ public struct CallsListReducer: Sendable {
         state.searchText = split.text
     }
 
-    private func commitRename(_ state: inout CallsListMachineState) {
+    private func commitRename(_ state: inout CallsListMachineState, since asked: Int) {
         guard let edit = state.editing else { return }
         state.editing = nil
         state.failure = nil
-        ask([.rename(id: edit.id, title: edit.title)], &state)
+        ask([.rename(id: edit.id, title: edit.title)], &state, since: asked)
     }
 
-    private func ask(_ requests: [CallsListMachineState.Request], _ state: inout CallsListMachineState) {
+    /// One event's requests, in order: a second ask in the same event adds to the first.
+    private func ask(_ requests: [CallsListMachineState.Request], _ state: inout CallsListMachineState, since asked: Int) {
+        if state.asked > asked { state.requests += requests; return }
         state.requests = requests
         state.asked += 1
     }
