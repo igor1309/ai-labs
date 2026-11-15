@@ -9,9 +9,9 @@ Daily writes is [../spec/daily-notes/SPEC.md](../spec/daily-notes/SPEC.md).
 ## Regenerate menu
 
 - Two icon buttons sit in the summary's top-right corner, fixed while the
-  text scrolls: the regenerate menu button (SF Symbol
-  `arrow.triangle.2.circlepath`; lucide `refresh-cw` stands in) and
-  Копировать. A call without notes shows only the menu button.
+  text scrolls: Копировать leading and the regenerate menu button
+  trailing (SF Symbol `arrow.triangle.2.circlepath`; lucide `refresh-cw`
+  stands in). A call without notes shows only the menu button.
 - The menu has one section of buttons, headed СДЕЛАТЬ ЗАНОВО when the call
   has notes and СДЕЛАТЬ when it has none. Each button is a template;
   choosing one makes the notes with it. No template carries a check.
