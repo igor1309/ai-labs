@@ -30,6 +30,7 @@ TARGETS = {
     "SummarySettings": ("machines", "validates and saves call-note settings", 6),
     "SummaryJobs": ("machines", "coordinates durable call-note jobs", 7),
     "SummaryFiles": ("storage", "claims and publishes call notes", 9),
+    "TagsFile": ("storage", "reads and writes a call's tags.txt", 9),
     "SummaryRuntime": ("capture", "executes bounded note requests", 6),
     "BleedCleanup": ("text", "cleans far-side bleed\nfrom the mic after a call", 13),
     "SpeakerIdentification": ("text", "validates self-introduction evidence", 10),
