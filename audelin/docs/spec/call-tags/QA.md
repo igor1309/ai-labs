@@ -30,7 +30,7 @@ A call whose only match is its tag `бюджет` is found, as a title match.
 
 ## S-8 Tags differing in case are one
 
-`Клиент`, `клиент` and `клиeнт` with ё/е folding are one tag, shown as
+`Клиент` and `клиент` are one tag, as are `ёж` and `еж`, shown as
 first written.
 
 ## S-9 A merged call keeps its parts' tags
