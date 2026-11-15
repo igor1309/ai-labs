@@ -55,7 +55,6 @@ let package = Package(
         .library(name: "Reading", targets: ["Reading"]),
         .library(name: "Recording", targets: ["Recording"]),
         .library(name: "SettingsUI", targets: ["SettingsUI"]),
-        .library(name: "Session", targets: ["Session"]),
         .library(name: "SideText", targets: ["SideText"]),
         .library(name: "SystemAudioCapture", targets: ["SystemAudioCapture"]),
         .library(name: "TrackFile", targets: ["TrackFile"]),
@@ -229,9 +228,6 @@ let package = Package(
             name: "SettingsUI",
             dependencies: ["GlassLedger"],
             resources: [.process("Resources")]
-        ),
-        .target(
-            name: "Session"
         ),
         .target(
             name: "SideText"

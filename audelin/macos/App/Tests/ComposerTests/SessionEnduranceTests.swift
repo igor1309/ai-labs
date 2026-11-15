@@ -4,7 +4,7 @@ import Darwin
 import Foundation
 import LiveText
 import PanelUI
-import Session
+import Recording
 import SessionRehearsal
 import Synchronization
 import Testing
@@ -88,6 +88,7 @@ struct SessionEnduranceTests {
             #expect(Double(textStates) / seconds <= 10)
             log("ended in \(ContinuousClock.now - started); failures \(ended.faults), footprint \(footprintMiB()) MiB")
             #expect(ended.faults.isEmpty)
+            await rig.log.wait { $0.category == .session && $0.message.hasPrefix("state ") && $0.message.contains("phase=ended") }
             let finalSession = try #require(rig.log.entries.all.last { $0.category == .session && $0.message.hasPrefix("state ") })
             #expect(finalSession.message.contains("phase=ended"))
             #expect(finalSession.error == nil)

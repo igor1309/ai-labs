@@ -4,7 +4,6 @@ import Observation
 import Reading
 import Recording
 import Recordings
-import Session
 import SettingsUI
 
 /// Each recording's reading model, reducing on the main actor.
@@ -33,17 +32,21 @@ func oneEvent<Event: Sendable>(_ handle: @escaping @Sendable () async -> Event) 
     }
 }
 
-/// Recording's async model on the main actor; its effect handler drives the Session and call audio.
+/// Recording's async model on the main actor; its effect handler runs call audio and the pieces' work.
 @MainActor
 func makeRecording(
-    initial: RecordingState, session: any RecordingSession, log: @escaping @Sendable (RecordingState) -> Void,
+    initial: RecordingState, log: @escaping @Sendable (RecordingState) -> Void,
     callAudioReady: @escaping @Sendable () async -> Bool,
-    callAudioReleased: @escaping @Sendable () async -> Void
+    liveText: @escaping @Sendable () -> Bool,
+    callAudioReleased: @escaping @Sendable () async -> Void,
+    runPiece: @escaping @Sendable (UInt64, SessionEffect) async -> SessionEvent,
+    status: @escaping @Sendable (SessionState) -> RecordingSessionStatus
 ) -> RecordingInputs {
 
-    let handler = RecordingEffectHandler(session: session, prepareCallAudio: callAudioReady,
-                                         releaseCallAudio: callAudioReleased)
-    let model = RecordingModel(initial: initial, handler: handler, log: log)
+    let handler = RecordingEffectHandler(prepareCallAudio: callAudioReady, liveText: liveText,
+                                         releaseCallAudio: callAudioReleased, runPiece: runPiece)
+    let model = RecordingModel(initial: initial, reducer: RecordingReducer(session: SessionReducer.reduce, status: status),
+                               handler: handler, log: log)
     var inputs = RecordingInputs(
         send: { await model.send($0) },
         state: { await model.state },
@@ -62,12 +65,12 @@ final class RecordingModel {
     private let model: ObservableModel<RecordingState, RecordingEvent, RecordingEffect>
     private let feed = StateFeed<RecordingState>()
 
-    init(initial: RecordingState, handler: RecordingEffectHandler, log: @escaping @Sendable (RecordingState) -> Void) {
+    init(initial: RecordingState, reducer: RecordingReducer, handler: RecordingEffectHandler, log: @escaping @Sendable (RecordingState) -> Void) {
 
         let feed = feed
         model = ObservableModel(initialState: initial, reduce: { state, event in
             guard !feed.finished else { return (state, nil) }
-            let (next, effect) = RecordingReducer.reduce(state, event)
+            let (next, effect) = reducer.reduce(state, event)
             if next != state {
                 log(next)
                 feed.publish(next)
@@ -100,63 +103,6 @@ final class RecordingModel {
 
     /// Finishes every states stream; later ones finish at once and later events change nothing.
     func end() { feed.finish() }
-}
-
-/// One Session's model, reducing on its own actor and running its effects through the handler.
-func makeSession(handler: SessionEffectHandler) -> SessionInputs {
-
-    let model = SessionModel()
-    Task { await model.start(handler: handler) }
-    return SessionInputs(
-        send: { model.send($0) },
-        states: { await model.states() },
-        end: { await model.end() }
-    )
-}
-
-/// Holds the observable model on its own actor, off the main actor; callers await the hop.
-actor SessionModel {
-
-    private var model: ObservableModel<SessionState, SessionEvent, SessionEffect>?
-    // The state kept when the model is released at the end.
-    private var ended: SessionState?
-    private let feed = StateFeed<SessionState>()
-    // Events wait here in the order sent until the model takes them, including before it starts.
-    private let inbox = AsyncStream<SessionEvent>.makeStream()
-    private var delivery: Task<Void, Never>?
-    private var finished = false
-
-    func start(handler: SessionEffectHandler) {
-
-        guard !finished else { return }
-        let feed = feed
-        model = ObservableModel(initialState: SessionState(), reduce: { state, event in
-            guard !feed.finished else { return (state, nil) }
-            let (next, effect) = SessionReducer.reduce(state, event)
-            if next != state { feed.publish(next) }
-            return (next, effect)
-        }, handleEffect: { effect in oneEvent { await handler.handle(effect) } }, isolation: self)
-        delivery = Task {
-            for await event in inbox.stream { model?.event(event) }
-        }
-    }
-
-    nonisolated func send(_ event: SessionEvent) { inbox.continuation.yield(event) }
-
-    /// Starts with the current state and retains every change.
-    func states() -> AsyncStream<SessionState> { feed.subscribe(from: model?.state ?? ended ?? .init()) }
-
-    /// Finishes every states stream; later ones finish at once and later events change nothing.
-    func end() async {
-        finished = true
-        // Events sent before the end still reach the model.
-        inbox.continuation.finish()
-        await delivery?.value
-        feed.finish()
-        // The model's loop holds this actor, so the model is released to end both.
-        ended = model?.state
-        model = nil
-    }
 }
 
 /// The termination machine: publishes the quit intention and terminates once every participant settled.

@@ -1,6 +1,6 @@
 import Foundation
 import LiveText
-import Session
+import Recording
 import Synchronization
 import Testing
 

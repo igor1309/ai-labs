@@ -1,4 +1,4 @@
-import Session
+import Recording
 import Synchronization
 import Testing
 
@@ -156,7 +156,7 @@ struct SessionFormattingTests {
         }
         let calls: [FormattingSpy.Call] = failed ? [.failure(.piece(.processes, error: "selection error"))] : []
         #expect(spy.calls == calls)
-        assert(state, event, delivers: .openTrack(.microphone), reducer: sut)
+        assert(state, event, delivers: .openTrack(.microphone, in: anyFolder()), reducer: sut)
         #expect(spy.calls == calls + calls)
     }
 

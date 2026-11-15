@@ -4,7 +4,7 @@ import class CallAppProcesses.CallAppProcesses
 import CallFolder
 import Foundation
 import class LiveText.RecognitionStream
-import Session
+import Recording
 import TrackFile
 import TranscriptFile
 

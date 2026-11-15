@@ -13,7 +13,6 @@ import PanelUI
 import Preferences
 import Reading
 import Recording
-import Session
 import CallsWindowShell
 import os
 import SwiftUI

@@ -59,15 +59,15 @@ its own (a format, a conversion); it holds no domain type, so rule 3
 stands. MenuBar is UI that also holds panel presence's pure reducer; the
 root composes it as a machine.
 
+Recording's reducer is large because a recording has many pieces, so its
+target splits it into files: the Session reducer advances the pieces'
+state inside Recording's state and is not a machine or a module of its own.
+
 ### Open
 
 The code does not yet follow rules 4 and 5 everywhere. Each item below
 becomes part of a machine's state, or is shown to be only mapping:
 
-- Recording and Session are still two machines. Recording's effects begin
-  and end a Session, and the composer keeps one Session model per
-  recording, with continuations that wait for its end. They become the one
-  Recording machine (`docs/app-shape.md`).
 - Recordings reserves the calls folder through Recording and waits on
   Recording's state for the answer. The calls-folder claim (Calls storage)
   replaces it.

@@ -1,5 +1,5 @@
 import Foundation
-import Session
+import Recording
 import Testing
 
 extension SessionReducerTests {
@@ -83,8 +83,8 @@ let stopOrder: [SessionState.Piece] = [
 ]
 
 let openingSteps: [SessionReducerTests.OpeningStep] = [
-    .init(piece: .track(.microphone), next: .track(.call), effect: .openTrack(.call)),
-    .init(piece: .track(.call), next: .transcript, effect: .openTranscript),
+    .init(piece: .track(.microphone), next: .track(.call), effect: .openTrack(.call, in: anyFolder())),
+    .init(piece: .track(.call), next: .transcript, effect: .openTranscript(in: anyFolder())),
     .init(piece: .callText, next: .capture(.microphone), effect: .startMicrophoneCapture),
 ]
 
@@ -230,6 +230,7 @@ func makeBringingUp(starting piece: SessionState.Piece) -> SessionState {
     makeState(.bringingUp).with { state in
         for earlier in bringUpOrder.prefix(while: { $0 != piece }) { state[status: earlier] = .up }
         state[status: piece] = .starting
+        if piece != .folder { state.recordedFolder = anyFolder() }
     }
 }
 
@@ -242,6 +243,7 @@ func makeRecording(withDown down: [SessionState.Piece] = []) -> SessionState {
 
     makeState(.recording).with { state in
         for piece in bringUpOrder { state[status: piece] = .up }
+        state.recordedFolder = anyFolder()
         for piece in down { state[status: piece] = .down }
     }
 }

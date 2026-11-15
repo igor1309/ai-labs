@@ -15,7 +15,7 @@ struct RecordingCallTests {
         }
     }
 
-    @Test func endedSessionGoesIdle() { assert(makeEnding(), .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.stage = nil; $0.session = nil } }
+    @Test func endedSessionGoesIdle() { assert(makeEnding(), .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.stage = nil; $0.pieces = nil; $0.session = nil } }
 
     @Test(arguments: [RecordingState.Origin.call, .hand], [RecordingState.Phase.beginning, .recording])
     func callEndEndsASessionBegunDuringTheCall(_ origin: RecordingState.Origin, _ phase: RecordingState.Phase) {
@@ -35,7 +35,7 @@ struct RecordingCallTests {
 
     @Test func endingAHeldCallStaysIdle() {
         assert(makeState(makeEnding()) { $0.callOn = true; $0.heldForCall = true; $0.sessionBeganDuringCall = true }, .sessionReported(id: 1, .ended)) {
-            $0.phase = .idle; $0.stage = nil; $0.session = nil; $0.sessionBeganDuringCall = false
+            $0.phase = .idle; $0.stage = nil; $0.pieces = nil; $0.session = nil; $0.sessionBeganDuringCall = false
         }
     }
 

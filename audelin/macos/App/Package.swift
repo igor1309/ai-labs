@@ -43,7 +43,6 @@ let package = Package(
                 .product(name: "PanelUI", package: "macos"),
                 .product(name: "Reading", package: "macos"),
                 .product(name: "Recording", package: "macos"),
-                .product(name: "Session", package: "macos"),
                 .product(name: "IMRxObservation", package: "swift-imrx"),
                 "CallsWindowShell",
             ]
@@ -122,7 +121,6 @@ let package = Package(
                 .product(name: "CoreAudioProcesses", package: "macos"),
                 .product(name: "Preferences", package: "macos"),
                 .product(name: "Recording", package: "macos"),
-                .product(name: "Session", package: "macos"),
                 .product(name: "CallText", package: "macos"),
                 .product(name: "SideText", package: "macos"),
                 .product(name: "FillIn", package: "macos"),
@@ -185,7 +183,7 @@ let package = Package(
         .testTarget(
             name: "SessionTests",
             dependencies: [
-                .product(name: "Session", package: "macos"),
+                .product(name: "Recording", package: "macos"),
             ]
         ),
     ]

@@ -1,5 +1,5 @@
 import Foundation
-import Session
+import Recording
 import Testing
 
 struct SessionReducerTests {
@@ -113,7 +113,23 @@ struct SessionReducerTests {
 
     @Test func selectedProcessesAreKeptAndOpenTheMicrophoneTrack_effect() {
 
-        assert(makeBringingUp(starting: .processes), .processesFinished(selection: anySelection(), error: nil), delivers: .openTrack(.microphone))
+        assert(makeBringingUp(starting: .processes), .processesFinished(selection: anySelection(), error: nil), delivers: .openTrack(.microphone, in: anyFolder()))
+    }
+
+    @Test func aTrackWithoutAFolderFailsWithoutOpening_state() {
+
+        let state = makeBringingUp(starting: .processes).with { $0.recordedFolder = nil }
+        let failed = SessionReducer.reduce(state.with { $0.processes = .up; $0.processSelection = anySelection(); $0.microphoneTrack = .starting },
+                                           .trackFinished(.microphone, error: "folder: folder has not been created"))
+        assert(state, .processesFinished(selection: anySelection(), error: nil)) { $0 = failed.0 }
+    }
+
+    @Test func aTrackWithoutAFolderFailsWithoutOpening_effect() {
+
+        let state = makeBringingUp(starting: .processes).with { $0.recordedFolder = nil }
+        let effect = SessionReducer.reduce(state, .processesFinished(selection: anySelection(), error: nil)).1
+        #expect(effect == SessionReducer.reduce(state.with { $0.processes = .up; $0.processSelection = anySelection(); $0.microphoneTrack = .starting },
+                                                .trackFinished(.microphone, error: "folder: folder has not been created")).1)
     }
 
     @Test func failedProcessSelectionIsNamedAndOpensTheMicrophoneTrack_state() {
@@ -130,7 +146,7 @@ struct SessionReducerTests {
 
     @Test func failedProcessSelectionIsNamedAndOpensTheMicrophoneTrack_effect() {
 
-        assert(makeBringingUp(starting: .processes), .processesFinished(selection: nil, error: anyError()), delivers: .openTrack(.microphone))
+        assert(makeBringingUp(starting: .processes), .processesFinished(selection: nil, error: anyError()), delivers: .openTrack(.microphone, in: anyFolder()))
     }
 
     @Test(arguments: openingSteps, results)

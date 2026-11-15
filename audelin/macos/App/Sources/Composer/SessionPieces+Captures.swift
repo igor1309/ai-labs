@@ -2,7 +2,7 @@ import Darwin
 import struct SideText.Audio
 import class LiveAudio.LiveAudio
 import RecordedCapture
-import Session
+import Recording
 import TrackFile
 
 struct LiveCaptureAudio: CaptureAudio {

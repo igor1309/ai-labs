@@ -4,7 +4,7 @@ import IMRxObservation
 import Observation
 import PanelUI
 import Reading
-import Session
+import Recording
 import SpeakerNaming
 import ZoomAccessibility
 

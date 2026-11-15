@@ -1,7 +1,7 @@
 import Recording
 import Testing
 
-/// One session's work runs one piece at a time: get call audio, begin, end, release.
+/// One session's work runs one piece at a time: get call audio, bring the pieces up and down, release.
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingStageTests {
 
@@ -11,20 +11,22 @@ struct RecordingStageTests {
         assert(start, .userStart, delivers: .prepareCallAudio(id: 1))
     }
 
-    @Test func preparedCallAudioBeginsTheSession() {
-        assert(makeBeginning(), .callAudioPrepared(id: 1, ready: true)) { $0.stage = .beginning }
-        assert(makeBeginning(), .callAudioPrepared(id: 1, ready: true), delivers: .begin(id: 1))
+    @Test(arguments: [false, true])
+    func preparedCallAudioBeginsThePiecesWithTheLiveTextPreferred(_ liveText: Bool) {
+        let begun = SessionReducer.reduce(SessionState(), .begin(liveText: liveText))
+        assert(makeBeginning(), .callAudioPrepared(id: 1, ready: true, liveText: liveText)) { $0.stage = .pieces; $0.pieces = begun.0 }
+        assert(makeBeginning(), .callAudioPrepared(id: 1, ready: true, liveText: liveText), delivers: begun.1.map { .session(id: 1, $0) })
     }
 
     @Test func callAudioNotReadyIsMissingAndReleased() {
-        assert(makeBeginning(), .callAudioPrepared(id: 1, ready: false)) { $0.missing = [.callAudioAccess]; $0.stage = .releasing }
-        assert(makeBeginning(), .callAudioPrepared(id: 1, ready: false), delivers: .releaseCallAudio(id: 1))
+        assert(makeBeginning(), .callAudioPrepared(id: 1, ready: false, liveText: true)) { $0.missing = [.callAudioAccess]; $0.stage = .releasing }
+        assert(makeBeginning(), .callAudioPrepared(id: 1, ready: false, liveText: true), delivers: .releaseCallAudio(id: 1))
     }
 
-    @Test func aStopDuringPreparationSkipsBeginAndReleases() {
+    @Test func aStopDuringPreparationSkipsThePiecesAndReleases() {
         let stopping = makeState(makeBeginning()) { $0.phase = .ending }
-        assert(stopping, .callAudioPrepared(id: 1, ready: true)) { $0.stage = .releasing }
-        assert(stopping, .callAudioPrepared(id: 1, ready: true), delivers: .releaseCallAudio(id: 1))
+        assert(stopping, .callAudioPrepared(id: 1, ready: true, liveText: true)) { $0.stage = .releasing }
+        assert(stopping, .callAudioPrepared(id: 1, ready: true, liveText: true), delivers: .releaseCallAudio(id: 1))
     }
 
     @Test func aStopDuringPreparationWaitsForIt() {
@@ -32,43 +34,56 @@ struct RecordingStageTests {
         assert(makeBeginning(), .userStop, delivers: nil)
     }
 
-    @Test func anAcceptedBeginWaitsForTheSession() {
-        let beginning = makeState(makeBeginning()) { $0.stage = .beginning }
-        assert(beginning, .sessionAccepted(id: 1)) { $0.stage = .begun }
-        assert(beginning, .sessionAccepted(id: 1), delivers: nil)
+    @Test func aStopWhileThePiecesWorkBringsDownWhatIsUp() {
+        let down = SessionReducer.reduce(makeStarting().pieces!, .end)
+        assert(makeStarting(), .userStop) { $0.phase = .ending; $0.pieces = down.0 }
+        assert(makeStarting(), .userStop, delivers: down.1.map { .session(id: 1, $0) })
     }
 
-    @Test func aStopDuringBeginEndsOnceAccepted() {
-        let stopping = makeState(makeBeginning()) { $0.stage = .beginning; $0.phase = .ending }
-        assert(stopping, .sessionAccepted(id: 1)) { $0.stage = .ending }
-        assert(stopping, .sessionAccepted(id: 1), delivers: .end(id: 1))
+    @Test func aStopWhileThePiecesWorkBringsThemDownOnTheStepsResult() {
+        let stopping = makeState(makeStarting()) { $0.phase = .ending; endPieces(&$0) }
+        let down = SessionReducer.reduce(stopping.pieces!, .modelsChecked(missing: []))
+        assert(stopping, .session(id: 1, .modelsChecked(missing: []))) { $0.pieces = down.0 }
+        assert(stopping, .session(id: 1, .modelsChecked(missing: [])), delivers: down.1.map { .session(id: 1, $0) })
     }
 
-    @Test func aStopWhileRecordingEndsTheSession() {
-        assert(makeRunning(), .userStop) { $0.phase = .ending; $0.stage = .ending }
-        assert(makeRunning(), .userStop, delivers: .end(id: 1))
+    @Test func aStopWhileRecordingBringsThePiecesDown() {
+        let down = SessionReducer.reduce(makeRecordingPieces(), .end)
+        assert(makeRunning(), .userStop) { $0.phase = .ending; $0.pieces = down.0 }
+        assert(makeRunning(), .userStop, delivers: down.1.map { .session(id: 1, $0) })
     }
 
-    @Test func aFinishedSessionReleasesCallAudio() {
-        assert(makeEnding(), .sessionFinished(id: 1)) { $0.stage = .releasing }
-        assert(makeEnding(), .sessionFinished(id: 1), delivers: .releaseCallAudio(id: 1))
+    @Test func piecesThatCannotRecordAreBroughtDown() {
+        let pieces = makeState(makeStarting()) { $0.pieces?.folder = .starting }
+        let failed = SessionReducer.reduce(pieces.pieces!, .folderFinished(error: "no folder"))
+        assert(pieces, .session(id: 1, .folderFinished(error: "no folder"))) {
+            $0.pieces = SessionReducer.reduce(failed.0, .end).0
+            $0.phase = .ending
+            $0.cannotRecord = failed.0.cannotRecord
+        }
     }
 
-    @Test func aSessionEndingByItselfReleasesCallAudio() {
-        assert(makeRunning(), .sessionFinished(id: 1)) { $0.stage = .releasing }
-        assert(makeRunning(), .sessionFinished(id: 1), delivers: .releaseCallAudio(id: 1))
+    @Test func endedPiecesReleaseCallAudio() {
+        let last = makeState(makeEnding()) { $0.pieces = makeLastPieceDown() }
+        assert(last, .session(id: 1, .outputReleased)) { $0.pieces = SessionReducer.reduce(makeLastPieceDown(), .outputReleased).0; $0.stage = .releasing }
+        assert(last, .session(id: 1, .outputReleased), delivers: .releaseCallAudio(id: 1))
+    }
+
+    @Test func piecesEndingByThemselvesReleaseCallAudio() {
+        let last = makeState(makeRunning()) { $0.pieces = makeLastPieceDown() }
+        assert(last, .session(id: 1, .outputReleased), delivers: .releaseCallAudio(id: 1))
     }
 
     @Test func releasedCallAudioEndsTheSession() {
-        assert(makeReleasing(), .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.stage = nil; $0.session = nil }
+        assert(makeReleasing(), .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.stage = nil; $0.pieces = nil; $0.session = nil }
         assert(makeReleasing(), .sessionReported(id: 1, .ended), delivers: nil)
     }
 
     @Test func theNextSessionPreparesOnlyAfterRelease() {
         let waiting = makeState(makeReleasing()) { $0.callOn = true; $0.pendingCall = true }
-        assert(waiting, .callAudioPrepared(id: 2, ready: true))
+        assert(waiting, .callAudioPrepared(id: 2, ready: true, liveText: true))
         assert(waiting, .sessionReported(id: 1, .ended)) {
-            $0.phase = .beginning; $0.stage = .preparing; $0.pendingCall = false
+            $0.phase = .beginning; $0.stage = .preparing; $0.pendingCall = false; $0.pieces = nil
             $0.lastSessionID = 2; $0.session = .init(id: 2, origin: .call); $0.sessionBeganDuringCall = true
         }
         assert(waiting, .sessionReported(id: 1, .ended), delivers: .prepareCallAudio(id: 2))
@@ -81,13 +96,13 @@ struct RecordingStageTests {
 
     @Test func shutdownSettlesOnlyOnceCallAudioIsReleased() {
         let releasing = makeState(makeReleasing()) { $0.shutdown = .requested }
-        assert(releasing, .sessionFinished(id: 1))
-        assert(releasing, .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.stage = nil; $0.session = nil; $0.shutdown = .settled }
+        assert(releasing, .session(id: 1, .outputReleased))
+        assert(releasing, .sessionReported(id: 1, .ended)) { $0.phase = .idle; $0.stage = nil; $0.pieces = nil; $0.session = nil; $0.shutdown = .settled }
         assert(releasing, .sessionReported(id: 1, .ended), delivers: nil)
     }
 
     @Test(arguments: [
-        RecordingEvent.sessionFinished(id: 1), .sessionAccepted(id: 1), .callAudioPrepared(id: 1, ready: true),
+        RecordingEvent.session(id: 1, .outputReleased), .callAudioPrepared(id: 1, ready: true, liveText: true),
     ])
     func aRepeatedResultWhileReleasingIsIgnored(_ event: RecordingEvent) {
         assert(makeReleasing(), event)
@@ -95,7 +110,7 @@ struct RecordingStageTests {
     }
 
     @Test(arguments: [
-        RecordingEvent.sessionFinished(id: 9), .sessionAccepted(id: 9), .callAudioPrepared(id: 9, ready: true),
+        RecordingEvent.session(id: 9, .end), .callAudioPrepared(id: 9, ready: true, liveText: true),
     ])
     func anotherSessionsResultIsIgnored(_ event: RecordingEvent) {
         assert(makeRunning(), event)
@@ -103,12 +118,23 @@ struct RecordingStageTests {
     }
 
     @Test(arguments: [
-        RecordingEvent.sessionFinished(id: 1), .sessionAccepted(id: 1), .callAudioPrepared(id: 1, ready: true),
+        RecordingEvent.session(id: 1, .end), .callAudioPrepared(id: 1, ready: true, liveText: true),
     ])
     func aResultAfterTheSessionIsIgnored(_ event: RecordingEvent) {
         assert(makeIdleAfter(1), event)
         assert(makeIdleAfter(1), event, delivers: nil)
     }
+
+    @Test func callAudioPreparedBeforePiecesIsIgnoredOnceThePiecesWork() {
+        assert(makeRunning(), .callAudioPrepared(id: 1, ready: true, liveText: true))
+        assert(makeRunning(), .callAudioPrepared(id: 1, ready: true, liveText: true), delivers: nil)
+    }
+}
+
+/// Pieces whose only work left is releasing their output.
+private func makeLastPieceDown() -> SessionState {
+    SessionState(phase: .ending, folder: .up, processes: .up, microphoneTrack: .closed, callTrack: .closed,
+                 microphoneCapture: .closed, callCapture: .closed, transcript: .closed, callText: .closed, textFeed: .closed, output: .stopping)
 }
 
 /// Each effect reaches exactly its collaborator and answers with the event it ends in.
@@ -120,24 +146,7 @@ struct RecordingEffectHandlerTests {
         let (sut, spies) = makeHandler()
         async let event = sut.handle(.prepareCallAudio(id: 3))
         await spies.prepare.complete(with: ready)
-        #expect(await event == .callAudioPrepared(id: 3, ready: ready))
-        #expect(await spies.session.beginIDs.isEmpty)
-    }
-
-    @Test func beginAnswersOnceTheSessionAccepts() async {
-        let (sut, spies) = makeHandler()
-        async let event = sut.handle(.begin(id: 3))
-        await spies.session.completeBegin()
-        #expect(await event == .sessionAccepted(id: 3))
-        #expect(await spies.session.beginIDs == [3])
-    }
-
-    @Test func endAnswersOnceTheSessionFinished() async {
-        let (sut, spies) = makeHandler()
-        async let event = sut.handle(.end(id: 3))
-        await spies.session.completeEnd()
-        #expect(await event == .sessionFinished(id: 3))
-        #expect(await spies.session.endIDs == [3])
+        #expect(await event == .callAudioPrepared(id: 3, ready: ready, liveText: true))
     }
 
     @Test func releaseAnswersThatTheSessionEnded() async {
@@ -147,20 +156,112 @@ struct RecordingEffectHandlerTests {
         #expect(await event == .sessionReported(id: 3, .ended))
         #expect(await spies.release.count == 1)
     }
+
+    @Test func aPieceEffectAnswersWithThePieceResultForItsSession() async {
+        let (sut, spies) = makeHandler()
+        async let event = sut.handle(.session(id: 3, .createFolder))
+        await spies.piece.complete(with: .folderFinished(error: nil))
+        #expect(await event == .session(id: 3, .folderFinished(error: nil)))
+        #expect(await spies.pieceCalls.calls == [.init(id: 3, effect: .createFolder)])
+    }
 }
 
 private struct HandlerSpies {
-    let session = SessionSpy()
     let prepare = CallSpy<Bool>()
     let release = CallSpy<Void>()
+    let piece = CallSpy<SessionEvent>()
+    let pieceCalls = PieceCalls()
+}
+
+actor PieceCalls {
+    struct Call: Equatable { let id: UInt64; let effect: SessionEffect }
+    private(set) var calls: [Call] = []
+    func record(_ id: UInt64, _ effect: SessionEffect) { calls.append(.init(id: id, effect: effect)) }
 }
 
 private func makeHandler() -> (RecordingEffectHandler, HandlerSpies) {
     let spies = HandlerSpies()
-    let sut = RecordingEffectHandler(session: spies.session,
-                                     prepareCallAudio: { [prepare = spies.prepare] in await prepare.call() },
-                                     releaseCallAudio: { [release = spies.release] in await release.call() })
+    let sut = RecordingEffectHandler(prepareCallAudio: { [prepare = spies.prepare] in await prepare.call() },
+                                     liveText: { true },
+                                     releaseCallAudio: { [release = spies.release] in await release.call() },
+                                     runPiece: { [piece = spies.piece, calls = spies.pieceCalls] id, effect in
+                                         await calls.record(id, effect)
+                                         return await piece.call()
+                                     })
     return (sut, spies)
 }
 
-private func makeReleasing() -> RecordingState { makeState(makeEnding()) { $0.stage = .releasing } }
+private func makeReleasing() -> RecordingState { makeState(makeEnding()) { $0.stage = .releasing; $0.pieces = SessionReducer.reduce(makeLastPieceDown(), .outputReleased).0 } }
+
+/// The current session's pieces advance through the injected Session reducer.
+@Suite(.timeLimit(.minutes(1)))
+struct RecordingPiecesTests {
+
+    @Test func aPieceEventForTheCurrentSessionAdvancesItsPieces() {
+        let spy = PieceReducerSpy(stub: (SessionState(phase: .recording), .createFolder))
+        let sut = RecordingReducer(session: spy.reduce, status: readStatus)
+        let state = makeWithPieces()
+        let event = RecordingEvent.session(id: 1, .modelsChecked(missing: []))
+        let (next, effect) = sut.reduce(state, event)
+        #expect(next == makeState(state) { $0.pieces = SessionState(phase: .recording) })
+        #expect(effect == .session(id: 1, .createFolder))
+        #expect(spy.calls == [.init(state: SessionState(phase: .bringingUp), event: .modelsChecked(missing: []))])
+    }
+
+    @Test func aPieceEventForAnotherSessionChangesNothing() {
+        let spy = PieceReducerSpy(stub: (SessionState(phase: .recording), .createFolder))
+        let sut = RecordingReducer(session: spy.reduce, status: readStatus)
+        let state = makeWithPieces()
+        #expect(sut.reduce(state, .session(id: 2, .end)).0 == state)
+        #expect(sut.reduce(state, .session(id: 2, .end)).1 == nil)
+        #expect(spy.calls.isEmpty)
+    }
+
+    @Test func aPieceEventWithoutPiecesChangesNothing() {
+        let spy = PieceReducerSpy(stub: (SessionState(phase: .recording), .createFolder))
+        let sut = RecordingReducer(session: spy.reduce, status: readStatus)
+        #expect(sut.reduce(makeBeginning(), .session(id: 1, .end)).0 == makeBeginning())
+        #expect(sut.reduce(makeBeginning(), .session(id: 1, .end)).1 == nil)
+        #expect(spy.calls.isEmpty)
+    }
+
+    @Test func endingWhileAPieceStartsKeepsItsWorkAndHoldsTheBringDown() {
+        let stub = makePieces(.init(cannotRecord: "no track"))
+        let spy = PieceReducerSpy(stub: (stub, .createFolder))
+        let sut = RecordingReducer(session: spy.reduce, status: readStatus)
+        let (next, effect) = sut.reduce(makeStarting(), .session(id: 1, .modelsChecked(missing: [])))
+        #expect(next == makeState(makeStarting()) { $0.pieces = stub; $0.phase = .ending; $0.cannotRecord = "no track" })
+        #expect(effect == .session(id: 1, .createFolder))
+        #expect(spy.calls.map(\.event) == [.modelsChecked(missing: [])])
+    }
+
+    @Test func endingBringsThePiecesDownOnTheFirstResultThatStartsNothing() {
+        let up = makePieces(.init())
+        let spy = PieceReducerSpy(stub: (up, nil))
+        let sut = RecordingReducer(session: spy.reduce, status: readStatus)
+        let ending = makeState(makeStarting()) { $0.phase = .ending }
+        _ = sut.reduce(ending, .session(id: 1, .folderFinished(error: nil)))
+        #expect(spy.calls.map(\.event) == [.folderFinished(error: nil), .end])
+        #expect(spy.calls.last?.state == up)
+    }
+
+    @Test func otherEventsDoNotCallTheSessionReducer() {
+        let spy = PieceReducerSpy(stub: (SessionState(), nil))
+        let sut = RecordingReducer(session: spy.reduce, status: readStatus)
+        _ = sut.reduce(makeWithPieces(), .automaticChanged(false))
+        #expect(spy.calls.isEmpty)
+    }
+}
+
+private func makeWithPieces() -> RecordingState { makeState(makeRunning()) { $0.pieces = SessionState(phase: .bringingUp) } }
+
+private final class PieceReducerSpy: @unchecked Sendable {
+    struct Call: Equatable { let state: SessionState; let event: SessionEvent }
+    private(set) var calls: [Call] = []
+    private let stub: (SessionState, SessionEffect?)
+    init(stub: (SessionState, SessionEffect?)) { self.stub = stub }
+    func reduce(_ state: SessionState, _ event: SessionEvent) -> (SessionState, SessionEffect?) {
+        calls.append(.init(state: state, event: event))
+        return stub
+    }
+}

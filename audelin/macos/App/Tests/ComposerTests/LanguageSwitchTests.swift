@@ -2,7 +2,7 @@ import MenuBar
 import PanelUI
 import Preferences
 import SettingsUI
-import Session
+import Recording
 import Observation
 import Testing
 @testable import Composer

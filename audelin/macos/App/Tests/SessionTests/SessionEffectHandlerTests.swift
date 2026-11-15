@@ -1,5 +1,5 @@
 import Foundation
-import Session
+import Recording
 import Synchronization
 import Testing
 
@@ -67,11 +67,10 @@ struct SessionEffectHandlerTests {
 
         let folder = anyFolder()
         let (sut, spies) = makeSUT()
-        await create(folder, on: sut, spies)
-        await expect(sut, with: .openTrack(side), toDeliver: .trackFinished(side, error: nil), on: {
+        await expect(sut, with: .openTrack(side, in: folder), toDeliver: .trackFinished(side, error: nil), on: {
             await spies.track(side).open.complete()
         })
-        #expect(spies.calls == [.createFolder, .openTrack(side, in: folder)])
+        #expect(spies.calls == [.openTrack(side, in: folder)])
     }
 
     @Test(arguments: sides)
@@ -79,64 +78,35 @@ struct SessionEffectHandlerTests {
 
         let failure = AnyFailure()
         let (sut, spies) = makeSUT()
-        await create(anyFolder(), on: sut, spies)
-        await expect(sut, with: .openTrack(side), toDeliver: .trackFinished(side, error: failure.description), on: {
+        let folder = anyFolder()
+        await expect(sut, with: .openTrack(side, in: folder), toDeliver: .trackFinished(side, error: failure.description), on: {
             await spies.track(side).open.fail(failure)
         })
     }
 
-    @Test(arguments: sides)
-    func openTrackBeforeAFolderExistsFailsWithoutCallingTheFile(_ side: SessionSide) async {
 
-        let (sut, spies) = makeSUT()
-        await expect(sut, with: .openTrack(side), toDeliver: .trackFinished(side, error: noFolder), on: {})
-        #expect(spies.callCount == 0)
-    }
-
-    @Test(arguments: sides)
-    func openTrackAfterAFailedCreateFailsWithoutCallingTheFile(_ side: SessionSide) async {
-
-        let (sut, spies) = makeSUT()
-        await failCreate(on: sut, spies)
-        await expect(sut, with: .openTrack(side), toDeliver: .trackFinished(side, error: noFolder), on: {})
-        #expect(spies.calls == [.createFolder])
-    }
 
     @Test func openTranscriptOpensInTheFolderCreated() async {
 
         let folder = anyFolder()
         let (sut, spies) = makeSUT()
-        await create(folder, on: sut, spies)
-        await expect(sut, with: .openTranscript, toDeliver: .transcriptFinished(error: nil), on: {
+        await expect(sut, with: .openTranscript(in: folder), toDeliver: .transcriptFinished(error: nil), on: {
             await spies.transcriptOpen.complete()
         })
-        #expect(spies.calls == [.createFolder, .openTranscript(in: folder)])
+        #expect(spies.calls == [.openTranscript(in: folder)])
     }
 
     @Test func openTranscriptDeliversItsFailure() async {
 
         let failure = AnyFailure()
         let (sut, spies) = makeSUT()
-        await create(anyFolder(), on: sut, spies)
-        await expect(sut, with: .openTranscript, toDeliver: .transcriptFinished(error: failure.description), on: {
+        let folder = anyFolder()
+        await expect(sut, with: .openTranscript(in: folder), toDeliver: .transcriptFinished(error: failure.description), on: {
             await spies.transcriptOpen.fail(failure)
         })
     }
 
-    @Test func openTranscriptBeforeAFolderExistsFailsWithoutCallingTheFile() async {
 
-        let (sut, spies) = makeSUT()
-        await expect(sut, with: .openTranscript, toDeliver: .transcriptFinished(error: noFolder), on: {})
-        #expect(spies.callCount == 0)
-    }
-
-    @Test func openTranscriptAfterAFailedCreateFailsWithoutCallingTheFile() async {
-
-        let (sut, spies) = makeSUT()
-        await failCreate(on: sut, spies)
-        await expect(sut, with: .openTranscript, toDeliver: .transcriptFinished(error: noFolder), on: {})
-        #expect(spies.calls == [.createFolder])
-    }
 
     @Test(arguments: [true, false])
     func startCallTextPassesEnabled(_ enabled: Bool) async {
@@ -319,27 +289,9 @@ struct SessionEffectHandlerTests {
     }
 }
 
-private let noFolder = "folder: folder has not been created"
-
-
 private struct AnyFailure: Error, CustomStringConvertible {
 
     let description = UUID().uuidString
-}
-
-private func create(_ folder: SessionCallFolder, on sut: SessionEffectHandler, _ spies: Spies) async {
-
-    await expect(sut, with: .createFolder, toDeliver: .folderFinished(error: nil, folder: folder), on: {
-        await spies.folder.complete(with: folder)
-    })
-}
-
-private func failCreate(on sut: SessionEffectHandler, _ spies: Spies) async {
-
-    let failure = AnyFailure()
-    await expect(sut, with: .createFolder, toDeliver: .folderFinished(error: failure.description), on: {
-        await spies.folder.fail(failure)
-    })
 }
 
 /// Handles `effect`, runs `action` once the handler waits on a collaborator, and expects `expected`.

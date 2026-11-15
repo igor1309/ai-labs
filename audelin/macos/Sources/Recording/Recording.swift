@@ -1,5 +1,3 @@
-import Synchronization
-
 public enum RecordingCondition: CaseIterable, Hashable, Sendable {
 
     case microphoneAccess
@@ -18,12 +16,12 @@ public enum RecordingSessionReport: Equatable, Sendable {
     case ended
 }
 
-/// What a running Session currently shows, translated for Recording.
+/// What the current session's pieces show, as Recording reads them.
 public struct RecordingSessionStatus: Equatable, Sendable {
 
-    /// The call the Session created, once its folder exists.
+    /// The call the pieces created, once its folder exists.
     public var callID: String?
-    /// The Session records both sides.
+    /// The pieces record.
     public var recording: Bool
     public var cannotRecord: String?
     public var faults: Set<RecordingFault>
@@ -38,16 +36,6 @@ public struct RecordingSessionStatus: Equatable, Sendable {
         self.faults = faults
         self.callSilent = callSilent
     }
-}
-
-/// Compose begins and ends Sessions and translates their later reports into events.
-public protocol RecordingSession: Sendable {
-
-    /// Returns once the Session exists and its begin is queued; how it goes arrives as status.
-    func begin(id: UInt64) async
-
-    /// Returns only when this Session has ended, including any pending bring-up.
-    func end(id: UInt64) async
 }
 
 public struct RecordingState: Equatable, Sendable {
@@ -99,14 +87,15 @@ public struct RecordingState: Equatable, Sendable {
     public var shutdown: Shutdown?
     /// The work running for the current session, if any.
     public var stage: Stage?
+    /// The current session's pieces, as the Session reducer leaves them.
+    public var pieces: SessionState?
 
-    /// One session's line of work: get call audio, begin the Session, end it, release call audio.
+    /// One session's line of work: get call audio, bring the pieces up and down, release call audio.
     public enum Stage: Equatable, Sendable {
 
         case preparing
-        case beginning
-        case begun
-        case ending
+        /// The pieces are coming up, running or going down, as `pieces` says.
+        case pieces
         case releasing
     }
 
@@ -137,71 +126,94 @@ public enum RecordingEvent: Equatable, Sendable {
     case automaticChanged(Bool)
     case conditionChanged(RecordingCondition, available: Bool)
     case sessionReported(id: UInt64, RecordingSessionReport)
-    case sessionChanged(id: UInt64, RecordingSessionStatus)
     case shutdown
-    /// Call audio was checked and reserved for the session, or could not be.
-    case callAudioPrepared(id: UInt64, ready: Bool)
-    /// The Session exists and its begin is queued.
-    case sessionAccepted(id: UInt64)
-    /// The Session has finished, asked to or on its own.
-    case sessionFinished(id: UInt64)
+    /// Call audio was checked and reserved for the session, or could not be; live text as preferred then.
+    case callAudioPrepared(id: UInt64, ready: Bool, liveText: Bool)
+    /// A result or report of the session's pieces.
+    case session(id: UInt64, SessionEvent)
 }
 
 public enum RecordingEffect: Equatable, Sendable {
 
     case prepareCallAudio(id: UInt64)
-    case begin(id: UInt64)
-    case end(id: UInt64)
     case releaseCallAudio(id: UInt64)
+    /// Work for one of the session's pieces.
+    case session(id: UInt64, SessionEffect)
 }
 
-public enum RecordingReducer {
+public struct RecordingReducer: Sendable {
 
-    public static func reduce(_ state: RecordingState, _ event: RecordingEvent) -> (RecordingState, RecordingEffect?) {
+    private let session: @Sendable (SessionState, SessionEvent) -> (SessionState, SessionEffect?)
+    private let status: @Sendable (SessionState) -> RecordingSessionStatus
+
+    /// `session` advances the current session's pieces; `status` reads what they show.
+    public init(session: @escaping @Sendable (SessionState, SessionEvent) -> (SessionState, SessionEffect?),
+                status: @escaping @Sendable (SessionState) -> RecordingSessionStatus) {
+
+        self.session = session
+        self.status = status
+    }
+
+    public func reduce(_ state: RecordingState, _ event: RecordingEvent) -> (RecordingState, RecordingEffect?) {
 
         var state = state
         if let id = state.session?.id {
             switch event {
-            case let .callAudioPrepared(reported, ready) where reported == id && state.stage == .preparing:
+            case let .callAudioPrepared(reported, ready, liveText) where reported == id && state.stage == .preparing:
                 if !ready { state.missing.insert(.callAudioAccess) }
-                guard ready, state.phase != .ending else { return release(&state, id) }
-                state.stage = .beginning
-                return (state, .begin(id: id))
-            case let .sessionAccepted(reported) where reported == id && state.stage == .beginning:
-                state.stage = .begun
-                return advance(state)
-            case let .sessionFinished(reported) where reported == id
-                && (state.stage == .beginning || state.stage == .begun || state.stage == .ending):
-                return release(&state, id)
-            case .callAudioPrepared, .sessionAccepted, .sessionFinished:
+                guard ready, state.phase != .ending else { return Self.release(&state, id) }
+                state.stage = .pieces
+                return advancePieces(state, id, .begin(liveText: liveText))
+            case let .session(reported, event) where reported == id && state.stage == .pieces:
+                return advancePieces(state, id, event)
+            case .callAudioPrepared, .session:
                 return (state, nil)
             default:
                 break
             }
         } else if case .callAudioPrepared = event { return (state, nil) }
-        else if case .sessionAccepted = event { return (state, nil) }
-        else if case .sessionFinished = event { return (state, nil) }
-        return advance(policy(state, event))
+        else if case .session = event { return (state, nil) }
+        return advance(Self.policy(state, event))
     }
 
     /// Starts the next piece of the current session's work, one at a time.
-    private static func advance(_ state: RecordingState) -> (RecordingState, RecordingEffect?) {
+    private func advance(_ state: RecordingState) -> (RecordingState, RecordingEffect?) {
 
         var state = state
         guard let id = state.session?.id else { return (state, nil) }
         switch state.stage {
         case nil where state.phase == .ending:
-            // Ended before any work started: nothing to end or release.
-            return advance(policy(state, .sessionReported(id: id, .ended)))
+            // Ended before any work started: nothing to bring down or release.
+            return advance(Self.policy(state, .sessionReported(id: id, .ended)))
         case nil where state.phase == .beginning || state.phase == .recording:
             state.stage = .preparing
             return (state, .prepareCallAudio(id: id))
-        case .begun? where state.phase == .ending:
-            state.stage = .ending
-            return (state, .end(id: id))
+        case .pieces? where state.phase == .ending && !Self.goingDown(state.pieces):
+            return advancePieces(state, id, .end)
         default:
             return (state, nil)
         }
+    }
+
+    /// Reduces one event of the pieces, takes in what they show, and brings them down once Recording ends.
+    private func advancePieces(_ state: RecordingState, _ id: UInt64, _ event: SessionEvent) -> (RecordingState, RecordingEffect?) {
+
+        var state = state
+        var (pieces, effect) = session(state.pieces ?? SessionState(), event)
+        state.pieces = pieces
+        state = Self.take(status(pieces), into: state)
+        if state.phase == .ending, !Self.goingDown(pieces), effect == nil {
+            // Work just started holds the bring-down until its result, which comes back here.
+            (pieces, effect) = session(pieces, .end)
+            state.pieces = pieces
+        }
+        if pieces.phase == .ended { return Self.release(&state, id) }
+        return (state, effect.map { .session(id: id, $0) })
+    }
+
+    private static func goingDown(_ pieces: SessionState?) -> Bool {
+
+        pieces?.phase == .ending || pieces?.phase == .ended
     }
 
     private static func release(_ state: inout RecordingState, _ id: UInt64) -> (RecordingState, RecordingEffect?) {
@@ -210,11 +222,27 @@ public enum RecordingReducer {
         return (state, .releaseCallAudio(id: id))
     }
 
+    private static func take(_ status: RecordingSessionStatus, into state: RecordingState) -> RecordingState {
+
+        var state = state
+        if let callID = status.callID { state.callID = callID }
+        if let reason = status.cannotRecord, state.cannotRecord == nil {
+            state.cannotRecord = reason
+            return end(&state)
+        }
+        if status.recording, state.phase == .beginning { state.phase = .recording }
+        // Faults and silence count once the pieces record; a fault stays until the session ends.
+        guard state.phase == .recording || state.phase == .ending else { return state }
+        state.faults.formUnion(status.faults)
+        state.callSilent = status.callSilent
+        return state
+    }
+
     private static func policy(_ state: RecordingState, _ event: RecordingEvent) -> RecordingState {
 
         var state = state
         switch event {
-        case .callAudioPrepared, .sessionAccepted, .sessionFinished:
+        case .callAudioPrepared, .session:
             return state
         case .shutdown:
             guard state.shutdown == nil else { return state }
@@ -286,31 +314,12 @@ public enum RecordingReducer {
             if let origin = state.pendingStart { return begin(&state, origin: origin) }
             return state
 
-        case let .sessionChanged(id, status):
-            guard state.session?.id == id, state.phase != .idle else {
-                // A session that ended before Recording heard why still names the reason.
-                if state.phase == .idle, id != 0, id == state.lastSessionID, let reason = status.cannotRecord {
-                    state.cannotRecord = reason
-                }
-                return state
-            }
-            if let callID = status.callID { state.callID = callID }
-            if let reason = status.cannotRecord, state.cannotRecord == nil {
-                state.cannotRecord = reason
-                return end(&state)
-            }
-            if status.recording, state.phase == .beginning { state.phase = .recording }
-            // Faults and silence count once the Session records; a fault stays until the session ends.
-            guard state.phase == .recording || state.phase == .ending else { return state }
-            state.faults.formUnion(status.faults)
-            state.callSilent = status.callSilent
-            return state
-
         case let .sessionReported(id, report):
             guard state.session?.id == id else { return state }
             switch report {
             case .ended:
                 state.stage = nil
+                state.pieces = nil
                 state.phase = .idle
                 state.callSilent = false
                 state.callID = nil
@@ -327,7 +336,7 @@ public enum RecordingReducer {
 
     private static func begin(_ state: inout RecordingState, origin: RecordingState.Origin) -> RecordingState {
 
-        // Call-audio evidence is refreshed by the doer, including when the last reading failed.
+        // Call-audio evidence is refreshed while preparing, including when the last reading failed.
         guard state.shutdown == nil, !state.storageReserved, state.phase == .idle, state.missing.subtracting([.callAudioAccess]).isEmpty else { return state }
         state.pendingStart = nil
         state.callID = nil
@@ -354,33 +363,35 @@ public enum RecordingReducer {
 /// Dispatches each Recording effect to its collaborator and answers with the event it ends in.
 public final class RecordingEffectHandler: Sendable {
 
-    private let session: any RecordingSession
     private let prepareCallAudio: @Sendable () async -> Bool
+    private let liveText: @Sendable () -> Bool
     private let releaseCallAudio: @Sendable () async -> Void
+    private let runPiece: @Sendable (UInt64, SessionEffect) async -> SessionEvent
 
-    public init(session: any RecordingSession,
-                prepareCallAudio: @escaping @Sendable () async -> Bool,
-                releaseCallAudio: @escaping @Sendable () async -> Void) {
+    /// `liveText` reads the preference a session begins with; `runPiece` runs one piece's work
+    /// for the session with that id and answers with its result.
+    public init(prepareCallAudio: @escaping @Sendable () async -> Bool,
+                liveText: @escaping @Sendable () -> Bool,
+                releaseCallAudio: @escaping @Sendable () async -> Void,
+                runPiece: @escaping @Sendable (UInt64, SessionEffect) async -> SessionEvent) {
 
-        self.session = session
         self.prepareCallAudio = prepareCallAudio
+        self.liveText = liveText
         self.releaseCallAudio = releaseCallAudio
+        self.runPiece = runPiece
     }
 
     public func handle(_ effect: RecordingEffect) async -> RecordingEvent {
 
         switch effect {
         case let .prepareCallAudio(id):
-            return .callAudioPrepared(id: id, ready: await prepareCallAudio())
-        case let .begin(id):
-            await session.begin(id: id)
-            return .sessionAccepted(id: id)
-        case let .end(id):
-            await session.end(id: id)
-            return .sessionFinished(id: id)
+            let ready = await prepareCallAudio()
+            return .callAudioPrepared(id: id, ready: ready, liveText: liveText())
         case let .releaseCallAudio(id):
             await releaseCallAudio()
             return .sessionReported(id: id, .ended)
+        case let .session(id, effect):
+            return .session(id: id, await runPiece(id, effect))
         }
     }
 }
