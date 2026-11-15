@@ -57,7 +57,7 @@ struct MergeChainTests {
         }
     }
 
-    @Test func theMergedCallHasEveryPartsTagsOnce() async throws {
+    @Test func theMergedCallHasEveryPartsTagsOnceEarliestFirst() async throws {
         try await withComposeFolder { root in
             try call(first, in: root, [.init(side: .mine, start: 1, settled: "hello", pending: "")])
             try call(second, in: root, [.init(side: .mine, start: 1, settled: "again", pending: "")])
@@ -65,7 +65,7 @@ struct MergeChainTests {
             try TagsFile.write(["Банк", "найм"], in: root.appendingPathComponent(second))
             let sut = SummaryCalls(storage: storage(root), deleted: { _ in }, merged: { _, _, _ in })
 
-            #expect(try await sut.merge(ids: [first, second]) == first)
+            #expect(try await sut.merge(ids: [second, first]) == first)
 
             #expect(try TagsFile.read(in: root.appendingPathComponent(first)) == ["клиент", "банк", "найм"])
         }

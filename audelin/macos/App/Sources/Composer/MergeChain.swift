@@ -49,7 +49,9 @@ func mergeCalls(ids: [String], storage: CallsStorage, binding: any TranscriptFil
     let chunks = try format.render(segments, speakers: joined.speakers).chunks
     let entries = summaryEntries(segments, speakerIDs: joined.speakers.map(\.id))
     let id = try await storage.merge(ids: ids) { folder, partFolders in
-        let tags = CallTags.normalized(try partFolders.flatMap { try TagsFile.read(in: $0) })
+        // Earliest part first: a call folder is named by its start.
+        let ordered = partFolders.sorted { $0.lastPathComponent < $1.lastPathComponent }
+        let tags = CallTags.normalized(try ordered.flatMap { try TagsFile.read(in: $0) })
         let url = folder.appendingPathComponent("transcript.md")
         let file = try binding.create(at: url)
         do {
