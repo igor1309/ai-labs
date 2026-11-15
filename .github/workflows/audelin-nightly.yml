@@ -77,9 +77,26 @@ jobs:
         working-directory: audelin/macos
         run: scripts/live-browser-names.sh
 
+  # Renaming a call in the calls list, driven through Accessibility in the
+  # Mac's logged-in session; after the browser-names run so they share the Mac in turn.
+  live-calls-rename:
+    if: ${{ always() && !cancelled() }}
+    needs: [live-browser-names]
+    runs-on: [self-hosted, local-mac]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || 'trunk' }}
+
+      - name: Run the live scenarios
+        working-directory: audelin/macos
+        run: scripts/live-calls-rename.sh
+
   notify:
-    if: ${{ always() && !cancelled() && (needs.long-runs.result == 'failure' || needs.live-browser-names.result == 'failure') }}
-    needs: [long-runs, live-browser-names]
+    if: ${{ always() && !cancelled() && (needs.long-runs.result == 'failure' || needs.live-browser-names.result == 'failure' || needs.live-calls-rename.result == 'failure') }}
+    needs: [long-runs, live-browser-names, live-calls-rename]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "Audelin Nightly"
@@ -88,6 +105,7 @@ jobs:
       job_results: |
         long-runs=${{ needs.long-runs.result }}
         live-browser-names=${{ needs.live-browser-names.result }}
+        live-calls-rename=${{ needs.live-calls-rename.result }}
     secrets:
       CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
       CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}
