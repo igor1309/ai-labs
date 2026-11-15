@@ -143,7 +143,7 @@ import Testing
                 #expect(await http.urls == ["http://127.0.0.1:8181/saved/chat/completions"])
                 let payload = try JSONDecoder().decode(SentRequest.self, from: request)
                 #expect(payload.model == "saved-model")
-                #expect(payload.messages.map(\.content) == [NotesResponse.prompt + "\nACCEPTED EVIDENCE:\n\nTRANSCRIPT DATA:\n[0] A: saved spoken"])
+                #expect(payload.messages.map(\.content) == [defaultNotesPrompt() + "\nACCEPTED EVIDENCE:\n\nTRANSCRIPT DATA:\n[0] A: saved spoken"])
                 http.release.send()
                 for await status in sut.updates() where status[id] == "Итоги готовы" { break }
                 let record = try #require(try await files(root).load(call: id))
@@ -204,7 +204,7 @@ import Testing
             for await _ in never {}
             try Task.checkCancellation()
         })
-        return SummariesModel(text: { CallsListText(language: .russian) },
+        return SummariesModel(templates: TestDefaultTemplates(), text: { CallsListText(language: .russian) },
                               preparation: SummariesPreparationPort(notes: { .init(enabled: true, speakers: false, primary: current, fallback: current) },
                                                                     makeID: { UUID().uuidString }, callText: { _ in .init(notes: nil, transcript: []) }),
                               files: port(root), generation: SummaryGeneration(runtime: runtime, sink: TestLogSink()))

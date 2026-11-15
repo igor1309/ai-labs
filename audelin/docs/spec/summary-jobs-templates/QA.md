@@ -22,8 +22,15 @@ delivered; fake runtime counts no request. Evidence: Missing.
 
 ## S-4 Automatic notes use Default
 
-Reducer: final transcript with notes on → preparing with Default. Effect:
-resolve Default delivers the template. Evidence: Missing.
+Reducer: the started automatic job resolves Default, after speaker evidence
+when enabled; resolution stores its value and delivers notes with it.
+Effect: resolve Default delivers the template. Evidence:
+`SummariesDispatchReducerTests.anOwnedStartWithoutSpeakersResolvesDefault`,
+`SummariesGenerationReducerTests.aCheckpointDeliversDefaultResolution`,
+`TemplateResolutionTests.resolutionStoresTheTemplate`,
+`resolutionDeliversNotesWithTheTemplateAndEvidence`,
+`everyResolutionAsksForDefaultAfresh` and
+`SummaryCompositionTests.automaticNotesUseTheEditedDefaultFileAndItsHeadings`.
 
 ## S-5 Keeping on rotates
 

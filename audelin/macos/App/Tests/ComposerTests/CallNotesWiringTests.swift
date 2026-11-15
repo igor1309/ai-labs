@@ -275,7 +275,7 @@ private func savedCall(_ id: String, in root: URL) throws {
     try Data("# Transcript\n\n**Me** 00:00:03\n\nsaved words\n".utf8).write(to: folder.appendingPathComponent("transcript.md"))
 }
 @MainActor private func makeSummaries(files: Files, storage: CallsStorage, http: NotesHTTP, enabled: Bool) -> SummariesModel {
-    SummariesModel(text: { CallsListText(language: .russian) },
+    SummariesModel(templates: TestDefaultTemplates(), text: { CallsListText(language: .russian) },
                    preparation: SummariesPreparationPort(notes: { .init(enabled: enabled, speakers: false, primary: notesRuntime) },
                                                          makeID: { UUID().uuidString }, callText: { try await storage.text(id: $0) }),
                    files: SummariesFilesPort(files: files, makeID: { UUID().uuidString }),
