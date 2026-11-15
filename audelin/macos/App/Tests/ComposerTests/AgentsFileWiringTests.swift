@@ -23,7 +23,26 @@ struct AgentsFileWiringTests {
         }
     }
 
-    @Test func theUsersOwnFileHidesTheRowAndIsKept() async throws {
+    @Test func noOtherSettingsEventWritesTheFile() async throws {
+        try await withComposeFolder { root in
+            let rig = try await ComposeFixture.make(root: root)
+            let file = root.appendingPathComponent("AGENTS.md")
+            var events: [SettingsEvent] = SettingsState.Tab.allCases.map { .selectTab($0) }
+            events += SettingsState.General.Language.allCases.map { .selectLanguage($0) }
+            events += SettingsState.General.Appearance.allCases.map { .selectAppearance($0) }
+            events += [.setAutomaticNotes(true), .setAutomaticNotes(false), .setIdentifySpeakers(true), .setIdentifySpeakers(false),
+                       .setLiveText(false), .setLiveText(true), .setRecordsCalls(true), .setRecordsCalls(false), .selectTab(.general)]
+            for event in events {
+                await rig.menu.sendSettings(event)
+                _ = rig.menu.settingsState
+                #expect(!FileManager.default.fileExists(atPath: file.path), "\(event)")
+            }
+            #expect(rig.menu.settingsState.general.agents != nil)
+            await rig.finish()
+        }
+    }
+
+    @Test func theUsersOwnFileHidesTheRowAndIsKept()async throws {
         try await withComposeFolder { root in
             let file = root.appendingPathComponent("AGENTS.md")
             try Data("mine".utf8).write(to: file)

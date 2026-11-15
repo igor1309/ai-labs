@@ -312,6 +312,7 @@ private struct Fixture {
         }
         application.terminate()
         _ = try driver.wait("app termination") { application.isRunning ? nil : true }
+        guard !FileManager.default.fileExists(atPath: calls.appendingPathComponent("AGENTS.md").path) else { throw LiveFailure("AGENTS.md appeared in the calls folder; only the Settings button may write it") }
     }
 
     /// The renamed folder is on disk, the old one gone, the row shows the title and no field is open.

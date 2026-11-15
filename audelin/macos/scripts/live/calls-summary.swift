@@ -343,6 +343,7 @@ private func descendants(_ root: AXUIElement) -> [AXUIElement] {
             try? driver.screenshot(cancel ? "cancel-failure" : "failure", into: output)
             throw error
         }
+        guard !FileManager.default.fileExists(atPath: calls.appendingPathComponent("AGENTS.md").path) else { throw LiveFailure("AGENTS.md appeared in the calls folder; only the Settings button may write it") }
     }
 
     @MainActor private static func steps(driver: Driver, application: Process, output: URL,
