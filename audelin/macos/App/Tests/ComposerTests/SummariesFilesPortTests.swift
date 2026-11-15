@@ -90,7 +90,7 @@ import Testing
     @Test func publishWritesTheNotes() async throws {
         let files = FilesFake()
         try await makeSUT(files).publish(job, notes: "notes", warning: true)
-        #expect(files.writes == [.publish(try await record(phase: "running", warning: true), "notes")])
+        #expect(files.writes == [.publish(try await record(phase: "running", warning: true), "notes", .default, .replacement)])
     }
     @Test(arguments: [(SummariesState.Call.Stage.succeeded, "succeeded"), (.failed, "failed")])
     func saveWritesTheLastStage(stage: SummariesState.Call.Stage, phase: String) async throws {
@@ -131,7 +131,7 @@ import Testing
 
 /// Answers the port's file calls from a stored record and records each call.
 final class FilesFake: SummariesFiles {
-    enum Write: Equatable { case start(SummaryFiles.Record), progress(SummaryFiles.Record), publish(SummaryFiles.Record, String),
+    enum Write: Equatable { case start(SummaryFiles.Record), progress(SummaryFiles.Record), publish(SummaryFiles.Record, String, Attribution, Keeping),
                             discard(SummaryFiles.Record), release(job: String, call: String, input: String) }
     private struct Calls {
         var claimed: [SummaryFiles.Record] = []; var loaded: [String] = []; var retried: [(SummaryFiles.Record, String)] = []
@@ -162,7 +162,7 @@ final class FilesFake: SummariesFiles {
     func notes(call: String) async throws -> SummaryFiles.Notes? { storedNotes }
     func start(_ record: SummaryFiles.Record) async throws -> Bool { try write(.start(record)); return true }
     func progress(_ record: SummaryFiles.Record) async throws { try write(.progress(record)) }
-    func publish(_ record: SummaryFiles.Record, notes: String) async throws { try write(.publish(record, notes)) }
+    func publish(_ record: SummaryFiles.Record, notes: String, template: Attribution, keeping: Keeping) async throws { try write(.publish(record, notes, template, keeping)) }
     func discard(_ record: SummaryFiles.Record) async throws { try write(.discard(record)) }
     func release(job: String, call: String, input: String) async { calls.withLock { $0.writes.append(.release(job: job, call: call, input: input)) } }
     private func write(_ value: Write) throws {

@@ -112,7 +112,11 @@ public func compose(
                                   retryableSummaries: { summaries.retryable }, retrySummary: { try await summaries.retry(call: $0) },
                                   describe: { language.language.settings.callsFailure($0) },
                                   listText: language.language.callsList,
-                                  callText: { try await storage.text(id: $0) }))
+                                  callText: { id in
+                                      let transcript = try await storage.text(id: id).transcript
+                                      let notes = try await summaryFiles.notes(call: id)?.text
+                                      return CallsText(notes: notes, transcript: transcript)
+                                  }))
     do { summaries.recover(calls: try await storage.list().map(\.id)) }
     catch { boundary.log.write(.init(category: .session, message: "summary recovery listing failed")) }
     return menu

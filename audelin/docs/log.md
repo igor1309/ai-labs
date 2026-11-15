@@ -2,6 +2,8 @@
 
 ## 2026-11-15
 
+- LAB-1626: Notes storage publishes Previous and Current together with saved template attribution; older notes read as Default, and search reads only Current.
+
 - LAB-1625: Notes use the editable Default template file, including its headings; missing or broken Default files use the built-in template without overwriting edits.
 
 - LAB-1579: A recording, a calls-folder move and an update relaunch each hold the calls folder through one claim, so none starts behind another; a start during a move waits and begins once the move ends, a quit during a move or a relaunch lets the folder go first, and a relaunch still works when call watching failed to start.

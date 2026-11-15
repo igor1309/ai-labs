@@ -16,7 +16,7 @@ public struct Calls: Sendable {
         }
     }
 
-    /// What a call says, for search: its published notes and its transcript lines.
+    /// A call's saved transcript lines.
     public struct Text: Equatable, Sendable {
         public struct Line: Equatable, Sendable {
             /// Seconds from the call's start.
@@ -28,9 +28,8 @@ public struct Calls: Sendable {
                 self.start = start; self.words = words; self.label = label
             }
         }
-        public let notes: String?
         public let transcript: [Line]
-        public init(notes: String?, transcript: [Line]) { self.notes = notes; self.transcript = transcript }
+        public init(transcript: [Line]) { self.transcript = transcript }
     }
 
     public struct Count: Equatable, Sendable {
@@ -121,14 +120,13 @@ public struct Calls: Sendable {
         catch { throw CallsFailure.trashFailed(folder: source.lastPathComponent, reason: error.localizedDescription) }
     }
 
-    /// Reads the call's `summary.md` and `transcript.md`; a missing file reads as none.
+    /// Reads the call's transcript; a missing file reads as no lines.
     public func text(id: String) throws -> Text {
         let folder = try location(id: id)
         func string(_ name: String) throws -> String? {
             try disk.read(folder.appendingPathComponent(name)).map { String(decoding: $0, as: UTF8.self) }
         }
-        let notes = try string("summary.md")
-        return Text(notes: notes.flatMap { $0.isEmpty ? nil : $0 }, transcript: transcript(try string("transcript.md") ?? ""))
+        return Text(transcript: transcript(try string("transcript.md") ?? ""))
     }
 
     /// A call's saved `transcript.md` as written, for a merge to read back.

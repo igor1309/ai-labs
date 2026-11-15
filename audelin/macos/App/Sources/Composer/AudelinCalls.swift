@@ -59,7 +59,7 @@ public final class AudelinCalls {
     private let describe: (any Error) -> String
     /// The calls list's text, in the language Audelin is shown in.
     public private(set) var listText: CallsListText
-    private let callText: (String) async throws -> Calls.Text
+    private let callText: (String) async throws -> CallsText
     private var query = ""
     /// Each read call's transcript or notes match, nil when they hold none; a call
     /// not yet read is absent. Titles are matched afresh, so a rename shows at once.
@@ -80,7 +80,7 @@ public final class AudelinCalls {
          retrySummary: @escaping (String) async throws -> Void = { _ in throw CocoaError(.fileWriteUnknown) },
          describe: @escaping (any Error) -> String = SettingsText(language: .russian).callsFailure,
          listText: CallsListText = .init(language: .russian),
-         callText: @escaping (String) async throws -> Calls.Text = { _ in .init(notes: nil, transcript: []) }) {
+         callText: @escaping (String) async throws -> CallsText = { _ in .init(notes: nil, transcript: []) }) {
         self.callText = callText
         self.describe = describe
         self.listText = listText

@@ -9,7 +9,7 @@ public protocol SummariesFiles: Sendable {
     func retry(_ record: SummaryFiles.Record, job: String) async throws -> SummaryFiles.Record
     func start(_ record: SummaryFiles.Record) async throws -> Bool
     func progress(_ record: SummaryFiles.Record) async throws
-    func publish(_ record: SummaryFiles.Record, notes: String) async throws
+    func publish(_ record: SummaryFiles.Record, notes: String, template: Attribution, keeping: Keeping) async throws
     func discard(_ record: SummaryFiles.Record) async throws
     func release(job: String, call: String, input: String) async
     func notes(call: String) async throws -> SummaryFiles.Notes?
@@ -54,7 +54,7 @@ public struct SummariesFilesPort: SummariesClaims, SummariesRecords, SummariesSt
         try await files.progress(value)
     }
     public func publish(_ job: Job, notes: String, warning: Bool) async throws {
-        try await files.publish(try Self.record(job, phase: "running", warning: warning), notes: notes)
+        try await files.publish(try Self.record(job, phase: "running", warning: warning), notes: notes, template: .default, keeping: .replacement)
     }
     /// Saves the job's last stage; only a succeeded or failed job is saved.
     public func save(_ job: Job, stage: SummariesState.Call.Stage, warning: Bool) async throws {

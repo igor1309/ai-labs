@@ -15,11 +15,27 @@ public struct Record: Codable, Equatable, Sendable {
         self.phase = phase; self.checkpoint = checkpoint; self.warning = warning
     }
 }
-/// A call's notes as saved, and when the notes file last changed.
-public struct Notes: Equatable, Sendable {
+/// The template identity and display name captured when notes were made.
+public struct Attribution: Codable, Equatable, Sendable {
+    public let id: String
+    public let name: String
+    public init(id: String, name: String) { self.id = id; self.name = name }
+    public static let `default` = Attribution(id: "Default", name: "Default")
+}
+public enum Keeping: Equatable, Sendable { case rotation, replacement }
+public struct Versions: Equatable, Sendable {
+    public let previous: Notes?
+    public let current: Notes
+    public init(previous: Notes?, current: Notes) { self.previous = previous; self.current = current }
+}
+/// A version's saved notes, made date and template attribution.
+public struct Notes: Codable, Equatable, Sendable {
     public let text: String
     public let made: Date
-    public init(text: String, made: Date) { self.text = text; self.made = made }
+    public let template: Attribution
+    public init(text: String, made: Date, template: Attribution = .default) {
+        self.text = text; self.made = made; self.template = template
+    }
 }
 public protocol Locations: Sendable {
     /// The operation and rename/delete/move share one storage transaction boundary.
@@ -32,6 +48,7 @@ public protocol Disk: Sendable {
     func replace(_ data: Data, at url: URL) throws
     /// A file's bytes and its modification time, both from the one file opened.
     func readStamped(_ url: URL) throws -> (data: Data, modified: Date)
+    func restore(_ data: Data, at url: URL, modified: Date) throws
     func remove(_ url: URL) throws
 }
 public struct FileDisk: Disk {
@@ -56,6 +73,18 @@ public struct FileDisk: Disk {
         throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
     }
     public func replace(_ data: Data, at url: URL) throws { try data.write(to: url, options: .atomic) }
+    public func restore(_ data: Data, at url: URL, modified: Date) throws {
+        let temporary = url.deletingLastPathComponent().appendingPathComponent(".summary-" + UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: temporary) }
+        try data.write(to: temporary, options: .withoutOverwriting)
+        // Foundation's date setter rounds to microseconds; rollback preserves the read date's precision.
+        let stamp = modified.timeIntervalSince1970
+        let seconds = floor(stamp)
+        let time = timespec(tv_sec: Int(seconds), tv_nsec: Int(((stamp - seconds) * 1e9).rounded()))
+        let times = [time, time]
+        guard utimensat(AT_FDCWD, temporary.path, times, 0) == 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+        guard rename(temporary.path, url.path) == 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
+    }
     public func remove(_ url: URL) throws { try FileManager.default.removeItem(at: url) }
     public func readStamped(_ url: URL) throws -> (data: Data, modified: Date) {
         let handle = try FileHandle(forReadingFrom: url)
@@ -81,12 +110,19 @@ public struct Files: Sendable {
     public func retry(_ record: Record, job: String) async throws -> Record { try await storage.retry(record, job: job) }
     public func start(_ record: Record) async throws -> Bool { try await storage.start(record) }
     public func progress(_ record: Record) async throws { try await storage.progress(record) }
-    public func publish(_ record: Record, notes: String) async throws { try await storage.publish(record, notes: notes) }
+    /// First notes from callers that do not yet offer a keep choice use Default.
+    public func publish(_ record: Record, notes: String) async throws {
+        try await publish(record, notes: notes, template: .default, keeping: .replacement)
+    }
+    public func publish(_ record: Record, notes: String, template: Attribution, keeping: Keeping) async throws {
+        try await storage.publish(record, notes: notes, template: template, keeping: keeping)
+    }
+    public func versions(call: String) async throws -> Versions? { try await storage.versions(call: call) }
     /// Removes a cancelled attempt, restoring notes replaced by this instance's publication.
     /// Earlier notes and the transcript stay; a completed record without notes can also be retired.
     public func discard(_ record: Record) async throws { try await storage.discard(record) }
     /// The call's published notes as saved, with when they were made, or nil when it has none.
-    public func notes(call: String) async throws -> Notes? { try await storage.notes(call: call) }
+    public func notes(call: String) async throws -> Notes? { try await storage.versions(call: call)?.current }
 }
 private protocol FilesStorage: Sendable {
     func release(job: String, call: String, input: String) async
@@ -95,8 +131,8 @@ private protocol FilesStorage: Sendable {
     func retry(_ record: Record, job: String) async throws -> Record
     func start(_ record: Record) async throws -> Bool
     func progress(_ record: Record) async throws
-    func publish(_ record: Record, notes: String) async throws
-    func notes(call: String) async throws -> Notes?
+    func publish(_ record: Record, notes: String, template: Attribution, keeping: Keeping) async throws
+    func versions(call: String) async throws -> Versions?
     func discard(_ record: Record) async throws
 }
 
@@ -106,7 +142,7 @@ private actor DiskFiles: FilesStorage {
     private let ownershipDirectory: URL
     private struct Identity: Hashable { var call: String; var job: String; var input: String }
     private var leases: [Identity: Int32] = [:]
-    private struct Publication: Sendable { var previous: Data?; var data: Data }
+    private struct Publication: Sendable { var previous: Data?; var versions: Versions?; var data: Data }
     private var publications: [Identity: Publication] = [:]
     /// All instances sharing calls must use the same ownership directory, outside movable call storage.
     public init(locations: any Locations, disk: any Disk, ownershipDirectory: URL) {
@@ -217,7 +253,7 @@ private actor DiskFiles: FilesStorage {
             try disk.replace(JSONEncoder().encode(updated), at: path)
         }
     }
-    public func publish(_ record: Record, notes: String) async throws {
+    public func publish(_ record: Record, notes: String, template: Attribution, keeping: Keeping) async throws {
         let identity = Identity(call: record.call, job: record.job, input: record.input)
         guard leases[identity] != nil else { throw CocoaError(.fileWriteUnknown) }
         let saved = publications[identity]
@@ -225,17 +261,25 @@ private actor DiskFiles: FilesStorage {
             try Task.checkCancellation()
             let current = try Self.read(folder.appendingPathComponent(".summary-job.json"), disk: disk, call: record.call)
             guard current.job == record.job, current.input == record.input, current.phase == "running" else { throw CocoaError(.fileWriteUnknown) }
-            let receipt = Receipt(job: record.job, input: record.input, warning: record.warning)
-            let marker = try JSONEncoder().encode(receipt).base64EncodedString()
-            // Receipt and notes are one atomic file replacement; an old complete output survives failure.
-            let data = Data(("<!-- audelin-summary:" + marker + " -->\n" + notes).utf8)
             let output = folder.appendingPathComponent("summary.md")
             let previous: Data?
-            if let saved { previous = saved.previous }
-            else { previous = try disk.exists(output) ? disk.read(output) : nil }
+            let old: Versions?
+            if let saved {
+                previous = saved.previous
+                old = saved.versions
+            } else if try disk.exists(output) {
+                let stamped = try disk.readStamped(output)
+                previous = stamped.data
+                old = try Self.versions(stamped.data, made: stamped.modified)
+            } else { previous = nil; old = nil }
+            let receipt = Receipt(job: record.job, input: record.input, warning: record.warning,
+                                  template: template, previous: keeping == .rotation ? old?.current : nil)
+            let marker = try JSONEncoder().encode(receipt).base64EncodedString()
+            // The receipt and both versions share one rename, including recovery's completion evidence.
+            let data = Data(("<!-- audelin-summary:" + marker + " -->\n" + notes).utf8)
             try Task.checkCancellation()
             try disk.replace(data, at: output)
-            return Publication(previous: previous, data: data)
+            return Publication(previous: previous, versions: old, data: data)
         }
         // Keep rollback evidence through terminal saving: the caller may still accept cancellation.
         publications[identity] = publication
@@ -261,7 +305,9 @@ private actor DiskFiles: FilesStorage {
                 throw CocoaError(.fileWriteUnknown)
             }
             if let publication, try disk.exists(output), try disk.read(output) == publication.data {
-                if let previous = publication.previous { try disk.replace(previous, at: output) }
+                if let previous = publication.previous, let versions = publication.versions {
+                    try disk.restore(previous, at: output, modified: versions.current.made)
+                }
                 else { try disk.remove(output) }
             }
             try disk.remove(path)
@@ -269,20 +315,25 @@ private actor DiskFiles: FilesStorage {
         publications[identity] = nil
         release(job: record.job, call: record.call, input: record.input)
     }
-    public func notes(call: String) async throws -> Notes? {
+    public func versions(call: String) async throws -> Versions? {
         try await locations.withFolder(call: call) { [disk] folder in
             let output = folder.appendingPathComponent("summary.md")
             guard try disk.exists(output) else { return nil }
             let (data, made) = try disk.readStamped(output)
-            guard let text = String(data: data, encoding: .utf8) else {
-                throw CocoaError(.fileReadInapplicableStringEncoding)
-            }
-            // The publication receipt is the first line; the notes follow it.
-            guard text.hasPrefix("<!-- audelin-summary:"), let newline = text.firstIndex(of: "\n") else {
-                return Notes(text: text, made: made)
-            }
-            return Notes(text: String(text[text.index(after: newline)...]), made: made)
+            return try Self.versions(data, made: made)
         }
+    }
+    private static func versions(_ data: Data, made: Date) throws -> Versions {
+        guard let text = String(data: data, encoding: .utf8) else {
+            throw CocoaError(.fileReadInapplicableStringEncoding)
+        }
+        guard text.hasPrefix("<!-- audelin-summary:"), let newline = text.firstIndex(of: "\n") else {
+            return Versions(previous: nil, current: Notes(text: text, made: made))
+        }
+        let metadata = receipt(data)
+        return Versions(previous: metadata?.previous,
+                        current: Notes(text: String(text[text.index(after: newline)...]), made: made,
+                                       template: metadata?.template ?? .default))
     }
     private static func read(_ url: URL, disk: any Disk, call: String) throws -> Record {
         let record = try JSONDecoder().decode(Record.self, from: disk.read(url))
@@ -290,9 +341,15 @@ private actor DiskFiles: FilesStorage {
               ["pending", "running", "succeeded", "failed", "interrupted"].contains(record.phase) else { throw CocoaError(.fileReadCorruptFile) }
         return record
     }
-    private struct Receipt: Codable { var job: String; var input: String; var warning: Bool }
+    private struct Receipt: Codable {
+        var job: String
+        var input: String
+        var warning: Bool
+        var template: Attribution?
+        var previous: Notes?
+    }
     private static func receipt(_ data: Data) -> Receipt? {
-        let prefix = data.prefix(4096)
+        let prefix = data
         guard let newline = prefix.firstIndex(of: 10),
               let line = String(data: prefix[..<newline], encoding: .utf8),
               line.hasPrefix("<!-- audelin-summary:"), line.hasSuffix(" -->"),

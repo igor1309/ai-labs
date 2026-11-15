@@ -91,3 +91,9 @@ struct SummaryCalls: RecordingsCalls {
         return merged.id
     }
 }
+
+/// Search and list gists join Current notes with the call's transcript at composition.
+struct CallsText: Sendable {
+    let notes: String?
+    let transcript: [Calls.Text.Line]
+}

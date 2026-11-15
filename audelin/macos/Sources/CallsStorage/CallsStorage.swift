@@ -189,7 +189,7 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
         }
     }
     public func location(id: String) async throws -> URL { try await perform { [self] in try folder(call: id) { $0 } } }
-    /// A call's notes and transcript lines, for search.
+    /// A call's transcript lines.
     public func text(id: String) async throws -> Calls.Text {
         try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).text(id: id) } }
     }
