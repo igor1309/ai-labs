@@ -1,6 +1,6 @@
 # Make each recorded transcript final
 
-Observer: the composition root, which sends transcript output and shutdown,
+Observer: the composition root, which sends transcript output, input ended and shutdown,
 answers the ports and reads final transcripts and settled.
 
 ## Decided
@@ -9,7 +9,8 @@ answers the ports and reads final transcripts and settled.
 - Eligibility follows the latest attempted write: a call whose latest write failed is final as last saved, with no model work, even after earlier saved writes.
 - A commit renders with the speaker names taken at close, read once, so a name published later cannot race the replacement.
 - On shutdown no model work starts; cleaning is model work only and stops at once, while diarizing and committing finish their file writes, since both replace the file.
-- A call's final transcript is published once, and only after its receiver has taken it; settled means every opened call's final transcript has been published.
+- A call's final transcript is published once, and only after its receiver has taken it. Settled requires shutdown, the end of transcript input and every opened call's final transcript published.
+- Input ended means no more transcript openings, writes or closes will arrive; it is separate from shutdown. A call may open after shutdown while input is still open, and becomes final as last saved when it closes, without model work.
 
 ```gherkin
 Feature: Make each recorded transcript final
@@ -69,8 +70,8 @@ Feature: Make each recorded transcript final
     When that result arrives
     Then I can see the call unchanged and no work started
 
-  Scenario: S-12 Shutdown with nothing open settles at once
-    Given no call is open
+  Scenario: S-12 Shutdown after input ended with nothing open settles at once
+    Given input has ended and no call is open
     When shutdown arrives
     Then I can see the machine settled
 
@@ -95,6 +96,27 @@ Feature: Make each recorded transcript final
     Then I can take its final transcript as written
 
   Scenario: S-16 Settled waits for every publication
-    Given shutdown has arrived and a call's final transcript is not yet published
+    Given shutdown has arrived, input has ended and a call's final transcript is not yet published
     When another call's final transcript is published
     Then I can see the machine not yet settled
+
+  Scenario: S-18 Input ends before shutdown
+    Given every opened call's final transcript has been published
+    When input ends
+    Then I can see input ended and the machine not yet settled
+    When shutdown arrives
+    Then I can see the machine settled
+
+  Scenario: S-19 Shutdown arrives before input ends
+    Given every opened call's final transcript has been published
+    When shutdown arrives
+    Then I can see no new model work starts and the machine not yet settled
+    When input ends
+    Then I can see the machine settled
+
+  Scenario: S-20 A call opens after shutdown while input is still open
+    Given shutdown has arrived and input has not ended
+    When a call opens, saves text and closes
+    Then I can take its final transcript as last saved without model work
+    And I can see the machine not yet settled until input ends and the final transcript is published
+```

@@ -7,8 +7,9 @@ func composeRecordingWithPreferences(
     boundary: ComposerBoundary, panel: AudelinPanel, finalization: TranscriptFinalizationModel, finalizationResources: FinalizationResources, summaries: SummaryCallbacks = .disabled
 ) async -> (recording: RecordingInputs, conditions: RecordingConditionsModel) {
     let callsURL = preferences.read().callsFolder
-    let recording = await composeRecording(preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: callApp, processes: processes,
-                                            boundary: boundary, panel: panel, finalization: finalization, finalizationResources: finalizationResources, summaries: summaries)
+    var recording = await composeRecording(preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: callApp, processes: processes,
+                                            boundary: boundary, panel: panel, finalizationResources: finalizationResources, summaries: summaries)
+    _ = subscribeTranscriptFinalization(recording.transcriptOutput, send: { await finalization.send($0) })
     return (recording, await composeRecordingConditions(recording: recording,
         callsURL: callsURL, boundary: boundary, currentFolder: { preferences.read().callsFolder }))
 }

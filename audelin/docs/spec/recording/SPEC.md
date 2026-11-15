@@ -54,6 +54,29 @@ effect handler, and its result comes back as a Recording event.
   recording begins without the warning, and the Session ending clears it.
   A warning report from an earlier or ended Session changes nothing.
 
+- **Recording publishes its transcript output.** A recording's transcript
+  is made final elsewhere (Transcript finalization), and Recording only
+  reports what happened to the live file, in one ordered stream for the
+  life of Recording, each value keyed by the call's folder, none dropped
+  or merged:
+  - **opened**, once the transcript file is open;
+  - **wrote** with the call text saved, once a live save returns, or
+    **write failed** when it throws;
+  - **closed** with the speaker names, read once, after the file closes.
+
+  A recording whose transcript never opened sends nothing. Values of one
+  call come in that order, and one call's closed comes before the next
+  call's opened. The output holds values only: the handles needed to make
+  a transcript final (its writer, the track files, how far audio was
+  captured) go to compose's resource store when the file opens, before
+  opened is sent, and are not part of the output. Recording knows nothing of who reads the output: compose
+  subscribes it and sends each value on, so no piece of a recording
+  sends to another machine.
+- **Shutdown settles after the transcript output.** On shutdown the current
+  recording ends as by hand, and Recording settles only once its last
+  closed is in the output; the output then finishes. A reader that has
+  read every value to the end has therefore seen every call's close.
+
 ```gherkin
 Feature: Deciding when a call is recorded
 
@@ -141,4 +164,29 @@ Feature: Deciding when a call is recorded
     Given a recording runs
     When an earlier Session says a side failed
     Then I can read that the recording has no fault
+
+  Scenario: S-18 A recording's transcript is reported in order
+    Given a recording runs with its transcript open
+    When two saves return, one save fails and the recording ends
+    Then the transcript output reads opened, wrote, wrote, write failed, closed for its call
+
+  Scenario: S-19 Closed carries the names at close
+    Given a recording runs and its call is named
+    When the recording ends and a name changes afterwards
+    Then the output's closed carries the names as they were when the file closed
+
+  Scenario: S-20 A recording with no transcript reports nothing
+    Given a recording whose transcript fails to open
+    When the recording ends
+    Then the transcript output is empty
+
+  Scenario: S-21 Two recordings report one after the other
+    Given a recording ended and a second one began
+    When the second recording ends
+    Then the output reads the first call's values through its closed, then the second call's
+
+  Scenario: S-22 Shutdown settles after the last close
+    Given a recording runs
+    When Recording is shut down and settles
+    Then the transcript output ends with that call's closed and then finishes
 ```

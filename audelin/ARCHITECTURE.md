@@ -71,8 +71,6 @@ becomes part of a machine's state, or is shown to be only mapping:
 - Recordings reserves the calls folder through Recording and waits on
   Recording's state for the answer. The calls-folder claim (Calls storage)
   replaces it.
-- The session's composition sends TranscriptFinalization its events
-  directly instead of the root subscribing Recording's output.
 - The panel's composition builds a Reading and a CallNames for each
   recording and decides what Reading is sent.
 - The menu runs panel presence's reducer and its delay by hand.
@@ -340,10 +338,11 @@ state holds each call's stage, writing, diarizing, cleaning, committing,
 then finalized or failed, with the call's last saved text, the speaker
 names taken when its transcript closed, its attributed far side and its
 cleaned microphone side; whether the latest write succeeded; whether its
-final transcript has been published; and whether a shutdown has settled.
+final transcript has been published; whether transcript input has ended; and
+whether a shutdown has settled.
 Its events are the transcript's opening, each live write's success or
 failure, the close with the call's names, each stage's result, each
-publication and shutdown.
+publication, the end of transcript input and shutdown.
 
 A call whose latest write failed is final as last saved, without further
 work. A saved call is diarized (Remote speakers), then cleaned (Bleed
@@ -358,10 +357,13 @@ On shutdown no new model work starts. A call being cleaned is final at once
 as written, and the machine stops its cleanup; a call being diarized or
 committed is final when that file write returns, since both replace the
 file; a call still being written is final as last saved once it closes.
-The machine publishes settled once every opened call's final transcript is
-published, so quit waits on settled alone. Recording settles only once its
-transcript output is delivered, so the last close reaches the machine
-before it settles.
+The root sends shutdown on the quit intention. Recording's ordered transcript
+subscription sends input ended when Recording's transcript output ends: no more
+openings, writes or closes can arrive. The machine publishes settled only after
+both shutdown and input ended, with every opened call's final transcript
+published, so quit waits on settled alone. A call opening after shutdown but
+before input ends is final as last saved once it closes, without model work.
+Without Recording the root sends both shutdown and input ended.
 
 Its collaborators are ports it owns: the diarizer (the root's after-call
 pass, which also hands its speaker turns to CallNames), microphone cleanup

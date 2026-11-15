@@ -16,6 +16,29 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingPiecesWiringTests {
 
+    @Test func shutdownFinishesTranscriptOutputAfterLastClose() async throws {
+        try await withPieces(consumeTranscript: false) { rig in
+            let output = Task {
+                var received: [RecordingTranscript] = []
+                for await value in rig.recording.transcriptOutput { received.append(value) }
+                return received
+            }
+            _ = await rig.record()
+            await rig.recording.send(.shutdown)
+            _ = await rig.wait { $0.shutdown == .settled }
+            let received = await output.value
+            guard case let .opened(call) = try #require(received.first) else {
+                Issue.record("missing opening"); return
+            }
+            guard case let .closed(closedCall, _) = try #require(received.last) else {
+                Issue.record("missing last close"); return
+            }
+            #expect(closedCall == call)
+            #expect(received.filter { if case .closed = $0 { true } else { false } }.count == 1)
+            await rig.resources.published(call: call)
+        }
+    }
+
     /// The session's reading feed ends with it even when no transcript opened to close it.
     @Test func aRecordingWhoseTranscriptNeverOpenedStillEnds() async throws {
 
@@ -143,6 +166,7 @@ private extension AsyncThrowingStream<CaptureBuffer, any Error>.Continuation {
 
 private struct PiecesRig: Sendable {
     let recording: RecordingInputs
+    let resources: FinalizationResources
     let panel: AudelinPanel
     let microphones: Captures
     let calls: Captures
@@ -166,7 +190,7 @@ private extension PiecesRig {
     }
 }
 
-private func withPieces(folderFails: Bool = false, _ body: @Sendable (PiecesRig) async throws -> Void) async throws {
+private func withPieces(folderFails: Bool = false, consumeTranscript: Bool = true, _ body: @Sendable (PiecesRig) async throws -> Void) async throws {
 
     try await withComposeFolder { root in
         let microphones = Captures(), calls = Captures(), waiting = Values<URL>(), log = FixtureLog(), clock = FixtureClock()
@@ -199,13 +223,18 @@ private func withPieces(folderFails: Bool = false, _ body: @Sendable (PiecesRig)
             cleanup: FinalizationCleanup(resources: resources), replacement: FinalizationReplacement(resources: resources),
             finals: SessionFinals(resources: resources))
         let recording = await composeRecording(preferences: preferences, occupiedCallNames: { [] }, callApp: app, processes: processes, boundary: boundary,
-                                               panel: panel, finalization: finalization, finalizationResources: resources,
+                                               panel: panel, finalizationResources: resources,
                                                summaries: SummaryCallbacks(waiting: { waiting.append($0) }))
+        let delivery = consumeTranscript ? subscribeTranscriptFinalization(recording.transcriptOutput, send: { await finalization.send($0) }) : nil
         for condition in [RecordingCondition.callAudioAccess, .microphoneAccess, .callsFolder, .room] {
             await recording.send(.conditionChanged(condition, available: true))
         }
-        try await body(PiecesRig(recording: recording, panel: panel, microphones: microphones, calls: calls, waiting: waiting, log: log))
+        try await body(PiecesRig(recording: recording, resources: resources, panel: panel, microphones: microphones, calls: calls, waiting: waiting, log: log))
+        await finalization.send(.shutdown)
         await recording.end()
+        await delivery?.value
+        if delivery == nil { await finalization.send(.inputEnded) }
+        await finalization.settled()
         await processes.stop()
     }
 }

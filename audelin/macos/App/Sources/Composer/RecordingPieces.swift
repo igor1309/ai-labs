@@ -36,11 +36,11 @@ actor RecordingPieces {
         callApp: RecordingCallApp, processes: CoreAudioProcesses,
         boundary: ComposerBoundary,
         send: @escaping @Sendable (RecordingEvent) async -> Void,
-        panel: AudelinPanel, finalization: TranscriptFinalizationModel, finalizationResources: FinalizationResources, summaries: SummaryCallbacks = .disabled
+        panel: AudelinPanel, transcriptOutput: AsyncStream<RecordingTranscript>.Continuation, finalizationResources: FinalizationResources, summaries: SummaryCallbacks = .disabled
     ) {
         self.panel = panel
         self.makePieces = composeRecordingPieces(preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: callApp,
-                                                 processes: processes, boundary: boundary, finalization: finalization, finalizationResources: finalizationResources)
+                                                 processes: processes, boundary: boundary, transcriptOutput: transcriptOutput, finalizationResources: finalizationResources)
         self.summaries = summaries
         self.send = send
         self.sink = boundary.log

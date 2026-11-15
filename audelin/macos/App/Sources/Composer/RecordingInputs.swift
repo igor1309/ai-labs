@@ -3,6 +3,7 @@ import Recording
 /// Recording's model as used by the composer.
 struct RecordingInputs: Sendable {
 
+    var transcriptOutput: AsyncStream<RecordingTranscript> = AsyncStream { $0.finish() }
     var reserveStorage: @Sendable () async -> Bool = { false }
     var releaseStorage: @Sendable () async -> Void = {}
     var send: @Sendable (RecordingEvent) async -> Void
