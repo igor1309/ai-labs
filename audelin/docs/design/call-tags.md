@@ -1,8 +1,9 @@
 # Call tags
 
 Tags in the calls window (LAB-1617). The owner picked this variation over
-chips in each row and a search-only design. Frames for the calls window
-still to be drawn in `visual-language.pen`; see the frame index.
+chips in each row and a search-only design. Frames are the "Calls — …"
+tag screens in `visual-language.pen` (frame index); parts are Tag chip,
+Tag chip/On, Tag strip and Tags line on "Calls window — shared components".
 
 ## Storage
 
@@ -36,11 +37,11 @@ still to be drawn in `visual-language.pen`; see the frame index.
   `+ тег` entry that completes from tags in use. Return saves, Esc cancels.
 - Rows don't change: the gist line stays.
 
-## States to draw
+## States
 
 | Frame | What it shows |
 |---|---|
 | Calls — tags filter | Strip with one chip on, list filtered |
-| Calls — #tag search | `#клиент бюджет` in the field, its chip on |
+| Calls — #tag search | `#клиент` in the field, its chip on |
 | Calls — editing tags | Detail header tags line as a field |
 | Calls — no tags | No strip; detail shows «Теги: нет · Добавить» |

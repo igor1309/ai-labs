@@ -12197,6 +12197,7 @@
                           "name": "Gutter",
                           "width": 67,
                           "gap": 4,
+                          "justifyContent": "end",
                           "children": [
                             {
                               "type": "text",
@@ -12230,8 +12231,7 @@
                                 }
                               ]
                             }
-                          ],
-                          "justifyContent": "end"
+                          ]
                         },
                         {
                           "type": "frame",
@@ -12271,6 +12271,7 @@
                           "name": "Gutter",
                           "width": 67,
                           "gap": 4,
+                          "justifyContent": "end",
                           "children": [
                             {
                               "type": "text",
@@ -12304,8 +12305,7 @@
                                 }
                               ]
                             }
-                          ],
-                          "justifyContent": "end"
+                          ]
                         },
                         {
                           "type": "frame",
@@ -12345,6 +12345,7 @@
                           "name": "Gutter",
                           "width": 67,
                           "gap": 4,
+                          "justifyContent": "end",
                           "children": [
                             {
                               "type": "text",
@@ -12378,8 +12379,7 @@
                                 }
                               ]
                             }
-                          ],
-                          "justifyContent": "end"
+                          ]
                         },
                         {
                           "type": "frame",
@@ -52440,6 +52440,205 @@
                   "fill": "$me"
                 }
               }
+            },
+            {
+              "type": "frame",
+              "id": "g8CtAf",
+              "name": "Tag chip",
+              "reusable": true,
+              "fill": "$chip",
+              "cornerRadius": "$radius-control",
+              "gap": "$space-4",
+              "padding": [
+                "$space-2",
+                "$space-8"
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "FNW96",
+                  "name": "Label",
+                  "fill": "$text",
+                  "content": "клиент",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-caption",
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "icon",
+                  "id": "CROTz",
+                  "x": 0,
+                  "y": 0,
+                  "name": "Remove",
+                  "enabled": false,
+                  "width": 10,
+                  "height": 10,
+                  "icon": "x",
+                  "library": "lucide",
+                  "fill": "$sub"
+                }
+              ]
+            },
+            {
+              "id": "slyRh",
+              "type": "ref",
+              "reusable": true,
+              "ref": "g8CtAf",
+              "name": "Tag chip/On",
+              "fill": "$me",
+              "descendants": {
+                "FNW96": {
+                  "fill": "#FFFFFF"
+                }
+              }
+            },
+            {
+              "type": "frame",
+              "id": "X1F3E",
+              "name": "Tag strip",
+              "reusable": true,
+              "clip": true,
+              "width": 340,
+              "fill": "$side",
+              "stroke": "$rule",
+              "strokeWidth": {
+                "bottom": 1
+              },
+              "gap": "$space-4",
+              "padding": [
+                "$space-6",
+                "$space-12"
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "id": "t7GbgA",
+                  "type": "ref",
+                  "ref": "g8CtAf",
+                  "name": "Chip клиент",
+                  "descendants": {
+                    "FNW96": {
+                      "content": "клиент"
+                    }
+                  }
+                },
+                {
+                  "id": "mc4uI",
+                  "type": "ref",
+                  "ref": "g8CtAf",
+                  "name": "Chip команда",
+                  "descendants": {
+                    "FNW96": {
+                      "content": "команда"
+                    }
+                  }
+                },
+                {
+                  "id": "k8jD73",
+                  "type": "ref",
+                  "ref": "g8CtAf",
+                  "name": "Chip банк",
+                  "descendants": {
+                    "FNW96": {
+                      "content": "банк"
+                    }
+                  }
+                },
+                {
+                  "id": "EPel7",
+                  "type": "ref",
+                  "ref": "g8CtAf",
+                  "name": "Chip найм",
+                  "descendants": {
+                    "FNW96": {
+                      "content": "найм"
+                    }
+                  }
+                },
+                {
+                  "id": "wtKiW",
+                  "type": "ref",
+                  "ref": "g8CtAf",
+                  "name": "Chip iOS",
+                  "descendants": {
+                    "FNW96": {
+                      "content": "iOS"
+                    }
+                  }
+                },
+                {
+                  "id": "nTdrN",
+                  "type": "ref",
+                  "ref": "g8CtAf",
+                  "name": "Chip Android",
+                  "descendants": {
+                    "FNW96": {
+                      "content": "Android"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "d8p5fr",
+              "name": "Tags line",
+              "reusable": true,
+              "width": 760,
+              "fill": "$surface",
+              "gap": "$space-6",
+              "padding": [
+                0,
+                "$space-28",
+                "$space-12",
+                "$space-28"
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "nf3EI",
+                  "name": "Caption",
+                  "fill": "$sub",
+                  "content": "Теги:",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                },
+                {
+                  "id": "FShTF",
+                  "type": "ref",
+                  "ref": "g8CtAf",
+                  "name": "Chip клиент",
+                  "descendants": {
+                    "FNW96": {
+                      "content": "клиент"
+                    }
+                  }
+                },
+                {
+                  "id": "Z2wr0",
+                  "type": "ref",
+                  "ref": "g8CtAf",
+                  "name": "Chip банк",
+                  "descendants": {
+                    "FNW96": {
+                      "content": "банк"
+                    }
+                  }
+                },
+                {
+                  "type": "text",
+                  "id": "J7pec",
+                  "name": "Edit",
+                  "fill": "$me",
+                  "content": "Изменить",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                }
+              ]
             }
           ]
         },
@@ -63801,6 +64000,2007 @@
       "width": 520,
       "height": 420,
       "content": "Merge outcomes\n\nFar apart: when an unselected call lies between selected ones, a sheet asks again. «Объединить всё равно» merges; «Назад» returns to merge mode with the selection kept.\n\nBusy: entering merge mode or confirming while Audelin records, transcribes or summarises shows the error banner at the foot of the list with the busy sentence. On entry the list stays in its normal bar; on confirm merge mode and the selection stay.\n\nMerging: the merge bar shows «Объединяю…» disabled and hides «Готово»; rows take no clicks. When it ends the list returns with the merged call selected.\n\nFailed: merge mode stays with the selection, and the banner names the reason. The calls are left as they were."
+    },
+    {
+      "type": "frame",
+      "id": "G1OBPT",
+      "x": 0,
+      "y": 30600,
+      "name": "Calls — tags filter",
+      "reusable": true,
+      "clip": true,
+      "width": 1100,
+      "height": 680,
+      "fill": "$win",
+      "children": [
+        {
+          "type": "frame",
+          "id": "EegQC",
+          "name": "Content",
+          "width": 1100,
+          "height": 680,
+          "children": [
+            {
+              "type": "frame",
+              "id": "JwfPp",
+              "name": "List pane",
+              "width": 340,
+              "height": "fill_container",
+              "stroke": "$rule",
+              "strokeWidth": {
+                "right": 1
+              },
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "NSroy",
+                  "type": "ref",
+                  "ref": "bncv0",
+                  "name": "List bar",
+                  "width": "fill_container"
+                },
+                {
+                  "id": "w9ePi0",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
+                },
+                {
+                  "id": "oby98",
+                  "type": "ref",
+                  "ref": "X1F3E",
+                  "name": "Tag strip",
+                  "width": "fill_container",
+                  "descendants": {
+                    "t7GbgA": {
+                      "id": "vXkYW",
+                      "type": "ref",
+                      "ref": "slyRh",
+                      "name": "Chip клиент",
+                      "descendants": {
+                        "FNW96": {
+                          "content": "клиент"
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "qqU4s",
+                  "name": "List",
+                  "clip": true,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "id": "yQWHS",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Сегодня",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Сегодня"
+                        },
+                        "u0i8d": {
+                          "content": "1 звонок"
+                        }
+                      }
+                    },
+                    {
+                      "id": "qR9Nd",
+                      "type": "ref",
+                      "ref": "rowSel",
+                      "name": "Row ЦР ID",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "12:58"
+                        },
+                        "s023x": {
+                          "content": "ЦР ID"
+                        },
+                        "s026x": {
+                          "content": "41:11"
+                        },
+                        "s027x": {
+                          "content": "Идентификаторы и связка ответов"
+                        }
+                      }
+                    },
+                    {
+                      "id": "I4S8B",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Понедельник, 9 ноября",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Понедельник, 9 ноября"
+                        },
+                        "u0i8d": {
+                          "content": "1 звонок"
+                        }
+                      }
+                    },
+                    {
+                      "id": "jcMuV",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row ЦР Статус",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "11:02"
+                        },
+                        "s023x": {
+                          "content": "ЦР Статус"
+                        },
+                        "s026x": {
+                          "content": "29:45"
+                        },
+                        "s027x": {
+                          "content": "Сроки по пополнению и открытые вопросы"
+                        }
+                      }
+                    },
+                    {
+                      "id": "Iq82k",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Пятница, 6 ноября",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Пятница, 6 ноября"
+                        },
+                        "u0i8d": {
+                          "content": "1 звонок"
+                        }
+                      }
+                    },
+                    {
+                      "id": "XDVNu",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row Лера 17820",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "14:59"
+                        },
+                        "s023x": {
+                          "content": "Лера 17820"
+                        },
+                        "s026x": {
+                          "content": "33:05"
+                        },
+                        "s027x": {
+                          "content": "Разбор заявки 17820 и следующие шаги"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "h2OG8G",
+              "name": "Detail pane",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "M0jhmu",
+                  "type": "ref",
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "ЦР ID"
+                    },
+                    "s032x": {
+                      "content": "Сегодня, 12:58 · 41:11"
+                    }
+                  }
+                },
+                {
+                  "id": "CYtvd",
+                  "type": "ref",
+                  "ref": "d8p5fr",
+                  "name": "Tags line",
+                  "width": "fill_container"
+                },
+                {
+                  "type": "frame",
+                  "id": "hIW9f",
+                  "name": "Scroll",
+                  "clip": true,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "layout": "vertical",
+                  "padding": [
+                    0,
+                    0,
+                    "$space-24",
+                    0
+                  ],
+                  "children": [
+                    {
+                      "id": "i6NkrD",
+                      "type": "ref",
+                      "ref": "s035x",
+                      "name": "S О ЧЁМ ВСТРЕЧА",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s034x": {
+                          "content": "О ЧЁМ ВСТРЕЧА"
+                        }
+                      }
+                    },
+                    {
+                      "id": "aMEPy",
+                      "type": "ref",
+                      "ref": "s039x",
+                      "name": "P Встреча была пос",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s038x": {
+                          "content": "Встреча была посвящена идентификаторам в сообщениях (application message ID, Oper ID, message ID, doc ID, correlation message ID) и тому, как связывать ответы с запросами между шиной, бэком и фронтом. Также обсудили пополнение счёта и классификацию асинхронных сообщений."
+                        }
+                      }
+                    },
+                    {
+                      "id": "EWH8v",
+                      "type": "ref",
+                      "ref": "s035x",
+                      "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s034x": {
+                          "content": "КЛЮЧЕВЫЕ МОМЕНТЫ"
+                        }
+                      }
+                    },
+                    {
+                      "id": "RKGvx",
+                      "type": "ref",
+                      "ref": "s037x",
+                      "name": "H Пополнение счёта",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s036x": {
+                          "content": "Пополнение счёта"
+                        }
+                      }
+                    },
+                    {
+                      "id": "Ucncd",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Пополнение работ",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Пополнение работает, открыты лишь вопросы по ответам [02:02–03:10]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "HO80N",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Отдельные вопрос",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Отдельные вопросы остаются по C2C и по Oper ID в пополнении [03:10]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "uqxUU",
+                      "type": "ref",
+                      "ref": "s037x",
+                      "name": "H Идентификаторы с",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s036x": {
+                          "content": "Идентификаторы сообщений"
+                        }
+                      }
+                    },
+                    {
+                      "id": "avKyN",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Application mess",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Application message ID — поле ЦБ; operation ID — поле адаптера [04:41–08:08]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "bvoZw",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B По correlation m",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "По correlation message ID есть расхождение между примерами XML и XSD-схемой; нужно выяснить у смежных систем [07:38–08:08]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "LvFeR",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Предложение: Ope",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Предложение: Oper ID как ключ верхнего уровня для всех ответов на запрос [08:08–10:04]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "ZsvNC",
+                      "type": "ref",
+                      "ref": "lSAuc",
+                      "name": "Date",
+                      "width": "fill_container"
+                    }
+                  ]
+                },
+                {
+                  "id": "Fam2x",
+                  "type": "ref",
+                  "ref": "hb8Q9",
+                  "name": "Copy",
+                  "layoutPosition": "absolute",
+                  "x": 712,
+                  "y": 10
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "dXsXq",
+      "x": 1180,
+      "y": 30600,
+      "name": "Calls — #tag search",
+      "reusable": true,
+      "clip": true,
+      "width": 1100,
+      "height": 680,
+      "fill": "$win",
+      "children": [
+        {
+          "type": "frame",
+          "id": "jUmFn",
+          "name": "Content",
+          "width": 1100,
+          "height": 680,
+          "children": [
+            {
+              "type": "frame",
+              "id": "W4CMmu",
+              "name": "List pane",
+              "width": 340,
+              "height": "fill_container",
+              "stroke": "$rule",
+              "strokeWidth": {
+                "right": 1
+              },
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "sFVnC",
+                  "type": "ref",
+                  "ref": "bncv0",
+                  "name": "List bar",
+                  "width": "fill_container"
+                },
+                {
+                  "id": "BT1LQ",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container",
+                  "descendants": {
+                    "tYXgR/jw3kq": {
+                      "content": "#клиент",
+                      "fill": "$text"
+                    },
+                    "tYXgR/SwwNh": {
+                      "enabled": true
+                    }
+                  }
+                },
+                {
+                  "id": "JlnmW",
+                  "type": "ref",
+                  "ref": "X1F3E",
+                  "name": "Tag strip",
+                  "width": "fill_container",
+                  "descendants": {
+                    "t7GbgA": {
+                      "id": "VMloU",
+                      "type": "ref",
+                      "ref": "slyRh",
+                      "name": "Chip клиент",
+                      "descendants": {
+                        "FNW96": {
+                          "content": "клиент"
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "TtEFr",
+                  "name": "List",
+                  "clip": true,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "id": "DQg7t",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Сегодня",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Сегодня"
+                        },
+                        "u0i8d": {
+                          "content": "1 звонок"
+                        }
+                      }
+                    },
+                    {
+                      "id": "O66bE8",
+                      "type": "ref",
+                      "ref": "rowSel",
+                      "name": "Row ЦР ID",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "12:58"
+                        },
+                        "s023x": {
+                          "content": "ЦР ID"
+                        },
+                        "s026x": {
+                          "content": "41:11"
+                        },
+                        "s027x": {
+                          "content": "Идентификаторы и связка ответов"
+                        }
+                      }
+                    },
+                    {
+                      "id": "rH60c",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Понедельник, 9 ноября",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Понедельник, 9 ноября"
+                        },
+                        "u0i8d": {
+                          "content": "1 звонок"
+                        }
+                      }
+                    },
+                    {
+                      "id": "d1S6X9",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row ЦР Статус",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "11:02"
+                        },
+                        "s023x": {
+                          "content": "ЦР Статус"
+                        },
+                        "s026x": {
+                          "content": "29:45"
+                        },
+                        "s027x": {
+                          "content": "Сроки по пополнению и открытые вопросы"
+                        }
+                      }
+                    },
+                    {
+                      "id": "spiWg",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Пятница, 6 ноября",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Пятница, 6 ноября"
+                        },
+                        "u0i8d": {
+                          "content": "1 звонок"
+                        }
+                      }
+                    },
+                    {
+                      "id": "w6rs4",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row Лера 17820",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "14:59"
+                        },
+                        "s023x": {
+                          "content": "Лера 17820"
+                        },
+                        "s026x": {
+                          "content": "33:05"
+                        },
+                        "s027x": {
+                          "content": "Разбор заявки 17820 и следующие шаги"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "fTBpd",
+              "name": "Detail pane",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "wKKAx",
+                  "type": "ref",
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "ЦР ID"
+                    },
+                    "s032x": {
+                      "content": "Сегодня, 12:58 · 41:11"
+                    }
+                  }
+                },
+                {
+                  "id": "UiBkW",
+                  "type": "ref",
+                  "ref": "d8p5fr",
+                  "name": "Tags line",
+                  "width": "fill_container"
+                },
+                {
+                  "type": "frame",
+                  "id": "q0mFTk",
+                  "name": "Scroll",
+                  "clip": true,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "layout": "vertical",
+                  "padding": [
+                    0,
+                    0,
+                    "$space-24",
+                    0
+                  ],
+                  "children": [
+                    {
+                      "id": "xi8JA",
+                      "type": "ref",
+                      "ref": "s035x",
+                      "name": "S О ЧЁМ ВСТРЕЧА",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s034x": {
+                          "content": "О ЧЁМ ВСТРЕЧА"
+                        }
+                      }
+                    },
+                    {
+                      "id": "HWZSy",
+                      "type": "ref",
+                      "ref": "s039x",
+                      "name": "P Встреча была пос",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s038x": {
+                          "content": "Встреча была посвящена идентификаторам в сообщениях (application message ID, Oper ID, message ID, doc ID, correlation message ID) и тому, как связывать ответы с запросами между шиной, бэком и фронтом. Также обсудили пополнение счёта и классификацию асинхронных сообщений."
+                        }
+                      }
+                    },
+                    {
+                      "id": "wUV18",
+                      "type": "ref",
+                      "ref": "s035x",
+                      "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s034x": {
+                          "content": "КЛЮЧЕВЫЕ МОМЕНТЫ"
+                        }
+                      }
+                    },
+                    {
+                      "id": "C0hBX",
+                      "type": "ref",
+                      "ref": "s037x",
+                      "name": "H Пополнение счёта",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s036x": {
+                          "content": "Пополнение счёта"
+                        }
+                      }
+                    },
+                    {
+                      "id": "vUfap",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Пополнение работ",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Пополнение работает, открыты лишь вопросы по ответам [02:02–03:10]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "YEsQH",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Отдельные вопрос",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Отдельные вопросы остаются по C2C и по Oper ID в пополнении [03:10]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "nJCEI",
+                      "type": "ref",
+                      "ref": "s037x",
+                      "name": "H Идентификаторы с",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s036x": {
+                          "content": "Идентификаторы сообщений"
+                        }
+                      }
+                    },
+                    {
+                      "id": "of3Uw",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Application mess",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Application message ID — поле ЦБ; operation ID — поле адаптера [04:41–08:08]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "Cb2v4",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B По correlation m",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "По correlation message ID есть расхождение между примерами XML и XSD-схемой; нужно выяснить у смежных систем [07:38–08:08]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "CA6zR",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Предложение: Ope",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Предложение: Oper ID как ключ верхнего уровня для всех ответов на запрос [08:08–10:04]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "vE4G5",
+                      "type": "ref",
+                      "ref": "lSAuc",
+                      "name": "Date",
+                      "width": "fill_container"
+                    }
+                  ]
+                },
+                {
+                  "id": "OJstR",
+                  "type": "ref",
+                  "ref": "hb8Q9",
+                  "name": "Copy",
+                  "layoutPosition": "absolute",
+                  "x": 712,
+                  "y": 10
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "NL1be",
+      "x": 2360,
+      "y": 30600,
+      "name": "Calls — editing tags",
+      "reusable": true,
+      "clip": true,
+      "width": 1100,
+      "height": 680,
+      "fill": "$win",
+      "children": [
+        {
+          "type": "frame",
+          "id": "fopNZ",
+          "name": "Content",
+          "width": 1100,
+          "height": 680,
+          "children": [
+            {
+              "type": "frame",
+              "id": "ixmi5",
+              "name": "List pane",
+              "width": 340,
+              "height": "fill_container",
+              "stroke": "$rule",
+              "strokeWidth": {
+                "right": 1
+              },
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "tUJVy",
+                  "type": "ref",
+                  "ref": "bncv0",
+                  "name": "List bar",
+                  "width": "fill_container"
+                },
+                {
+                  "id": "qSK6T",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
+                },
+                {
+                  "id": "X9WEXX",
+                  "type": "ref",
+                  "ref": "X1F3E",
+                  "name": "Tag strip",
+                  "width": "fill_container"
+                },
+                {
+                  "type": "frame",
+                  "id": "osUOT",
+                  "name": "List",
+                  "clip": true,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "id": "clcPF",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Сегодня",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Сегодня"
+                        },
+                        "u0i8d": {
+                          "content": "3 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "Qw6CU",
+                      "type": "ref",
+                      "ref": "rowSel",
+                      "name": "Row ЦР ID",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "12:58"
+                        },
+                        "s023x": {
+                          "content": "ЦР ID"
+                        },
+                        "s026x": {
+                          "content": "41:11"
+                        },
+                        "s027x": {
+                          "content": "Идентификаторы и связка ответов"
+                        }
+                      }
+                    },
+                    {
+                      "id": "Xs3M8",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row ЦР",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "11:00"
+                        },
+                        "s023x": {
+                          "content": "ЦР"
+                        },
+                        "s026x": {
+                          "content": "38:20"
+                        },
+                        "s027x": {
+                          "content": "Статус задач и план релиза"
+                        }
+                      }
+                    },
+                    {
+                      "id": "sPHhD",
+                      "type": "ref",
+                      "ref": "rowPre",
+                      "name": "Row iOS Daily",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
+                        },
+                        "s026x": {
+                          "content": "15:02"
+                        },
+                        "s027x": {
+                          "content": "Подготовка итогов…"
+                        }
+                      }
+                    },
+                    {
+                      "id": "s42pdc",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Вчера",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Вчера"
+                        },
+                        "u0i8d": {
+                          "content": "2 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "M7wId",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row Люда — передача дел",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "17:00"
+                        },
+                        "s023x": {
+                          "content": "Люда — передача дел"
+                        },
+                        "s026x": {
+                          "content": "52:40"
+                        },
+                        "s027x": {
+                          "content": "Передача задач и доступов перед отпуском"
+                        }
+                      }
+                    },
+                    {
+                      "id": "otULE",
+                      "type": "ref",
+                      "ref": "rowFai",
+                      "name": "Row iOS & Android daily",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS & Android daily"
+                        },
+                        "s026x": {
+                          "content": "14:51"
+                        },
+                        "s027x": {
+                          "content": "Не удалось подготовить итоги"
+                        }
+                      }
+                    },
+                    {
+                      "id": "O2Ywv",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Понедельник, 9 ноября",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Понедельник, 9 ноября"
+                        },
+                        "u0i8d": {
+                          "content": "2 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "KqEHM",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row ЦР Статус",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "11:02"
+                        },
+                        "s023x": {
+                          "content": "ЦР Статус"
+                        },
+                        "s026x": {
+                          "content": "29:45"
+                        },
+                        "s027x": {
+                          "content": "Сроки по пополнению и открытые вопросы"
+                        }
+                      }
+                    },
+                    {
+                      "id": "lkMAC",
+                      "type": "ref",
+                      "ref": "rowUnt",
+                      "name": "Row 2026.11.09-1000",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "2026.11.09-1000"
+                        },
+                        "s026x": {
+                          "content": "16:10"
+                        },
+                        "s027x": {
+                          "content": ""
+                        }
+                      }
+                    },
+                    {
+                      "id": "yxygs",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Пятница, 6 ноября",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Пятница, 6 ноября"
+                        },
+                        "u0i8d": {
+                          "content": "2 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "CozEw",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row Лера 17820",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "14:59"
+                        },
+                        "s023x": {
+                          "content": "Лера 17820"
+                        },
+                        "s026x": {
+                          "content": "33:05"
+                        },
+                        "s027x": {
+                          "content": "Разбор заявки 17820 и следующие шаги"
+                        }
+                      }
+                    },
+                    {
+                      "id": "o4Y7Cs",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row iOS Daily",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
+                        },
+                        "s026x": {
+                          "content": "15:30"
+                        },
+                        "s027x": {
+                          "content": "Короткий синк по задачам спринта"
+                        }
+                      }
+                    },
+                    {
+                      "id": "vZsgI",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Четверг, 5 ноября",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Четверг, 5 ноября"
+                        },
+                        "u0i8d": {
+                          "content": "8 звонков"
+                        }
+                      }
+                    },
+                    {
+                      "id": "R6DLY",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row Планирование",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "17:34"
+                        },
+                        "s023x": {
+                          "content": "Планирование"
+                        },
+                        "s026x": {
+                          "content": "58:00"
+                        },
+                        "s027x": {
+                          "content": "Цели спринта и оценки"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "oIn4o",
+              "name": "Detail pane",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "iKrmU",
+                  "type": "ref",
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "ЦР ID"
+                    },
+                    "s032x": {
+                      "content": "Сегодня, 12:58 · 41:11"
+                    }
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "YO5v1",
+                  "name": "Tags line — editing",
+                  "width": "fill_container",
+                  "fill": "$surface",
+                  "gap": "$space-6",
+                  "padding": [
+                    0,
+                    "$space-28",
+                    "$space-12",
+                    "$space-28"
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "SAOqY",
+                      "name": "Caption",
+                      "fill": "$sub",
+                      "content": "Теги:",
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "Oz0EO",
+                      "name": "Tags field",
+                      "width": "fill_container",
+                      "height": 26,
+                      "fill": "$btn",
+                      "cornerRadius": "$radius-control",
+                      "stroke": "$me",
+                      "strokeWidth": 1,
+                      "gap": "$space-4",
+                      "padding": [
+                        0,
+                        "$space-6"
+                      ],
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "id": "BXcNH",
+                          "type": "ref",
+                          "ref": "g8CtAf",
+                          "name": "Chip клиент",
+                          "descendants": {
+                            "FNW96": {
+                              "content": "клиент"
+                            },
+                            "CROTz": {
+                              "enabled": true
+                            }
+                          }
+                        },
+                        {
+                          "id": "kSooW",
+                          "type": "ref",
+                          "ref": "g8CtAf",
+                          "name": "Chip банк",
+                          "descendants": {
+                            "FNW96": {
+                              "content": "банк"
+                            },
+                            "CROTz": {
+                              "enabled": true
+                            }
+                          }
+                        },
+                        {
+                          "type": "frame",
+                          "id": "LsDNL",
+                          "name": "Entry",
+                          "alignItems": "center",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Qmrkf",
+                              "name": "New tag",
+                              "fill": "$text",
+                              "content": "най",
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "text",
+                              "id": "m6ALjV",
+                              "name": "Completion",
+                              "fill": "$gutter",
+                              "content": "м",
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "type": "text",
+                      "id": "fMydB",
+                      "name": "Hint",
+                      "fill": "$gutter",
+                      "content": "Return — сохранить, Esc — отменить",
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-caption",
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "type": "frame",
+                  "id": "VYjTR",
+                  "name": "Scroll",
+                  "clip": true,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "layout": "vertical",
+                  "padding": [
+                    0,
+                    0,
+                    "$space-24",
+                    0
+                  ],
+                  "children": [
+                    {
+                      "id": "QdNmu",
+                      "type": "ref",
+                      "ref": "s035x",
+                      "name": "S О ЧЁМ ВСТРЕЧА",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s034x": {
+                          "content": "О ЧЁМ ВСТРЕЧА"
+                        }
+                      }
+                    },
+                    {
+                      "id": "AvSOl",
+                      "type": "ref",
+                      "ref": "s039x",
+                      "name": "P Встреча была пос",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s038x": {
+                          "content": "Встреча была посвящена идентификаторам в сообщениях (application message ID, Oper ID, message ID, doc ID, correlation message ID) и тому, как связывать ответы с запросами между шиной, бэком и фронтом. Также обсудили пополнение счёта и классификацию асинхронных сообщений."
+                        }
+                      }
+                    },
+                    {
+                      "id": "ypLee",
+                      "type": "ref",
+                      "ref": "s035x",
+                      "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s034x": {
+                          "content": "КЛЮЧЕВЫЕ МОМЕНТЫ"
+                        }
+                      }
+                    },
+                    {
+                      "id": "zo4PV",
+                      "type": "ref",
+                      "ref": "s037x",
+                      "name": "H Пополнение счёта",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s036x": {
+                          "content": "Пополнение счёта"
+                        }
+                      }
+                    },
+                    {
+                      "id": "Cyf6R",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Пополнение работ",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Пополнение работает, открыты лишь вопросы по ответам [02:02–03:10]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "BAG8M",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Отдельные вопрос",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Отдельные вопросы остаются по C2C и по Oper ID в пополнении [03:10]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "KxeTX",
+                      "type": "ref",
+                      "ref": "s037x",
+                      "name": "H Идентификаторы с",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s036x": {
+                          "content": "Идентификаторы сообщений"
+                        }
+                      }
+                    },
+                    {
+                      "id": "cBLR5",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Application mess",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Application message ID — поле ЦБ; operation ID — поле адаптера [04:41–08:08]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "Pjhb9",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B По correlation m",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "По correlation message ID есть расхождение между примерами XML и XSD-схемой; нужно выяснить у смежных систем [07:38–08:08]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "PyzJk",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Предложение: Ope",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Предложение: Oper ID как ключ верхнего уровня для всех ответов на запрос [08:08–10:04]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "h9oek",
+                      "type": "ref",
+                      "ref": "lSAuc",
+                      "name": "Date",
+                      "width": "fill_container"
+                    }
+                  ]
+                },
+                {
+                  "id": "Jo9ud",
+                  "type": "ref",
+                  "ref": "hb8Q9",
+                  "name": "Copy",
+                  "layoutPosition": "absolute",
+                  "x": 712,
+                  "y": 10
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "D8lP5e",
+      "x": 3540,
+      "y": 30600,
+      "name": "Calls — no tags",
+      "reusable": true,
+      "clip": true,
+      "width": 1100,
+      "height": 680,
+      "fill": "$win",
+      "children": [
+        {
+          "type": "frame",
+          "id": "ZeEa5",
+          "name": "Content",
+          "width": 1100,
+          "height": 680,
+          "children": [
+            {
+              "type": "frame",
+              "id": "qu9bS",
+              "name": "List pane",
+              "width": 340,
+              "height": "fill_container",
+              "stroke": "$rule",
+              "strokeWidth": {
+                "right": 1
+              },
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "v7z22",
+                  "type": "ref",
+                  "ref": "bncv0",
+                  "name": "List bar",
+                  "width": "fill_container"
+                },
+                {
+                  "id": "QQoiT",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
+                },
+                {
+                  "type": "frame",
+                  "id": "hq1XL",
+                  "name": "List",
+                  "clip": true,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "id": "M8jlPj",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Сегодня",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Сегодня"
+                        },
+                        "u0i8d": {
+                          "content": "3 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "EYTK6",
+                      "type": "ref",
+                      "ref": "rowSel",
+                      "name": "Row ЦР ID",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "12:58"
+                        },
+                        "s023x": {
+                          "content": "ЦР ID"
+                        },
+                        "s026x": {
+                          "content": "41:11"
+                        },
+                        "s027x": {
+                          "content": "Идентификаторы и связка ответов"
+                        }
+                      }
+                    },
+                    {
+                      "id": "yCFJj",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row ЦР",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "11:00"
+                        },
+                        "s023x": {
+                          "content": "ЦР"
+                        },
+                        "s026x": {
+                          "content": "38:20"
+                        },
+                        "s027x": {
+                          "content": "Статус задач и план релиза"
+                        }
+                      }
+                    },
+                    {
+                      "id": "uEBLu",
+                      "type": "ref",
+                      "ref": "rowPre",
+                      "name": "Row iOS Daily",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
+                        },
+                        "s026x": {
+                          "content": "15:02"
+                        },
+                        "s027x": {
+                          "content": "Подготовка итогов…"
+                        }
+                      }
+                    },
+                    {
+                      "id": "TmMWS",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Вчера",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Вчера"
+                        },
+                        "u0i8d": {
+                          "content": "2 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "w3ciZy",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row Люда — передача дел",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "17:00"
+                        },
+                        "s023x": {
+                          "content": "Люда — передача дел"
+                        },
+                        "s026x": {
+                          "content": "52:40"
+                        },
+                        "s027x": {
+                          "content": "Передача задач и доступов перед отпуском"
+                        }
+                      }
+                    },
+                    {
+                      "id": "UKWBI",
+                      "type": "ref",
+                      "ref": "rowFai",
+                      "name": "Row iOS & Android daily",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS & Android daily"
+                        },
+                        "s026x": {
+                          "content": "14:51"
+                        },
+                        "s027x": {
+                          "content": "Не удалось подготовить итоги"
+                        }
+                      }
+                    },
+                    {
+                      "id": "Uf0tA",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Понедельник, 9 ноября",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Понедельник, 9 ноября"
+                        },
+                        "u0i8d": {
+                          "content": "2 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "shJAw",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row ЦР Статус",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "11:02"
+                        },
+                        "s023x": {
+                          "content": "ЦР Статус"
+                        },
+                        "s026x": {
+                          "content": "29:45"
+                        },
+                        "s027x": {
+                          "content": "Сроки по пополнению и открытые вопросы"
+                        }
+                      }
+                    },
+                    {
+                      "id": "XAvNd",
+                      "type": "ref",
+                      "ref": "rowUnt",
+                      "name": "Row 2026.11.09-1000",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "2026.11.09-1000"
+                        },
+                        "s026x": {
+                          "content": "16:10"
+                        },
+                        "s027x": {
+                          "content": ""
+                        }
+                      }
+                    },
+                    {
+                      "id": "baNtz",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Пятница, 6 ноября",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Пятница, 6 ноября"
+                        },
+                        "u0i8d": {
+                          "content": "2 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "DhjDG",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row Лера 17820",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "14:59"
+                        },
+                        "s023x": {
+                          "content": "Лера 17820"
+                        },
+                        "s026x": {
+                          "content": "33:05"
+                        },
+                        "s027x": {
+                          "content": "Разбор заявки 17820 и следующие шаги"
+                        }
+                      }
+                    },
+                    {
+                      "id": "kOPXq",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row iOS Daily",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
+                        },
+                        "s026x": {
+                          "content": "15:30"
+                        },
+                        "s027x": {
+                          "content": "Короткий синк по задачам спринта"
+                        }
+                      }
+                    },
+                    {
+                      "id": "JjzIO",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Четверг, 5 ноября",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Четверг, 5 ноября"
+                        },
+                        "u0i8d": {
+                          "content": "8 звонков"
+                        }
+                      }
+                    },
+                    {
+                      "id": "g3VDTc",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row Планирование",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "17:34"
+                        },
+                        "s023x": {
+                          "content": "Планирование"
+                        },
+                        "s026x": {
+                          "content": "58:00"
+                        },
+                        "s027x": {
+                          "content": "Цели спринта и оценки"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "ypbaR",
+              "name": "Detail pane",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "DTRXE",
+                  "type": "ref",
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "ЦР ID"
+                    },
+                    "s032x": {
+                      "content": "Сегодня, 12:58 · 41:11"
+                    }
+                  }
+                },
+                {
+                  "id": "e4WWqS",
+                  "type": "ref",
+                  "ref": "d8p5fr",
+                  "name": "Tags line",
+                  "width": "fill_container",
+                  "descendants": {
+                    "nf3EI": {
+                      "content": "Теги: нет"
+                    },
+                    "FShTF": {
+                      "enabled": false
+                    },
+                    "Z2wr0": {
+                      "enabled": false
+                    },
+                    "J7pec": {
+                      "content": "Добавить"
+                    }
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "w6HUh",
+                  "name": "Scroll",
+                  "clip": true,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "layout": "vertical",
+                  "padding": [
+                    0,
+                    0,
+                    "$space-24",
+                    0
+                  ],
+                  "children": [
+                    {
+                      "id": "TDdq4",
+                      "type": "ref",
+                      "ref": "s035x",
+                      "name": "S О ЧЁМ ВСТРЕЧА",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s034x": {
+                          "content": "О ЧЁМ ВСТРЕЧА"
+                        }
+                      }
+                    },
+                    {
+                      "id": "MZMDQ",
+                      "type": "ref",
+                      "ref": "s039x",
+                      "name": "P Встреча была пос",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s038x": {
+                          "content": "Встреча была посвящена идентификаторам в сообщениях (application message ID, Oper ID, message ID, doc ID, correlation message ID) и тому, как связывать ответы с запросами между шиной, бэком и фронтом. Также обсудили пополнение счёта и классификацию асинхронных сообщений."
+                        }
+                      }
+                    },
+                    {
+                      "id": "cCcU5",
+                      "type": "ref",
+                      "ref": "s035x",
+                      "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s034x": {
+                          "content": "КЛЮЧЕВЫЕ МОМЕНТЫ"
+                        }
+                      }
+                    },
+                    {
+                      "id": "ks1rH",
+                      "type": "ref",
+                      "ref": "s037x",
+                      "name": "H Пополнение счёта",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s036x": {
+                          "content": "Пополнение счёта"
+                        }
+                      }
+                    },
+                    {
+                      "id": "BhFoC",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Пополнение работ",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Пополнение работает, открыты лишь вопросы по ответам [02:02–03:10]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "t36Q1",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Отдельные вопрос",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Отдельные вопросы остаются по C2C и по Oper ID в пополнении [03:10]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "ERZls",
+                      "type": "ref",
+                      "ref": "s037x",
+                      "name": "H Идентификаторы с",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s036x": {
+                          "content": "Идентификаторы сообщений"
+                        }
+                      }
+                    },
+                    {
+                      "id": "YiLL7",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Application mess",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Application message ID — поле ЦБ; operation ID — поле адаптера [04:41–08:08]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "B4BC9",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B По correlation m",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "По correlation message ID есть расхождение между примерами XML и XSD-схемой; нужно выяснить у смежных систем [07:38–08:08]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "YmlGO",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Предложение: Ope",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Предложение: Oper ID как ключ верхнего уровня для всех ответов на запрос [08:08–10:04]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "lHZ3e",
+                      "type": "ref",
+                      "ref": "lSAuc",
+                      "name": "Date",
+                      "width": "fill_container"
+                    }
+                  ]
+                },
+                {
+                  "id": "Xt0EK",
+                  "type": "ref",
+                  "ref": "hb8Q9",
+                  "name": "Copy",
+                  "layoutPosition": "absolute",
+                  "x": 712,
+                  "y": 10
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "H6FeW",
+      "type": "ref",
+      "ref": "G1OBPT",
+      "x": 0,
+      "y": 31340,
+      "name": "Calls — tags filter (dark)",
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "N8zYwg",
+      "type": "ref",
+      "ref": "dXsXq",
+      "x": 1180,
+      "y": 31340,
+      "name": "Calls — #tag search (dark)",
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "iUViA",
+      "type": "ref",
+      "ref": "NL1be",
+      "x": 2360,
+      "y": 31340,
+      "name": "Calls — editing tags (dark)",
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "i3w0U",
+      "type": "ref",
+      "ref": "D8lP5e",
+      "x": 3540,
+      "y": 31340,
+      "name": "Calls — no tags (dark)",
+      "theme": {
+        "mode": "dark"
+      }
     }
   ],
   "themes": {
