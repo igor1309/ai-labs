@@ -86,6 +86,9 @@ private func makeSUT(split: Spy<String, (tags: [String], text: String)>,
     CallsListReducer(splitQuery: { split.call($0) }, tagKey: { key.call($0) }, normalizeTags: { _ in
         Issue.record("No tags are saved while filtering")
         return []
+    }, complete: { _, _, _ in
+        Issue.record("No tag is completed while filtering")
+        return ""
     })
 }
 
