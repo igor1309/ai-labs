@@ -44,54 +44,48 @@ struct RecordingsMergeTests {
         assert(merging, .chooseFolder(URL(fileURLWithPath: "/elsewhere")), delivers: nil)
     }
 
+    @Test func theBusyMessageIsNotAskedOnInit() {
+        let busy = BusySpy()
+        _ = busy.reducer
+        #expect(busy.asked == 0)
+    }
+
+    @Test func theBusyMessageIsAskedOnlyWhenAMergeIsRefused() {
+        let busy = BusySpy()
+        assert(listed(), .enterMergeMode, delivers: nil, using: busy.reducer) { $0.phase = .merging }
+        assert(listed { $0.phase = .merging; $0.mergeSelection = ["A", "B"] }, .confirmMerge, delivers: .merge(["B", "A"]), using: busy.reducer) {
+            $0.phase = .runningMerge
+        }
+        assert(listed { $0.phase = .merging; $0.mergeSelection = ["A", "C"]; $0.mergeAvailable = false }, .confirmMerge, delivers: nil, using: busy.reducer) {
+            $0.phase = .warnedFarApart
+        }
+        assert(listed { $0.phase = .renaming("A"); $0.mergeAvailable = false }, .enterMergeMode, delivers: nil, using: busy.reducer)
+        assert(listed { $0.mergeAvailable = false }, .refresh, delivers: .list, using: busy.reducer) { $0.isListing = true }
+        #expect(busy.asked == 0)
+    }
+
     @Test func S14_mergeAvailabilityIsKeptUntilItChanges() {
-        assert(listed(), .mergeAvailability(true), delivers: nil) { $0.mergeAvailable = true }
+        assert(listed { $0.mergeAvailable = false }, .mergeAvailability(true), delivers: nil) { $0.mergeAvailable = true }
         assert(listed { $0.mergeAvailable = true }, .mergeAvailability(false), delivers: nil) { $0.mergeAvailable = false }
         assert(listed { $0.mergeAvailable = true }, .mergeAvailability(true), delivers: nil)
-        assert(listed { $0.phase = .runningMerge }, .mergeAvailability(true), delivers: nil) { $0.mergeAvailable = true }
+        assert(listed { $0.phase = .runningMerge; $0.mergeAvailable = false }, .mergeAvailability(true), delivers: nil) { $0.mergeAvailable = true }
     }
 
     @Test func S14_mergeAvailabilityIsNotKnownBeforeItArrives() {
         #expect(RecordingsState().mergeAvailable == false)
     }
 
-    @Test func theIdleQueryIsNotAskedOnInit() {
-        let idle = IdleSpy(answer: true)
-        _ = idle.reducer
-        #expect(idle.asked == 0)
-    }
-
-    @Test func S1_enteringMergeModeAsksTheIdleQueryOnce() {
-        let idle = IdleSpy(answer: true)
-        assert(listed(), .enterMergeMode, delivers: nil, using: idle.reducer) { $0.phase = .merging }
-        #expect(idle.asked == 1)
-        #expect(idle.busyAsked == 0)
-    }
-
     @Test func S2_mergeModeIsRefusedWhileBusy() {
-        let idle = IdleSpy(answer: false)
-        assert(listed { $0.failure = .init(id: "A", reason: "disk") }, .enterMergeMode, delivers: nil, using: idle.reducer) {
+        let busy = BusySpy()
+        assert(listed { $0.failure = .init(id: "A", reason: "disk"); $0.mergeAvailable = false }, .enterMergeMode, delivers: nil, using: busy.reducer) {
             $0.failure = .init(id: nil, reason: "Audelin is busy")
         }
-        #expect(idle.asked == 1)
-        #expect(idle.busyAsked == 1)
-    }
-
-    @Test func theIdleQueryIsNotAskedOutsideMergeEntry() {
-        let idle = IdleSpy(answer: true)
-        let merging = listed { $0.phase = .merging }
-        assert(merging, .toggleMergeSelection("A"), delivers: nil, using: idle.reducer) { $0.mergeSelection = ["A"] }
-        assert(merging, .leaveMergeMode, delivers: nil, using: idle.reducer) { $0.phase = .idle }
-        assert(listed { $0.phase = .renaming("A") }, .enterMergeMode, delivers: nil, using: idle.reducer)
-        assert(listed(), .refresh, delivers: .list, using: idle.reducer) { $0.isListing = true }
-        #expect(idle.asked == 0)
+        #expect(busy.asked == 1)
     }
 
     @Test func S4_fewerThanTwoCallsDoNotMerge() {
-        let idle = IdleSpy(answer: true)
-        assert(listed { $0.phase = .merging; $0.mergeSelection = ["A"] }, .confirmMerge, delivers: nil, using: idle.reducer)
-        assert(listed { $0.phase = .merging }, .confirmMerge, delivers: nil, using: idle.reducer)
-        #expect(idle.asked == 0)
+        assert(listed { $0.phase = .merging; $0.mergeSelection = ["A"] }, .confirmMerge, delivers: nil)
+        assert(listed { $0.phase = .merging; $0.mergeAvailable = false }, .confirmMerge, delivers: nil)
     }
 
     @Test func S6_farApartCallsAskAgain() {
@@ -112,49 +106,35 @@ struct RecordingsMergeTests {
     }
 
     @Test func S5_neighbouringCallsMerge() {
-        let idle = IdleSpy(answer: true)
         assert(listed { $0.phase = .merging; $0.mergeSelection = ["A", "B"]; $0.failure = .init(id: nil, reason: "busy") },
-               .confirmMerge, delivers: .merge(["B", "A"]), using: idle.reducer) {
+               .confirmMerge, delivers: .merge(["B", "A"])) {
             $0.phase = .runningMerge
             $0.failure = nil
         }
-        #expect(idle.asked == 1)
     }
 
     @Test func S7_mergingAnywayAfterTheWarning() {
-        let idle = IdleSpy(answer: true)
-        assert(listed { $0.phase = .warnedFarApart; $0.mergeSelection = ["A", "C"] }, .mergeAnyway, delivers: .merge(["C", "A"]), using: idle.reducer) {
+        assert(listed { $0.phase = .warnedFarApart; $0.mergeSelection = ["A", "C"] }, .mergeAnyway, delivers: .merge(["C", "A"])) {
             $0.phase = .runningMerge
         }
-        #expect(idle.asked == 1)
-        assert(listed { $0.phase = .merging; $0.mergeSelection = ["A", "C"] }, .mergeAnyway, delivers: nil, using: idle.reducer)
-        #expect(idle.asked == 1)
-    }
-
-    @Test func S6_theWarningDoesNotAskTheIdleQuery() {
-        let idle = IdleSpy(answer: true)
-        assert(listed { $0.phase = .merging; $0.mergeSelection = ["A", "C"] }, .confirmMerge, delivers: nil, using: idle.reducer) {
-            $0.phase = .warnedFarApart
-        }
-        #expect(idle.asked == 0)
+        assert(listed { $0.phase = .merging; $0.mergeSelection = ["A", "C"] }, .mergeAnyway, delivers: nil)
     }
 
     @Test func S9_confirmingWhileBusyIsRefused() {
-        let idle = IdleSpy(answer: false)
-        assert(listed { $0.phase = .merging; $0.mergeSelection = ["A", "B"] }, .confirmMerge, delivers: nil, using: idle.reducer) {
+        let busy = BusySpy()
+        assert(listed { $0.phase = .merging; $0.mergeSelection = ["A", "B"]; $0.mergeAvailable = false }, .confirmMerge, delivers: nil, using: busy.reducer) {
             $0.failure = .init(id: nil, reason: "Audelin is busy")
         }
-        #expect(idle.asked == 1)
-        #expect(idle.busyAsked == 1)
+        #expect(busy.asked == 1)
     }
 
     @Test func S13_mergingAnywayWhileBusyIsRefused() {
-        let idle = IdleSpy(answer: false)
-        assert(listed { $0.phase = .warnedFarApart; $0.mergeSelection = ["A", "C"] }, .mergeAnyway, delivers: nil, using: idle.reducer) {
+        let busy = BusySpy()
+        assert(listed { $0.phase = .warnedFarApart; $0.mergeSelection = ["A", "C"]; $0.mergeAvailable = false }, .mergeAnyway, delivers: nil, using: busy.reducer) {
             $0.phase = .merging
             $0.failure = .init(id: nil, reason: "Audelin is busy")
         }
-        #expect(idle.asked == 1)
+        #expect(busy.asked == 1)
     }
 
     @Test func aMergeDoesNotStartWhileStopping() {
@@ -218,19 +198,15 @@ struct RecordingsMergeTests {
 private let calls = ["C", "B", "A"].map { RecordedCall(id: $0, title: "", start: .distantPast, duration: 60) }
 
 private func listed(_ change: (inout RecordingsState) -> Void = { _ in }) -> RecordingsState {
-    var state = RecordingsState(calls: calls, callsFolder: URL(fileURLWithPath: "/calls")); change(&state); return state
+    var state = RecordingsState(calls: calls, callsFolder: URL(fileURLWithPath: "/calls"), mergeAvailable: true); change(&state); return state
 }
 
-private final class IdleSpy: Sendable {
-    private let answer: Bool
-    private let counts = Mutex((idle: 0, busy: 0))
-    init(answer: Bool) { self.answer = answer }
-    var asked: Int { counts.withLock { $0.idle } }
-    var busyAsked: Int { counts.withLock { $0.busy } }
+private final class BusySpy: Sendable {
+    private let count = Mutex(0)
+    var asked: Int { count.withLock { $0 } }
     var reducer: RecordingsReducer {
         RecordingsReducer(failureMessage: { $0 + $1 }, moveText: stubMoveText,
-                          isIdle: { self.counts.withLock { $0.idle += 1 }; return self.answer },
-                          busyMessage: { self.counts.withLock { $0.busy += 1 }; return "Audelin is busy" })
+                          busyMessage: { self.count.withLock { $0 += 1 }; return "Audelin is busy" })
     }
 }
 

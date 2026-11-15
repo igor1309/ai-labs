@@ -96,15 +96,13 @@ public struct RecordingsReducer: Sendable {
     private let failureMessage: @Sendable (String, String) -> String
 
     let moveText: @Sendable (CallsFolderMove) -> MoveText
-    private let isIdle: @Sendable () -> Bool
     private let busyMessage: @Sendable () -> String
 
-    /// `isIdle` answers whether Audelin is idle enough to merge; `busyMessage` says it is not.
+    /// `busyMessage` says Audelin is not idle enough to merge.
     public init(failureMessage: @escaping @Sendable (String, String) -> String, moveText: @escaping @Sendable (CallsFolderMove) -> MoveText,
-                isIdle: @escaping @Sendable () -> Bool, busyMessage: @escaping @Sendable () -> String) {
+                busyMessage: @escaping @Sendable () -> String) {
         self.failureMessage = failureMessage
         self.moveText = moveText
-        self.isIdle = isIdle
         self.busyMessage = busyMessage
     }
 
@@ -192,7 +190,7 @@ public struct RecordingsReducer: Sendable {
             return (state, .list)
         case .enterMergeMode:
             guard Self.acceptsAction(state) else { return (state, nil) }
-            guard isIdle() else {
+            guard state.mergeAvailable else {
                 state.failure = .init(id: nil, reason: busyMessage())
                 return (state, nil)
             }
@@ -238,7 +236,7 @@ public struct RecordingsReducer: Sendable {
 
     private func startMerge(_ state: RecordingsState) -> (RecordingsState, RecordingsEffect?) {
         var state = state
-        guard !state.stopping, isIdle() else {
+        guard !state.stopping, state.mergeAvailable else {
             state.phase = .merging
             state.failure = .init(id: nil, reason: busyMessage())
             return (state, nil)

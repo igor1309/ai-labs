@@ -92,13 +92,7 @@ public func compose(
                                       storeFolder: { destination in
                                           try await storage.commitFolder(destination) { try preferences.updateCallsFolder(destination) }
                                       }, describe: { language.language.settings.callsFailure($0) }), text: { language.language.settings },
-                                      isIdle: { [weak menu] in
-                                          MainActor.assumeIsolated {
-                                              idleToMerge(recording: menu?.state.phase ?? .idle,
-                                                          finishing: finalization.state.calls.values.map(\.stage),
-                                                          notesBusy: summaries.busy)
-                                          }
-                                      }, initial: .init(callsFolder: preferences.read().callsFolder))
+                                      initial: .init(callsFolder: preferences.read().callsFolder))
     menu.installMergeAvailability(subscribeMergeAvailability({ [weak menu] in
         idleToMerge(recording: menu?.state.phase ?? .idle, finishing: finalization.state.calls.values.map(\.stage),
                     notesBusy: summaries.busy)
