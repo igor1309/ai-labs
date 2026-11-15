@@ -9,8 +9,7 @@ designing, specifying or building anything.
    collaborator as an interface of its own, shaped by the role that
    collaborator plays for it, so it changes only for its own reasons. It
    imports no other component, no concrete implementation and no other
-   component's interface. Composition translates between them; UI may
-   compose other UI and its chosen toolkit.
+   component's interface, except as the kinds below allow.
 2. **The outside world lives only in adapters.** That covers the disk and
    file formats, audio devices, the recognition model, the OS and the UI
    toolkit. A component knows none of them. Each file format has exactly
@@ -20,9 +19,9 @@ designing, specifying or building anything.
    composition root translates between them. Content a component only
    relays is not read: an operator is generic over it and names only what
    it reads (Transcript pipeline).
-4. **The composition root builds, chooses and connects.** This
-   responsibility can span several modules (the composer packages and the
-   app). It chooses what answers each interface (a fake, a stub or
+4. **The composition root builds and subscribes; it decides nothing.** It is
+   a responsibility and can span several modules (the composer packages
+   and the app). It chooses what answers each interface (a fake, a stub or
    the real framework), maps types between ports, subscribes one machine's
    output to another's events and applies decorators. A composer owns the
    interfaces at its boundary and imports whatever it keeps inside. A rule
@@ -31,8 +30,8 @@ designing, specifying or building anything.
    tests.
 5. **Decisions over time are state machines.** A component that keeps state
    across events and others observe on the way is a machine: a pure reducer
-   and an effect handler. One that runs once in a fixed order, keeps
-   nothing between runs and is observed by no one is a
+   and an effect handler (`docs/app-shape.md`). One that runs once in a
+   fixed order, keeps nothing between runs and is observed by no one is a
    plain component. One line of work is one machine: its state holds every
    stage, and its stages are collaborators behind its effect handler, never
    machines that drive each other.
@@ -49,7 +48,7 @@ platform; anything else breaks rule 1. The lanes of
 |---|---|---|
 | Machine | nothing | Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, CallsList, TranscriptFinalization, RecordingConditions, CallNames |
 | Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, LatestText, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch |
-| Adapter | a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, TemplateFiles, NotesGeneration, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, Calls, CallsStorage, Preferences |
+| Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, TemplateFiles, NotesGeneration, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, Calls, CallsStorage, Preferences |
 | Shared helper | nothing | SplitRows, CallFolderName, AudioConversion, ModelLoading |
 | UI | GlassLedger, NotesMarkdown, other UI | PanelUI, SettingsUI, MenuBar, CallsListUI, CallsWindowUI, SummaryPreviewUI, NotesMarkdown, GlassLedger |
 | Composition | anything | Composer, LiveAudio, RecordedCapture, CallsWindowShell, Audelin |
@@ -311,8 +310,10 @@ is idle and when to relaunch are decided by Recordings and Lifecycle.
 CallDetail also owns opening the shown call in its own window. It holds
 the request until that call's notes read answers, then publishes the call
 as ready to open; another selection drops the request. The previous detail
-stays visible until the selected call's read answers; clearing selection
-clears it.
+stays visible until the selected call's read answers, and no selection
+clears it. Its pure reducer still decides between notes, unreadable notes,
+a pending or failed summary and no summary, and shows progress or failure
+of making notes again alongside the notes the call already has.
 
 CallsList is the state machine for the list's own actions. Its state holds
 the selection, which a search can hide and show again, the inline rename
@@ -340,7 +341,8 @@ The user can make notes for a call that has none, cancel them while they
 are being made and retry a failed summary. The composer sends these
 actions to SummaryJobs, whose work continues when another call is selected.
 CallDetail publishes the shown call's intentions; its effect handler never
-starts, cancels or retries generation. Calls lists folders and reads transcripts through Transcript format.
+starts, cancels or retries generation. Calls lists folders and reads
+transcripts through Transcript format.
 
 ## Merging calls
 
