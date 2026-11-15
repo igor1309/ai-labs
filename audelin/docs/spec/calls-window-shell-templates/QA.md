@@ -17,7 +17,7 @@ As S-1 with the keep item. Evidence: `NotesTemplateWiringTests.menuAndVersionInt
 
 ## S-4 The folder action reaches the menu
 
-As S-1 with the folder action. Evidence: Missing.
+As S-1 with the folder action. Evidence: `NotesTemplateWiringTests.menuAndVersionInteractionsReachTheirEventEndpoints` and `suppliedMenuAndVersionValuesReachTheView` (including reasons and folder failure).
 
 ## S-5 The detail's state reaches the view
 

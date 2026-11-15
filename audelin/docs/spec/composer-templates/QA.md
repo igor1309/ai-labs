@@ -61,3 +61,13 @@ ended run and the storage's unchanged pair. Evidence:
 
 Drive: gate the runtime, start a run from the menu, reopen it; read back the
 menu's templates all disabled. Evidence: `CallNotesWiringTests.menuChoiceDisablesTemplatesDuringTheRunAndPublicationShowsCurrent`.
+
+The catalogue and folder connection is covered by
+`NotesMenuCompositionTests.brokenFilesAndFolderOutcomesReachThePresentedMenu`:
+broken file reasons and built-in Default reach the menu, opening targets the
+templates folder, success and failure reach the menu, and a repaired file is
+usable on reopening.
+
+`NotesMenuCompositionTests.catalogueMappingPreservesFolderReasons` checks that
+distinct folder-read failure reasons reach the menu catalogue unchanged, and
+successful empty, file-backed and built-in catalogues keep no folder reason.

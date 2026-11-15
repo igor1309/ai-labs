@@ -44,7 +44,9 @@ final class CallsRehearsalDelegate: NSObject, NSApplicationDelegate {
             boundary: boundary, preferencesURL: options.preferencesURL,
             openCallsFolder: { [options] folder in
                 // A live test checks what was opened; the rehearsal never opens Finder.
-                let marker = options.controlFolder.appendingPathComponent("opened-\(UUID().uuidString)")
+                let templates = folder.lastPathComponent == "Templates"
+                if templates && FileManager.default.fileExists(atPath: options.controlFolder.appendingPathComponent("fail-open-templates").path) { return false }
+                let marker = options.controlFolder.appendingPathComponent(templates ? "opened-templates" : "opened-\(UUID().uuidString)")
                 return (try? Data(folder.path.utf8).write(to: marker)) != nil
             }, presentCalls: { window.show() },
             openURL: { NSWorkspace.shared.open($0) }, presentPanel: { _ in },

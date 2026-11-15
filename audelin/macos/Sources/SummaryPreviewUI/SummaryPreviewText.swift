@@ -21,6 +21,9 @@ public enum SummaryPreviewPhrase: String, CaseIterable, Sendable {
     case failureConfiguration = "preview.failureConfiguration"
     case failureUnknown = "preview.failureUnknown"
 
+    case templateFiles = "preview.templateFiles"
+    case noUsableTemplates = "preview.noUsableTemplates"
+    case openTemplatesFolder = "preview.openTemplatesFolder"
     case notesMenu = "preview.notesMenu"
     case makeSection = "preview.makeSection"
     case makeAgainSection = "preview.makeAgainSection"

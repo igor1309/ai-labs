@@ -54,7 +54,9 @@ public func compose(
     let made: @Sendable (Date) -> String = { date in
         date.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened, locale: language.language.callsList.locale, timeZone: timeZone))
     }
-    let templates = TemplateFiles.Files(folder: preferencesURL.deletingLastPathComponent().appendingPathComponent("Templates"), disk: TemplateFiles.FileDisk())
+    let templates = TemplateFiles.Files(folder: preferencesURL.deletingLastPathComponent().appendingPathComponent("Templates"), disk: TemplateFiles.FileDisk(), openFolder: { @MainActor folder in
+        guard openCallsFolder(folder) else { throw CocoaError(.fileReadUnknown, userInfo: [NSFilePathErrorKey: folder.path]) }
+    })
     let summaries = SummariesModel(keeping: { preferences.read().keepPreviousNotes }, templates: DefaultTemplatePort(files: templates), text: { language.language.callsList },
         preparation: SummariesPreparationPort(notes: { preferences.read().notes }, makeID: { UUID().uuidString },
                                               callText: { try await storage.text(id: $0) }),
@@ -118,8 +120,9 @@ public func compose(
                                   makeSummary: { summaries.make(call: $0) },
                                   makeWithTemplate: { summaries.make(call: $0, template: $1) },
                                   catalogue: {
-                                      templates.list().entries.filter { $0.reason == nil }.map { .init(id: $0.name, name: $0.name, enabled: true) }
+                                      notesCatalogue(templates.list())
                                   },
+                                  openTemplatesFolder: { try await templates.open() },
                                   previewText: { language.language.preview },
                                   summaryTemplates: { summaries.state.calls.mapValues { $0.job?.template?.name ?? $0.requestedTemplate } },
                                   summaryFailures: { summaries.state.calls.compactMapValues { $0.generationFailure.map(detailFailure) } },
@@ -186,4 +189,12 @@ func summaryExecutable(path: String, home: String) -> ClaudeExecutable {
 
 @MainActor final class WeakFinalization {
     weak var model: TranscriptFinalizationModel?
+}
+
+/// Preserve failed files separately from the built-in choice with the same name.
+func notesCatalogue(_ catalogue: TemplateFiles.Catalogue) -> NotesMenuState.Catalogue {
+    .init(templates: catalogue.entries.map {
+        .init(id: $0.reason == nil ? $0.name : "file:/" + ($0.file ?? $0.name), name: $0.name,
+              usable: $0.reason == nil, enabled: false, reason: $0.reason, isFile: $0.file != nil)
+    }, folderReason: catalogue.folderReason)
 }

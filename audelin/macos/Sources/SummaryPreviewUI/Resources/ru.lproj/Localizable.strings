@@ -42,3 +42,6 @@
 "preview.failureCancelled" = "Создание итогов отменено.";
 "preview.failureConfiguration" = "Проверьте настройки сервиса итогов.";
 "preview.failureUnknown" = "Не удалось составить итоги.";
+"preview.templateFiles" = "Файлы шаблонов";
+"preview.noUsableTemplates" = "Нет доступных файлов шаблонов. Используется встроенный Default.";
+"preview.openTemplatesFolder" = "Открыть папку шаблонов";

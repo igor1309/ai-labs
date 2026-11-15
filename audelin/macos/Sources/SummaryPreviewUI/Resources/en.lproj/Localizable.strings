@@ -42,3 +42,6 @@
 "preview.failureCancelled" = "Notes generation was cancelled.";
 "preview.failureConfiguration" = "Check the notes service settings.";
 "preview.failureUnknown" = "Could not generate notes.";
+"preview.templateFiles" = "Template files";
+"preview.noUsableTemplates" = "No usable template files. Using built-in Default.";
+"preview.openTemplatesFolder" = "Open templates folder";

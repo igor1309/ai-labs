@@ -3,11 +3,66 @@ import Foundation
 import Observation
 import Preferences
 import Recordings
+import TemplateFiles
 import Testing
 @testable import Composer
 
 @MainActor @Suite(.timeLimit(.minutes(1)))
 struct NotesMenuCompositionTests {
+    @Test(arguments: [
+        Catalogue(entries: [Entry(name: "Default", file: nil, reason: nil)], folderReason: "Permission denied"),
+        Catalogue(entries: [Entry(name: "Default", file: nil, reason: nil)], folderReason: "Not a directory"),
+        Catalogue(entries: [], folderReason: nil),
+        Catalogue(entries: [Entry(name: "Review", file: "Review.md", reason: nil)], folderReason: nil),
+        Catalogue(entries: [Entry(name: "Default", file: nil, reason: nil)], folderReason: nil),
+    ])
+    nonisolated func catalogueMappingPreservesFolderReasons(catalogue: Catalogue) {
+        let mapped = notesCatalogue(catalogue)
+        #expect(mapped.folderReason == catalogue.folderReason)
+        #expect(mapped.templates.map(\.name) == catalogue.entries.map(\.name))
+        #expect(mapped.templates.map(\.isFile) == catalogue.entries.map { $0.file != nil })
+    }
+
+    @Test(arguments: [false, true]) func brokenFilesAndFolderOutcomesReachThePresentedMenu(opens: Bool) async throws {
+        try await withComposeFolder { root in
+            let folder = root.appendingPathComponent("Templates")
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
+            let broken = folder.appendingPathComponent("Default.md")
+            try "broken metadata".write(to: broken, atomically: true, encoding: .utf8)
+            var opened: [URL] = []
+            let rig = try await ComposeFixture.make(root: root, openFolder: { opened.append($0); return opens })
+            do {
+                let calls = try #require(rig.menu.calls)
+                let call = root.appendingPathComponent("1970.01.01-1000")
+                try FileManager.default.createDirectory(at: call, withIntermediateDirectories: false)
+                try "**Me** 00:00:03\n\nWords".write(to: call.appendingPathComponent("transcript.md"), atomically: true, encoding: .utf8)
+                await rig.menu.perform(.showCalls)
+                for await state in Observations({ calls.state }) where !state.rows.isEmpty { break }
+                await calls.send(.read("1970.01.01-1000"))
+                for await facts in Observations({ calls.notesMenu.facts }) where facts != nil { break }
+                await calls.send(detail: .notesMenuOpened)
+                for await menu in Observations({ calls.notesMenu }) where menu.catalogueRevision == 1 { break }
+                let menu = calls.notesMenu
+                #expect(menu.templates.map(\.id) == ["file:/Default.md", "Default"])
+                #expect(menu.templates[0].reason?.contains("Metadata") == true && !menu.templates[0].enabled)
+                #expect(menu.templates[1].enabled && menu.filesReason != nil && menu.offersFolder)
+                await calls.send(detail: .openTemplatesFolder)
+                for await menu in Observations({ calls.notesMenu }) where menu.folderOpened || menu.folderFailure != nil { break }
+                #expect(opened.map(\.standardizedFileURL.path) == [folder.standardizedFileURL.path])
+                #expect(calls.notesMenu.folderOpened == opens)
+                #expect((calls.notesMenu.folderFailure != nil) == !opens)
+                #expect(try String(contentsOf: broken, encoding: .utf8) == "broken metadata")
+                try TemplateFiles.Files.encode(TemplateFiles.Files.builtInDefault).write(to: broken, atomically: true, encoding: .utf8)
+                await calls.send(detail: .notesMenuOpened)
+                for await menu in Observations({ calls.notesMenu }) where menu.catalogueRevision == 2 { break }
+                #expect(calls.notesMenu.templates.map(\.id) == ["Default"])
+                #expect(calls.notesMenu.templates[0].enabled && calls.notesMenu.templates[0].reason == nil)
+                #expect(calls.notesMenu.filesReason == nil && !calls.notesMenu.offersFolder)
+                await rig.finish()
+            } catch { await rig.finish(); throw error }
+        }
+    }
+
     @Test(arguments: [false, true]) func anotherPresentedDetailReceivesTheSavedKeepChoice(initialKeeping: Bool) async throws {
         try await withComposeFolder { root in
             let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))

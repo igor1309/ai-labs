@@ -18,8 +18,9 @@ public struct SummaryPreviewState: Equatable, Sendable {
         public struct Template: Equatable, Sendable {
             public var id: String
             public var name: String
+            public var reason: String?
             public var enabled: Bool
-            public init(id: String, name: String, enabled: Bool) { self.id = id; self.name = name; self.enabled = enabled }
+            public init(id: String, name: String, enabled: Bool, reason: String? = nil) { self.id = id; self.name = name; self.enabled = enabled; self.reason = reason }
         }
         public var catalogueRevision: Int
         public var section: String
@@ -27,7 +28,13 @@ public struct SummaryPreviewState: Equatable, Sendable {
         public var keeping: Bool?
         public var saving: Bool
         public var failure: String?
-        public init(section: String, templates: [Template], keeping: Bool?, saving: Bool = false, failure: String? = nil, catalogueRevision: Int = 0) {
+        public var filesReason: String?
+        public var offersFolder: Bool
+        public var openingFolder: Bool
+        public var folderFailure: String?
+        public init(section: String, templates: [Template], keeping: Bool?, saving: Bool = false, failure: String? = nil, catalogueRevision: Int = 0,
+                    filesReason: String? = nil, offersFolder: Bool = false, openingFolder: Bool = false, folderFailure: String? = nil) {
+            self.filesReason = filesReason; self.offersFolder = offersFolder; self.openingFolder = openingFolder; self.folderFailure = folderFailure
             self.catalogueRevision = catalogueRevision; self.section = section; self.templates = templates; self.keeping = keeping; self.saving = saving; self.failure = failure
         }
     }
@@ -80,7 +87,7 @@ public struct SummaryPreviewState: Equatable, Sendable {
 /// What the user asks of the call shown.
 public enum SummaryPreviewEvent: Equatable, Sendable {
     /// Copy the notes' Markdown source.
-    case openNotesMenu, chooseTemplate(String), toggleKeeping, chooseVersion(SummaryPreviewState.Version)
+    case openNotesMenu, chooseTemplate(String), toggleKeeping, openTemplatesFolder, chooseVersion(SummaryPreviewState.Version)
     case copy
     /// Show the call's folder in Finder.
     case open

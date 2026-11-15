@@ -18,6 +18,11 @@ Daily file was written and no Daily file entry is listed. Evidence: `TemplateFil
 Drive: write an unusable file, list, then compare the file's bytes and modification date with
 those written. Evidence: `TemplateFilesTests.brokenFilesAreVisibleUnchangedAndDefaultStillResolves`.
 
+Names rejected by resolution are listed with the same reason, with the file
+unchanged and built-in Default available:
+`TemplateFilesTests.rejectedNamesAreListedWithTheirReasonAndBuiltInDefault`
+covers empty, dot, dot-dot and backslash names in a temporary folder.
+
 ## S-5 An edit is resolved
 
 Drive: resolve Daily, rewrite its file, resolve again; read back the second
@@ -46,11 +51,11 @@ reason and the built-in Default entry. Evidence: `TemplateFilesTests.unreadableF
 ## S-10 Opening the folder
 
 Drive: fake workspace binding answering success; read back opened and the
-path it was given. Evidence: Missing.
+path it was given. Evidence: `TemplateFilesTests.openingReportsTheBindingOutcomeAndUsesTheTemplatesFolder` (success).
 
 ## S-12 A folder that cannot be opened
 
-Drive: fake workspace binding failing; read back its reason. Evidence: Missing.
+Drive: fake workspace binding failing; read back its reason. Evidence: `TemplateFilesTests.openingReportsTheBindingOutcomeAndUsesTheTemplatesFolder` (failure).
 
 ## S-11 Shipped Daily asks for a handoff
 

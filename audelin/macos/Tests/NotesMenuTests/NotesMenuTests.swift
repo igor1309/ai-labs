@@ -4,6 +4,93 @@ import Synchronization
 import Testing
 
 struct NotesMenuTests {
+    @Test(arguments: [false, true]) func unusableEntriesKeepTheirReasonsAndCannotBeChosen(hasUsableFile: Bool) {
+        let broken = NotesMenuState.Template(id: "file:/Daily.md", name: "Daily", usable: false, enabled: false, reason: "Metadata is broken")
+        let usable = NotesMenuState.Template(id: "Default", name: "Default", enabled: true, isFile: hasUsableFile)
+        let state = makeState { $0.reading = 1 }
+        let event = NotesMenuEvent.catalogue(1, [broken, usable])
+        assert(state, event) {
+            $0.catalogueRevision = 1; $0.templates = [broken, usable]
+            $0.offersFolder = true; $0.filesReason = hasUsableFile ? nil : "no files"
+        }
+        assert(state, event, delivers: nil)
+        let listed = NotesMenuReducer(section: { $0 ? "again" : "make" }, noUsableFiles: { "no files" }).reduce(state, event).0
+        assert(listed, .choose(broken.id))
+        assert(listed, .choose(broken.id), delivers: nil)
+        assert(listed, .choose("Default")) { $0.intention = .init(call: "call", template: "Default"); $0.intentions += 1 }
+        assert(listed, .choose("Default"), delivers: nil)
+    }
+
+    @Test func folderReadFailureKeepsDefaultAndItsReason() async {
+        let fallback = NotesMenuState.Template(id: "Default", name: "Default", enabled: true, isFile: false)
+        let state = makeState { $0.reading = 1 }
+        let event = NotesMenuEvent.catalogue(1, [fallback], folderReason: "Permission denied")
+        assert(state, event) {
+            $0.catalogueRevision = 1; $0.templates = [fallback]
+            $0.filesReason = "Permission denied"; $0.offersFolder = true
+        }
+        assert(state, event, delivers: nil)
+        let handler = NotesMenuEffectHandler(catalogue: { .init(templates: [fallback], folderReason: "Permission denied") },
+                                             save: { _ in Issue.record("Unexpected save") }, openFolder: { Issue.record("Unexpected open") })
+        #expect(await handler.handle(.catalogue(1)) == event)
+    }
+
+    @Test func reopeningReplacesBrokenEntriesWithRepairedFiles() {
+        let state = makeState {
+            $0.reading = 1; $0.offersFolder = true; $0.filesReason = "no files"
+            $0.templates = [.init(id: "file:/Daily.md", name: "Daily", usable: false, enabled: false, reason: "No instructions")]
+        }
+        assert(state, .opened) { $0.reading = 2 }
+        assert(state, .opened, delivers: .catalogue(2))
+        var opened = state; opened.reading = 2
+        assert(opened, .catalogue(2, templates())) {
+            $0.catalogueRevision = 2; $0.templates = templates(); $0.offersFolder = false; $0.filesReason = nil
+        }
+        assert(opened, .catalogue(2, templates()), delivers: nil)
+        assert(opened, .catalogue(1, [], folderReason: "old failure"))
+        assert(opened, .catalogue(1, [], folderReason: "old failure"), delivers: nil)
+    }
+
+    @Test func noFilesFormattingRunsOnlyForAnAcceptedCatalogueWithoutUsableFiles() {
+        let calls = Mutex(0)
+        let reducer = NotesMenuReducer(section: { _ in "section" }, noUsableFiles: { calls.withLock { $0 += 1 }; return "injected reason" })
+        let state = makeState { $0.reading = 1 }
+        #expect(calls.withLock { $0 } == 0)
+        _ = reducer.reduce(state, .catalogue(0, []))
+        _ = reducer.reduce(state, .catalogue(1, templates()))
+        _ = reducer.reduce(state, .catalogue(1, [], folderReason: "disk failure"))
+        #expect(calls.withLock { $0 } == 0)
+        let result = reducer.reduce(state, .catalogue(1, [.init(id: "Default", name: "Default", enabled: true, isFile: false)]))
+        #expect(result.0.filesReason == "injected reason")
+        #expect(calls.withLock { $0 } == 1)
+    }
+
+    @Test func folderActionWaitsForItsOutcomeAndAllowsRetry() {
+        let state = makeState { $0.offersFolder = true; $0.folderFailure = "old failure" }
+        assert(state, .openFolder) { $0.openingFolder = true; $0.folderFailure = nil }
+        assert(state, .openFolder, delivers: .openFolder)
+        let opening = makeState { $0.offersFolder = true; $0.openingFolder = true }
+        assert(opening, .openFolder)
+        assert(opening, .openFolder, delivers: nil)
+        assert(opening, .folderOpened) { $0.openingFolder = false; $0.folderOpened = true }
+        assert(opening, .folderOpened, delivers: nil)
+        assert(opening, .folderFailed("Finder unavailable")) { $0.openingFolder = false; $0.folderFailure = "Finder unavailable" }
+        assert(opening, .folderFailed("Finder unavailable"), delivers: nil)
+        assert(makeState(), .openFolder)
+        assert(makeState(), .openFolder, delivers: nil)
+    }
+
+    @Test(arguments: [false, true]) func folderEffectReportsTheBindingOutcome(fails: Bool) async {
+        let calls = Mutex(0)
+        let handler = NotesMenuEffectHandler(catalogue: { Issue.record("Unexpected catalogue"); return .init(templates: []) },
+            save: { _ in Issue.record("Unexpected save") }, openFolder: {
+                calls.withLock { $0 += 1 }
+                if fails { throw SaveFailure() }
+            })
+        #expect(await handler.handle(.openFolder) == (fails ? .folderFailed("disk full") : .folderOpened))
+        #expect(calls.withLock { $0 } == 1)
+    }
+
     @Test(arguments: [false, true]) func sectionAndKeepFollowTheShownCall(hasNotes: Bool) {
         let facts = makeFacts(hasNotes: hasNotes)
         assert(.init(), .factsChanged(facts)) {
@@ -14,7 +101,7 @@ struct NotesMenuTests {
 
     @Test func sectionFormattingUsesTheInjectedValueAndSkipsNoOpPaths() {
         let spy = SectionSpy()
-        let reducer = NotesMenuReducer(section: spy.format)
+        let reducer = NotesMenuReducer(section: spy.format, noUsableFiles: { "no files" })
         #expect(spy.calls.withLock { $0 } == [])
         _ = reducer.reduce(.init(), .opened)
         _ = reducer.reduce(makeState(), .choose("Missing"))
@@ -106,18 +193,20 @@ struct NotesMenuTests {
         }
     }
 
-    @Test func effectReadsTheCatalogueAndPreservesItsRevision() async {
+    @Test(arguments: [false, true]) func effectReadsTheCatalogueAndPreservesItsRevision(broken: Bool) async {
+        var entries = templates()
+        if broken { entries[1] = .init(id: "file:/Daily.md", name: "Daily", usable: false, enabled: false, reason: "Missing required headings") }
         let spy = MenuSpy()
-        let handler = NotesMenuEffectHandler(catalogue: { await spy.catalogue() }, save: { try await spy.save($0) })
+        let handler = NotesMenuEffectHandler(catalogue: { .init(templates: await spy.catalogue()) }, save: { try await spy.save($0) }, openFolder: {})
         async let event = handler.handle(.catalogue(3))
-        await spy.completeCatalogue(templates())
-        #expect(await event == .catalogue(3, templates()))
+        await spy.completeCatalogue(entries)
+        #expect(await event == .catalogue(3, entries))
         #expect(await spy.saves == [])
     }
 
     @Test(arguments: [false, true]) func effectSavesExactlyTheRequestedKeepValue(keeping: Bool) async {
         let spy = MenuSpy()
-        let handler = NotesMenuEffectHandler(catalogue: { await spy.catalogue() }, save: { try await spy.save($0) })
+        let handler = NotesMenuEffectHandler(catalogue: { .init(templates: await spy.catalogue()) }, save: { try await spy.save($0) }, openFolder: {})
         async let event = handler.handle(.saveKeeping(keeping))
         await spy.completeSave(.success(()))
         #expect(await event == .keepingSaved(keeping))
@@ -126,7 +215,7 @@ struct NotesMenuTests {
 
     @Test func effectReturnsTheSaveFailure() async {
         let spy = MenuSpy()
-        let handler = NotesMenuEffectHandler(catalogue: { await spy.catalogue() }, save: { try await spy.save($0) })
+        let handler = NotesMenuEffectHandler(catalogue: { .init(templates: await spy.catalogue()) }, save: { try await spy.save($0) }, openFolder: {})
         async let event = handler.handle(.saveKeeping(false))
         await spy.completeSave(.failure(SaveFailure()))
         #expect(await event == .keepingFailed("disk full"))
@@ -148,10 +237,10 @@ private func makeState(_ change: (inout NotesMenuState) -> Void = { _ in }) -> N
 private func assert(_ state: NotesMenuState, _ event: NotesMenuEvent, sourceLocation: SourceLocation = #_sourceLocation,
                     mutation: (inout NotesMenuState) -> Void = { _ in }) {
     var expected = state; mutation(&expected)
-    #expect(NotesMenuReducer(section: { $0 ? "again" : "make" }).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
+    #expect(NotesMenuReducer(section: { $0 ? "again" : "make" }, noUsableFiles: { "no files" }).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
 }
 private func assert(_ state: NotesMenuState, _ event: NotesMenuEvent, delivers effect: NotesMenuEffect?, sourceLocation: SourceLocation = #_sourceLocation) {
-    #expect(NotesMenuReducer(section: { $0 ? "again" : "make" }).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
+    #expect(NotesMenuReducer(section: { $0 ? "again" : "make" }, noUsableFiles: { "no files" }).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
 }
 private actor MenuSpy {
     private(set) var saves: [Bool] = []

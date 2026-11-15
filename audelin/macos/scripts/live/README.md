@@ -37,7 +37,9 @@ calls, preferences or Trash; notes are made by a fake service that writes
 An empty completion file returns the fixed notes; a nonempty one supplies the
 notes for that request. `fail-N` produces a quota failure. `request-N.json`
 records the fake service request, so edited template instructions can be checked.
-The rehearsal never opens Finder: opening a call's folder writes `state/control/opened-<uuid>`
+The rehearsal never opens Finder. The templates action writes
+`state/control/opened-templates` with its path; `fail-open-templates` makes
+that binding fail. Opening a call's folder writes `state/control/opened-<uuid>`
 holding the folder's path, so a driver can check that nothing was opened.
 `--seed merge` writes calls through the app's own track and transcript writers
 before launch: A at 10:00 and B at 10:06, one call cut off, each with two remote

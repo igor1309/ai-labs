@@ -17,8 +17,17 @@ public struct NotesMenuState: Equatable, Sendable {
         public var name: String
         public var usable: Bool
         public var enabled: Bool
-        public init(id: String, name: String, usable: Bool = true, enabled: Bool) {
-            self.id = id; self.name = name; self.usable = usable; self.enabled = enabled
+        public var reason: String?
+        public var isFile: Bool
+        public init(id: String, name: String, usable: Bool = true, enabled: Bool, reason: String? = nil, isFile: Bool = true) {
+            self.id = id; self.name = name; self.usable = usable; self.enabled = enabled; self.reason = reason; self.isFile = isFile
+        }
+    }
+    public struct Catalogue: Equatable, Sendable {
+        public var templates: [Template]
+        public var folderReason: String?
+        public init(templates: [Template], folderReason: String? = nil) {
+            self.templates = templates; self.folderReason = folderReason
         }
     }
     public struct Intention: Equatable, Sendable {
@@ -33,22 +42,31 @@ public struct NotesMenuState: Equatable, Sendable {
     public var offersKeeping: Bool
     public var saving: Bool
     public var saveFailure: String?
+    public var filesReason: String?
+    public var offersFolder: Bool
+    public var openingFolder: Bool
+    public var folderOpened: Bool
+    public var folderFailure: String?
     public var catalogueRevision: Int
     public var reading: Int
     public var intention: Intention?
     public var intentions: Int
     public init(facts: Facts? = nil, section: String = "", templates: [Template] = [], keeping: Bool = true,
                 offersKeeping: Bool = false, saving: Bool = false, saveFailure: String? = nil,
+                filesReason: String? = nil, offersFolder: Bool = false, openingFolder: Bool = false, folderOpened: Bool = false, folderFailure: String? = nil,
                 reading: Int = 0, catalogueRevision: Int = 0, intention: Intention? = nil, intentions: Int = 0) {
         self.facts = facts; self.section = section; self.templates = templates; self.keeping = keeping
         self.offersKeeping = offersKeeping; self.saving = saving; self.saveFailure = saveFailure
+        self.filesReason = filesReason; self.offersFolder = offersFolder; self.openingFolder = openingFolder
+        self.folderOpened = folderOpened; self.folderFailure = folderFailure
         self.catalogueRevision = catalogueRevision; self.reading = reading; self.intention = intention; self.intentions = intentions
     }
 }
 public enum NotesMenuEvent: Equatable, Sendable {
     case factsChanged(NotesMenuState.Facts?)
     case opened
-    case catalogue(Int, [NotesMenuState.Template])
+    case catalogue(Int, [NotesMenuState.Template], folderReason: String? = nil)
+    case openFolder, folderOpened, folderFailed(String)
     case choose(String)
     case toggleKeeping
     case keepingChanged(Bool)
@@ -58,10 +76,14 @@ public enum NotesMenuEvent: Equatable, Sendable {
 public enum NotesMenuEffect: Equatable, Sendable {
     case catalogue(Int)
     case saveKeeping(Bool)
+    case openFolder
 }
 public struct NotesMenuReducer: Sendable {
     private let section: @Sendable (Bool) -> String
-    public init(section: @escaping @Sendable (Bool) -> String) { self.section = section }
+    private let noUsableFiles: @Sendable () -> String
+    public init(section: @escaping @Sendable (Bool) -> String, noUsableFiles: @escaping @Sendable () -> String) {
+        self.section = section; self.noUsableFiles = noUsableFiles
+    }
     public func reduce(_ state: NotesMenuState, _ event: NotesMenuEvent) -> (NotesMenuState, NotesMenuEffect?) {
         var state = state
         switch event {
@@ -76,14 +98,25 @@ public struct NotesMenuReducer: Sendable {
             state.section = section(facts.hasNotes)
             state.reading += 1
             return (state, .catalogue(state.reading))
-        case let .catalogue(revision, templates):
+        case let .catalogue(revision, templates, folderReason):
             guard revision == state.reading else { return (state, nil) }
             state.catalogueRevision = revision
+            let hasUsableFiles = templates.contains { $0.isFile && $0.usable }
+            state.filesReason = folderReason ?? (hasUsableFiles ? nil : noUsableFiles())
+            state.offersFolder = state.filesReason != nil || templates.contains { !$0.usable }
             state.templates = templates.map { template in
                 var template = template
                 template.enabled = template.usable && state.facts != nil && state.facts?.busy == false
                 return template
             }
+        case .openFolder:
+            guard state.offersFolder, !state.openingFolder else { return (state, nil) }
+            state.openingFolder = true; state.folderOpened = false; state.folderFailure = nil
+            return (state, .openFolder)
+        case .folderOpened:
+            state.openingFolder = false; state.folderOpened = true; state.folderFailure = nil
+        case let .folderFailed(reason):
+            state.openingFolder = false; state.folderOpened = false; state.folderFailure = reason
         case let .choose(id):
             guard let facts = state.facts, !facts.busy,
                   state.templates.contains(where: { $0.id == id && $0.enabled }) else { return (state, nil) }
@@ -102,15 +135,22 @@ public struct NotesMenuReducer: Sendable {
     }
 }
 public struct NotesMenuEffectHandler: Sendable {
-    private let catalogue: @Sendable () async -> [NotesMenuState.Template]
+    private let catalogue: @Sendable () async -> NotesMenuState.Catalogue
     private let save: @Sendable (Bool) async throws -> Void
-    public init(catalogue: @escaping @Sendable () async -> [NotesMenuState.Template],
-                save: @escaping @Sendable (Bool) async throws -> Void) {
-        self.catalogue = catalogue; self.save = save
+    private let openFolder: @Sendable () async throws -> Void
+    public init(catalogue: @escaping @Sendable () async -> NotesMenuState.Catalogue,
+                save: @escaping @Sendable (Bool) async throws -> Void,
+                openFolder: @escaping @Sendable () async throws -> Void) {
+        self.catalogue = catalogue; self.save = save; self.openFolder = openFolder
     }
     public func handle(_ effect: NotesMenuEffect) async -> NotesMenuEvent {
         switch effect {
-        case let .catalogue(revision): return .catalogue(revision, await catalogue())
+        case let .catalogue(revision):
+            let result = await catalogue()
+            return .catalogue(revision, result.templates, folderReason: result.folderReason)
+        case .openFolder:
+            do { try await openFolder(); return .folderOpened }
+            catch { return .folderFailed(error.localizedDescription) }
         case let .saveKeeping(keeping):
             do { try await save(keeping); return .keepingSaved(keeping) }
             catch { return .keepingFailed(error.localizedDescription) }

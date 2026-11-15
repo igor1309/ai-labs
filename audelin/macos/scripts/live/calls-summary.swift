@@ -182,7 +182,7 @@ private func descendants(_ root: AXUIElement) -> [AXUIElement] {
         do {
             try driver.press("calls.select.2024.01.01-1000")
             _ = try driver.element("preview.notes", value: { $0.contains("Прежние итоги звонка.") && $0.contains("Шаблон: Default") })
-            // An existing empty templates folder exercises the built-in Default entry.
+            try brokenTemplatesAndFolder(driver, templates: templates, control: control, output: output)
             try openTemplateMenu(driver, keeping: true)
             try driver.press("preview.template.Default")
             try requestStarted(driver, control: control, request: 1)
@@ -257,13 +257,57 @@ private func descendants(_ root: AXUIElement) -> [AXUIElement] {
         }
     }
 
+    @MainActor private static func brokenTemplatesAndFolder(_ driver: Driver, templates: URL, control: URL, output: URL) throws {
+        try openTemplateMenu(driver, keeping: true)
+        let files = try driver.element("preview.templateFiles")
+        guard attribute(files, kAXEnabledAttribute) as? Bool == false,
+              !string(files, kAXValueAttribute).isEmpty else { throw LiveFailure("Missing files reason") }
+        try driver.press("preview.openTemplatesFolder")
+        let marker = control.appendingPathComponent("opened-templates")
+        _ = try driver.wait("templates folder opened") { FileManager.default.fileExists(atPath: marker.path) ? true : nil }
+        guard try String(contentsOf: marker, encoding: .utf8) == templates.path else { throw LiveFailure("Opened the wrong templates folder") }
+        for name in ["Default", "Daily"] {
+            try "broken metadata".write(to: templates.appendingPathComponent(name + ".md"), atomically: true, encoding: .utf8)
+        }
+        try openTemplateMenu(driver, keeping: true)
+        for name in ["Default", "Daily"] {
+            let item = try driver.element("preview.template.file:/\(name).md")
+            guard attribute(item, kAXEnabledAttribute) as? Bool == false,
+                  string(item, kAXValueAttribute).contains("Metadata") else { throw LiveFailure("Broken template has no disabled reason") }
+            guard try String(contentsOf: templates.appendingPathComponent(name + ".md"), encoding: .utf8) == "broken metadata" else { throw LiveFailure("Broken file was rewritten") }
+        }
+        let fallback = try driver.element("preview.template.Default")
+        guard attribute(fallback, kAXEnabledAttribute) as? Bool == true else { throw LiveFailure("Built-in Default is disabled") }
+        _ = try driver.element("preview.templateFiles")
+        try driver.screenshot("broken-templates", into: output)
+        try Data().write(to: control.appendingPathComponent("fail-open-templates"))
+        try driver.press("preview.openTemplatesFolder")
+        _ = try driver.element("preview.openTemplatesFailure", value: { !$0.isEmpty })
+        try driver.screenshot("templates-folder-failed", into: output)
+        try FileManager.default.removeItem(at: control.appendingPathComponent("fail-open-templates"))
+        try openTemplateMenu(driver, keeping: true)
+        try driver.press("preview.openTemplatesFolder")
+        _ = try driver.wait("folder retry clears failure") {
+            descendants(driver.root).contains { string($0, kAXIdentifierAttribute) == "preview.openTemplatesFailure" } ? nil : true
+        }
+        for name in ["Default", "Daily"] { try FileManager.default.removeItem(at: templates.appendingPathComponent(name + ".md")) }
+    }
+
     @MainActor private static func editedTemplateIsRefreshed(_ driver: Driver, templates: URL, control: URL) throws {
+        try "broken metadata".write(to: templates.appendingPathComponent("Review.md"), atomically: true, encoding: .utf8)
+        try openTemplateMenu(driver, keeping: false)
+        let broken = try driver.element("preview.template.file:/Review.md")
+        guard attribute(broken, kAXEnabledAttribute) as? Bool == false else { throw LiveFailure("Broken Review is enabled") }
+        let parent = attribute(broken, kAXParentAttribute) as! AXUIElement
+        guard AXUIElementPerformAction(parent, kAXCancelAction as CFString) == .success else { throw LiveFailure("Cannot close template menu") }
         for (request, instruction) in [(6, "Use the first custom instructions"), (7, "Use the edited custom instructions")] {
             let metadata: [String: Any] = ["name": "Review", "headings": [["О чём встреча", "Ключевые моменты", "Решения", "Задачи"].map { ["name": $0, "required": true] as [String: Any] }]]
             let json = try JSONSerialization.data(withJSONObject: metadata, options: .sortedKeys)
             let template = "---\n" + String(decoding: json, as: UTF8.self) + "\n---\n" + instruction + "\n"
             try template.write(to: templates.appendingPathComponent("Review.md"), atomically: true, encoding: .utf8)
             try openTemplateMenu(driver, keeping: false)
+            let repaired = try driver.element("preview.template.Review")
+            guard attribute(repaired, kAXEnabledAttribute) as? Bool == true else { throw LiveFailure("Repaired Review is disabled") }
             try driver.press("preview.template.Review")
             try requestStarted(driver, control: control, request: request)
             _ = try driver.element("preview.remaking", value: { $0 == "Делаю заново · Review…" })

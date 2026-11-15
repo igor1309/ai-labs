@@ -25,8 +25,9 @@ func detailState(_ detail: CallsDetail?, tags: CallsDetailTags = .shown([]), men
         line = .editing(.init(tags: names, entry: entry, completion: completion, saving: saving, failure: failure))
     }
     return .init(title: detail.title, date: detail.date, duration: detail.duration, notes: notes, canRetry: canRetry, tags: line,
-                 menu: menu.map { .init(section: $0.section, templates: $0.templates.map { .init(id: $0.id, name: $0.name, enabled: $0.enabled) },
-                                       keeping: $0.offersKeeping ? $0.keeping : nil, saving: $0.saving, failure: $0.saveFailure, catalogueRevision: $0.catalogueRevision) },
+                 menu: menu.map { .init(section: $0.section, templates: $0.templates.map { .init(id: $0.id, name: $0.name, enabled: $0.enabled, reason: $0.reason) },
+                                       keeping: $0.offersKeeping ? $0.keeping : nil, saving: $0.saving, failure: $0.saveFailure, catalogueRevision: $0.catalogueRevision,
+                                       filesReason: $0.filesReason, offersFolder: $0.offersFolder, openingFolder: $0.openingFolder, folderFailure: $0.folderFailure) },
                  version: detail.pair?.previous == nil ? nil : (detail.version == .previous ? .previous : .current),
                  templateName: detail.template, progress: detail.progress, failure: detail.failure)
 }
@@ -37,6 +38,7 @@ func detailEvent(_ event: SummaryPreviewEvent) -> CallsDetailEvent? {
     case .openNotesMenu: .notesMenuOpened
     case let .chooseTemplate(template): .chooseNotesTemplate(template)
     case .toggleKeeping: .toggleKeeping
+    case .openTemplatesFolder: .openTemplatesFolder
     case let .chooseVersion(version): .chooseNotesVersion(version == .previous ? .previous : .current)
     case .makeSummary: .makeSummary
     case .cancelSummary: .cancelNotes

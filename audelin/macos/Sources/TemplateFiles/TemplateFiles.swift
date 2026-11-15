@@ -24,7 +24,8 @@ public struct Catalogue: Equatable, Sendable {
     public var folderReason: String?
     public init(entries: [Entry], folderReason: String?) { self.entries = entries; self.folderReason = folderReason }
 }
-public struct Failure: Error, Equatable, Sendable, CustomStringConvertible {
+public struct Failure: LocalizedError, Equatable, Sendable, CustomStringConvertible {
+    public var errorDescription: String? { description }
     public var description: String
     public init(_ description: String) { self.description = description }
 }
@@ -41,7 +42,11 @@ public protocol Disk: Sendable {
 public struct Files: Sendable {
     private let folder: URL
     private let disk: any Disk
-    public init(folder: URL, disk: any Disk) { self.folder = folder; self.disk = disk }
+    private let openFolder: @Sendable (URL) async throws -> Void
+    public init(folder: URL, disk: any Disk, openFolder: @escaping @Sendable (URL) async throws -> Void) {
+        self.folder = folder; self.disk = disk; self.openFolder = openFolder
+    }
+    public func open() async throws { try await openFolder(folder) }
 
     public func resolveDefault() -> Template {
         (try? resolve("Default")) ?? Self.builtInDefault
@@ -60,6 +65,7 @@ public struct Files: Sendable {
             for file in try disk.files(folder).filter({ $0.hasSuffix(".md") }).sorted() {
                 let name = String(file.dropLast(3))
                 do {
+                    try Self.validateName(name)
                     _ = try read(file, name: name)
                     entries.append(Entry(name: name, file: file, reason: nil))
                 } catch { entries.append(Entry(name: name, file: file, reason: String(describing: error))) }
@@ -71,7 +77,7 @@ public struct Files: Sendable {
         return Catalogue(entries: entries, folderReason: folderReason)
     }
     public func resolve(_ name: String) throws -> Template {
-        guard !name.isEmpty, !name.contains("/"), !name.contains("\\"), name != ".", name != ".." else { throw Failure("Invalid template name: \(name)") }
+        try Self.validateName(name)
         do {
             try prepare()
             return try read(name + ".md", name: name)
@@ -79,6 +85,9 @@ public struct Files: Sendable {
             if name == "Default" { return Self.builtInDefault }
             throw Failure("\(name): \(error)")
         }
+    }
+    private static func validateName(_ name: String) throws {
+        guard !name.isEmpty, !name.contains("/"), !name.contains("\\"), name != ".", name != ".." else { throw Failure("Invalid template name: \(name)") }
     }
     private func read(_ file: String, name: String) throws -> Template {
         let template = try Self.parse(disk.read(folder.appendingPathComponent(file)))
