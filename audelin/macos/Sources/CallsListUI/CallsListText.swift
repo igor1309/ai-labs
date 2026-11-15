@@ -58,6 +58,9 @@ public enum CallsListPhrase: String, CaseIterable, Sendable {
     case noMatchesHint = "search.noMatchesHint"
     case markOn = "merge.marked"
     case markOff = "merge.unmarked"
+    case tagOn = "tags.chipOn"
+    case tagOff = "tags.chipOff"
+    case tagStrip = "tags.strip"
     case mergeTitle = "merge.title"
     case mergeDone = "merge.done"
     /// Takes the number of marked calls.

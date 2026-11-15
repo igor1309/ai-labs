@@ -379,6 +379,7 @@ public final class AudelinCalls {
             await sendList(.select(id))
             selectDetail()
         case let .search(text): search(text)
+        case let .toggleTag(tag): await sendList(.toggleTag(tag))
         case let .toggleMark(id): inputs.send(.toggleMergeSelection(id))
         case .confirmMerge: inputs.send(.confirmMerge)
         case .leaveMerge: inputs.send(.leaveMergeMode)
