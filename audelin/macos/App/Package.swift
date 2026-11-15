@@ -111,6 +111,7 @@ let package = Package(
                 .product(name: "CallsSearch", package: "macos"),
                 .product(name: "CallTags", package: "macos"),
                 .product(name: "TagsFile", package: "macos"),
+                .product(name: "AgentsFile", package: "macos"),
                 .product(name: "CallsList", package: "macos"),
                 .product(name: "Recordings", package: "macos"),
                 .product(name: "CallsListUI", package: "macos"),

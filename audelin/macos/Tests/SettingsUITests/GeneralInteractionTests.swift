@@ -36,6 +36,29 @@ struct GeneralInteractionTests {
         #expect(events == [.selectAppearance(.dark), .selectAppearance(.light)])
     }
 
+    @Test func theAgentsRowShowsOnlyWhileOfferedAndItsButtonCreates() throws {
+        var events: [SettingsEvent] = []
+        let offered = try host("general-agents-missing") { events.append($0) }
+        let create = try #require(targets(offered).first { $0.accessibilityIdentifier() == "agents-create" })
+        #expect(create.accessibilityLabel() == "Создать AGENTS.md")
+        #expect(create.accessibilityPerformPress())
+        #expect(events == [.createAgentsFile])
+        let hidden = try host("general-system") { _ in }
+        #expect(!targets(hidden).contains { $0.accessibilityIdentifier() == "agents-create" })
+    }
+
+    @Test func aFailedWriteKeepsTheButtonToRetry() throws {
+        var events: [SettingsEvent] = []
+        let failed = try host("general-agents-failed") { events.append($0) }
+        let create = try #require(targets(failed).first { $0.accessibilityIdentifier() == "agents-create" })
+        #expect(create.accessibilityPerformPress())
+        #expect(events == [.createAgentsFile])
+    }
+
+    private func targets(_ view: NSView) -> [NSView] {
+        (view.accessibilityIdentifier() == "agents-create" ? [view] : []) + view.subviews.flatMap(targets)
+    }
+
     private func host(_ name: String, event: @escaping (SettingsEvent) -> Void) throws -> NSView {
         let state = try #require(SettingsState.previews.first { $0.name == name }?.state)
         let host = Offscreen.host(SettingsView(state: state, event: event))
