@@ -285,8 +285,8 @@ public enum SessionEffect: Equatable, Sendable {
     case checkModels
     case createFolder
     case selectProcesses
-    case openTrack(SessionSide)
-    case openTranscript
+    case openTrack(SessionSide, in: SessionCallFolder)
+    case openTranscript(in: SessionCallFolder)
     case startCallText(enabled: Bool)
     case startMicrophoneCapture
     case startCallCapture(selection: SessionCallCaptureSelection)
@@ -419,6 +419,15 @@ public struct SessionReducer: Sendable {
         Self(failure: SessionFormatting.failure, cannotRecord: SessionFormatting.cannotRecord).reduce(state, event)
     }
 
+    private static let noFolder = SessionFailure(piece: "folder", message: "folder has not been created").description
+
+    private func openTrack(_ state: inout SessionState, _ side: SessionSide) -> (SessionState, SessionEffect?) {
+
+        setTrack(&state, side, .starting)
+        guard let folder = state.recordedFolder else { return reduce(state, .trackFinished(side, error: Self.noFolder)) }
+        return (state, .openTrack(side, in: folder))
+    }
+
     public func reduce(_ state: SessionState, _ event: SessionEvent) -> (SessionState, SessionEffect?) {
 
         var state = state
@@ -504,20 +513,17 @@ public struct SessionReducer: Sendable {
             if let error { recordFailure(&state, .processes, error) }
             state.processSelection = selection
             if state.phase == .ending { return nextDown(&state) }
-            state.microphoneTrack = .starting
-            return (state, .openTrack(.microphone))
+            return openTrack(&state, .microphone)
 
         case let .trackFinished(side, error):
             guard state.track(for: side) == .starting else { return (state, nil) }
             setTrack(&state, side, error == nil ? .up : .down)
             if let error { recordFailure(&state, .track(side), error) }
             if state.phase == .ending { return nextDown(&state) }
-            if side == .microphone {
-                state.callTrack = .starting
-                return (state, .openTrack(.call))
-            }
+            if side == .microphone { return openTrack(&state, .call) }
             state.transcript = .starting
-            return (state, .openTranscript)
+            guard let folder = state.recordedFolder else { return reduce(state, .transcriptFinished(error: Self.noFolder)) }
+            return (state, .openTranscript(in: folder))
 
         case let .transcriptFinished(error):
             guard state.transcript == .starting else { return (state, nil) }
@@ -750,7 +756,6 @@ public final class SessionEffectHandler: Sendable {
     private let callText: any SessionCallText
     private let transcript: any SessionTranscript
     private let output: any SessionOutput
-    private let madeFolder = Mutex<SessionCallFolder?>(nil)
 
     public init(
         models: any SessionModels,
@@ -783,19 +788,16 @@ public final class SessionEffectHandler: Sendable {
         case .checkModels:
             return .modelsChecked(missing: await models.missing())
         case .createFolder:
-            do {
-                let made = try await folder.create()
-                madeFolder.withLock { $0 = made }
-                return .folderFinished(error: nil, folder: made)
-            } catch { return .folderFinished(error: String(describing: error)) }
+            do { return .folderFinished(error: nil, folder: try await folder.create()) }
+            catch { return .folderFinished(error: String(describing: error)) }
         case .selectProcesses:
             do { return .processesFinished(selection: try await processes.select(), error: nil) }
             catch { return .processesFinished(selection: nil, error: String(describing: error)) }
-        case let .openTrack(side):
-            let result = await result { try await self.track(for: side).open(in: self.callFolder()) }
+        case let .openTrack(side, folder):
+            let result = await result { try await self.track(for: side).open(in: folder) }
             return .trackFinished(side, error: result)
-        case .openTranscript:
-            return await result { try await self.transcript.open(in: self.callFolder()) }.map(SessionEvent.transcriptFinished)
+        case let .openTranscript(folder):
+            return await result { try await self.transcript.open(in: folder) }.map(SessionEvent.transcriptFinished)
         case let .startCallText(enabled):
             return await result { try await self.callText.start(enabled: enabled) }.map(SessionEvent.callTextFinished)
         case .startMicrophoneCapture:
@@ -827,14 +829,6 @@ public final class SessionEffectHandler: Sendable {
             await output.release()
             return .outputReleased
         }
-    }
-
-    private func callFolder() throws -> SessionCallFolder {
-
-        guard let folder = madeFolder.withLock({ $0 }) else {
-            throw SessionFailure(piece: "folder", message: "folder has not been created")
-        }
-        return folder
     }
 
     private func track(for side: SessionSide) -> any SessionTrackFile {
