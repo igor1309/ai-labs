@@ -8,7 +8,8 @@ func composeRecordingWithPreferences(
 ) async -> (recording: RecordingInputs, conditions: RecordingConditionsModel) {
     let callsURL = preferences.read().callsFolder
     let recording = await composeRecording(preferences: preferences, folderClaim: folderClaim, occupiedCallNames: occupiedCallNames, callApp: callApp, processes: processes,
-                                            boundary: boundary, panel: panel, finalization: finalization, finalizationResources: finalizationResources, summaries: summaries)
+                                            boundary: boundary, panel: panel, finalizationResources: finalizationResources, summaries: summaries)
+    _ = subscribeTranscriptFinalization(recording.transcriptOutput, send: { await finalization.send($0) })
     return (recording, await composeRecordingConditions(recording: recording,
         callsURL: callsURL, boundary: boundary, currentFolder: { preferences.read().callsFolder }))
 }

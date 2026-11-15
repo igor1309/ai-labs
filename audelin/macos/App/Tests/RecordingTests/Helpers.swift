@@ -39,7 +39,7 @@ func assert(
 func makePieces(_ status: RecordingSessionStatus) -> SessionState {
     SessionState(
         phase: status.recording ? .recording : .bringingUp,
-        recordedFolder: status.callID.map { SessionCallFolder(id: $0) },
+        recordedFolder: status.callID.map { SessionCallFolder(id: $0, callID: $0) },
         failures: RecordingFault.allCases.filter(status.faults.contains).map { SessionFailure(piece: "fault", message: "\($0)") },
         cannotRecord: status.cannotRecord,
         audioWarning: status.callSilent ? .callSilent : nil

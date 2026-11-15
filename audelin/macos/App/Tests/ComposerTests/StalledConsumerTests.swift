@@ -58,7 +58,6 @@ struct StalledConsumerTests {
 /// Feeds both tracks `seconds` of audio in 10-second steps, letting `settle`
 /// wait on readers after each, and returns the samples sent per track.
 @discardableResult
-@MainActor
 func feed(
     seconds: Double, to rig: ComposeFixture, settle: (Int, Int) async throws -> Void
 ) async throws -> (Int, Int) {

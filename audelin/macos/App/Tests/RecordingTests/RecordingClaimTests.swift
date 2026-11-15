@@ -5,7 +5,7 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingClaimTests {
 
-    // S-18
+    // S-23
     @Test func aGrantGoesOnToCallAudio_state() {
         assert(makeClaiming(), .folderClaimed(id: 1, .granted(token: 7))) { $0.folderToken = 7; $0.stage = .preparing }
     }
@@ -13,7 +13,7 @@ struct RecordingClaimTests {
         assert(makeClaiming(), .folderClaimed(id: 1, .granted(token: 7)), delivers: .prepareCallAudio(id: 1))
     }
 
-    // S-19
+    // S-24
     @Test func aStartRefusedByARelaunchEnds_state() {
         assert(makeClaiming(), .folderClaimed(id: 1, .refused)) { $0.phase = .idle; $0.stage = nil; $0.session = nil }
     }
@@ -21,7 +21,7 @@ struct RecordingClaimTests {
         assert(makeClaiming(), .folderClaimed(id: 1, .refused), delivers: nil)
     }
 
-    // S-20
+    // S-25
     @Test func aStartRefusedByAMoveWaits_state() {
         assert(makeClaiming(), .folderClaimed(id: 1, .refusedByMove)) { $0.phase = .idle; $0.stage = nil; $0.session = nil; $0.pendingStart = .hand }
     }
@@ -48,7 +48,7 @@ struct RecordingClaimTests {
         assert(makeWaiting(.hand), .conditionChanged(.callsFolder, available: false), delivers: nil)
     }
 
-    // S-21
+    // S-26
     @Test func aRefusalByAMoveThatHasEndedClaimsAgain_state() {
         let late = makeState(makeClaiming()) { $0.moveEnds = 1 }
         assert(late, .folderClaimed(id: 1, .refusedByMove)) { $0.claimSince = 1 }
@@ -58,7 +58,7 @@ struct RecordingClaimTests {
         assert(late, .folderClaimed(id: 1, .refusedByMove), delivers: .claimFolder(id: 1))
     }
 
-    // S-22
+    // S-27
     @Test func aStartWhileTheFolderMovesWaits_state() {
         assert(makeState(makeIdle()) { $0.folderMoving = true }, .userStart) { $0.pendingStart = .hand }
     }
@@ -73,15 +73,15 @@ struct RecordingClaimTests {
         assert(makeState(makeIdle()) { $0.folderMoving = true }, .callStarted, delivers: nil)
     }
 
-    // S-23
+    // S-28
     @Test func aStopDropsAWaitingStart_state() { assert(makeWaiting(.hand), .userStop) { $0.pendingStart = nil } }
     @Test func aStopDropsAWaitingStart_effect() { assert(makeWaiting(.hand), .userStop, delivers: nil) }
 
-    // S-24
+    // S-29
     @Test func aCallsEndDropsItsWaitingStart_state() { assert(makeWaiting(.call), .callEnded) { $0.callOn = false; $0.pendingStart = nil } }
     @Test func aCallsEndDropsItsWaitingStart_effect() { assert(makeWaiting(.call), .callEnded, delivers: nil) }
 
-    // S-25
+    // S-30
     @Test func aWaitingStartByHandOutlastsTheCallsEnd_state() {
         assert(makeState(makeWaiting(.hand)) { $0.callOn = true }, .callEnded) { $0.callOn = false }
     }
@@ -89,7 +89,7 @@ struct RecordingClaimTests {
         assert(makeState(makeWaiting(.hand)) { $0.callOn = true }, .callEnded, delivers: nil)
     }
 
-    // S-29
+    // S-34
     @Test func automaticOffDropsOnlyACallsWaitingStart_state() {
         assert(makeWaiting(.call), .automaticChanged(false)) { $0.automatic = false; $0.pendingStart = nil }
         assert(makeWaiting(.hand), .automaticChanged(false)) { $0.automatic = false }
@@ -99,7 +99,7 @@ struct RecordingClaimTests {
         assert(makeWaiting(.hand), .automaticChanged(false), delivers: nil)
     }
 
-    // S-26
+    // S-31
     @Test func lateNewsOfAMoveDoesNotEndARecording_state() {
         assert(makeState(makeRunning()) { $0.folderToken = 7 }, .callsFolderMoving) { $0.folderMoving = true }
     }
@@ -107,7 +107,7 @@ struct RecordingClaimTests {
         assert(makeState(makeRunning()) { $0.folderToken = 7 }, .callsFolderMoving, delivers: nil)
     }
 
-    // S-27
+    // S-32
     @Test func releasedCallAudioReleasesTheClaim_state() {
         assert(makeReleasingWithClaim(), .callAudioReleased(id: 1)) { $0.stage = .releasingClaim }
     }
@@ -124,7 +124,7 @@ struct RecordingClaimTests {
         assert(releasing, .sessionReported(id: 1, .ended), delivers: nil)
     }
 
-    // S-28
+    // S-33
     @Test func aStopDuringTheTakeWaitsForIt_state() { assert(makeClaiming(), .userStop) { $0.phase = .ending } }
     @Test func aStopDuringTheTakeWaitsForIt_effect() { assert(makeClaiming(), .userStop, delivers: nil) }
 

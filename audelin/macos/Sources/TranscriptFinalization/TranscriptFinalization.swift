@@ -7,11 +7,13 @@ public struct TranscriptFinalizationState<Raw: Equatable & Sendable, Names: Equa
     public var calls: [String: Call]
     /// After shutdown no new model work starts: each call becomes final as soon as its file is.
     public var shuttingDown: Bool
-    /// Shut down with every call's final form published.
+    /// No more transcript openings, writes or closes will arrive.
+    public var inputEnded: Bool
+    /// Shut down with input ended and every call's final form published.
     public var settled: Bool
 
-    public init(calls: [String: Call] = [:], shuttingDown: Bool = false, settled: Bool = false) {
-        self.calls = calls; self.shuttingDown = shuttingDown; self.settled = settled
+    public init(calls: [String: Call] = [:], shuttingDown: Bool = false, inputEnded: Bool = false, settled: Bool = false) {
+        self.calls = calls; self.shuttingDown = shuttingDown; self.inputEnded = inputEnded; self.settled = settled
     }
 
     public struct Call: Equatable, Sendable {
@@ -81,6 +83,8 @@ public enum TranscriptFinalizationEvent<Raw: Equatable & Sendable, Names: Equata
     case committed(call: String, succeeded: Bool)
     /// The calls' final forms have reached their consumers.
     case published(calls: Set<String>)
+    /// No more transcript openings, writes or closes will arrive.
+    case inputEnded
     case shutdown
 }
 
@@ -110,9 +114,7 @@ public struct TranscriptFinalizationReducer<Raw: Equatable & Sendable, Names: Eq
 
         let (stepped, effect) = step(state, event)
         var next = stepped
-        if next.shuttingDown {
-            next.settled = next.calls.values.allSatisfy(\.published)
-        }
+        next.settled = next.shuttingDown && next.inputEnded && next.calls.values.allSatisfy(\.published)
         return (next, effect)
     }
 
@@ -193,6 +195,10 @@ public struct TranscriptFinalizationReducer<Raw: Equatable & Sendable, Names: Eq
             for id in ids where state.calls[id].map({ $0.stage == .finalized || $0.stage == .failed }) == true {
                 next.calls[id]?.published = true
             }
+            return (next, nil)
+
+        case .inputEnded:
+            next.inputEnded = true
             return (next, nil)
 
         case .shutdown:

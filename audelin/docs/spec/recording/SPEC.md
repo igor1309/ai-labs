@@ -72,6 +72,29 @@ effect handler, and its result comes back as a Recording event.
   recording begins without the warning, and the Session ending clears it.
   A warning report from an earlier or ended Session changes nothing.
 
+- **Recording publishes its transcript output.** A recording's transcript
+  is made final elsewhere (Transcript finalization), and Recording only
+  reports what happened to the live file, in one ordered stream for the
+  life of Recording, each value keyed by the call's folder, none dropped
+  or merged:
+  - **opened**, once the transcript file is open;
+  - **wrote** with the call text saved, once a live save returns, or
+    **write failed** when it throws;
+  - **closed** with the speaker names, read once, after the file closes.
+
+  A recording whose transcript never opened sends nothing. Values of one
+  call come in that order, and one call's closed comes before the next
+  call's opened. The output holds values only: the handles needed to make
+  a transcript final (its writer, the track files, how far audio was
+  captured) go to compose's resource store when the file opens, before
+  opened is sent, and are not part of the output. Recording knows nothing of who reads the output: compose
+  subscribes it and sends each value on, so no piece of a recording
+  sends to another machine.
+- **Shutdown settles after the transcript output.** On shutdown the current
+  recording ends as by hand, and Recording settles only once its last
+  closed is in the output; the output then finishes. A reader that has
+  read every value to the end has therefore seen every call's close.
+
 ```gherkin
 Feature: Deciding when a call is recorded
 
@@ -160,62 +183,87 @@ Feature: Deciding when a call is recorded
     When an earlier Session says a side failed
     Then I can read that the recording has no fault
 
-  Scenario: S-18 A start claims the calls folder before call audio
+  Scenario: S-18 A recording's transcript is reported in order
+    Given a recording runs with its transcript open
+    When two saves return, one save fails and the recording ends
+    Then the transcript output reads opened, wrote, wrote, write failed, closed for its call
+
+  Scenario: S-19 Closed carries the names at close
+    Given a recording runs and its call is named
+    When the recording ends and a name changes afterwards
+    Then the output's closed carries the names as they were when the file closed
+
+  Scenario: S-20 A recording with no transcript reports nothing
+    Given a recording whose transcript fails to open
+    When the recording ends
+    Then the transcript output is empty
+
+  Scenario: S-21 Two recordings report one after the other
+    Given a recording ended and a second one began
+    When the second recording ends
+    Then the output reads the first call's values through its closed, then the second call's
+
+  Scenario: S-22 Shutdown settles after the last close
+    Given a recording runs
+    When Recording is shut down and settles
+    Then the transcript output ends with that call's closed and then finishes
+
+  Scenario: S-23 A start claims the calls folder before call audio
     Given nothing is missing and no one has the calls folder
     When a start comes
     Then I can see the calls folder claimed before call audio is asked for
 
-  Scenario: S-19 A start refused by a relaunch begins nothing
+  Scenario: S-24 A start refused by a relaunch begins nothing
     Given a relaunch has the calls folder
     When a start comes and its claim is refused
     Then I can read that no recording runs and none is waiting
 
-  Scenario: S-20 A start refused by a move begins after it
+  Scenario: S-25 A start refused by a move begins after it
     Given a move has the calls folder
     When a start comes, its claim is refused and then the move ends
     Then I can read that a recording runs
 
-  Scenario: S-21 A start refused by a move that has already ended claims again
+  Scenario: S-26 A start refused by a move that has already ended claims again
     Given a start's claim is under way while a move ends
     When the refusal arrives after the move's end
     Then I can see the calls folder claimed again at once
 
-  Scenario: S-22 A start while the folder moves begins after the move
+  Scenario: S-27 A start while the folder moves begins after the move
     Given the calls folder is moving
     When the user starts and then the move ends
     Then I can read that a recording begun by hand runs
 
-  Scenario: S-23 A stop drops a start waiting for a move
+  Scenario: S-28 A stop drops a start waiting for a move
     Given a start waits for a move
     When the user stops and then the move ends
     Then I can read that no recording runs
 
-  Scenario: S-24 A call's end drops its start waiting for a move
+  Scenario: S-29 A call's end drops its start waiting for a move
     Given a call's start waits for a move
     When the call ends and then the move ends
     Then I can read that no recording runs
 
-  Scenario: S-25 A start by hand outlasts a call's end while waiting
+  Scenario: S-30 A start by hand outlasts a call's end while waiting
     Given a start by hand waits for a move during a call
     When the call ends and then the move ends
     Then I can read that a recording begun by hand runs
 
-  Scenario: S-29 Automatic recording turned off drops only a call's waiting start
+  Scenario: S-34 Automatic recording turned off drops only a call's waiting start
     Given a call's start waits for a move, or a start by hand does
     When automatic recording is turned off and then the move ends
     Then I can read that no recording runs for the call's start, and one begun by hand runs
 
-  Scenario: S-26 Late news of a move does not end a recording
+  Scenario: S-31 Late news of a move does not end a recording
     Given a recording runs holding the calls folder
     When news arrives that the calls folder is moving
     Then I can read that the same recording runs
 
-  Scenario: S-27 The claim is released last
+  Scenario: S-32 The claim is released last
     Given a recording is ending
     When its pieces are down and call audio is released
     Then I can see the calls folder released and then no recording running
 
-  Scenario: S-28 A stop during the take releases a late grant
+  Scenario: S-33 A stop during the take releases a late grant
     Given a start is taking the calls folder
     When the user stops and then the claim is granted
     Then I can see the calls folder released and no call audio asked for

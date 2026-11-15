@@ -214,6 +214,89 @@ def captures(run):
     return found
 
 
+REHEARSAL = "capture-rehearsal"
+# Repeats of the composition rehearsal beyond the profiled one, unprofiled.
+REPEATS = ("rehearsal-2", "rehearsal-3")
+# Repeats spread wider than this are noise, not a measurement to compare.
+REHEARSAL_SPREAD_PERCENT = 10
+# The 1-minute load average after nightly.sh waited for the Mac to settle.
+LOAD_LIMIT = 4.0
+# Nights compared: the comparison point and the noise band behind it.
+WINDOW = 7
+LOOKBACK = 30
+
+
+def median(values):
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    return ordered[middle] if len(ordered) % 2 else (ordered[middle - 1] + ordered[middle]) / 2
+
+
+def rehearsal(run, workload, repeats=1):
+    """The fast composition run with test recognisers: CPU of the app's own wiring, without the model.
+
+    With repeats, CPU and peak footprint are medians and every run must be valid."""
+    directories = (REHEARSAL,) + REPEATS[:max(0, repeats - 1)]
+    runs = [one_rehearsal(run / name, workload) for name in directories]
+    result = runs[0]
+    for name, other in zip(directories[1:], runs[1:]):
+        result["reasons"] += [f"{name}: {reason}" for reason in other["reasons"]]
+        result["correct"] = result["correct"] and other["correct"]
+        result["completed"] = result["completed"] and other["completed"]
+    cpu = [one["cpu_seconds"] for one in runs if one["cpu_seconds"] is not None]
+    peaks = [one["footprint_peak_mib"] for one in runs if one["footprint_peak_mib"] is not None]
+    result["runs"] = len(runs)
+    result["cpu_seconds_runs"] = cpu
+    if len(cpu) == len(runs):
+        result["cpu_seconds"] = median(cpu)
+        result["cpu_spread_percent"] = round(100 * (max(cpu) - min(cpu)) / result["cpu_seconds"], 1) if result["cpu_seconds"] else None
+    if len(peaks) == len(runs):
+        result["footprint_peak_mib"] = median(peaks)
+    spread = result.get("cpu_spread_percent")
+    result["noisy"] = spread is not None and spread > REHEARSAL_SPREAD_PERCENT
+    return result
+
+
+def one_rehearsal(directory, workload):
+    args = shlex.split(workload)
+    indices = [n for n, arg in enumerate(args) if arg == "--minutes"]
+    intended = number(args[indices[0] + 1]) if len(indices) == 1 else None
+    if intended is not None and intended <= 0:
+        raise ValueError("rehearsal minutes must be positive")
+    try:
+        log = (directory / "rehearsal.log").read_text()
+    except OSError:
+        log = ""
+    result = endurance(log, intended)
+    if not log:
+        result["reasons"].insert(0, "rehearsal log missing")
+        result["correct"] = False
+    result["unmeasured"] = ["recognition by the real model", "real call audio"]
+    return result
+
+
+def load(path):
+    """The 1-minute load average nightly.sh recorded once the Mac settled, if it did."""
+    try:
+        # Only the settled form counts: before it, the build's own load was measured.
+        found = re.search(r"load before the run, settled after [0-9]+ s: \{ ?([0-9.,]+)", path.read_text())
+    except OSError:
+        return None
+    return number(found[1]) if found else None
+
+
+def noise(run):
+    """Why this night's numbers cannot be compared, though its evidence is valid."""
+    reasons = []
+    value = run.get("load_before")
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and value > LOAD_LIMIT:
+        reasons.append(f"load {value:g} before the run exceeds {LOAD_LIMIT:g}")
+    composition = run.get("rehearsal")
+    if isinstance(composition, dict) and composition.get("noisy"):
+        reasons.append(f"rehearsal repeats spread {composition.get('cpu_spread_percent')}% (over {REHEARSAL_SPREAD_PERCENT}%)")
+    return reasons
+
+
 def mismatch(old, new):
     identity = old.get("identity")
     identity = identity if isinstance(identity, dict) else {}
@@ -236,9 +319,14 @@ def report(run):
             raise ValueError("workload minutes must be positive")
         new["endurance"] = endurance((run / "endurance.log").read_text(), intended)
         new["captures"] = captures(run)
+        if "rehearsal" in identity["workload"]:
+            new["rehearsal"] = rehearsal(run, identity["workload"]["rehearsal"],
+                                         int(identity["workload"].get("rehearsal_runs", 1)))
+        new["load_before"] = load(run / "endurance.log")
     except (OSError, ValueError, KeyError, TypeError, IndexError, AttributeError) as error:
         new["errors"].append(f"cannot parse run evidence: {error}")
-    new["valid"] = not new["errors"] and bool(new["endurance"] and new["endurance"]["correct"])
+    new["valid"] = (not new["errors"] and bool(new["endurance"] and new["endurance"]["correct"])
+                    and (new.get("rehearsal") is None or new["rehearsal"]["correct"]))
     return new
 
 
@@ -261,6 +349,9 @@ def eligible(run):
             return False
     except (AttributeError, TypeError, ValueError, OverflowError):
         return False
+    composition = run.get("rehearsal")
+    if composition is not None and not (isinstance(composition, dict) and composition.get("correct") is True):
+        return False
     return (run.get("valid") is True and evidence.get("completed") is True and evidence.get("correct") is True
             and not evidence.get("reasons") and not run.get("errors")
             and all(run.get("identity", {}).get(field) for field in IDENTITY))
@@ -273,22 +364,57 @@ def metrics(run):
     final = all_samples.get(str(int(intended / 60)), {}) if intended is not None else {}
     values = {key: evidence.get(key) for key in ("cpu_seconds", "cpu_share_percent", "footprint_peak_mib")}
     values.update({key: final.get(key) for key in ("newest_lag_mean_s", "final_lag_mean_s", "backlog_s")})
+    composition = run.get("rehearsal")
+    if isinstance(composition, dict):
+        for key in ("cpu_seconds", "footprint_peak_mib"):
+            values[f"rehearsal.{key}"] = composition.get(key)
     for name, capture in run.get("captures", {}).items():
         for key in ("hangs", "longest_hang_ms"):
             values[f"{name}.{key}"] = capture.get(key)
     return values
 
 
-def comparison(new, old=None):
-    result = {"baseline_commit": None, "baseline_started": None, "reason": None, "deltas": {}, "warnings": []}
+def differences(old, new):
+    """Each differing identity field, from what to what, so a baseline reset explains itself."""
+    def short(value):
+        text = json.dumps(value, sort_keys=True)
+        return text if len(text) <= 120 else text[:117] + "..."
+    lines = []
+    for field in mismatch(old, new):
+        was, now = (old.get("identity") or {}).get(field), new["identity"].get(field)
+        if isinstance(was, dict) and isinstance(now, dict):
+            for key in sorted(was.keys() | now.keys()):
+                if was.get(key) != now.get(key):
+                    lines.append(f"{field}.{key}: {short(was.get(key))} → {short(now.get(key))}")
+        else:
+            lines.append(f"{field}: {short(was)} → {short(now)}")
+    return lines
+
+
+def comparison(new, old=None, window=None):
+    """Compares with the newest matching night; with three or more, warns only above the band.
+
+    The band is the last WINDOW matching valid nights: a metric warns when it is above all of
+    them and more than 5% above their median, which catches a slow climb no single night shows.
+    With fewer nights, it warns above 10% over the comparison point."""
+    window = window if window is not None else ([old] if old is not None else [])
+    old = window[0] if window else old
+    result = {"baseline_commit": None, "baseline_started": None, "reason": None, "deltas": {}, "warnings": [],
+              "identity_changes": [], "window": len(window)}
+    noisy = noise(new)
     if old is None:
         result["reason"] = "Not compared: no earlier run."
     elif not eligible(old):
         result["reason"] = "Not compared: previous report has invalid or unverified evidence."
     elif mismatch(old, new):
         result["reason"] = f"Not compared with `{old.get('commit')}`: its {', '.join(mismatch(old, new))} differ."
+        result["identity_changes"] = differences(old, new)
+    elif noise(old):
+        result["reason"] = f"Not compared with `{old.get('commit')}`: a noisy night, " + "; ".join(noise(old)) + "."
     elif not eligible(new):
         result["reason"] = "Not compared: current evidence is invalid."
+    elif noisy:
+        result["reason"] = "Not compared: noisy night, " + "; ".join(noisy) + "."
     else:
         result["baseline_commit"] = old.get("commit")
         result["baseline_started"] = old.get("started")
@@ -297,10 +423,66 @@ def comparison(new, old=None):
             was, now = before.get(key), after.get(key)
             delta = now - was if was is not None and now is not None else None
             percent = 100 * delta / was if delta is not None and was > 0 else None
-            result["deltas"][key] = {"baseline": was, "current": now, "delta": delta, "percent": percent}
-            if (percent is not None and percent > 10 + 1e-9) or (was == 0 and now is not None and now > 0):
-                result["warnings"].append(f"{key} increased: investigate and repeat before calling it a regression.")
+            band = [value for value in (metrics(night).get(key) for night in window) if value is not None]
+            entry = {"baseline": was, "current": now, "delta": delta, "percent": percent}
+            if len(band) >= 3:
+                entry.update(band_median=median(band), band_max=max(band), band_nights=len(band))
+                above = (now is not None and now > max(band)
+                         and (now > 1.05 * median(band) + 1e-9 if median(band) > 0 else now > 0))
+            else:
+                above = (percent is not None and percent > 10 + 1e-9) or (was == 0 and now is not None and now > 0)
+            result["deltas"][key] = entry
+            if above:
+                where = (f"above all {len(band)} matching nights and >5% over their median {median(band):g}"
+                         if len(band) >= 3 else "more than 10% over the comparison point")
+                result["warnings"].append(f"{key} increased ({where}): investigate and repeat before calling it a regression.")
     return result
+
+
+def growth(old_run, new_run, top=8, threshold=1.0):
+    """Frames whose share of sampled CPU grew most since the comparison night, in percentage points.
+
+    Shares, not milliseconds: windows differ in length and in the samples they caught."""
+    found = {}
+    for path in sorted(new_run.glob("capture-*/summary.json")):
+        before = old_run / path.parent.name / "summary.json"
+        try:
+            old, new = read_json(before), read_json(path)
+            frames = {}
+            for summary, sign in ((new, 1), (old, -1)):
+                total = summary["sampled_cpu_ns"]
+                if not total:
+                    raise ValueError("no samples")
+                for name, value in summary["inclusive_ns"].items():
+                    frames[name] = frames.get(name, 0) + sign * 100 * value / total
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            continue
+        grown = sorted(((round(pp, 1), name) for name, pp in frames.items() if pp >= threshold),
+                       key=lambda item: (-item[0], item[1]))[:top]
+        found[path.parent.name] = [{"frame": name, "percentage_points": pp} for pp, name in grown]
+    return found
+
+
+def history(directory, run):
+    """Earlier reports in DIRECTORY, newest first by start time, at most LOOKBACK of them."""
+    found = []
+    for path in directory.glob("*/report.json"):
+        if path.parent.resolve() == run.resolve():
+            continue
+        try:
+            old = read_json(path)
+        except (OSError, ValueError):
+            continue
+        if isinstance(old, dict) and isinstance(old.get("started"), str):
+            found.append((old["started"], path.parent, old))
+    found.sort(key=lambda item: item[0], reverse=True)
+    return [(path, old) for _, path, old in found[:LOOKBACK]]
+
+
+def window_for(new, earlier):
+    """The matching valid quiet nights, newest first: [0] is the comparison point."""
+    return [(path, old) for path, old in earlier
+            if eligible(old) and not mismatch(old, new) and not noise(old)][:WINDOW]
 
 
 def change(old, new):
@@ -320,8 +502,13 @@ def markdown(new, old=None):
     evidence = new["endurance"]
     for reason in new["errors"] + ((evidence or {}).get("reasons", [])):
         lines.append(f"- {reason}")
+    for reason in (new.get("rehearsal") or {}).get("reasons", []):
+        lines.append(f"- rehearsal: {reason}")
+    if new.get("load_before") is not None:
+        lines.append(f"- 1-minute load once settled, before the run: {new['load_before']:g} (limit {LOAD_LIMIT:g})")
     if compared["reason"]:
         lines += ["", compared["reason"], ""]
+        lines += [f"- changed: {line}" for line in compared.get("identity_changes", [])]
         old = None
     else:
         lines += ["", f"Compared with `{compared['baseline_commit']}` from {compared['baseline_started']}, an identical setup.", ""]
@@ -349,6 +536,17 @@ def markdown(new, old=None):
                   f"{change(None, trends['footprint_mib_per_hour'])} MiB/hour. Retained transcript growth is not evidence of a leak.",
                   f"Backlog trend: {change(None, trends['backlog_s_per_minute'])} s/min; maximum: {change(None, trends['backlog_max_s'])} s.",
                   "Unavailable / unmeasured: " + "; ".join(evidence["unmeasured"]) + ".", ""]
+    composition = new.get("rehearsal")
+    if composition:
+        was = (old or {}).get("rehearsal") or {}
+        lines += [f"### Composition rehearsal, test recognisers: {composition['minutes']} min at {change(None, composition['speed'])}x"
+                  f"{'' if composition['completed'] else ', did not finish'}", "",
+                  f"CPU seconds: {change(was.get('cpu_seconds'), composition['cpu_seconds'])}; "
+                  f"CPU % of one core: {change(was.get('cpu_share_percent'), composition['cpu_share_percent'])}; "
+                  f"peak footprint MiB: {change(was.get('footprint_peak_mib'), composition['footprint_peak_mib'])}. "
+                  f"Runs: {composition.get('runs', 1)}, CPU seconds each {composition.get('cpu_seconds_runs')}, "
+                  f"spread {composition.get('cpu_spread_percent')}%. "
+                  f"The heaviest frames are in {REHEARSAL}/summary.txt.", ""]
     if not new["captures"]:
         lines.append("Time Profiler CPU and hangs: unavailable.")
     for name, capture in new["captures"].items():
@@ -359,10 +557,16 @@ def markdown(new, old=None):
         lines.append(f"### {name}: main thread {value('main_thread_percent')}% of sampled CPU, "
                      f"{value('hangs')} hangs, longest {value('longest_hang_ms')} ms")
     if compared["deltas"]:
-        lines += ["", "### Baseline → current", "", "| metric | baseline | current | delta | % |", "|---|---|---|---|---|"]
+        lines += ["", f"### Baseline → current (band: {compared.get('window', 1)} matching nights)", "",
+                  "| metric | baseline | current | delta | % | band median | band max |", "|---|---|---|---|---|---|---|"]
         for key, delta in compared["deltas"].items():
-            lines.append("| " + " | ".join([key] + [change(None, delta[k]) for k in ("baseline", "current", "delta", "percent")]) + " |")
-    lines += ["", "Changes above 10% request investigation and a repeat; no absolute resource budgets. A zero baseline has no percentage."]
+            lines.append("| " + " | ".join([key] + [change(None, delta.get(k)) for k in
+                         ("baseline", "current", "delta", "percent", "band_median", "band_max")]) + " |")
+    for name, frames in (compared.get("frames") or {}).items():
+        lines += ["", f"### {name}: frames whose share of sampled CPU grew most (percentage points)", ""]
+        lines += [f"- +{frame['percentage_points']:g} {frame['frame']}" for frame in frames] or ["- none grew by 1 point or more"]
+    lines += ["", "With three or more matching nights a metric warns when above all of them and more than 5% over their median;"
+              " with fewer, above 10% over the comparison point. No absolute resource budgets. A zero baseline has no percentage."]
     lines += [f"- {warning}" for warning in compared["warnings"]]
     return "\n".join(lines) + "\n"
 
@@ -371,6 +575,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("run", type=Path)
     parser.add_argument("--previous", type=Path)
+    parser.add_argument("--history", type=Path, help="directory of earlier runs; picks the comparison point and band")
     args = parser.parse_args()
     new = report(args.run)
     old = None
@@ -383,9 +588,24 @@ def main():
         except (OSError, ValueError) as error:
             old = None
             previous_error = f"Not compared: cannot parse previous report: {error}"
-    new["comparison"] = comparison(new, old)
-    if previous_error:
-        new["comparison"]["reason"] = previous_error
+    if args.history:
+        matching = window_for(new, history(args.history, args.run))
+        if matching:
+            old = matching[0][1]
+            new["comparison"] = comparison(new, window=[night for _, night in matching])
+            if not new["comparison"]["reason"]:
+                new["comparison"]["baseline_run"] = matching[0][0].name
+                new["comparison"]["frames"] = growth(matching[0][0], args.run)
+        else:
+            newest = next(iter(history(args.history, args.run)), (None, None))[1]
+            old = newest
+            new["comparison"] = comparison(new, newest)
+    else:
+        new["comparison"] = comparison(new, old)
+        if previous_error:
+            new["comparison"]["reason"] = previous_error
+        elif old is not None and not new["comparison"]["reason"]:
+            new["comparison"]["frames"] = growth(args.previous, args.run)
     text = markdown(new, old)
     (args.run / "report.json").write_text(json.dumps(new, indent=2, sort_keys=True, allow_nan=False) + "\n")
     (args.run / "report.md").write_text(text)

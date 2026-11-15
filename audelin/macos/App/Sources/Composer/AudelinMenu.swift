@@ -145,7 +145,7 @@ public final class AudelinMenu {
             let recording = try await AudelinRecording(preferences: storage, folderClaim: folderClaim, occupiedCallNames: occupiedCallNames, boundary: boundary,
                                                        processes: processes, panel: panel, finalization: finalization, finalizationResources: finalizationResources, summaries: summaries?.callbacks(timeZone: boundary.time.timeZone(), notesOn: { storage.read().notes.enabled }) ?? .disabled)
             application = MenuApplication(
-                states: { await recording.inputs.states() }, failures: recording.detectionFailures,
+                states: { await recording.inputs.ownStates() }, failures: recording.detectionFailures,
                 send: { await recording.inputs.send($0) },
                 stopDelivery: { await recording.stopDelivery() }, end: { await recording.inputs.end() },
                 storageMoving: { await recording.storageMoving($0) },
@@ -333,6 +333,7 @@ public final class AudelinMenu {
     private func shutDown(application: MenuApplication?, finalization: TranscriptFinalizationModel) {
 
         let termination = termination
+        finalization.send(.shutdown)
         if let application {
             Task {
                 await application.stopDelivery()
@@ -340,6 +341,9 @@ public final class AudelinMenu {
                 for await state in await application.states() where state.shutdown == .settled { break }
                 termination.event(.settled(.recording))
             }
+        } else {
+            // Without Recording no transcript output ends, so finalization is told directly.
+            finalization.send(.inputEnded)
         }
         if let calls {
             Task { await calls.drainMove(); termination.event(.settled(.storage)) }
@@ -347,7 +351,7 @@ public final class AudelinMenu {
             termination.event(.settled(.storage))
         }
         Task { [summaries] in
-            await finalization.shutdown()
+            await finalization.settled()
             termination.event(.settled(.finalization))
             await summaries?.shutdown()
             termination.event(.settled(.summaries))
