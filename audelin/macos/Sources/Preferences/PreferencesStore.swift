@@ -3,6 +3,7 @@ import Synchronization
 
 public final class PreferencesStore: PreferenceSettingsStorage, Sendable {
 
+    private let keepObservers = Mutex<[UUID: AsyncStream<Bool>.Continuation]>([:])
     private let fileURL: URL
     // Readers take the snapshot; only writers wait for the disk.
     private let snapshot: Mutex<Preferences>
@@ -21,6 +22,31 @@ public final class PreferencesStore: PreferenceSettingsStorage, Sendable {
     }
 
     public func read() -> Preferences { snapshot.withLock { $0 } }
+
+    public func keepingChanges() -> AsyncStream<Bool> {
+        let id = UUID()
+        return AsyncStream { output in
+            keepObservers.withLock { $0[id] = output }
+            output.onTermination = { [weak self] _ in
+                self?.keepObservers.withLock { $0[id] = nil }
+            }
+        }
+    }
+
+    public func updateKeeping(_ keeping: Bool) throws {
+        try writing.withLock { _ in
+            let loaded = Self.load(fileURL)
+            guard !loaded.failed else { throw CocoaError(.fileReadCorruptFile) }
+            var current = loaded.value
+            current.keepPreviousNotes = keeping
+            try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try replace(JSONEncoder().encode(current), fileURL)
+            snapshot.withLock { $0 = current }
+            keepObservers.withLock { observers in
+                for observer in observers.values { observer.yield(keeping) }
+            }
+        }
+    }
 
     nonisolated public func updateRecording(automatic: Bool?, liveText: Bool?) async throws -> Preferences {
         try writing.withLock { _ in

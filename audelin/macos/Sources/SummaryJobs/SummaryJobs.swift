@@ -1,4 +1,30 @@
+public protocol SummariesTemplate: Equatable, Sendable {
+    var name: String { get }
+}
+
+extension SummariesTemplate {
+    public var jobTemplate: Job.Template { .init(id: name, name: name, value: self) }
+}
+
 public struct Job: Equatable, Sendable {
+    /// Generation owns the value's schema; jobs only keep its identity and pass it on.
+    public struct Template: Equatable, Sendable {
+        public let id: String
+        public let name: String
+        private let stored: any Sendable
+        private let matches: @Sendable (any Sendable) -> Bool
+        public init<Value: Equatable & Sendable>(id: String, name: String, value: Value) {
+            self.id = id; self.name = name; stored = value
+            matches = { ($0 as? Value) == value }
+        }
+        public func value<Value>(as type: Value.Type) -> Value? { stored as? Value }
+        public static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.id == rhs.id && lhs.name == rhs.name && lhs.matches(rhs.stored)
+        }
+    }
+    public var template: Template?
+    public var keepPrevious: Bool
+    public var requested: Bool
     public struct Runtime: Equatable, Sendable {
         public var kind: String
         public var model: String
@@ -22,7 +48,8 @@ public struct Job: Equatable, Sendable {
     public var speakers: Bool
     public var primary: Runtime
     public var fallback: Runtime?
-    public init(id: String, call: String, input: String, entries: [Entry], speakers: Bool, primary: Runtime, fallback: Runtime? = nil) {
+    public init(id: String, call: String, input: String, entries: [Entry], speakers: Bool, primary: Runtime, fallback: Runtime? = nil, template: Template? = nil, keepPrevious: Bool = true, requested: Bool = false) {
+        self.template = template; self.keepPrevious = keepPrevious; self.requested = requested
         self.id = id; self.call = call; self.input = input; self.entries = entries
         self.speakers = speakers; self.primary = primary; self.fallback = fallback
     }

@@ -35,12 +35,16 @@ and the file bytes unchanged. Evidence: `SummaryVersionsTests.legacyNotesReadAsD
 ## S-7 A failed publication keeps the pair
 
 Drive: fake disk fails the atomic replacement; read back the pair A/B.
-Evidence: `SummaryVersionsTests.failedPublicationAndDiscardKeepTheWholePair`.
+Evidence: `SummaryVersionsTests.failedPublicationAndDiscardKeepTheWholePair`,
+`aFailedTerminalSaveRestoresThePublishedPair`,
+`terminalReadAndRollbackCheckFailuresRestoreThePublishedPair` and
+`terminalRollbackNeverOverwritesAnotherPublication`.
 
 ## S-8 A discarded attempt keeps the pair
 
 Drive: discard an attempt before and after publication; read back the pair A/B and no
-attempt record. Evidence: `SummaryVersionsTests.failedPublicationAndDiscardKeepTheWholePair`.
+attempt record. Evidence: `SummaryVersionsTests.failedPublicationAndDiscardKeepTheWholePair`
+and `discardReadAndRollbackCheckFailuresKeepThePublishedPair`.
 
 ## S-9 A reader during publication
 

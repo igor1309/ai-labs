@@ -2,13 +2,18 @@ import SummaryJobs
 import Synchronization
 import Testing
 
-struct Template: Equatable, Sendable { let marker: Int }
+struct Template: SummariesTemplate {
+    let marker: Int
+    init(marker: Int) { self.marker = marker }
+    var name: String { "Daily" }
+}
 func makeTemplate() -> Template { .init(marker: 17) }
 final class TemplatesSpy: SummariesTemplates {
     private let recorded = Mutex(0)
     let template: Template
     init(template: Template = makeTemplate()) { self.template = template }
     var calls: Int { recorded.withLock { $0 } }
+    func resolve(_ name: String) async throws -> Template { recorded.withLock { $0 += 1 }; return template }
     func resolveDefault() async -> Template { recorded.withLock { $0 += 1 }; return template }
 }
 typealias SummariesState = SummaryJobs.SummariesState<Template>
@@ -36,7 +41,7 @@ typealias SummariesEffectHandler = SummaryJobs.SummariesEffectHandler<Template>
     }
     @Test func everyResolutionAsksForDefaultAfresh() async {
         let templates = TemplatesSpy()
-        let handler = SummariesEffectHandler(templates: templates, preparation: PreparationSpy(), claims: ClaimsSpy(),
+        let handler = SummariesEffectHandler(keeping: { true }, templates: templates, preparation: PreparationSpy(), claims: ClaimsSpy(),
             records: RecordsSpy(), starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy())
         #expect(await handler.handle(.resolve(makeJob())) == .resolved("call", makeTemplate()))
         #expect(await handler.handle(.resolve(makeJob())) == .resolved("call", makeTemplate()))

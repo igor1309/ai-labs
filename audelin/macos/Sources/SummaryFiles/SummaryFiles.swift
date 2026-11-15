@@ -104,7 +104,13 @@ public struct Files: Sendable {
         storage = DiskFiles(locations: locations, disk: disk, ownershipDirectory: ownershipDirectory)
     }
     public func release(job: String, call: String, input: String) async { await storage.release(job: job, call: call, input: input) }
-    public func claim(_ record: Record) async throws -> (owned: Bool, record: Record) { try await storage.claim(record) }
+    public func claim(_ record: Record, replacingInactive: Bool = false) async throws -> (owned: Bool, record: Record) {
+        try await storage.claim(record, replacingInactive: replacingInactive)
+    }
+    /// Replaces the matching inactive attempt atomically, leaving published notes untouched.
+    public func replaceAttempt(_ record: Record, with next: Record) async throws -> Record {
+        try await storage.replaceAttempt(record, with: next)
+    }
     public func load(call: String) async throws -> Record? { try await storage.load(call: call) }
     /// Replaces only the named interrupted or failed attempt; its durable input and outputs survive.
     public func retry(_ record: Record, job: String) async throws -> Record { try await storage.retry(record, job: job) }
@@ -126,7 +132,8 @@ public struct Files: Sendable {
 }
 private protocol FilesStorage: Sendable {
     func release(job: String, call: String, input: String) async
-    func claim(_ record: Record) async throws -> (owned: Bool, record: Record)
+    func claim(_ record: Record, replacingInactive: Bool) async throws -> (owned: Bool, record: Record)
+    func replaceAttempt(_ record: Record, with next: Record) async throws -> Record
     func load(call: String) async throws -> Record?
     func retry(_ record: Record, job: String) async throws -> Record
     func start(_ record: Record) async throws -> Bool
@@ -173,14 +180,35 @@ private actor DiskFiles: FilesStorage {
             close(fd)
         }
     }
-    public func claim(_ record: Record) async throws -> (owned: Bool, record: Record) {
-        try await locations.withFolder(call: record.call) { [disk] folder in
+    public func claim(_ record: Record, replacingInactive: Bool) async throws -> (owned: Bool, record: Record) {
+        try await locations.withFolder(call: record.call) { [disk, ownershipDirectory] folder in
             let path = folder.appendingPathComponent(".summary-job.json")
-            if try disk.exists(path) { return (false, try Self.read(path, disk: disk, call: record.call)) }
+            if try disk.exists(path) {
+                let current = try Self.read(path, disk: disk, call: record.call)
+                if replacingInactive, ["succeeded", "failed", "interrupted"].contains(current.phase) {
+                    return (true, try Self.replaceAttempt(current, with: record, at: path, disk: disk, directory: ownershipDirectory))
+                }
+                return (false, current)
+            }
             let owned = try disk.create(JSONEncoder().encode(record), at: path)
             return (owned, owned ? record : try Self.read(path, disk: disk, call: record.call))
         }
     }
+    public func replaceAttempt(_ record: Record, with next: Record) async throws -> Record {
+        try await locations.withFolder(call: record.call) { [disk, ownershipDirectory] folder in
+            try Self.replaceAttempt(record, with: next, at: folder.appendingPathComponent(".summary-job.json"), disk: disk, directory: ownershipDirectory)
+        }
+    }
+    private static func replaceAttempt(_ record: Record, with next: Record, at path: URL, disk: any Disk, directory: URL) throws -> Record {
+        guard next.call == record.call, next.job != record.job, next.phase == "pending",
+              ["succeeded", "failed", "interrupted"].contains(record.phase),
+              let lease = try acquire(record, directory: directory) else { throw CocoaError(.fileWriteUnknown) }
+        defer { flock(lease, LOCK_UN); close(lease) }
+        guard try read(path, disk: disk, call: record.call) == record else { throw CocoaError(.fileWriteUnknown) }
+        try disk.replace(JSONEncoder().encode(next), at: path)
+        return next
+    }
+
     public func load(call: String) async throws -> Record? {
         try await locations.withFolder(call: call) { [disk, ownershipDirectory] folder in
             let path = folder.appendingPathComponent(".summary-job.json")
@@ -242,15 +270,25 @@ private actor DiskFiles: FilesStorage {
         return true
     }
     public func progress(_ record: Record) async throws {
-        guard leases[.init(call: record.call, job: record.job, input: record.input)] != nil else { throw CocoaError(.fileWriteUnknown) }
+        let identity = Identity(call: record.call, job: record.job, input: record.input)
+        guard leases[identity] != nil else { throw CocoaError(.fileWriteUnknown) }
         defer { if record.phase != "running" { release(job: record.job, call: record.call, input: record.input) } }
+        let publication = publications[identity]
         try await locations.withFolder(call: record.call) { [disk] folder in
             let path = folder.appendingPathComponent(".summary-job.json")
-            let current = try Self.read(path, disk: disk, call: record.call)
-            guard current.job == record.job, current.input == record.input, current.phase == "running" else { throw CocoaError(.fileWriteUnknown) }
-            var updated = record
-            if updated.checkpoint == nil { updated.checkpoint = current.checkpoint }
-            try disk.replace(JSONEncoder().encode(updated), at: path)
+            do {
+                let current = try Self.read(path, disk: disk, call: record.call)
+                guard current.job == record.job, current.input == record.input, current.phase == "running" else { throw CocoaError(.fileWriteUnknown) }
+                var updated = record
+                if updated.checkpoint == nil { updated.checkpoint = current.checkpoint }
+                try disk.replace(JSONEncoder().encode(updated), at: path)
+            } catch {
+                // A failed make-again save retains the pair the caller could already read.
+                if record.phase != "running", let publication, publication.versions != nil {
+                    try Self.rollback(publication, at: folder.appendingPathComponent("summary.md"), disk: disk)
+                }
+                throw error
+            }
         }
     }
     public func publish(_ record: Record, notes: String, template: Attribution, keeping: Keeping) async throws {
@@ -297,23 +335,39 @@ private actor DiskFiles: FilesStorage {
         let publication = publications[identity]
         try await locations.withFolder(call: record.call) { [disk] folder in
             let path = folder.appendingPathComponent(".summary-job.json")
-            let current = try Self.read(path, disk: disk, call: record.call)
             let output = folder.appendingPathComponent("summary.md")
-            let completedWithoutNotes = try current.phase == "succeeded" && !disk.exists(output)
-            guard current.job == record.job, current.input == record.input,
-                  ownsRunning ? current.phase == "running" : (["pending", "interrupted"].contains(current.phase) || completedWithoutNotes || publication != nil) else {
-                throw CocoaError(.fileWriteUnknown)
-            }
-            if let publication, try disk.exists(output), try disk.read(output) == publication.data {
-                if let previous = publication.previous, let versions = publication.versions {
-                    try disk.restore(previous, at: output, modified: versions.current.made)
+            do {
+                let current = try Self.read(path, disk: disk, call: record.call)
+                let completedWithoutNotes = try current.phase == "succeeded" && !disk.exists(output)
+                guard current.job == record.job, current.input == record.input,
+                      ownsRunning ? current.phase == "running" : (["pending", "interrupted"].contains(current.phase) || completedWithoutNotes || publication != nil) else {
+                    throw CocoaError(.fileWriteUnknown)
                 }
-                else { try disk.remove(output) }
+            } catch {
+                if let publication { try Self.rollback(publication, at: output, disk: disk) }
+                throw error
             }
+            if let publication { try Self.rollback(publication, at: output, disk: disk) }
             try disk.remove(path)
         }
         publications[identity] = nil
         release(job: record.job, call: record.call, input: record.input)
+    }
+    private static func rollback(_ publication: Publication, at output: URL, disk: any Disk) throws {
+        let ownsOutput: Bool
+        do { ownsOutput = try disk.exists(output) && disk.read(output) == publication.data }
+        catch {
+            // A failed preflight cannot establish ownership. Reopen the file and compare
+            // its bytes before restoring, including when the existence check failed.
+            do { ownsOutput = try disk.readStamped(output).data == publication.data }
+            catch let error as CocoaError where error.code == .fileReadNoSuchFile { return }
+        }
+        if ownsOutput { try restore(publication, at: output, disk: disk) }
+    }
+    private static func restore(_ publication: Publication, at output: URL, disk: any Disk) throws {
+        if let previous = publication.previous, let versions = publication.versions {
+            try disk.restore(previous, at: output, modified: versions.current.made)
+        } else { try disk.remove(output) }
     }
     public func versions(call: String) async throws -> Versions? {
         try await locations.withFolder(call: call) { [disk] folder in

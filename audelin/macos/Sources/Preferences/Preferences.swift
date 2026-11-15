@@ -18,6 +18,7 @@ public struct Preferences: Codable, Equatable, Sendable {
         case dark
     }
 
+    public var keepPreviousNotes: Bool
     public var notes: NotesPreferences
     public var automaticRecording: Bool
     public var liveText: Bool
@@ -27,6 +28,7 @@ public struct Preferences: Codable, Equatable, Sendable {
 
     public init(
         notes: NotesPreferences = .init(),
+        keepPreviousNotes: Bool = true,
         automaticRecording: Bool = true,
         liveText: Bool = true,
         callsFolder: URL = FileManager.default.homeDirectoryForCurrentUser
@@ -35,6 +37,7 @@ public struct Preferences: Codable, Equatable, Sendable {
         appearance: Appearance = .system
     ) {
 
+        self.keepPreviousNotes = keepPreviousNotes
         self.notes = notes
         self.automaticRecording = automaticRecording
         self.liveText = liveText
@@ -45,13 +48,14 @@ public struct Preferences: Codable, Equatable, Sendable {
 
     private enum CodingKeys: String, CodingKey {
 
-        case automaticRecording, liveText, callsFolder, notes, language, appearance
+        case keepPreviousNotes, automaticRecording, liveText, callsFolder, notes, language, appearance
     }
 
     public init(from decoder: any Decoder) throws {
 
         let values = try decoder.container(keyedBy: CodingKeys.self)
         let defaults = Preferences()
+        keepPreviousNotes = try values.decodeIfPresent(Bool.self, forKey: .keepPreviousNotes) ?? true
         notes = try values.decodeIfPresent(NotesPreferences.self, forKey: .notes) ?? defaults.notes
         automaticRecording = try values.decodeIfPresent(Bool.self, forKey: .automaticRecording)
             ?? defaults.automaticRecording

@@ -1,5 +1,6 @@
 import Composer
 import Foundation
+import NotesGeneration
 import Synchronization
 import SummaryFiles
 import SummaryJobs
@@ -89,8 +90,8 @@ import Testing
     }
     @Test func publishWritesTheNotes() async throws {
         let files = FilesFake()
-        try await makeSUT(files).publish(job, notes: "notes", warning: true)
-        #expect(files.writes == [.publish(try await record(phase: "running", warning: true), "notes", .default, .replacement)])
+        try await makeSUT(files).publish(job, notes: "notes", warning: true, keeping: .rotation)
+        #expect(files.writes == [.publish(try await record(phase: "running", warning: true), "notes", .default, .rotation)])
     }
     @Test(arguments: [(SummariesState.Call.Stage.succeeded, "succeeded"), (.failed, "failed")])
     func saveWritesTheLastStage(stage: SummariesState.Call.Stage, phase: String) async throws {
@@ -116,8 +117,59 @@ import Testing
     @Test func aFailedWriteThrows() async {
         let sut = makeSUT(FilesFake(fails: true))
         await #expect(throws: (any Error).self) { try await sut.start(job) }
-        await #expect(throws: (any Error).self) { try await sut.publish(job, notes: "n", warning: false) }
+        await #expect(throws: (any Error).self) { try await sut.publish(job, notes: "n", warning: false, keeping: .rotation) }
         await #expect(throws: (any Error).self) { try await sut.discard(job) }
+    }
+
+    @Test(arguments: [true, false])
+    func capturedTemplateAndKeepingSurviveStorageAndDrivePublication(keeping: Bool) async throws {
+        let files = FilesFake(), sut = makeSUT(files)
+        var chosen = job
+        chosen.template = .init(id: "daily-id", name: "Daily", value: NotesGeneration.Template(name: "Daily", instructions: "saved instructions", headings: [[.init("Day", required: false)]]))
+        chosen.keepPrevious = keeping; chosen.requested = true
+        let saved = try await sut.claim(chosen).saved
+        files.stored = try #require(files.claimed.first)
+        #expect(try await sut.load(call: "call") == saved && saved.job == chosen)
+        try await sut.publish(saved.job, notes: "daily notes", warning: false, keeping: keeping ? .rotation : .replacement)
+        guard case let .publish(record, text, template, policy) = try #require(files.writes.last) else {
+            Issue.record("missing publication"); return
+        }
+        #expect(record.job == chosen.id && text == "daily notes")
+        #expect(template == Attribution(id: "daily-id", name: "Daily"))
+        #expect(policy == (keeping ? .rotation : .replacement))
+    }
+
+    @Test func oldSnapshotsReadWithDefaultKeepingAndNoResolvedTemplate() async throws {
+        let files = FilesFake()
+        var old = try await record(phase: "pending")
+        var snapshot = try #require(try JSONSerialization.jsonObject(with: old.snapshot) as? [String: Any])
+        for key in ["template", "keepPrevious", "requested"] { snapshot[key] = nil }
+        old.snapshot = try JSONSerialization.data(withJSONObject: snapshot)
+        files.stored = old
+        #expect(try await makeSUT(files).load(call: "call")?.job == job)
+    }
+
+    @Test func olderTemplateSnapshotsKeepTheirResolvedValue() async throws {
+        let files = FilesFake(), sut = makeSUT(files)
+        var chosen = job
+        chosen.template = NotesGeneration.Template(name: "Daily", instructions: "captured", headings: [[.init("Day", required: false)]]).jobTemplate
+        _ = try await sut.claim(chosen)
+        var old = try #require(files.claimed.first)
+        var snapshot = try #require(try JSONSerialization.jsonObject(with: old.snapshot) as? [String: Any])
+        var template = try #require(snapshot["template"] as? [String: Any])
+        template["id"] = nil; snapshot["template"] = template
+        old.snapshot = try JSONSerialization.data(withJSONObject: snapshot)
+        files.stored = old
+        #expect(try await sut.load(call: "call")?.job == chosen)
+    }
+
+    @Test(arguments: [SummariesClaimIntent.ifAbsent, .newRun])
+    func claimTranslatesTheIntentWithoutChoosingAdmission(intent: SummariesClaimIntent) async throws {
+        let files = FilesFake()
+        var chosen = job; chosen.requested = intent == .ifAbsent
+        let result = try await makeSUT(files).claim(chosen, intent: intent)
+        #expect(result.owned && result.saved.job == chosen)
+        #expect(files.replacementIntents == [intent == .newRun])
     }
 
     /// A stored record of the job as the port writes it, in the given phase.
@@ -131,9 +183,11 @@ import Testing
 
 /// Answers the port's file calls from a stored record and records each call.
 final class FilesFake: SummariesFiles {
-    enum Write: Equatable { case start(SummaryFiles.Record), progress(SummaryFiles.Record), publish(SummaryFiles.Record, String, Attribution, Keeping),
+    enum Write: Equatable {
+        case start(SummaryFiles.Record), progress(SummaryFiles.Record), publish(SummaryFiles.Record, String, Attribution, Keeping),
                             discard(SummaryFiles.Record), release(job: String, call: String, input: String) }
     private struct Calls {
+        var replacementIntents: [Bool] = []
         var claimed: [SummaryFiles.Record] = []; var loaded: [String] = []; var retried: [(SummaryFiles.Record, String)] = []
         var writes: [Write] = []
     }
@@ -148,6 +202,7 @@ final class FilesFake: SummariesFiles {
         get { answers.withLock { $0.claim } }
         set { answers.withLock { $0.claim = newValue } }
     }
+    var replacementIntents: [Bool] { calls.withLock { $0.replacementIntents } }
     var claimed: [SummaryFiles.Record] { calls.withLock { $0.claimed } }
     var loaded: [String] { calls.withLock { $0.loaded } }
     var retried: [(SummaryFiles.Record, String)] { calls.withLock { $0.retried } }
@@ -169,8 +224,8 @@ final class FilesFake: SummariesFiles {
         calls.withLock { $0.writes.append(value) }
         if fails { throw CocoaError(.fileWriteUnknown) }
     }
-    func claim(_ record: SummaryFiles.Record) async throws -> (owned: Bool, record: SummaryFiles.Record) {
-        calls.withLock { $0.claimed.append(record) }
+    func claim(_ record: SummaryFiles.Record, replacingInactive: Bool) async throws -> (owned: Bool, record: SummaryFiles.Record) {
+        calls.withLock { $0.claimed.append(record); $0.replacementIntents.append(replacingInactive) }
         let (owned, value) = try claimAnswer(record); return (owned, value)
     }
     func load(call: String) async throws -> SummaryFiles.Record? { calls.withLock { $0.loaded.append(call) }; return stored }
