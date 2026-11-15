@@ -2,6 +2,7 @@
 
 ## 2026-11-15
 
+- LAB-1616: While recording, the menu-bar icon is the normal Audelin icon with a slowly pulsing red dot instead of a solid red record disc.
 - LAB-1614: The nightly report finds its own comparison night, warns on a slow climb across a week, skips loaded nights, says what changed when it cannot compare, and names the functions that grew; one command gives the daily review its verdict.
 - LAB-1613: The nightly also runs a ten-minute composition rehearsal and compares its CPU with the last identical night, so a regression in the app's own wiring shows the next morning with the frames that cost it.
 - LAB-1601: Recording a call uses as much CPU as before LAB-1577 again; audio no longer re-reads the call folder name or redraws the menu.
