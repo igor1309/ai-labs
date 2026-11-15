@@ -61,6 +61,7 @@ TARGETS = {
     "Calls": ("storage", "lists and manages recorded folders", 7),
     "CallsStorage": ("storage", "journals call moves; one\ntransaction for calls and notes", 12),
     "CallsSearch": ("text", "finds a query in a call's\ntitle, transcript and notes", 15),
+    "CallTags": ("text", "the rules for a call's tags:\nfolding, #tag queries, filtering", 15),
     "LatestText": ("text", "keeps the newest text,\nby a replace policy", 16),
     "PanelUI": ("ui", "the live panel and its transcript", 0),
     "SettingsUI": ("ui", "the Settings window", 1),
