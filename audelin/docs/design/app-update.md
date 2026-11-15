@@ -3,7 +3,9 @@
 Audelin shows nothing when a newer build is installed. A running Audelin
 notices the new copy in `/Applications` within seconds and relaunches itself
 into it once it is idle: never during a recording, a folder move, an open
-picker, a pending rename or delete, or a summary being written. A launch
+picker, a pending rename or delete, final transcript processing and saving,
+or a summary being written. Transcript finalization stays busy until its
+final form has reached its consumers, including when the final write fails. A launch
 resumes pending note jobs as usual.
 
 "Screen 7b — Installed update" in [visual-language.pen](visual-language.pen)

@@ -7,7 +7,7 @@ public enum TerminationParticipant: CaseIterable, Hashable, Sendable {
 /// What keeps an update from relaunching the app now: work the person is in the middle of.
 public enum RelaunchBlocker: CaseIterable, Hashable, Sendable {
 
-    case folderPicker, callsWindow, summaries
+    case folderPicker, callsWindow, summaries, finalization
 }
 
 /// Termination policy: a quit is published as an intention, and the app may terminate

@@ -42,6 +42,7 @@ public final class AudelinMenu {
     public private(set) var summarySettings: AudelinSettings?
     private var chooseFolder: () async throws -> URL? = { nil }
     private var pickerFailed = false
+    private let finalization: TranscriptFinalizationModel
     private var summaries: SummariesModel?
     private var presentSettings: () -> Void = {}
     private let presentPanel: (Bool) -> Void
@@ -137,6 +138,7 @@ public final class AudelinMenu {
 
         self.sink = sink
         self.panel = panel
+        self.finalization = finalization
         self.summaries = summaries
         self.presentPanel = presentPanel
         self.sleep = sleep
@@ -403,6 +405,7 @@ public final class AudelinMenu {
 
     private var relaunchBlockers: Set<RelaunchBlocker> {
         var blockers: Set<RelaunchBlocker> = []
+        if finalization.state.calls.values.contains(where: { !$0.published }) { blockers.insert(.finalization) }
         if choosingFolder { blockers.insert(.folderPicker) }
         if calls?.idle == false { blockers.insert(.callsWindow) }
         if summaries?.busy == true { blockers.insert(.summaries) }
