@@ -124,3 +124,9 @@ extension TranscriptSegment {
         .init(id: id, start: start, end: end, words: words, settledCount: settledCount)
     }
 }
+
+/// Yields until `done` holds, for an async machine's event to reduce and its effects to run.
+@MainActor
+func settled(_ done: () -> Bool) async {
+    for _ in 0..<10_000 where !done() { await Task.yield() }
+}
