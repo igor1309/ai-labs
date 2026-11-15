@@ -9,8 +9,11 @@ speaker. The fake-recognizer rehearsal remains useful for pipeline diagnostics.
 
 `Audelin Nightly` runs daily at 01:43 UTC (04:43 Europe/Moscow) on the quiet,
 self-hosted `local-mac`. `macos/scripts/nightly.sh` collects a three-hour run
-without Instruments, then short Time Profiler windows at 1,620 and 6,000
-preloaded entries. Nightly three-hour coverage supersedes the proposed monthly
+without Instruments, then a ten-minute composition rehearsal at 10x with test
+recognisers under Time Profiler (`capture-rehearsal`: the CPU of the app's own
+wiring without the model, compared night to night as `rehearsal.cpu_seconds`,
+with its heaviest frames in `summary.txt`), then short Time Profiler windows at
+1,620 and 6,000 preloaded entries. Nightly three-hour coverage supersedes the proposed monthly
 soak. Do not start a competing benchmark during collection.
 
 The `audelin-nightly` Actions artifact contains `identity.json`, `endurance.log`,
@@ -32,19 +35,37 @@ exited zero; the report files are still written for diagnosis.
 
 Only a complete, correct previous report with identical workload (fixture and
 capture settings included), build configuration, models, machine and toolchain
-is comparable. The commit may differ. The first run, legacy/unverified reports,
-or a changed setup have no comparable baseline: record the current valid result
-and wait for a subsequent matching run. An invalid previous report is skipped,
-never treated as zero. The automatic comparison uses `latest`; it does not
-search older history across a setup change. For artifact review, select a
-previous successful matching report explicitly:
+is comparable. The commit may differ. Each night `nightly.sh` passes the
+directory of earlier runs as `--history`: the report picks the newest matching
+valid quiet night as its comparison point and up to seven as a noise band. With
+three or more, a metric warns when above every night in the band and more than
+5% over its median, which catches a slow climb no single night shows; with
+fewer, above 10% over the comparison point. When the setup changed, the report
+names each changed field from what to what.
+
+A night is noisy, valid but neither compared nor a baseline, when the 1-minute
+load stays above 4 after `nightly.sh` waited up to five minutes for the build's
+load to settle, or when the three composition rehearsals spread more than 10%.
+Each capture's report also lists the frames whose share of sampled CPU grew most
+since the comparison night, from both nights' `summary.json`.
 
 ```sh
+python3 -I audelin/macos/scripts/nightly-report.py CURRENT --history RUNS_DIR
 python3 -I audelin/macos/scripts/nightly-report.py CURRENT --previous BASELINE
 ```
 
-This only reads collected evidence and writes reports in CURRENT. Invalid
+These only read collected evidence and write reports in CURRENT. Invalid
 current evidence returns nonzero after writing; performance warnings return zero.
+
+## Daily review command
+
+`nightly-review.py --work DIR` is the review's mechanical part: it lists the
+Audelin Nightly runs on trunk, downloads the last 30 completed runs' artifacts
+(kept in DIR/raw between reviews), regenerates every report from raw evidence
+with the current script, oldest first, and writes DIR/review.md for runs started
+in the last 30 hours (or `--since`). Its exit code is the verdict: 0 clean,
+2 warnings, 3 a failed run or invalid evidence, 4 no new run, 5 blocked with no
+artifact in 48 hours. The reviewer investigates only 2 and 3.
 
 ## Weekly artifact review
 

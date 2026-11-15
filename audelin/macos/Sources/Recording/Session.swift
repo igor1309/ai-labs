@@ -26,10 +26,13 @@ public enum SessionCallCaptureSelection: Equatable, Sendable {
 public struct SessionCallFolder: Equatable, Sendable {
 
     public let id: String
+    /// The id of the call recorded in this folder.
+    public let callID: String
 
-    public init(id: String) {
+    public init(id: String, callID: String) {
 
         self.id = id
+        self.callID = callID
     }
 }
 

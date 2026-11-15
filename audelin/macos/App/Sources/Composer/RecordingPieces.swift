@@ -1,6 +1,5 @@
 import Preferences
 import CoreAudioProcesses
-import Calls
 import Foundation
 import Recording
 
@@ -28,7 +27,6 @@ actor RecordingPieces {
     private let makePieces: @Sendable (UInt64) -> SessionPieces
     private let send: @Sendable (RecordingEvent) async -> Void
     private let summaries: SummaryCallbacks
-    private let timeZone: @Sendable () -> TimeZone
     private let sink: any LogSink
     private var built: Built?
     private var shown: Shown?
@@ -40,7 +38,6 @@ actor RecordingPieces {
         send: @escaping @Sendable (RecordingEvent) async -> Void,
         panel: AudelinPanel, transcriptOutput: AsyncStream<RecordingTranscript>.Continuation, finalizationResources: FinalizationResources, summaries: SummaryCallbacks = .disabled
     ) {
-        self.timeZone = boundary.time.timeZone
         self.panel = panel
         self.makePieces = composeRecordingPieces(preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: callApp,
                                                  processes: processes, boundary: boundary, transcriptOutput: transcriptOutput, finalizationResources: finalizationResources)
@@ -78,7 +75,7 @@ actor RecordingPieces {
     nonisolated func status(_ state: SessionState) -> RecordingSessionStatus {
 
         RecordingSessionStatus(
-            callID: state.recordedFolder.flatMap { Calls.id(in: URL(fileURLWithPath: $0.id).lastPathComponent, timeZone: timeZone()) },
+            callID: state.recordedFolder?.callID,
             recording: state.phase == .recording, cannotRecord: state.cannotRecord,
             faults: recordingFaults(state), callSilent: state.audioWarning == .callSilent
         )

@@ -7,13 +7,16 @@ public struct CallFolder: Sendable {
 
     public struct Made: Equatable, Sendable {
 
+        /// The call's id, the timestamp and number the folder is named by.
+        public let id: String
         public let url: URL
         public let microphoneURL: URL
         public let callURL: URL
         public let transcriptURL: URL
 
-        init(url: URL) {
+        init(id: String, url: URL) {
 
+            self.id = id
             self.url = url
             microphoneURL = url.appendingPathComponent("microphone.caf")
             callURL = url.appendingPathComponent("call.caf")
@@ -61,7 +64,7 @@ public struct CallFolder: Sendable {
             let url = callsURL.appendingPathComponent(name, isDirectory: true)
             do {
                 try createDirectory(url)
-                return Made(url: url)
+                return Made(id: id, url: url)
             } catch let error as POSIXError where error.code == .EEXIST {
                 number += 1
             }

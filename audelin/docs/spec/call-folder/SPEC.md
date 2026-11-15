@@ -18,7 +18,8 @@ over the file system.
   name chosen at run time reaches them through Session's contract, not
   through hidden shared state (Amanu and MacParakeet both hand the made
   folder to their writers). This amends Session's ports; the adapter maps
-  the folder to its three places.
+  the folder to its three places. The made folder also gives the call's
+  id it was named with, so no one parses the name back to learn it.
 - **Named by when it is made, `yyyy.MM.dd-HHmm`, in local time,** the
   design's rename prefix (Rename field) and Amanu's folder name, taken as
   Amanu does when its session is made (`RecordingSession` `startedAt`). The

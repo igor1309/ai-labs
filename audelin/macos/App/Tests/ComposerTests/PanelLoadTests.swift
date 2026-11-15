@@ -136,7 +136,6 @@ struct PanelLoadTests {
     /// Feeds a composed session `entries` of speech at once, then one revision
     /// of the last at a time, and gives the mean of the panel's own updates
     /// after the first; the way from microphone to panel is the session's.
-    @MainActor
     private func secondsPerUpdate(entries count: Int) async throws -> Double {
 
         let words = (0..<20).map { "word\($0)" }

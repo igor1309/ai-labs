@@ -120,8 +120,7 @@ struct AudelinApp: App {
             }
         } label: {
             // Icon only: titles of different widths shifted the icon (LAB-640).
-            Image(nsImage: menuBarImage)
-                .accessibilityLabel(model?.menu.item.title ?? "Audelin")
+            MenuBarLabel(item: model?.menu.item)
                 .task { await start() }
         }
         .commands {
@@ -140,17 +139,63 @@ struct AudelinApp: App {
             forKey: "Settings\\U2026", value: "Settings…", table: "MenuCommands",
             localizations: Locale.preferredLanguages.map { Locale.Language(identifier: $0) })
     }
+}
 
-    private var menuBarImage: NSImage {
+/// The menu-bar icon. While recording it carries a red dot that breathes slowly
+/// (opacity 1 → 0.35 → 1 every 2 s), drawn in its own view so a frame redraws
+/// only the icon, not the menu.
+private struct MenuBarLabel: View {
 
-        guard let item = model?.menu.item else {
+    let item: MenuBarItem?
+    @State private var phase = 0
+
+    private static let frames = 24
+    private static let period: Duration = .seconds(2)
+
+    var body: some View {
+        Image(nsImage: image)
+            .accessibilityLabel(item?.title ?? "Audelin")
+            .task(id: item?.isRed) {
+                phase = 0
+                guard item?.isRed == true else { return }
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: Self.period / Self.frames)
+                    phase = (phase + 1) % Self.frames
+                }
+            }
+    }
+
+    private var image: NSImage {
+        guard let item else {
             return NSImage(systemSymbolName: "waveform", accessibilityDescription: "Audelin") ?? NSImage()
         }
-        let image = NSImage(systemSymbolName: item.symbol, accessibilityDescription: item.title)?
-            .withSymbolConfiguration(.init(paletteColors: [item.isRed ? .systemRed : .labelColor]))
-            ?? NSImage()
-        // Template status images discard their palette in the menu bar.
-        image.isTemplate = !item.isRed
+        let symbol = NSImage(systemSymbolName: item.symbol, accessibilityDescription: item.title) ?? NSImage()
+        guard item.isRed else {
+            symbol.isTemplate = true
+            return symbol
+        }
+        let opacity = 0.675 + 0.325 * cos(2 * .pi * Double(phase) / Double(Self.frames))
+        return Self.badged(symbol, opacity: opacity)
+    }
+
+    /// The symbol with a 9 pt red dot over its top-right corner, the dot cut
+    /// clear of the lines beneath it. Not a template: a template image loses
+    /// its red in the menu bar. The symbol is tinted with the menu bar's own
+    /// text colour at draw time, so it follows light and dark menu bars.
+    private static func badged(_ symbol: NSImage, opacity: Double) -> NSImage {
+        let dot: CGFloat = 9, gap: CGFloat = 1.2, size = symbol.size
+        let image = NSImage(size: size, flipped: false) { rect in
+            let tinted = symbol.withSymbolConfiguration(.init(paletteColors: [.labelColor])) ?? symbol
+            tinted.draw(in: rect)
+            let spot = NSRect(x: rect.maxX - dot + 1, y: rect.maxY - dot + 1, width: dot, height: dot)
+            NSGraphicsContext.current?.compositingOperation = .clear
+            NSBezierPath(ovalIn: spot.insetBy(dx: -gap, dy: -gap)).fill()
+            NSGraphicsContext.current?.compositingOperation = .sourceOver
+            NSColor.systemRed.withAlphaComponent(opacity).setFill()
+            NSBezierPath(ovalIn: spot).fill()
+            return true
+        }
+        image.isTemplate = false
         return image
     }
 }

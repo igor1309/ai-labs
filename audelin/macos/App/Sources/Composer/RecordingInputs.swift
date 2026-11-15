@@ -26,3 +26,25 @@ struct RecordingInputs: Sendable {
         self.end = end
     }
 }
+
+extension RecordingInputs {
+
+    /// Like `states`, without the changes that touch only the pieces, which come with every audio window.
+    func ownStates() async -> AsyncStream<RecordingState> {
+
+        let states = await states()
+        return AsyncStream { continuation in
+            let forwarding = Task {
+                var last: RecordingState?
+                for await state in states {
+                    let own = recordingOwnState(state)
+                    guard own != last else { continue }
+                    last = own
+                    continuation.yield(state)
+                }
+                continuation.finish()
+            }
+            continuation.onTermination = { _ in forwarding.cancel() }
+        }
+    }
+}
