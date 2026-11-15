@@ -2,8 +2,9 @@
 
 Unit rows run against a fresh temporary recordings root, never the user's
 own, and check it from outside with `FileManager`. The Settings rows run
-the General view model with the writer given that root. A live run of
-Settings (`macos/scripts/`) proves the row and button end to end.
+the composed menu with its recordings root set to that folder. The
+calls-window live scripts (`macos/scripts/live-calls-*.sh`) check that
+the running app writes no `AGENTS.md` on its own.
 
 ## S-1 Offered while the file is missing
 
@@ -28,9 +29,15 @@ writer never replaces an existing file (create-exclusive).
 
 ## S-5 Never written without me
 
-The calls-window live script records, tags, merges and summarizes a call
-and relaunches; the root has no `AGENTS.md`. Grep proves only the
-General button calls the writer.
+With a temporary recordings root, the composed menu is built, General is
+shown, and every Settings event other than the create button is sent
+(each tab, language and appearance, and the recording and notes
+switches). After each event the root still has no `AGENTS.md`, and the
+row is still offered: checking whether the file exists never creates it.
+
+Each calls-window live scenario (tag, merge, summarize, rename, recover
+an interrupted merge on relaunch) fails if the calls root holds an
+`AGENTS.md` once the app quits.
 
 ## S-6 Offered again after I delete it
 

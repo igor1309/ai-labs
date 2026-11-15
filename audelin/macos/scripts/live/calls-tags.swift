@@ -241,6 +241,7 @@ private struct Fixture {
         }
         application.terminate()
         _ = try driver.wait("app termination") { application.isRunning ? nil : true }
+        guard !FileManager.default.fileExists(atPath: fixture.calls.appendingPathComponent("AGENTS.md").path) else { throw LiveFailure("AGENTS.md appeared in the calls folder; only the Settings button may write it") }
     }
 
     /// A gets «клиент» and B «банк» from the detail, written to their folders and shown in
