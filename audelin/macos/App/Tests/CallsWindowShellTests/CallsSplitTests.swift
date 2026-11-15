@@ -44,7 +44,7 @@ struct CallsSplitTests {
             let handle = detailSender { sent.append($0); if sent.count == events.count { done.resume() } }
             events.forEach(handle)
         }
-        #expect(sent == [.copy, .open, .rename, .retrySummary, .delete, .makeSummary, .cancelSummary])
+        #expect(sent == [.copy, .open, .rename, .retrySummary, .delete, .makeSummary, .cancelNotes])
     }
 
     @Test func theDetailShowsTheSelectedCallsStateAndNothingSelected() {
@@ -68,7 +68,7 @@ struct CallsSplitTests {
 
     @Test func eachDetailButtonIsTheSameActionOnTheShownCall() {
         let events: [SummaryPreviewEvent] = [.copy, .open, .rename, .retrySummary, .delete, .makeSummary, .cancelSummary]
-        #expect(events.map(detailEvent) == [.copy, .open, .rename, .retrySummary, .delete, .makeSummary, .cancelSummary])
+        #expect(events.map(detailEvent) == [.copy, .open, .rename, .retrySummary, .delete, .makeSummary, .cancelNotes])
     }
 
     @Test func closingTheCallsWindowTellsTheList() {

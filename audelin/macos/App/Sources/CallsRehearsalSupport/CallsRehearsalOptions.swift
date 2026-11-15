@@ -75,7 +75,7 @@ public struct CallsRehearsalOptions: Equatable, Sendable {
 
     public func runtime() -> SummaryRuntime.Runtime {
         let control = SummaryFileControl(folder: controlFolder)
-        let service = LiveSummaryService(wait: control.wait, report: control.report)
+        let service = LiveSummaryService(wait: control.wait, response: control.notes, report: control.report)
         return SummaryRuntime.Runtime(process: NoRehearsalProcess(), http: service, credential: { _ in nil },
             resolveProgram: { _ in throw SummaryRuntime.Failure.unavailable }, deadline: {
                 let never = AsyncStream<Void> { _ in }

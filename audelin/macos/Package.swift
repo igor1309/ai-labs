@@ -28,6 +28,7 @@ let package = Package(
         .library(name: "Calls", targets: ["Calls"]),
         .library(name: "CallsStorage", targets: ["CallsStorage"]),
         .library(name: "CallDetail", targets: ["CallDetail"]),
+        .library(name: "NotesMenu", targets: ["NotesMenu"]),
         .library(name: "CallsList", targets: ["CallsList"]),
         .library(name: "Recordings", targets: ["Recordings"]),
         .library(name: "CallsListUI", targets: ["CallsListUI"]),
@@ -113,6 +114,8 @@ let package = Package(
         .testTarget(name: "BrowserBridgeTests", dependencies: ["BrowserBridge", "CallObservation"], resources: [.copy("Fixtures")]),
 
         .testTarget(name: "SourceChecksTests", dependencies: ["BlockingTestWork"]),
+        .target(name: "NotesMenu"),
+        .testTarget(name: "NotesMenuTests", dependencies: ["NotesMenu"]),
         .target(name: "CallDetail"),
         .testTarget(name: "CallDetailTests", dependencies: ["CallDetail"]),
         .target(name: "CallsList"),

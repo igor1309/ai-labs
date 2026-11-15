@@ -61,11 +61,14 @@ public struct SummaryPreviewView: View {
         VStack(alignment: .leading, spacing: 0) {
             if let state {
                 header(state)
+                if let progress = state.progress { remaking(progress) }
+                if let failure = state.failure { remakeFailure(failure) }
                 switch state.notes {
                 case let .markdown(source, made):
-                    NotesText(text: notes(source, made: made), background: NSColor(tokens.surface),
+                    NotesText(text: notes(source, made: made, template: state.templateName), background: NSColor(tokens.surface),
                               inset: NSSize(width: tokens.space28 - 5, height: 0),
-                              label: text(.notes), made: made.map { text(.made, $0) })
+                              label: text(.notes), made: made.map { text(.made, $0) + (state.templateName.map { " · " + text(.templateLine, $0) } ?? "") })
+                        .opacity(state.progress == nil ? 1 : 0.5)
                 case let .unreadable(reason):
                     Text(reason)
                         .font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.rec)
@@ -99,10 +102,31 @@ public struct SummaryPreviewView: View {
             Text("\(state.date) · \(state.duration)").font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.sub)
                 .textSelection(.enabled)
             tagsLine(state.tags).padding(.top, tokens.space8)
+            if state.version != nil || state.templateName != nil {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: tokens.space12) { versionAndTemplate(state) }
+                    VStack(alignment: .leading, spacing: tokens.space8) { versionAndTemplate(state) }
+                }
+                .padding(.top, tokens.space8)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, tokens.space12).padding(.leading, tokens.space28).padding(.trailing, tokens.space28 + tokens.space40)
         .padding(.bottom, tokens.space12)
+    }
+
+    @ViewBuilder private func versionAndTemplate(_ state: SummaryPreviewState) -> some View {
+        if let version = state.version {
+            NotesVersionControl(version: version, previous: text(.previous), current: text(.current), event: event)
+                .fixedSize()
+        }
+        if let template = state.templateName {
+            Text(text(.templateLine, template)).font(tokens.ui(tokens.typeCaption)).foregroundStyle(tokens.gutter)
+                .fixedSize(horizontal: true, vertical: false)
+                .accessibilityIdentifier("preview.template")
+                .accessibilityLabel(text(.templateLine, template))
+                .accessibilityValue(text(.templateLine, template))
+        }
     }
 
     /// «Теги:» and the call's tags with «Изменить», or the field editing them with its hint.
@@ -180,15 +204,45 @@ public struct SummaryPreviewView: View {
     }
 
     /// The notes, then when they were made under their last line.
-    private func notes(_ source: String, made: String?) -> NSAttributedString {
+    private func notes(_ source: String, made: String?, template: String?) -> NSAttributedString {
         let rendered = NSMutableAttributedString(attributedString: render(source, style))
         guard let made else { return rendered }
         let paragraph = NSMutableParagraphStyle()
         paragraph.paragraphSpacingBefore = tokens.space16
-        rendered.append(NSAttributedString(string: "\n" + text(.made, made), attributes: [
+        rendered.append(NSAttributedString(string: "\n" + text(.made, made) + (template.map { " · " + text(.templateLine, $0) } ?? ""), attributes: [
             .font: tokens.nsUi(tokens.typeCaption), .foregroundColor: NSColor(tokens.gutter), .paragraphStyle: paragraph,
         ]))
         return rendered
+    }
+
+    private func remaking(_ progress: String) -> some View {
+        HStack(spacing: tokens.space12) {
+            ProgressView().controlSize(.small)
+            Text(progress).foregroundStyle(tokens.text)
+                .accessibilityIdentifier("preview.remaking")
+                .accessibilityValue(progress)
+            Spacer(minLength: 0)
+            Text(text(.cancel)).foregroundStyle(tokens.sub).accessibilityHidden(true)
+                .overlay { NotesCancelTarget(title: text(.cancel)) { event(.cancelSummary) } }
+        }
+        .font(tokens.ui(tokens.typeSmall))
+        .padding(tokens.space12).background(tokens.okBg)
+        .padding(.horizontal, tokens.space28).padding(.bottom, tokens.space12)
+    }
+
+    private func remakeFailure(_ failure: String) -> some View {
+        VStack(alignment: .leading, spacing: tokens.space4) {
+            Text(text(.remakeFailed)).fontWeight(.semibold)
+            Text(failure).textSelection(.enabled)
+        }
+        .font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.rec)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(tokens.space12).background(tokens.errBg)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("preview.remakeFailure")
+        .accessibilityLabel(text(.remakeFailed))
+        .accessibilityValue(failure)
+        .padding(.horizontal, tokens.space28).padding(.bottom, tokens.space12)
     }
 
     /// «Нет итогов» and the link «✨ Сделать», one line under the header.

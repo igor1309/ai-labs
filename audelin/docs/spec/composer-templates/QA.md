@@ -21,7 +21,7 @@ Drive: gate the fake runtime; read back the detail's progress. Evidence:
 
 Drive: release the runtime; read back the detail's new Current text.
 Evidence: `CallNotesWiringTests.requestedNotesWorkWithAutomaticNotesOff`.
-Previous/Current selection remains Missing.
+Previous/Current selection: `CallNotesWiringTests.menuChoiceDisablesTemplatesDuringTheRunAndPublicationShowsCurrent`.
 
 ## S-4 The keep choice is shared
 
@@ -47,15 +47,17 @@ completed publication.
 ## S-7 Another detail sees the keep change
 
 Drive: present two details, toggle keep in one; read back the other's keep
-value off. Evidence: Missing.
+value opposite to its initial saved value, for both initial values. Evidence: `NotesMenuCompositionTests.anotherPresentedDetailReceivesTheSavedKeepChoice`.
 
 ## S-8 A cancel reaches the jobs
 
 Drive: gate the runtime, send cancel to the detail; read back SummaryJobs'
 ended run and the storage's unchanged pair. Evidence:
-`CallNotesWiringTests.unsuccessfulMakeAgainKeepsThePublishedPair`.
+`CallNotesWiringTests.unsuccessfulMakeAgainKeepsThePublishedPair`,
+`menuCancelReachesTheJobsAndKeepsThePublishedPair` and
+`NotesMenuCompositionTests.anotherCallsCancellationIsForwardedBeforeTheFirstSettles`.
 
 ## S-9 The menu follows the shown call
 
 Drive: gate the runtime, start a run from the menu, reopen it; read back the
-menu's templates all disabled. Evidence: Missing.
+menu's templates all disabled. Evidence: `CallNotesWiringTests.menuChoiceDisablesTemplatesDuringTheRunAndPublicationShowsCurrent`.

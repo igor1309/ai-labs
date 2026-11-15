@@ -10,6 +10,26 @@ public enum SummaryPreviewLanguage: String, CaseIterable, Sendable {
 /// A fixed piece of summary preview text; its raw value is the key in the strings tables.
 public enum SummaryPreviewPhrase: String, CaseIterable, Sendable {
 
+    case failureUnavailable = "preview.failureUnavailable"
+    case failureAuthentication = "preview.failureAuthentication"
+    case failureQuota = "preview.failureQuota"
+    case failureTransport = "preview.failureTransport"
+    case failureInvalidResponse = "preview.failureInvalidResponse"
+    case failureOutputLimit = "preview.failureOutputLimit"
+    case failureTimeout = "preview.failureTimeout"
+    case failureCancelled = "preview.failureCancelled"
+    case failureConfiguration = "preview.failureConfiguration"
+    case failureUnknown = "preview.failureUnknown"
+
+    case notesMenu = "preview.notesMenu"
+    case makeSection = "preview.makeSection"
+    case makeAgainSection = "preview.makeAgainSection"
+    case keepPrevious = "preview.keepPrevious"
+    case previous = "preview.previous"
+    case current = "preview.current"
+    case templateLine = "preview.templateLine"
+    case remaking = "preview.remaking"
+    case remakeFailed = "preview.remakeFailed"
     case notes = "preview.notesLabel"
     case copy = "preview.copy"
     case mergeCalls = "preview.mergeCalls"

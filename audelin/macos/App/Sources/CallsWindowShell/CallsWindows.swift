@@ -47,7 +47,7 @@ func observeToolbars(_ model: AudelinMenu, calls: AudelinCalls, toolbars: [Calls
     }
     Task { @MainActor in
         for await actions in Observations({ () -> CallActions in
-            var actions = callActions(detailState(calls.detail, text: model.previewText))
+            var actions = callActions(detailState(calls.detail, menu: calls.notesMenu, text: model.previewText))
             (actions.merge, actions.merging) = calls.mergeControl
             return actions
         }) {

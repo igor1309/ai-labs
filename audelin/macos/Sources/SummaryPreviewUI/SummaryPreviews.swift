@@ -71,7 +71,36 @@ public enum SummaryPreviews {
                                   tags: .editing(.init(tags: english ? ["client"] : ["клиент"],
                                                        failure: english ? "Couldn’t save the tags: disk is full" : "Не удалось сохранить теги: диск заполнен")))),
             ("no-selection", nil),
+        ] + templateStates(in: text)
+    }
+
+    /// The template menu, versions and outcomes, built directly as presentation values.
+    public static func templateStates(in text: SummaryPreviewText = .init(language: .russian)) -> [(name: String, state: SummaryPreviewState?)] {
+        let english = text.language == .english
+        let templates: [SummaryPreviewState.Menu.Template] = [
+            .init(id: "Default", name: "Default", enabled: true), .init(id: "Daily", name: "Daily", enabled: true),
         ]
+        let menu = SummaryPreviewState.Menu(section: text(.makeAgainSection), templates: templates, keeping: true)
+        let current = SummaryPreviewState(title: "Zoom", date: "17.10 · 11:00", duration: english ? "28 min" : "28 мин",
+                                          notes: .markdown(english ? "## Decisions\n\nShip the release." : "## Решения\n\nВыпустить релиз.", made: "17.10, 11:42"),
+                                          menu: menu, version: .current, templateName: "Daily")
+        var previous = current
+        previous.version = .previous; previous.templateName = "Default"
+        previous.notes = .markdown(english ? "## Decisions\n\nFinish testing." : "## Решения\n\nЗавершить тестирование.", made: "17.10, 11:35")
+        var single = current
+        single.version = nil; single.templateName = "Default"
+        var empty = single
+        empty.notes = .none; empty.templateName = nil
+        empty.menu = .init(section: text(.makeSection), templates: templates, keeping: nil)
+        var remaking = current
+        remaking.progress = text(.remaking, "Daily")
+        remaking.menu?.templates = templates.map { .init(id: $0.id, name: $0.name, enabled: false) }
+        var failure = current
+        failure.failure = english ? "Request limit exceeded" : "Превышен лимит запросов"
+        var off = current
+        off.menu?.keeping = false
+        return [("templates-current", current), ("templates-previous", previous), ("templates-single", single),
+                ("templates-empty", empty), ("templates-remaking", remaking), ("templates-failed", failure), ("templates-keep-off", off)]
     }
 
     public static func state(_ name: String, in text: SummaryPreviewText = .init(language: .russian)) -> SummaryPreviewState? {

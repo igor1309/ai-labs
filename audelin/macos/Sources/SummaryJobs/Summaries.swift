@@ -1,3 +1,8 @@
+/// Safe classifications only; service diagnostics can contain transcript or credentials.
+public enum SummariesFailure: Error, CaseIterable, Equatable, Sendable {
+    case unavailable, authentication, quota, transport, invalidResponse, outputLimit, timeout, cancelled, configuration, unknown
+}
+
 public enum SummariesLifecycle: Equatable, Sendable { case accepting, draining, settled }
 public enum SummariesStage: Equatable, Sendable {
     case choosing, selecting
@@ -21,6 +26,7 @@ public struct SummariesState<Template: SummariesTemplate>: Equatable, Sendable {
         public var warning: Bool
         public var requestedTemplate: String
         public var failure: String?
+        public var generationFailure: SummariesFailure?
         public var template: Template?
         public var notes: String?
         public var terminal: Stage?
@@ -35,10 +41,10 @@ public struct SummariesState<Template: SummariesTemplate>: Equatable, Sendable {
         public var badge: Badge
         /// The user can ask for this call's notes again.
         public var retryable: Bool
-        public init(stage: Stage, requestedTemplate: String = "Default", failure: String? = nil, template: Template? = nil, job: Job? = nil, identities: [Identity] = [], warning: Bool = false, notes: String? = nil,
+        public init(stage: Stage, requestedTemplate: String = "Default", failure: String? = nil, generationFailure: SummariesFailure? = nil, template: Template? = nil, job: Job? = nil, identities: [Identity] = [], warning: Bool = false, notes: String? = nil,
                     terminal: Stage? = nil, requested: Bool = false, cancelling: Bool = false, retryFailed: Bool = false,
                     submission: SummariesSubmission? = nil, status: String = "", badge: Badge = .none, retryable: Bool = false) {
-            self.requestedTemplate = requestedTemplate; self.failure = failure
+            self.requestedTemplate = requestedTemplate; self.failure = failure; self.generationFailure = generationFailure
             self.stage = stage; self.template = template; self.job = job; self.identities = identities; self.warning = warning; self.notes = notes
             self.terminal = terminal; self.requested = requested; self.cancelling = cancelling; self.retryFailed = retryFailed
             self.submission = submission; self.status = status; self.badge = badge; self.retryable = retryable
@@ -116,7 +122,7 @@ public enum SummariesEvent<Template: SummariesTemplate>: Equatable, Sendable {
     case checkpointed(String)
     case resolved(String, Template)
     case noted(String, String)
-    case notesFailed(String)
+    case notesFailed(String, SummariesFailure = .unknown)
     case published(String)
     case saved(String)
     case storageFailed(String)
@@ -199,7 +205,7 @@ public struct SummariesReducer<Template: SummariesTemplate>: Sendable {
         case let .identified(id, _), let .identificationFailed(id): (id, .identifying)
         case let .checkpointed(id): (id, .checkpointing)
         case let .resolved(id, _): (id, .resolving)
-        case let .noted(id, _), let .notesFailed(id): (id, .noting)
+        case let .noted(id, _), let .notesFailed(id, _): (id, .noting)
         case let .published(id): (id, .publishing)
         case let .saved(id): (id, .saving)
         default: nil
@@ -389,10 +395,10 @@ public struct SummariesReducer<Template: SummariesTemplate>: Sendable {
             next.calls[id]?.notes = notes
             if state.transaction { next.calls[id]?.stage = .deferred }
             else { next.calls[id]?.stage = .publishing; effect = .publish(job, notes, warning: work.warning, keeping: job.keepPrevious ? .rotation : .replacement) }
-        case let .notesFailed(id) where state.calls[id]?.stage == .noting:
+        case let .notesFailed(id, reason) where state.calls[id]?.stage == .noting:
             guard let work = state.calls[id], let job = work.job else { return (state, nil) }
             call = id
-            next.calls[id]?.stage = .saving; next.calls[id]?.terminal = .failed
+            next.calls[id]?.stage = .saving; next.calls[id]?.terminal = .failed; next.calls[id]?.generationFailure = reason
             effect = .save(job, .failed, warning: work.warning)
         case let .published(id) where state.calls[id]?.stage == .publishing:
             guard let work = state.calls[id], let job = work.job else { return (state, nil) }

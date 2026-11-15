@@ -1,3 +1,5 @@
+import CallDetail
+import SummaryPreviewUI
 import CallsListUI
 import Foundation
 import NotesGeneration
@@ -104,4 +106,35 @@ struct Snapshot: Codable {
     var requested: Bool?
     var entries: [Entry]; var speakers: Bool; var primary: Runtime; var fallback: Runtime?
     init(_ job: Job) throws { template = try job.template.map(Template.init); keepPrevious = job.keepPrevious; requested = job.requested; entries = job.entries.map(Entry.init); speakers = job.speakers; primary = .init(job.primary); fallback = job.fallback.map(Runtime.init) }
+}
+
+/// Adapts the jobs outcome to the detail's own failure contract.
+func detailFailure(_ failure: SummariesFailure) -> CallDetailFailure {
+    switch failure {
+    case .unavailable: .unavailable
+    case .authentication: .authentication
+    case .quota: .quota
+    case .transport: .transport
+    case .invalidResponse: .invalidResponse
+    case .outputLimit: .outputLimit
+    case .timeout: .timeout
+    case .cancelled: .cancelled
+    case .configuration: .configuration
+    case .unknown: .unknown
+    }
+}
+
+func failurePhrase(_ failure: CallDetailFailure) -> SummaryPreviewPhrase {
+    switch failure {
+    case .unavailable: .failureUnavailable
+    case .authentication: .failureAuthentication
+    case .quota: .failureQuota
+    case .transport: .failureTransport
+    case .invalidResponse: .failureInvalidResponse
+    case .outputLimit: .failureOutputLimit
+    case .timeout: .failureTimeout
+    case .cancelled: .failureCancelled
+    case .configuration: .failureConfiguration
+    case .unknown: .failureUnknown
+    }
 }

@@ -16,7 +16,7 @@ struct SummaryPreviewTests {
     nonisolated static let textViewDiffers = ProcessInfo.processInfo.environment["GITHUB_ACTIONS"] != nil
 
     @Test(.disabled(if: textViewDiffers, "text views draw differently across macOS releases"),
-          arguments: SummaryPreviews.states.map(\.name), [ColorScheme.light, .dark])
+          arguments: SummaryPreviews.states.filter { !$0.name.hasPrefix("templates-") }.map(\.name), [ColorScheme.light, .dark])
     func drawsAsItsReference(name: String, scheme: ColorScheme) throws {
 
         for language in SummaryPreviewLanguage.allCases { try draws(name, scheme, SummaryPreviewText(language: language)) }
@@ -213,7 +213,7 @@ struct SummaryPreviewTests {
 }
 
 /// The renderer the app composes the view with.
-private func markdown(_ source: String, _ style: NotesStyle) -> NSAttributedString {
+func markdown(_ source: String, _ style: NotesStyle) -> NSAttributedString {
     NotesMarkdown.render(source, style: .init(body: style.body, headings: style.headings, code: style.code, text: style.text,
                                               secondary: style.secondary, tertiary: style.tertiary, codeBackground: style.codeBackground, rule: style.rule,
                                               layout: .init(lineHeight: style.lineHeight, paragraphSpacing: style.paragraphSpacing,

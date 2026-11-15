@@ -67,6 +67,11 @@ pair in `SummaryVersionsTests.aFailedTerminalSaveRestoresThePublishedPair` and
 `terminalReadAndRollbackCheckFailuresRestoreThePublishedPair`;
 `terminalRollbackNeverOverwritesAnotherPublication` checks output ownership.
 
+Safe failure outcomes: `SummariesGenerationEffectHandlerTests.notesFailureDeliversTheSafeReason`,
+`SummariesGenerationReducerTests.failedNotesRetainTheirSafeClassification` and
+`SummaryGenerationTests.notesExposeOnlySafeRuntimeClassifications` preserve the
+classification through failure and the terminal save.
+
 ## S-9 Cancelling keeps the published notes
 
 Evidence: `MakeAgainTests.cancellationWaitsForPreparationWithoutClaiming`;

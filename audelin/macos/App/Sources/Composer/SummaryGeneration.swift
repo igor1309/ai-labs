@@ -19,11 +19,31 @@ struct SummaryGeneration: SummariesGeneration {
         } }
     }
     func notes(_ job: Job, identities: [SummaryJobs.Identity], template: NotesGeneration.Template) async throws -> String {
-        try await running.run(job.id) { try await fallback(job) { configuration in
-            let mapping = identities.map { "\($0.label): \($0.name) (\($0.time): \($0.quote))" }.joined(separator: "\n")
-            let generator = NotesGeneration.Generator(text: RuntimeTextAttempt(runtime: runtime, configuration: configuration))
-            return try await generator.notes(transcript: transcript(job), evidence: mapping, template: template)
-        } }
+        do {
+            return try await running.run(job.id) {
+                try await fallback(job) { configuration in
+                    let mapping = identities.map { "\($0.label): \($0.name) (\($0.time): \($0.quote))" }.joined(separator: "\n")
+                    let generator = NotesGeneration.Generator(text: RuntimeTextAttempt(runtime: runtime, configuration: configuration))
+                    return try await generator.notes(transcript: transcript(job), evidence: mapping, template: template)
+                }
+            }
+        } catch {
+            switch error as? SummaryRuntime.Failure {
+            case .unavailable: throw SummariesFailure.unavailable
+            case .authentication: throw SummariesFailure.authentication
+            case .quota: throw SummariesFailure.quota
+            case .transport: throw SummariesFailure.transport
+            case .invalidResponse: throw SummariesFailure.invalidResponse
+            case .outputLimit: throw SummariesFailure.outputLimit
+            case .timeout: throw SummariesFailure.timeout
+            case .cancelled: throw SummariesFailure.cancelled
+            case .configuration: throw SummariesFailure.configuration
+            case nil:
+                if error is NotesGeneration.ValidationFailure { throw SummariesFailure.invalidResponse }
+                if error is CancellationError { throw SummariesFailure.cancelled }
+                throw SummariesFailure.unknown
+            }
+        }
     }
     /// Stops the job's running call and returns once it has ended; the call then throws a cancellation.
     func cancel(_ job: Job) async { await running.cancel(job.id) }

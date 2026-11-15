@@ -1,4 +1,6 @@
 import Calls
+import CallDetail
+import NotesMenu
 import CallsStorage
 import CoreAudioProcesses
 import CallsListUI
@@ -105,9 +107,29 @@ public func compose(
                                   timeZone: timeZone, now: boundary.time.now, recordingState: { [weak menu] in menu?.state ?? .init() },
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
                                   present: presentCalls, summaryStatuses: { summaries.statuses }, summaryBadges: { summaries.badges },
-                                  notes: { try await summaryFiles.notes(call: $0).map { (text: $0.text, made: made($0.made)) } },
+                                  notes: { id in
+                                      try await summaryFiles.versions(call: id).map { pair in
+                                          func version(_ notes: SummaryFiles.Notes) -> CallNotes {
+                                              .init(text: notes.text, made: made(notes.made), templateID: notes.template.id, templateName: notes.template.name)
+                                          }
+                                          return CallNotesPair(previous: pair.previous.map(version), current: version(pair.current))
+                                      }
+                                  },
                                   makeSummary: { summaries.make(call: $0) },
                                   makeWithTemplate: { summaries.make(call: $0, template: $1) },
+                                  catalogue: {
+                                      templates.list().entries.filter { $0.reason == nil }.map { .init(id: $0.name, name: $0.name, enabled: true) }
+                                  },
+                                  previewText: { language.language.preview },
+                                  summaryTemplates: { summaries.state.calls.mapValues { $0.job?.template?.name ?? $0.requestedTemplate } },
+                                  summaryFailures: { summaries.state.calls.compactMapValues { $0.generationFailure.map(detailFailure) } },
+                                  publications: {
+                                      Dictionary(uniqueKeysWithValues: summaries.state.calls.compactMap { call, value in
+                                          guard value.stage == .succeeded, let job = value.job else { return nil }
+                                          return (call, job.id)
+                                      })
+                                  },
+                                  keepingChanges: preferences.keepingChanges(),
                                   readKeeping: { preferences.read().keepPreviousNotes },
                                   saveKeeping: { try preferences.updateKeeping($0) },
                                   cancelSummary: { await summaries.cancel(call: $0) },

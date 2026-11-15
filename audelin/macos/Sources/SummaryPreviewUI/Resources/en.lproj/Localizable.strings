@@ -22,3 +22,23 @@
 "preview.tagsHint" = "Return to save, Esc to cancel";
 "preview.savingTags" = "Saving…";
 "preview.removeTag" = "Remove tag %@";
+"preview.notesMenu" = "Notes template";
+"preview.makeSection" = "MAKE";
+"preview.makeAgainSection" = "MAKE AGAIN";
+"preview.keepPrevious" = "Keep previous notes";
+"preview.previous" = "Previous";
+"preview.current" = "Current";
+"preview.templateLine" = "Template: %@";
+"preview.remaking" = "Making again · %@…";
+"preview.remakeFailed" = "Couldn’t make the notes again";
+
+"preview.failureUnavailable" = "The service is unavailable.";
+"preview.failureAuthentication" = "Check service access: authentication failed.";
+"preview.failureQuota" = "The service quota is exhausted.";
+"preview.failureTransport" = "Could not connect to the service.";
+"preview.failureInvalidResponse" = "The service returned an invalid response.";
+"preview.failureOutputLimit" = "The response exceeded the output limit.";
+"preview.failureTimeout" = "The service did not respond in time.";
+"preview.failureCancelled" = "Notes generation was cancelled.";
+"preview.failureConfiguration" = "Check the notes service settings.";
+"preview.failureUnknown" = "Could not generate notes.";
