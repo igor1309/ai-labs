@@ -41,7 +41,7 @@
 "merge.marked" = "Marked";
 "merge.unmarked" = "Not marked";
 "merge.title" = "Merging";
-"merge.done" = "Done";
+"merge.cancel" = "Cancel";
 "merge.confirm" = "Merge %d";
 "merge.running" = "Merging…";
 "merge.needsTwo" = "Mark at least two calls to merge";

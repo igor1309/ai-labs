@@ -146,7 +146,7 @@ import Testing
     }
     @Test func retryDoesNothingElse() async {
         let preparation = PreparationSpy(), claims = ClaimsSpy(), starts = StartsSpy(), storage = StorageSpy(), generation = GenerationsSpy()
-        _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: RecordsSpy(), starts: starts,
+        _ = await SummariesEffectHandler(templates: TemplatesSpy(), preparation: preparation, claims: claims, records: RecordsSpy(), starts: starts,
                                          storage: storage, generation: generation).handle(.retry(makeJob()))
         #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && starts.payloads.isEmpty
                 && storage.payloads.isEmpty && generation.payloads.isEmpty)
@@ -158,7 +158,7 @@ import Testing
         #expect(!records.payloads.contains("retry:job"))
     }
     private func makeSUT(_ records: RecordsSpy, _ storage: StorageSpy = StorageSpy()) -> SummariesEffectHandler {
-        .init(preparation: PreparationSpy(), claims: ClaimsSpy(), records: records, starts: StartsSpy(),
+        .init(templates: TemplatesSpy(), preparation: PreparationSpy(), claims: ClaimsSpy(), records: records, starts: StartsSpy(),
               storage: storage, generation: GenerationsSpy())
     }
 }

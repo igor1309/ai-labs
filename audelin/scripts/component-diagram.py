@@ -27,6 +27,8 @@ LANES = {
 
 # Target: (lane, line under its name, slot in the lane). Planned boxes have no target yet.
 TARGETS = {
+    "TemplateFiles": ("storage", "resolves editable notes templates", 13),
+    "NotesGeneration": ("text", "builds and validates template notes", 17),
     "SummarySettings": ("machines", "validates and saves call-note settings", 6),
     "SummaryJobs": ("machines", "coordinates durable call-note jobs", 7),
     "SummaryFiles": ("storage", "claims and publishes call notes", 9),

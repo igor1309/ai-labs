@@ -13,7 +13,7 @@
 "preview.noSelection" = "Звонок не выбран";
 "preview.notesLabel" = "Итоги";
 "preview.mergeCalls" = "Объединить звонки…";
-"preview.mergeDone" = "Готово";
+"preview.mergeCancel" = "Отменить";
 "preview.tags" = "Теги:";
 "preview.noTags" = "нет";
 "preview.editTags" = "Изменить";

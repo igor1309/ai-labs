@@ -100,13 +100,13 @@ import Testing
     @Test func readDoesNothingElse() async {
         let preparation = PreparationSpy(), claims = ClaimsSpy(), records = RecordsSpy(), starts = StartsSpy()
         let storage = StorageSpy(), generation = GenerationsSpy()
-        _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: records, starts: starts,
+        _ = await SummariesEffectHandler(templates: TemplatesSpy(), preparation: preparation, claims: claims, records: records, starts: starts,
                                          storage: storage, generation: generation).handle(.read("call"))
         #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && records.payloads.isEmpty && starts.payloads.isEmpty
                 && storage.payloads.isEmpty && generation.payloads.isEmpty)
     }
     private func makeSUT(_ preparation: PreparationSpy) -> SummariesEffectHandler {
-        .init(preparation: preparation, claims: ClaimsSpy(), records: RecordsSpy(), starts: StartsSpy(),
+        .init(templates: TemplatesSpy(), preparation: preparation, claims: ClaimsSpy(), records: RecordsSpy(), starts: StartsSpy(),
               storage: StorageSpy(), generation: GenerationsSpy())
     }
 }

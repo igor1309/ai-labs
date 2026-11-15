@@ -223,13 +223,13 @@ import Testing
     }
     @Test func prepareAndClaimDoNotLoad() async {
         let records = RecordsSpy()
-        let sut = SummariesEffectHandler(preparation: PreparationSpy(job: makeJob()), claims: ClaimsSpy(), records: records, starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy())
+        let sut = SummariesEffectHandler(templates: TemplatesSpy(), preparation: PreparationSpy(job: makeJob()), claims: ClaimsSpy(), records: records, starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy())
         _ = await sut.handle(.prepare(makeSubmission()))
         _ = await sut.handle(.claim(makeJob()))
         #expect(records.payloads.isEmpty)
     }
     private func makeSUT(_ preparation: PreparationSpy, _ claims: ClaimsSpy) -> SummariesEffectHandler {
-        .init(preparation: preparation, claims: claims, records: RecordsSpy(), starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy())
+        .init(templates: TemplatesSpy(), preparation: preparation, claims: claims, records: RecordsSpy(), starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy())
     }
 }
 
@@ -343,11 +343,11 @@ import Testing
     }
     @Test func loadDoesNotPrepareOrClaim() async {
         let preparation = PreparationSpy(), claims = ClaimsSpy()
-        _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: RecordsSpy(), starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy()).handle(.load("call"))
+        _ = await SummariesEffectHandler(templates: TemplatesSpy(), preparation: preparation, claims: claims, records: RecordsSpy(), starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy()).handle(.load("call"))
         #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty)
     }
     private func makeSUT(_ records: RecordsSpy) -> SummariesEffectHandler {
-        .init(preparation: PreparationSpy(), claims: ClaimsSpy(), records: records, starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy())
+        .init(templates: TemplatesSpy(), preparation: PreparationSpy(), claims: ClaimsSpy(), records: records, starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy())
     }
 }
 
@@ -390,7 +390,7 @@ import Testing
         assert(makeRecovering(dispatch: false), .recovered("call", pending), delivers: nil)
     }
 
-    @Test(arguments: [(true, true, SummariesState.Call.Stage.identifying), (true, false, .noting), (false, true, .observed)])
+    @Test(arguments: [(true, true, SummariesState.Call.Stage.identifying), (true, false, .resolving), (false, true, .observed)])
     func anAnsweredStartMovesOn(owned: Bool, speakers: Bool, stage: SummariesState.Call.Stage) {
         assert(makeStarting(speakers: speakers), .started("call", owned: owned)) {
             $0.calls["call"]?.stage = stage; $0.calls["call"]?.status = "\(stage):false"
@@ -400,9 +400,9 @@ import Testing
     @Test func anOwnedStartWithSpeakersDeliversIdentify() {
         assert(makeStarting(), .started("call", owned: true), delivers: .identify(makeJob()))
     }
-    @Test func anOwnedStartWithoutSpeakersDeliversNotes() {
+    @Test func anOwnedStartWithoutSpeakersResolvesDefault() {
         var job = makeJob(); job.speakers = false
-        assert(makeStarting(speakers: false), .started("call", owned: true), delivers: .notes(job, []))
+        assert(makeStarting(speakers: false), .started("call", owned: true), delivers: .resolve(job))
     }
     @Test func anObservedStartDeliversNothing() {
         assert(makeStarting(), .started("call", owned: false), delivers: nil)
@@ -479,14 +479,14 @@ import Testing
     }
     @Test func aFailedStartReleasesTheJob() async {
         let storage = StorageSpy()
-        _ = await SummariesEffectHandler(preparation: PreparationSpy(), claims: ClaimsSpy(), records: RecordsSpy(),
+        _ = await SummariesEffectHandler(templates: TemplatesSpy(), preparation: PreparationSpy(), claims: ClaimsSpy(), records: RecordsSpy(),
                                          starts: StartsSpy(result: .failure(SpyFailure())), storage: storage, generation: GenerationsSpy())
             .handle(.start(makeJob()))
         #expect(storage.payloads == [.release(makeJob())])
     }
     @Test func startDoesNothingElse() async {
         let preparation = PreparationSpy(), claims = ClaimsSpy(), records = RecordsSpy()
-        _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: records, starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy()).handle(.start(makeJob()))
+        _ = await SummariesEffectHandler(templates: TemplatesSpy(), preparation: preparation, claims: claims, records: records, starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy()).handle(.start(makeJob()))
         #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && records.payloads.isEmpty)
     }
     @Test func otherEffectsDoNotStart() async {
@@ -495,7 +495,7 @@ import Testing
         #expect(starts.payloads.isEmpty)
     }
     private func makeSUT(_ starts: StartsSpy) -> SummariesEffectHandler {
-        .init(preparation: PreparationSpy(), claims: ClaimsSpy(), records: RecordsSpy(), starts: starts, storage: StorageSpy(), generation: GenerationsSpy())
+        .init(templates: TemplatesSpy(), preparation: PreparationSpy(), claims: ClaimsSpy(), records: RecordsSpy(), starts: starts, storage: StorageSpy(), generation: GenerationsSpy())
     }
 }
 

@@ -113,7 +113,7 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
     /// The buttons' names, as when the language changes.
     public func retitle(text: SummaryPreviewText, title: String? = nil) {
         self.text = text
-        if let mergeButton { name(mergeButton, text(enabled.merging ? .mergeDone : .mergeCalls)) }
+        if let mergeButton { name(mergeButton, text(enabled.merging ? .mergeCancel : .mergeCalls)) }
         if let title { (self.title?.view as? NSTextField)?.stringValue = title }
         for (item, phrase) in zip(actions.subitems, [SummaryPreviewPhrase.open, .rename]) { name(item, text(phrase)) }
         name(delete, text(.delete))
@@ -128,10 +128,10 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
         copy.isEnabled = enabled.copy
         if let mergeButton {
             mergeButton.isEnabled = enabled.merge
-            name(mergeButton, text(enabled.merging ? .mergeDone : .mergeCalls))
+            name(mergeButton, text(enabled.merging ? .mergeCancel : .mergeCalls))
             let button = mergeButton.view as? NSButton
             button?.isEnabled = enabled.merge
-            button?.image = NSImage(systemSymbolName: enabled.merging ? "checkmark" : "arrow.triangle.merge",
+            button?.image = NSImage(systemSymbolName: enabled.merging ? "xmark" : "arrow.triangle.merge",
                                     accessibilityDescription: mergeButton.label)
         }
         toolbar.validateVisibleItems()

@@ -11,10 +11,43 @@ import SummaryFiles
 import SummaryJobs
 import SummaryRuntime
 import Testing
+import TemplateFiles
 @testable import Composer
 
 @MainActor @Suite(.timeLimit(.minutes(1)))
 struct SummaryCompositionTests {
+    @Test func automaticNotesUseTheEditedDefaultFileAndItsHeadings() async throws {
+        try await withComposeFolder { root in
+            let folder = root.appendingPathComponent("Templates")
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            var template = TemplateFiles.Template(name: "Default", instructions: "Original instructions",
+                headings: [[TemplateFiles.Heading("Topic")]])
+            let file = folder.appendingPathComponent("Default.md")
+            try TemplateFiles.Files.encode(template).write(to: file, atomically: true, encoding: .utf8)
+            let output = "## Follow-up\n\nContinue the API work.\n"
+            let http = ControlledHTTP(hold: false, notes: output)
+            let storage = ControlledTranscripts(holdFinal: true)
+            let rig = try await fixture(root: root, storage: storage, http: http)
+            do {
+                try await rig.start(); await rig.mine.heard.next(); await rig.theirs.heard.next()
+                let stopping = Task { try await rig.stop() }
+                await storage.held.next()
+                template.instructions = "Edited instructions: write follow-up notes"
+                template.headings = [[TemplateFiles.Heading("Follow-up")]]
+                try TemplateFiles.Files.encode(template).write(to: file, atomically: true, encoding: .utf8)
+                storage.release.send(); try await stopping.value
+                _ = try await summary(rig.menu) { $0.values.contains("Итоги готовы") }
+                #expect(await http.lastBody.contains(template.instructions))
+                #expect(await http.lastBody.contains("## Follow-up (required)"))
+                #expect(await http.count == 1)
+                let published = try await read(rig.folder().appendingPathComponent("summary.md"))
+                #expect(published.contains(output))
+                #expect(!published.contains("## What this was about"))
+                await rig.finish()
+            } catch { storage.release.send(); await rig.finish(); throw error }
+        }
+    }
+
     @Test func defaultOffFinishesTheCallWithoutClaimingOrRequestingNotes() async throws {
         try await withComposeFolder { root in
             let http = ControlledHTTP(hold: false)
@@ -381,8 +414,11 @@ private actor ControlledHTTP: HTTPRequesting {
     var count = 0
     var cancelled = false
     let failures: Int
+    let notes: String
     var lastBody = ""
-    init(hold: Bool, failures: Int = 0) { self.hold = hold; self.failures = failures }
+    init(hold: Bool, failures: Int = 0, notes: String = "## What this was about\n\nSynthetic meeting\n\n## Key points\n\n- mine final and theirs final\n\n## Decisions\n\nNone recorded.\n\n## Actions\n\nNone recorded.\n") {
+        self.hold = hold; self.failures = failures; self.notes = notes
+    }
     func request(url: URL, headers: [String: String], body: Data, loopback: Bool) async throws -> HTTPResponse {
         count += 1; started.send()
         lastBody = String(decoding: body, as: UTF8.self)
@@ -391,7 +427,6 @@ private actor ControlledHTTP: HTTPRequesting {
             do { await complete.next(); try Task.checkCancellation() }
             catch { cancelled = true; throw Failure.cancelled }
         }
-        let notes = "## What this was about\n\nSynthetic meeting\n\n## Key points\n\n- mine final and theirs final\n\n## Decisions\n\nNone recorded.\n\n## Actions\n\nNone recorded.\n"
         return .init(status: 200, body: try JSONSerialization.data(withJSONObject: ["choices": [["finish_reason": "stop", "message": ["content": notes]]]]))
     }
 }

@@ -358,7 +358,7 @@ public struct CallsListView: View {
         .accessibilityIdentifier("calls.searching")
     }
 
-    /// Over the list in merge mode: its name, Done, and Merge counting the
+    /// Over the list in merge mode: its name, Cancel, and Merge counting the
     /// marked calls, disabled below two; while merging, only that it is under way.
     private func mergeBar(_ merge: CallsListState.Merge) -> some View {
         HStack(spacing: tokens.space8) {
@@ -367,7 +367,7 @@ public struct CallsListView: View {
             if merge.running {
                 barButton(text(.mergeRunning), primary: false, enabled: false, id: "calls.merge.confirm") {}
             } else {
-                barButton(text(.mergeDone), primary: false, enabled: true, id: "calls.merge.done") { event(.leaveMerge) }
+                barButton(text(.mergeCancel), primary: false, enabled: true, id: "calls.merge.cancel") { event(.leaveMerge) }
                 barButton(text(.mergeConfirm, merge.marked.count), primary: true, enabled: merge.marked.count >= 2,
                           id: "calls.merge.confirm", value: merge.marked.count >= 2 ? "" : text(.mergeNeedsTwo)) { event(.confirmMerge) }
                     .keyboardShortcut(merge.warning == nil ? .defaultAction : nil)
