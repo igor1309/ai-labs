@@ -1,9 +1,13 @@
 # Session
 
-Observer: compose, which builds a Session on the machine loop for each
-recording, ends it when Recording asks, and hands its state to Recording
-and the panel (`../../app-shape.md`): what records, how live text does,
-what failed (user S-8, S-9, S-15, S-16, S-7, S-17 in `../SPEC.md`).
+Observer: Recording, whose state holds the current recording's Session
+state and whose reducer calls the Session reducer for each of its events
+(`../../app-shape.md`). Session is a pure reducer and its value, not a
+machine: its effects are Recording's effects for that recording, run by
+the pieces compose builds for it. It lives in Recording's target as a file
+of Recording's reducer, not in a module of its own. Recording's state is what the panel
+reads: what records, how live text does, what failed (user S-8, S-9, S-15,
+S-16, S-7, S-17 in `../SPEC.md`).
 
 ## Decided
 
