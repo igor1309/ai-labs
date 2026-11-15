@@ -22,7 +22,7 @@ As S-1 with the folder action. Evidence: Missing.
 ## S-5 The detail's state reaches the view
 
 Drive: publish a new fixture state; read back the view's section heading
-and shown version. Evidence: `NotesTemplateWiringTests.suppliedMenuAndVersionValuesReachTheView`.
+and shown version, including a nonzero catalogue revision. Evidence: `NotesTemplateWiringTests.suppliedMenuAndVersionValuesReachTheView`.
 
 ## S-6 Cancel reaches the detail
 

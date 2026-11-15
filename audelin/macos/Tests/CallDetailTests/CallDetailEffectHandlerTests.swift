@@ -53,7 +53,7 @@ private func expect(_ sut: CallDetailEffectHandler, with effect: CallDetailEffec
     #expect(await delivered == event, sourceLocation: sourceLocation)
 }
 
-private actor NotesSpy {
+actor NotesSpy {
     private(set) var ids: [String] = []
     private var pending: CheckedContinuation<CallNotesPair?, any Error>?
     private var started: CheckedContinuation<Void, Never>?

@@ -5,12 +5,14 @@ import SummaryRuntime
 actor LiveSummaryService: HTTPRequesting {
     enum Stage: String, Sendable { case started, completed, cancelled }
     private let wait: @Sendable (Int) async throws -> Void
+    private let response: @Sendable (Int, Data) throws -> String
     private let report: @Sendable (Int, Stage) throws -> Void
     private var nextRequest = 0
 
     init(wait: @escaping @Sendable (Int) async throws -> Void,
+         response: @escaping @Sendable (Int, Data) throws -> String,
          report: @escaping @Sendable (Int, Stage) throws -> Void) {
-        self.wait = wait; self.report = report
+        self.wait = wait; self.response = response; self.report = report
     }
 
     func request(url: URL, headers: [String: String], body: Data, loopback: Bool) async throws -> HTTPResponse {
@@ -21,7 +23,7 @@ actor LiveSummaryService: HTTPRequesting {
             try await wait(request)
             try Task.checkCancellation()
             let data = try JSONSerialization.data(withJSONObject: ["choices": [[
-                "finish_reason": "stop", "message": ["content": Self.notes],
+                "finish_reason": "stop", "message": ["content": try response(request, body)],
             ]]])
             try report(request, .completed)
             return HTTPResponse(status: 200, body: data)

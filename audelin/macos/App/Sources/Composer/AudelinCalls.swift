@@ -74,6 +74,7 @@ public final class AudelinCalls {
     private let retrySummary: (String) async throws -> Void
     private let summaryStatuses: () -> [String: String]
     private let summaryTemplates: () -> [String: String]
+    private let summaryFailures: () -> [String: CallDetailFailure]
     private let summaryBadges: () -> [String: CallsListState.Row.Summary]
     private let inputs: RecordingsInputs
     private let location: (String) async throws -> URL
@@ -104,6 +105,7 @@ public final class AudelinCalls {
          catalogue: @escaping @Sendable () async -> [NotesMenuState.Template] = { [.init(id: "Default", name: "Default", enabled: true)] },
          previewText: @escaping @Sendable () -> SummaryPreviewText = { .init(language: .russian) },
          summaryTemplates: @escaping () -> [String: String] = { [:] },
+         summaryFailures: @escaping () -> [String: CallDetailFailure] = { [:] },
          publications: @escaping () -> [String: String] = { [:] },
          keepingChanges: AsyncStream<Bool> = AsyncStream { $0.finish() },
          readKeeping: @escaping () -> Bool = { true },
@@ -126,11 +128,12 @@ public final class AudelinCalls {
         self.makeWithTemplate = makeWithTemplate; self.readKeeping = readKeeping; self.saveKeeping = saveKeeping
         self.makeSummary = makeSummary; self.cancelSummary = cancelSummary
         self.summaryTemplates = summaryTemplates
+        self.summaryFailures = summaryFailures
         self.summaryStatuses = summaryStatuses
         self.summaryBadges = summaryBadges
         self.notes = notes
         let handler = CallDetailEffectHandler(notes: { @MainActor id in try await notes(id) })
-        detailModel = ObservableModel(initialState: .init(), reduce: CallDetailReducer(progress: { previewText()(.remaking, $0) }).reduce,
+        detailModel = ObservableModel(initialState: .init(), reduce: CallDetailReducer(progress: { previewText()(.remaking, $0) }, failure: { previewText()(failurePhrase($0)) }).reduce,
                                       handleEffect: { effect in oneEvent { await handler.handle(effect) } })
         self.inputs = inputs; self.timeZone = timeZone; self.now = now; self.recordingState = recordingState
         self.location = location; self.openFolder = openFolder; self.present = present
@@ -138,6 +141,9 @@ public final class AudelinCalls {
         menuModel = ObservableModel(initialState: .init(keeping: readKeeping()),
                                     reduce: NotesMenuReducer(section: { previewText()($0 ? .makeAgainSection : .makeSection) }).reduce,
                                     handleEffect: { effect in oneEvent { await menuHandler.handle(effect) } })
+        let forwardCancellation: @MainActor @Sendable (String) async -> Void = { [weak self] call in
+            await self?.cancelSummary(call)
+        }
         notesConnections = [
             Task { @MainActor [weak self] in
                 var seen: [String: String] = [:]
@@ -165,12 +171,14 @@ public final class AudelinCalls {
                 }
             },
             Task { @MainActor [weak self] in
-                var seen = 0
-                for await (count, call) in Observations({ (self?.detailModel.state.cancellations ?? 0, self?.detailModel.state.cancelCall) }) {
-                    guard self != nil else { return }
-                    guard count > seen, let call else { continue }
-                    seen = count
-                    await cancelSummary(call)
+                await withDiscardingTaskGroup { group in
+                    var seen = 0
+                    for await (count, call) in Observations({ (self?.detailModel.state.cancellations ?? 0, self?.detailModel.state.cancelCall) }) {
+                        guard self != nil else { break }
+                        guard count > seen, let call else { continue }
+                        seen = count
+                        group.addTask { await forwardCancellation(call) }
+                    }
                 }
             },
             Task { @MainActor [weak self] in
@@ -446,7 +454,7 @@ public final class AudelinCalls {
         case .failed: badge = .failed
         }
         return .init(id: id, title: row.displayTitle, date: date, duration: row.duration, editable: row.editable,
-                     summary: .init(badge: badge, status: row.summaryStatus, canRetry: row.canRetrySummary, template: summaryTemplates()[id]))
+                     summary: .init(badge: badge, status: row.summaryStatus, canRetry: row.canRetrySummary, template: summaryTemplates()[id], failure: summaryFailures()[id]))
     }
 
     /// Connects summary updates separately from changes to the selected call's display fields.

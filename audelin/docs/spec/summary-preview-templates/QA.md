@@ -12,7 +12,10 @@ Evidence: `CallsToolbarTests.theNativeTemplateMenuFollowsCopyAndReceivesTheSuppl
 ## S-2 The menu's section
 
 Drive: open the menu on the make-again fixture; read back the heading text
-and the item titles. Evidence: `NotesTemplatePreviewTests.nativeMenuDrawsItsSectionItemsAndKeepCheck and aCallWithoutNotesHasOnlyTheMakeSectionAndTemplates`.
+and the item titles. Clicking requests refresh, stale answers do not open it,
+and each newer answer presents exactly once per opening, including reopening. Evidence: `NotesTemplatePreviewTests.nativeMenuDrawsItsSectionItemsAndKeepCheck`,
+`aCallWithoutNotesHasOnlyTheMakeSectionAndTemplates` and
+`eachOpeningPresentsOnlyOneRefreshedCatalogue`.
 
 ## S-3 A disabled template
 

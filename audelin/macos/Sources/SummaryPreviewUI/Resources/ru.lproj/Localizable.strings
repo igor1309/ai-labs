@@ -31,3 +31,14 @@
 "preview.templateLine" = "Шаблон: %@";
 "preview.remaking" = "Делаю заново · %@…";
 "preview.remakeFailed" = "Не удалось сделать итоги заново";
+
+"preview.failureUnavailable" = "Сервис недоступен.";
+"preview.failureAuthentication" = "Проверьте доступ к сервису: ошибка авторизации.";
+"preview.failureQuota" = "Квота сервиса исчерпана.";
+"preview.failureTransport" = "Не удалось связаться с сервисом.";
+"preview.failureInvalidResponse" = "Сервис вернул неподходящий ответ.";
+"preview.failureOutputLimit" = "Ответ превысил допустимый размер.";
+"preview.failureTimeout" = "Сервис не ответил вовремя.";
+"preview.failureCancelled" = "Создание итогов отменено.";
+"preview.failureConfiguration" = "Проверьте настройки сервиса итогов.";
+"preview.failureUnknown" = "Не удалось составить итоги.";

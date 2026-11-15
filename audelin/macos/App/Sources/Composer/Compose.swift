@@ -122,6 +122,7 @@ public func compose(
                                   },
                                   previewText: { language.language.preview },
                                   summaryTemplates: { summaries.state.calls.mapValues { $0.job?.template?.name ?? $0.requestedTemplate } },
+                                  summaryFailures: { summaries.state.calls.compactMapValues { $0.generationFailure.map(detailFailure) } },
                                   publications: {
                                       Dictionary(uniqueKeysWithValues: summaries.state.calls.compactMap { call, value in
                                           guard value.stage == .succeeded, let job = value.job else { return nil }

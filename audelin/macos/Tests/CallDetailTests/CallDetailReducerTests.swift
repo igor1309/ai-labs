@@ -275,10 +275,10 @@ private func assert(_ state: CallDetailState, _ event: CallDetailEvent,
                     sourceLocation: SourceLocation = #_sourceLocation, mutation: (inout CallDetailState) -> Void = { _ in }) {
     var expected = state
     mutation(&expected)
-    #expect(CallDetailReducer(progress: { "progress " + $0 }).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
+    #expect(CallDetailReducer(progress: { "progress " + $0 }, failure: { "failure \($0)" }).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
 }
 
 private func assert(_ state: CallDetailState, _ event: CallDetailEvent, delivers effect: CallDetailEffect?,
                     sourceLocation: SourceLocation = #_sourceLocation) {
-    #expect(CallDetailReducer(progress: { "progress " + $0 }).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
+    #expect(CallDetailReducer(progress: { "progress " + $0 }, failure: { "failure \($0)" }).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
 }

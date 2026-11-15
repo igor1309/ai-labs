@@ -8,9 +8,11 @@ public final class NotesMenuControl: NSButton {
     private var presentation: SummaryPreviewState.Menu?
     private var awaitingCatalogue: Int?
     private let event: (SummaryPreviewEvent) -> Void
+    private let presentMenu: (NSMenu, NSView) -> Void
 
-    public init(text: SummaryPreviewText, event: @escaping (SummaryPreviewEvent) -> Void) {
+    public init(text: SummaryPreviewText, presentMenu: @escaping (NSMenu, NSView) -> Void, event: @escaping (SummaryPreviewEvent) -> Void) {
         self.event = event
+        self.presentMenu = presentMenu
         super.init(frame: .zero)
         bezelStyle = .toolbar
         image = NSImage(systemSymbolName: "arrow.triangle.2.circlepath", accessibilityDescription: text(.notesMenu))
@@ -54,7 +56,7 @@ public final class NotesMenuControl: NSButton {
         }
         if let revision = awaitingCatalogue, state.catalogueRevision > revision {
             awaitingCatalogue = nil
-            templateMenu.popUp(positioning: nil, at: NSPoint(x: bounds.minX, y: bounds.maxY), in: self)
+            presentMenu(templateMenu, self)
         }
     }
     @objc private func openMenu() {

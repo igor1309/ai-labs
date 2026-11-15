@@ -44,10 +44,28 @@ import Testing
         let transport = AttemptHTTP(outputs: [englishNotes.replacingOccurrences(of: "- No decision was made", with: ""), "{}"])
         let generation = SummaryGeneration(runtime: runtime(transport), sink: SilentLog())
         var job = fixtureJob(); job.fallback = nil
-        await #expect(throws: NotesGeneration.ValidationFailure.empty("Key points")) { try await generation.notes(job, identities: [], template: defaultJobTemplate()) }
+        await #expect(throws: SummariesFailure.invalidResponse) { try await generation.notes(job, identities: [], template: defaultJobTemplate()) }
         await #expect(throws: (any Error).self) { try await generation.identify(job) }
         #expect(await transport.calls.map(\.model) == ["primary", "primary"])
     }
+    @Test(arguments: [
+        (SummaryRuntime.Failure.unavailable, SummariesFailure.unavailable),
+        (.authentication, .authentication), (.quota, .quota), (.transport, .transport),
+        (.invalidResponse, .invalidResponse), (.outputLimit, .outputLimit), (.timeout, .timeout),
+        (.cancelled, .cancelled), (.configuration, .configuration),
+    ])
+    func notesExposeOnlySafeRuntimeClassifications(failure: SummaryRuntime.Failure, expected: SummariesFailure) async {
+        var job = fixtureJob(); job.fallback = nil
+        let generation = SummaryGeneration(runtime: runtime(FailingHTTP(failure: failure)), sink: SilentLog())
+        await #expect(throws: expected) { try await generation.notes(job, identities: [], template: defaultJobTemplate()) }
+    }
+
+    @Test func arbitraryDiagnosticsAreNotExposedAsFailureReasons() async {
+        var job = fixtureJob(); job.fallback = nil
+        let generation = SummaryGeneration(runtime: runtime(FailingHTTP(failure: SensitiveFailure())), sink: SilentLog())
+        await #expect(throws: SummariesFailure.unknown) { try await generation.notes(job, identities: [], template: defaultJobTemplate()) }
+    }
+
     @Test func cancellationNeverCallsFallback() async {
         let transport = AttemptHTTP(outputs: [], cancelled: true)
         let generation = SummaryGeneration(runtime: runtime(transport), sink: SilentLog())
@@ -109,4 +127,12 @@ private func waitForCancellation() async throws {
     let never = AsyncStream<Void> { _ in }
     for await _ in never {}
     try Task.checkCancellation()
+}
+
+private struct SensitiveFailure: Error, CustomStringConvertible {
+    var description: String { "private transcript and credentials" }
+}
+private struct FailingHTTP: HTTPRequesting {
+    let failure: any Error
+    func request(url: URL, headers: [String: String], body: Data, loopback: Bool) throws -> HTTPResponse { throw failure }
 }

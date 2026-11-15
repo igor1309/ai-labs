@@ -7,7 +7,7 @@ no component test reaches.
 
 | Script (from `audelin/macos`) | Proves |
 |---|---|
-| `sh scripts/live-calls-summary.sh` | A call's notes are made, shown and written, and a cancel leaves no notes or job file. |
+| `sh scripts/live-calls-summary.sh` | A call's template menu refreshes and makes notes; regeneration rotates or replaces versions; switching, keeping, edited templates, failure reasons and cancellation preserve the shown pair. |
 | `sh scripts/live-calls-merge.sh` | Merging calls in the calls window, end to end (below). |
 | `sh scripts/live-calls-tags.sh` | Tags typed in the detail are written to the call's folder and shown in its row and the strip; a chip filters the list; merged calls keep both parts' tags. |
 | `sh scripts/live-calls-rename.sh` | Renaming a call in the list: Return saves without opening the folder; clicking, right-clicking or arrowing to another row saves; Escape cancels (below). |
@@ -34,6 +34,9 @@ coordinates or OCR.
 `--calls`, `--state` and `--trash` folders, so a run never touches the user's
 calls, preferences or Trash; notes are made by a fake service that writes
 `state/control/started-N` and answers once the driver writes `finish-N`.
+An empty completion file returns the fixed notes; a nonempty one supplies the
+notes for that request. `fail-N` produces a quota failure. `request-N.json`
+records the fake service request, so edited template instructions can be checked.
 The rehearsal never opens Finder: opening a call's folder writes `state/control/opened-<uuid>`
 holding the folder's path, so a driver can check that nothing was opened.
 `--seed merge` writes calls through the app's own track and transcript writers

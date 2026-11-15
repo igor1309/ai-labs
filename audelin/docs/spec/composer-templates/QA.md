@@ -47,13 +47,15 @@ completed publication.
 ## S-7 Another detail sees the keep change
 
 Drive: present two details, toggle keep in one; read back the other's keep
-value off. Evidence: `NotesMenuCompositionTests.anotherPresentedDetailReceivesTheSavedKeepChoice`.
+value opposite to its initial saved value, for both initial values. Evidence: `NotesMenuCompositionTests.anotherPresentedDetailReceivesTheSavedKeepChoice`.
 
 ## S-8 A cancel reaches the jobs
 
 Drive: gate the runtime, send cancel to the detail; read back SummaryJobs'
 ended run and the storage's unchanged pair. Evidence:
-`CallNotesWiringTests.unsuccessfulMakeAgainKeepsThePublishedPair`.
+`CallNotesWiringTests.unsuccessfulMakeAgainKeepsThePublishedPair`,
+`menuCancelReachesTheJobsAndKeepsThePublishedPair` and
+`NotesMenuCompositionTests.anotherCallsCancellationIsForwardedBeforeTheFirstSettles`.
 
 ## S-9 The menu follows the shown call
 

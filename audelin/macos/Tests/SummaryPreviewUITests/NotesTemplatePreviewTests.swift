@@ -8,7 +8,7 @@ import Testing
 struct NotesTemplatePreviewTests {
     @Test(arguments: [false, true]) func nativeMenuDrawsItsSectionItemsAndKeepCheck(keeping: Bool) throws {
         var events: [SummaryPreviewEvent] = []
-        let control = NotesMenuControl(text: .init(language: .russian), event: { events.append($0) })
+        let control = NotesMenuControl(text: .init(language: .russian), presentMenu: { _, _ in }, event: { events.append($0) })
         control.show(.init(section: "СДЕЛАТЬ ЗАНОВО", templates: templates(enabled: true), keeping: keeping), text: .init(language: .russian))
         control.performClick(nil)
         let items = control.templateMenu.items
@@ -22,20 +22,56 @@ struct NotesTemplatePreviewTests {
     }
 
     @Test func aCallWithoutNotesHasOnlyTheMakeSectionAndTemplates() {
-        let control = NotesMenuControl(text: .init(language: .russian), event: { _ in })
+        let control = NotesMenuControl(text: .init(language: .russian), presentMenu: { _, _ in }, event: { _ in })
         control.show(.init(section: "СДЕЛАТЬ", templates: templates(enabled: true), keeping: nil), text: .init(language: .russian))
         #expect(control.templateMenu.items.map(\.title) == ["СДЕЛАТЬ", "Default", "Daily"])
     }
 
     @Test func busyMenuItemsCannotSendAChoice() {
         var events: [SummaryPreviewEvent] = []
-        let control = NotesMenuControl(text: .init(language: .russian), event: { events.append($0) })
+        let control = NotesMenuControl(text: .init(language: .russian), presentMenu: { _, _ in }, event: { events.append($0) })
         control.show(.init(section: "СДЕЛАТЬ ЗАНОВО", templates: templates(enabled: false), keeping: true), text: .init(language: .russian))
         for item in control.templateMenu.items where item.representedObject is String {
             #expect(!item.isEnabled)
             _ = (item.target as? NSObject)?.perform(item.action, with: item)
         }
         #expect(events == [])
+    }
+
+    @Test func eachOpeningPresentsOnlyOneRefreshedCatalogue() {
+        let text = SummaryPreviewText(language: .russian)
+        var events: [SummaryPreviewEvent] = []
+        var presented: [[String]] = []
+        var anchors: [NSView] = []
+        let control = NotesMenuControl(text: text, presentMenu: { menu, view in
+            presented.append(menu.items.map(\.title)); anchors.append(view)
+        }, event: { events.append($0) })
+        var menu = SummaryPreviewState.Menu(section: "СДЕЛАТЬ", templates: templates(enabled: true), keeping: nil, catalogueRevision: 7)
+        control.show(menu, text: text)
+        control.performClick(nil)
+        #expect(events == [.openNotesMenu] && presented.isEmpty)
+        menu.catalogueRevision = 6
+        control.show(menu, text: text)
+        menu.catalogueRevision = 7
+        control.show(menu, text: text)
+        #expect(presented.isEmpty)
+        menu.catalogueRevision = 8
+        menu.templates = [.init(id: "Default", name: "Refreshed", enabled: true)]
+        control.show(menu, text: text)
+        control.show(menu, text: text)
+        menu.catalogueRevision = 9
+        control.show(menu, text: text)
+        #expect(presented == [["СДЕЛАТЬ", "Refreshed"]])
+        control.performClick(nil)
+        control.show(menu, text: text)
+        #expect(presented.count == 1)
+        menu.catalogueRevision = 10
+        menu.templates[0].name = "Reopened"
+        control.show(menu, text: text)
+        control.show(menu, text: text)
+        #expect(events == [.openNotesMenu, .openNotesMenu])
+        #expect(presented == [["СДЕЛАТЬ", "Refreshed"], ["СДЕЛАТЬ", "Reopened"]])
+        #expect(anchors.count == 2 && anchors.allSatisfy { $0 === control })
     }
 
     @Test func versionSwitchSendsTheChosenVersionAndDrawsTheNextSuppliedValue() throws {

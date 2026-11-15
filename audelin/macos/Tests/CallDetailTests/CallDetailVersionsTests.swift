@@ -93,6 +93,24 @@ struct CallDetailVersionsTests {
         assert(.init(), .cancelChosen)
     }
 
+    @Test(arguments: [CallDetailState.Call.Summary.Badge.pending, .none])
+    func cancelTargetsTheDisplayedBusyCallWhileAnotherReadIsPending(badge: CallDetailState.Call.Summary.Badge) async {
+        let reducer = CallDetailReducer(progress: { "remaking " + $0 }, failure: { "failure \($0)" })
+        let shown = makeShown(badge: .pending)
+        var other = shown.selected!
+        other.id = "other"; other.summary.badge = badge
+        let (pending, effect) = reducer.reduce(shown, .selectionChanged(other))
+        #expect(effect == .read(id: "other", revision: 5))
+        #expect(pending.detail?.id == "call" && pending.notes == .notRead)
+        let spy = NotesSpy()
+        let handler = CallDetailEffectHandler(notes: { try await spy.read($0) })
+        async let read = handler.handle(effect!)
+        assert(pending, .cancelChosen) { $0.cancelCall = "call"; $0.cancellations = 1 }
+        await spy.complete(.success(makePair()))
+        #expect(await read == .readFinished(id: "other", revision: 5, result: .read(makePair())))
+        #expect(await spy.ids == ["other"])
+    }
+
     @Test func unavailableOrAlreadyChosenVersionsChangeNothing() {
         assert(makeShown(), .versionChosen(.current))
         assert(.init(), .versionChosen(.previous))
@@ -105,7 +123,7 @@ struct CallDetailVersionsTests {
 
     @Test func progressFormattingIsInjectedAndRunsOnlyForProgress() {
         let spy = FormatSpy()
-        let reducer = CallDetailReducer(progress: spy.format)
+        let reducer = CallDetailReducer(progress: spy.format, failure: { "failure \($0)" })
         #expect(spy.calls.withLock { $0 } == [])
         _ = reducer.reduce(makeShown(), .versionChosen(.current))
         _ = reducer.reduce(makeReading(), .readFinished(id: "call", revision: 4, result: .read(makePair())))
@@ -113,6 +131,23 @@ struct CallDetailVersionsTests {
         let state = reducer.reduce(makeReading(badge: .pending), .readFinished(id: "call", revision: 4, result: .read(makePair()))).0
         #expect(spy.calls.withLock { $0 } == ["Chosen template"])
         #expect(state.detail?.progress == "formatted progress")
+    }
+
+    @Test func failureFormattingUsesTheInjectedReasonOnlyForFailedNotes() {
+        let calls = Mutex<[CallDetailFailure]>([])
+        let reducer = CallDetailReducer(progress: { $0 }, failure: { reason in
+            calls.withLock { $0.append(reason) }; return "formatted quota reason"
+        })
+        #expect(calls.withLock { $0 }.isEmpty)
+        _ = reducer.reduce(makeShown(), .versionChosen(.current))
+        _ = reducer.reduce(makeReading(), .readFinished(id: "call", revision: 4, result: .read(makePair())))
+        #expect(calls.withLock { $0 }.isEmpty)
+        let given = makeReading(badge: .failed) { $0.selected?.summary.failure = .quota }
+        let next = reducer.reduce(given, .readFinished(id: "call", revision: 4, result: .read(makePair())))
+        var expected = given
+        expected.notes = .read(makePair()); expected.detail?.failure = "formatted quota reason"
+        #expect(next.0 == expected && next.1 == nil)
+        #expect(calls.withLock { $0 } == [.quota])
     }
 
     @Test func theReadEffectPreservesBothVersionsAndTheirAttribution() async {
@@ -141,7 +176,7 @@ private func makeShown(version: CallNotesVersion = .current, badge: CallDetailSt
     var state = CallDetailState(selected: .init(id: "call", title: "Title", date: "Date", duration: "1:00", editable: true,
                                                summary: .init(badge: badge, status: "generation failed", canRetry: true, template: "Chosen template")),
                                 notes: .read(makePair()), detail: makeDetail(version: version), revision: 4,
-                                menuFacts: .init(call: "call", hasNotes: true, template: version == .previous ? "default-id" : "daily-id", busy: false))
+                                menuFacts: .init(call: "call", hasNotes: true, template: version == .previous ? "default-id" : "daily-id", busy: badge == .pending))
     change(&state); return state
 }
 private func makeReading(version: CallNotesVersion = .current, badge: CallDetailState.Call.Summary.Badge = .none,
@@ -153,7 +188,7 @@ private func makeReading(version: CallNotesVersion = .current, badge: CallDetail
 private func assert(_ state: CallDetailState, _ event: CallDetailEvent, delivers effect: CallDetailEffect? = nil,
                     sourceLocation: SourceLocation = #_sourceLocation, mutation: (inout CallDetailState) -> Void = { _ in }) {
     var expected = state; mutation(&expected)
-    let result = CallDetailReducer(progress: { "remaking " + $0 }).reduce(state, event)
+    let result = CallDetailReducer(progress: { "remaking " + $0 }, failure: { "failure \($0)" }).reduce(state, event)
     #expect(result.0 == expected, sourceLocation: sourceLocation)
     #expect(result.1 == effect, sourceLocation: sourceLocation)
 }

@@ -21,7 +21,9 @@ Current. Effect: read notes delivers the new pair. Evidence: `CallDetailVersions
 ## S-4 A failure beside the notes
 
 Reducer: notes + progress failed → failure and the same pair. Effect: none.
-Evidence: `CallDetailVersionsTests.aFailureKeepsThePairReadableBesideItsReason`.
+Evidence: `CallDetailVersionsTests.aFailureKeepsThePairReadableBesideItsReason`,
+`failureFormattingUsesTheInjectedReasonOnlyForFailedNotes` and
+`CallNotesWiringTests.regenerationFailureDisplaysTheRuntimeReason`.
 
 ## S-5 Cancelling beside the notes
 
@@ -31,7 +33,8 @@ Effect: none. Evidence: `CallDetailVersionsTests.cancellationClearsProgressAndKe
 ## S-6 Cancelling making notes again
 
 Reducer: progress + cancel chosen → intention (call, cancel), no effect.
-Effect: none. Read back the output's one value. Evidence: `CallDetailVersionsTests.cancelPublishesAnIntentionOnlyForABusyCall`.
+Effect: none. Read back the output's one value. Evidence: `CallDetailVersionsTests.cancelPublishesAnIntentionOnlyForABusyCall` and
+`cancelTargetsTheDisplayedBusyCallWhileAnotherReadIsPending` (pending selection busy and idle).
 
 ## S-7 The menu's facts
 

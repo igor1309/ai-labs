@@ -90,7 +90,7 @@ public struct SummariesEffectHandler<Template: SummariesTemplate>: Sendable {
             return .resolved(job.call, await templates.resolveDefault())
         case let .notes(job, identities, template):
             do { return .noted(job.call, try await generation.notes(job, identities: identities, template: template)) }
-            catch { return .notesFailed(job.call) }
+            catch { return .notesFailed(job.call, error as? SummariesFailure ?? .unknown) }
         case let .checkpoint(job, identities, warning):
             return await stored(job, .checkpointed(job.call)) { try await storage.checkpoint(job, identities: identities, warning: warning) }
         case let .publish(job, notes, warning, keeping):

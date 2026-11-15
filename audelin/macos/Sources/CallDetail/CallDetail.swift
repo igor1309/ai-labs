@@ -1,5 +1,9 @@
 import Foundation
 
+public enum CallDetailFailure: Equatable, Sendable {
+    case unavailable, authentication, quota, transport, invalidResponse, outputLimit, timeout, cancelled, configuration, unknown
+}
+
 /// What the detail knows about the selected call and what it currently shows.
 public struct CallDetailState: Equatable, Sendable {
     public struct Call: Equatable, Sendable {
@@ -9,9 +13,10 @@ public struct CallDetailState: Equatable, Sendable {
             public var status: String
             public var canRetry: Bool
             public var template: String?
+            public var failure: CallDetailFailure?
 
-            public init(badge: Badge, status: String, canRetry: Bool, template: String? = nil) {
-                self.badge = badge; self.status = status; self.canRetry = canRetry; self.template = template
+            public init(badge: Badge, status: String, canRetry: Bool, template: String? = nil, failure: CallDetailFailure? = nil) {
+                self.badge = badge; self.status = status; self.canRetry = canRetry; self.template = template; self.failure = failure
             }
         }
 
@@ -88,7 +93,10 @@ public enum CallDetailEffect: Equatable, Sendable {
 
 public struct CallDetailReducer: Sendable {
     private let progress: @Sendable (String) -> String
-    public init(progress: @escaping @Sendable (String) -> String) { self.progress = progress }
+    private let failure: @Sendable (CallDetailFailure) -> String
+    public init(progress: @escaping @Sendable (String) -> String, failure: @escaping @Sendable (CallDetailFailure) -> String) {
+        self.progress = progress; self.failure = failure
+    }
 
     public func reduce(_ state: CallDetailState, _ event: CallDetailEvent) -> (CallDetailState, CallDetailEffect?) {
         var state = state
@@ -107,8 +115,8 @@ public struct CallDetailReducer: Sendable {
             state.menuFacts?.template = notes.templateID
             return (state, nil)
         case .cancelChosen:
-            guard let call = state.selected, call.summary.badge == .pending else { return (state, nil) }
-            state.cancelCall = call.id
+            guard let detail = state.detail, let facts = state.menuFacts, facts.call == detail.id, facts.busy else { return (state, nil) }
+            state.cancelCall = detail.id
             state.cancellations += 1
             return (state, nil)
         case let .selectionChanged(call):
@@ -142,7 +150,7 @@ public struct CallDetailReducer: Sendable {
             case .absent:
                 switch call.summary.badge {
                 case .pending: content = .preparing
-                case .failed: content = .failed(reason: call.summary.status, canRetry: call.summary.canRetry && call.editable)
+                case .failed: content = .failed(reason: call.summary.failure.map(failure) ?? call.summary.status, canRetry: call.summary.canRetry && call.editable)
                 case .none: content = .none
                 }
             case .notRead: return (state, nil)
@@ -156,7 +164,7 @@ public struct CallDetailReducer: Sendable {
                 let shown = previous ? pair.previous ?? pair.current : pair.current
                 state.detail?.template = shown.templateName
                 state.detail?.progress = call.summary.badge == .pending ? progress(call.summary.template ?? pair.current.templateName) : nil
-                state.detail?.failure = call.summary.badge == .failed ? call.summary.status : nil
+                state.detail?.failure = call.summary.badge == .failed ? call.summary.failure.map(failure) ?? call.summary.status : nil
                 state.menuFacts = .init(call: id, hasNotes: true, template: shown.templateID, busy: call.summary.badge == .pending)
             } else {
                 state.menuFacts = .init(call: id, hasNotes: false, template: nil, busy: call.summary.badge == .pending)

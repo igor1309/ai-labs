@@ -60,7 +60,9 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
     public init(identifier: String, splitView: NSSplitView? = nil, title: String? = nil, text: SummaryPreviewText,
          act: @escaping (SummaryPreviewEvent) -> Void, merge: (() -> Void)? = nil,
          settle: @escaping @MainActor () async -> Void = { try? await Task.sleep(for: .seconds(1.5)) }) {
-        notesControl = NotesMenuControl(text: text, event: act)
+        notesControl = NotesMenuControl(text: text, presentMenu: { menu, view in
+            menu.popUp(positioning: nil, at: NSPoint(x: view.bounds.minX, y: view.bounds.maxY), in: view)
+        }, event: act)
         self.act = act
         self.settle = settle
         self.merge = merge
