@@ -1,5 +1,5 @@
 import Foundation
-import Session
+import Recording
 import Testing
 
 extension SessionReducerTests {

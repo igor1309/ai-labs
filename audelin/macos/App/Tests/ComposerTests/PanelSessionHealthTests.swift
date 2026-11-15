@@ -1,5 +1,5 @@
 import PanelUI
-import Session
+import Recording
 import Testing
 @testable import Composer
 

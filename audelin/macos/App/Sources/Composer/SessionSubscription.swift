@@ -1,4 +1,4 @@
-import Session
+import Recording
 import Synchronization
 
 /// The caller cancels and joins this subscription when its Session ends.

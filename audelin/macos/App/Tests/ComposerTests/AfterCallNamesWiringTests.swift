@@ -3,7 +3,7 @@ import CallNames
 import Foundation
 import LiveText
 import PanelUI
-import Session
+import Recording
 import SpeakerNaming
 import Testing
 @testable import CallText

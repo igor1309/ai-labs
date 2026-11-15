@@ -1,4 +1,4 @@
-import Session
+import Recording
 import Testing
 
 /// Expects the state after `event` to be `state` with `change` applied; no change by default.

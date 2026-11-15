@@ -3,7 +3,6 @@ import CoreAudioProcesses
 import Calls
 import Foundation
 import Recording
-import Session
 
 /// Builds and observes the Session belonging to each Recording id.
 actor RecordingSessions: RecordingSession {

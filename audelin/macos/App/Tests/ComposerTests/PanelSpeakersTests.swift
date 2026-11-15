@@ -1,6 +1,6 @@
 import LiveText
 import PanelUI
-import Session
+import Recording
 import Testing
 @testable import CallText
 @testable import Composer

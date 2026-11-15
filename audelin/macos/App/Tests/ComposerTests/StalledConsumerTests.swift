@@ -2,7 +2,7 @@ import AVFAudio
 import Foundation
 import LiveText
 import Reading
-import Session
+import Recording
 import SessionRehearsal
 import Synchronization
 import Testing

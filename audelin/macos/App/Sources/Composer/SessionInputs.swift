@@ -1,4 +1,4 @@
-import Session
+import Recording
 
 /// One Session's model as used by the composer.
 struct SessionInputs: Sendable {

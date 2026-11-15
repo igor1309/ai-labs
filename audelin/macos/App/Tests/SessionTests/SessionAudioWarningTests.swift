@@ -1,4 +1,4 @@
-import Session
+import Recording
 import Testing
 
 struct SessionAudioWarningTests {

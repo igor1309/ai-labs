@@ -2,7 +2,7 @@ import BlockingTestWork
 import AVFAudio
 import Foundation
 import LiveText
-import Session
+import Recording
 import SessionRehearsal
 import Synchronization
 import Testing

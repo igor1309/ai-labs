@@ -1,6 +1,6 @@
 import CallDiarizer
 import Foundation
-import Session
+import Recording
 import Synchronization
 import TranscriptFile
 import TranscriptFormat

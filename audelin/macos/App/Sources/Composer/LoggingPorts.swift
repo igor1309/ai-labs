@@ -1,6 +1,5 @@
 import Foundation
 import Recording
-import Session
 
 struct LoggingModels: SessionModels {
     let base: any SessionModels

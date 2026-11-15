@@ -4,7 +4,7 @@ import Darwin
 import Foundation
 import LiveText
 import PanelUI
-import Session
+import Recording
 import SessionRehearsal
 import Synchronization
 import Testing

@@ -1,6 +1,5 @@
 import Foundation
 import Recording
-import Session
 
 // Keep private fields separate so a caller cannot accidentally make a path public.
 public struct LogEntry: Sendable, Equatable {
