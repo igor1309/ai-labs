@@ -66,6 +66,7 @@ public final class AudelinMenu {
     private let termination: ObservableModel<TerminationState, TerminationEvent, TerminationEffect>
     private var shutdownObservation: Task<Void, Never>?
     private let pendingRelaunch = PendingRelaunch()
+    private var blockerObservation: Task<Void, Never>?
     private var finalizationSubscriptions: [Task<Void, Never>] = []
     private var observation: Task<Void, Never>?
     private var detectionObservation: Task<Void, Never>?
@@ -114,6 +115,7 @@ public final class AudelinMenu {
     init(
         storage: PreferencesStore,
         folderClaim: RecordingFolderClaim,
+        relaunchClaim: RelaunchFolderClaim,
         occupiedCallNames: @escaping @Sendable () throws -> [String],
         boundary: ComposerBoundary,
         processes: CoreAudioProcesses,
@@ -172,10 +174,25 @@ public final class AudelinMenu {
         self.storageMoving = application?.storageMoving ?? { _ in }
         self.sendPanelEvent = application?.sendPanel ?? { _ in }
         let termination = makeTermination(
+            claimFolder: { [pendingRelaunch] in
+                let token = await relaunchClaim.take()
+                if token == nil { await pendingRelaunch.finish(scheduled: false) }
+                return token
+            },
+            releaseFolder: { [pendingRelaunch] in
+                await relaunchClaim.release($0)
+                await pendingRelaunch.finish(scheduled: false)
+            },
             relaunch: { [pendingRelaunch] in await pendingRelaunch.run() },
             unsettled: application == nil ? [.finalization, .summaries, .storage] : Set(TerminationParticipant.allCases),
             terminate: { [end = application?.end] in await end?(); await terminate() })
         self.termination = termination
+        // What blocks a relaunch reaches Lifecycle first as it is and then on each change.
+        blockerObservation = Task { [weak self] in
+            for await blockers in Observations({ [weak self] in self?.relaunchBlockers ?? [] }) {
+                self?.termination.event(.blockersChanged(blockers))
+            }
+        }
         shutdownObservation = Task { [weak self] in
             for await state in Observations({ termination.state }) where state.phase == .quitting {
                 // A started relaunch quits without the menu's quit, so the menu learns it here.
@@ -361,45 +378,31 @@ public final class AudelinMenu {
         }
     }
 
-    /// The reservation refuses a running session and holds back a new one, so no
-    /// recording can start behind this check and be cut short by the quit.
-    /// Lifecycle decides whether the update may relaunch now; a started relaunch quits the app.
+    /// Lifecycle decides whether the update may relaunch now and holds the calls-folder claim
+    /// for it, so no recording or move starts behind the decision; a scheduled relaunch quits the app.
     func relaunchIfIdle(_ relaunch: @escaping () throws -> Void) async -> Bool {
 
         await summaries?.refresh()
         guard !quitting else { return false }
-        let request = TerminationEvent.relaunchRequested(blockers: relaunchBlockers)
-        // The event is reduced later; nothing reduced before it can change this decision while not quitting.
-        guard TerminationReducer.reduce(termination.state, request).1 == .relaunch else { return false }
+        let blockers = TerminationEvent.blockersChanged(relaunchBlockers)
+        // Events are reduced later; nothing reduced before them can change this decision while not quitting.
+        let current = TerminationReducer.reduce(termination.state, blockers).0
+        guard TerminationReducer.reduce(current, .relaunchRequested).1 == .claimFolder else { return false }
         let outcome = AsyncStream<Bool>.makeStream()
-        pendingRelaunch.start = { [weak self] in
-            let started = await self?.startRelaunch(relaunch) ?? false
-            outcome.continuation.yield(started)
-            return started
+        pendingRelaunch.outcome = outcome.continuation
+        pendingRelaunch.start = { [sink] in
+            do { try relaunch() } catch {
+                sink.write(.init(category: .menu, message: "relaunch failed", error: String(describing: error)))
+                return false
+            }
+            sink.write(.init(category: .menu, message: "relaunching for update"))
+            return true
         }
-        termination.event(request)
+        termination.event(blockers)
+        termination.event(.relaunchRequested)
         var results = outcome.stream.makeAsyncIterator()
         guard await results.next() == true else { return false }
         for await state in Observations({ self.termination.state }) where state.phase == .terminated { break }
-        return true
-    }
-
-    /// The reservation refuses a running session and holds back a new one, so no
-    /// recording can start behind the decision and be cut short by the quit.
-    private func startRelaunch(_ relaunch: () throws -> Void) async -> Bool {
-
-        guard await reserveStorage() else { return false }
-        do {
-            guard !quitting, relaunchBlockers.isEmpty else { throw CancellationError() }
-            try relaunch()
-        } catch {
-            if !(error is CancellationError) {
-                sink.write(.init(category: .menu, message: "relaunch failed", error: String(describing: error)))
-            }
-            await releaseStorage()
-            return false
-        }
-        sink.write(.init(category: .menu, message: "relaunching for update"))
         return true
     }
 
@@ -470,6 +473,7 @@ public final class AudelinMenu {
         detectionObservation?.cancel()
         updateWatch?.cancel()
         shutdownObservation?.cancel()
+        blockerObservation?.cancel()
     }
 }
 
@@ -481,10 +485,23 @@ private func panelRecordingID(_ state: RecordingState) -> UInt64? {
     }
 }
 
-/// The relaunch the termination machine starts, installed by the update check that asked for it.
+/// The relaunch the termination machine schedules, installed by the update check that asked for it,
+/// and where that check hears how the attempt ended.
 @MainActor
 private final class PendingRelaunch {
 
-    var start: () async -> Bool = { false }
-    func run() async -> Bool { await start() }
+    var start: () -> Bool = { false }
+    var outcome: AsyncStream<Bool>.Continuation?
+
+    func run() async -> Bool {
+        let scheduled = start()
+        if scheduled { finish(scheduled: true) }
+        return scheduled
+    }
+
+    func finish(scheduled: Bool) {
+        outcome?.yield(scheduled)
+        outcome?.finish()
+        outcome = nil
+    }
 }

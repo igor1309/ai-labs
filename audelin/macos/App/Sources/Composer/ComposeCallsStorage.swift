@@ -49,6 +49,20 @@ struct MoveFolderClaim: Sendable {
     }
 }
 
+/// Lifecycle's port to the calls-folder claim for a relaunch, answered by the one CallsStorage.
+struct RelaunchFolderClaim: Sendable {
+    let take: @Sendable () async -> UInt64?
+    let release: @Sendable (UInt64) async -> Void
+
+    init(storage: CallsStorage) {
+        take = {
+            guard case let .granted(token) = storage.takeFolder(for: .relaunch) else { return nil }
+            return token.rawValue
+        }
+        release = { storage.releaseFolder(CallsFolderToken(rawValue: $0)) }
+    }
+}
+
 /// A saved transcript's lines, read by the format's one reader.
 func transcriptLines(_ markdown: String) -> [Calls.Text.Line] {
     TranscriptFormat.entries(markdown).map { .init(start: $0.start, words: $0.words, label: $0.label) }

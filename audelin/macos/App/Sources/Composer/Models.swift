@@ -109,10 +109,11 @@ final class RecordingModel {
 
 /// The termination machine: publishes the quit intention and terminates once every participant settled.
 @MainActor
-func makeTermination(relaunch: @escaping @Sendable () async -> Bool, unsettled: Set<TerminationParticipant>,
+func makeTermination(claimFolder: @escaping @Sendable () async -> UInt64?, releaseFolder: @escaping @Sendable (UInt64) async -> Void,
+                     relaunch: @escaping @Sendable () async -> Bool, unsettled: Set<TerminationParticipant>,
                      terminate: @escaping @Sendable () async -> Void) -> ObservableModel<TerminationState, TerminationEvent, TerminationEffect> {
 
-    let handler = TerminationEffectHandler(relaunch: relaunch, terminate: terminate)
+    let handler = TerminationEffectHandler(claimFolder: claimFolder, releaseFolder: releaseFolder, relaunch: relaunch, terminate: terminate)
     return ObservableModel(initialState: TerminationState(unsettled: unsettled), reduce: TerminationReducer.reduce,
                            handleEffect: { effect in oneEvent { await handler.handle(effect) } })
 }
