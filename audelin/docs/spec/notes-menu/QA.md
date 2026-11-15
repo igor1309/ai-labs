@@ -26,11 +26,11 @@ As S-3 with Default on notes made with Default. Evidence: `NotesMenuTests.choosi
 ## S-5 An unusable template
 
 Reducer: catalogue answered with Daily unusable → Daily disabled, reason,
-folder action. Effect: as S-1. Evidence: Missing.
+folder action. Effect: as S-1. Evidence: `NotesMenuTests.unusableEntriesKeepTheirReasonsAndCannotBeChosen` and `effectReadsTheCatalogueAndPreservesItsRevision`.
 
 ## S-6 Default without usable files
 
-As S-5 with every file unusable → built-in Default enabled. Evidence: Missing.
+As S-5 with every file unusable → built-in Default enabled. Evidence: `NotesMenuTests.unusableEntriesKeepTheirReasonsAndCannotBeChosen` (no usable file) and `noFilesFormattingRunsOnlyForAnAcceptedCatalogueWithoutUsableFiles`.
 
 ## S-10 Toggling keep
 
@@ -44,18 +44,18 @@ As S-10 with the fake failing → on with reason. Evidence: `NotesMenuTests.keep
 ## S-14 Opening the folder
 
 Reducer: open folder → effect open folder; answered failure → reason.
-Effect: fake folder port delivers its outcome. Evidence: Missing.
+Effect: fake folder port delivers its outcome. Evidence: `NotesMenuTests.folderActionWaitsForItsOutcomeAndAllowsRetry` and `folderEffectReportsTheBindingOutcome`.
 
 ## S-15 A repaired template on reopening
 
 Reducer: Daily unusable, menu opened again → effect read catalogue;
 answered usable → Daily enabled. Effect: the fake answers the fixed
-catalogue. Evidence: Missing.
+catalogue. Evidence: `NotesMenuTests.reopeningReplacesBrokenEntriesWithRepairedFiles` and `effectReadsTheCatalogueAndPreservesItsRevision`.
 
 ## S-16 The catalogue cannot be read
 
 Reducer: catalogue failed → built-in Default enabled with the reason.
-Effect: the fake fails the read. Evidence: Missing.
+Effect: the fake fails the read. Evidence: `NotesMenuTests.folderReadFailureKeepsDefaultAndItsReason`.
 
 ## S-18 No template while notes are being made
 

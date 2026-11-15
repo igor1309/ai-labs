@@ -1,12 +1,31 @@
 import Foundation
+import Synchronization
 import TemplateFiles
 import Testing
 
 @Suite struct TemplateFilesTests {
+    @Test(arguments: [false, true]) func openingReportsTheBindingOutcomeAndUsesTheTemplatesFolder(fails: Bool) async {
+        let folder = URL(fileURLWithPath: "/fixture/Templates")
+        let opened = Mutex<[URL]>([])
+        let sut = Files(folder: folder, disk: UnusedDisk(), openFolder: { path in
+            opened.withLock { $0.append(path) }
+            if fails { throw Failure("Finder unavailable") }
+        })
+        do {
+            try await sut.open()
+            #expect(!fails)
+        } catch {
+            #expect(fails)
+            #expect(error as? Failure == Failure("Finder unavailable"))
+            #expect(error.localizedDescription == "Finder unavailable")
+        }
+        #expect(opened.withLock { $0 } == [folder])
+    }
+
     @Test func firstListingWritesDefaultAndAnExistingFolderIsNeverReplenished() throws {
         try withFolder { root in
             let folder = root.appendingPathComponent("Templates")
-            let sut = Files(folder: folder, disk: FileDisk())
+            let sut = Files(folder: folder, disk: FileDisk(), openFolder: { _ in })
             let catalogue = sut.list()
             #expect(catalogue == Catalogue(entries: [Entry(name: "Default", file: "Default.md", reason: nil)], folderReason: nil))
             #expect(try Files.parse(String(contentsOf: folder.appendingPathComponent("Default.md"), encoding: .utf8)) == Files.builtInDefault)
@@ -26,7 +45,7 @@ import Testing
     }
     @Test func anExistingFolderIsNotReplenished() throws {
         try withFolder { root in
-            let sut = Files(folder: root, disk: FileDisk())
+            let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
             try Files.encode(Files.builtInDefault).write(to: root.appendingPathComponent("Default.md"), atomically: true, encoding: .utf8)
             #expect(sut.list().entries.map(\.name) == ["Default"])
             #expect(try FileManager.default.contentsOfDirectory(atPath: root.path) == ["Default.md"])
@@ -34,7 +53,7 @@ import Testing
     }
     @Test func validFilesAndEditsResolveTheirWholeContract() throws {
         try withFolder { root in
-            let sut = Files(folder: root, disk: FileDisk())
+            let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
             for name in ["Default", "Custom"] {
                 let template = Template(name: name, instructions: "Write the marker \(name)", headings: [[Heading("Topic"), Heading("Questions", required: false), Heading("Actions")]])
                 let file = root.appendingPathComponent(name + ".md")
@@ -58,7 +77,7 @@ import Testing
             let file = root.appendingPathComponent("Default.md")
             try text.write(to: file, atomically: true, encoding: .utf8)
             let before = try file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
-            let sut = Files(folder: root, disk: FileDisk())
+            let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
             let listed = sut.list()
             #expect(listed.entries.count == 2)
             #expect(listed.entries[0].file == "Default.md")
@@ -76,7 +95,7 @@ import Testing
             let text = try Files.encode(template)
             let file = root.appendingPathComponent("Default.md")
             try text.write(to: file, atomically: true, encoding: .utf8)
-            let sut = Files(folder: root, disk: FileDisk())
+            let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
             let entries = sut.list().entries
             #expect(entries.count == 2)
             #expect(entries.first?.file == "Default.md")
@@ -89,7 +108,7 @@ import Testing
     @Test func aMissingOrBrokenChosenTemplateNeverUsesDefault() throws {
         try withFolder { root in
             let file = root.appendingPathComponent("Custom.md")
-            let sut = Files(folder: root, disk: FileDisk())
+            let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
             let template = Template(name: "Custom", instructions: "Custom instructions", headings: [[Heading("Topic")]])
             try Files.encode(template).write(to: file, atomically: true, encoding: .utf8)
             #expect(sut.list().entries.contains(Entry(name: "Custom", file: "Custom.md", reason: nil)))
@@ -104,7 +123,7 @@ import Testing
         try withFolder { root in
             try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: root.path)
             defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: root.path) }
-            let sut = Files(folder: root, disk: FileDisk())
+            let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
             let listed = sut.list()
             #expect(listed.folderReason?.isEmpty == false)
             #expect(listed.entries == [Entry(name: "Default", file: nil, reason: nil)])
@@ -114,7 +133,7 @@ import Testing
     @Test(arguments: ["../Other", "/tmp/Other", "", "..", "Other\\File"])
     func resolutionRejectsPaths(name: String) throws {
         try withFolder { root in
-            #expect(throws: Failure.self) { try Files(folder: root, disk: FileDisk()).resolve(name) }
+            #expect(throws: Failure.self) { try Files(folder: root, disk: FileDisk(), openFolder: { _ in }).resolve(name) }
         }
     }
 }
@@ -123,4 +142,11 @@ private func withFolder(_ body: (URL) throws -> Void) throws {
     try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     defer { try? FileManager.default.removeItem(at: folder) }
     try body(folder)
+}
+
+private struct UnusedDisk: Disk {
+    func createFolder(_ folder: URL) throws -> Bool { throw Failure("Unexpected create") }
+    func files(_ folder: URL) throws -> [String] { throw Failure("Unexpected listing") }
+    func read(_ file: URL) throws -> String { throw Failure("Unexpected read") }
+    func write(_ text: String, to file: URL) throws { throw Failure("Unexpected write") }
 }

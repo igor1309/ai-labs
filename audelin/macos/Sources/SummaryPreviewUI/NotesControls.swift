@@ -1,4 +1,5 @@
 import AppKit
+import GlassLedger
 import SwiftUI
 
 /// A plain native menu. Availability and the keep value are supplied by the caller.
@@ -41,7 +42,27 @@ public final class NotesMenuControl: NSButton {
             item.isEnabled = template.enabled
             item.setAccessibilityIdentifier("preview.template.\(template.id)")
             templateMenu.addItem(item)
+            if let reason = template.reason {
+                item.setAccessibilityValue(reason)
+                addReason(reason, identifier: "preview.templateReason.\(template.id)")
+            }
         }
+        if let reason = state.filesReason {
+            let item = NSMenuItem(title: text(.templateFiles), action: nil, keyEquivalent: "")
+            item.isEnabled = false
+            item.setAccessibilityIdentifier("preview.templateFiles")
+            item.setAccessibilityValue(reason)
+            templateMenu.addItem(item)
+            addReason(reason, identifier: "preview.templateFilesReason")
+        }
+        if state.offersFolder {
+            templateMenu.addItem(.separator())
+            let item = NSMenuItem(title: text(.openTemplatesFolder), action: #selector(openFolder), keyEquivalent: "")
+            item.target = self; item.isEnabled = !state.openingFolder
+            item.setAccessibilityIdentifier("preview.openTemplatesFolder")
+            templateMenu.addItem(item)
+        }
+        if let reason = state.folderFailure { addReason(reason, identifier: "preview.folderFailure") }
         if let keeping = state.keeping {
             templateMenu.addItem(.separator())
             let item = NSMenuItem(title: text(.keepPrevious), action: #selector(toggleKeeping), keyEquivalent: "")
@@ -58,6 +79,21 @@ public final class NotesMenuControl: NSButton {
             awaitingCatalogue = nil
             presentMenu(templateMenu, self)
         }
+    }
+    private func addReason(_ reason: String, identifier: String) {
+        let item = NSMenuItem(title: reason, action: nil, keyEquivalent: "")
+        item.isEnabled = false; item.indentationLevel = 1
+        let tokens = GlassLedger.for(effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light)
+        item.attributedTitle = NSAttributedString(string: reason, attributes: [
+            .font: NSFont.systemFont(ofSize: tokens.typeCaption), .foregroundColor: NSColor(tokens.rec),
+        ])
+        item.setAccessibilityIdentifier(identifier)
+        item.setAccessibilityValue(reason)
+        templateMenu.addItem(item)
+    }
+    @objc private func openFolder() {
+        guard presentation?.offersFolder == true, presentation?.openingFolder == false else { return }
+        event(.openTemplatesFolder)
     }
     @objc private func openMenu() {
         guard let presentation else { return }

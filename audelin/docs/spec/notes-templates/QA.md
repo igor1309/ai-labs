@@ -69,11 +69,11 @@ Machine evidence: `CallNotesWiringTests.chosenTemplateMakesNotesAgainWithTheCapt
 
 ## S-12 A template that cannot be used
 
-Component rows: template-files S-4, S-10, S-15 to S-17; notes-menu S-5, S-14, S-15; template-files S-12; summary-preview-templates S-3, S-5. Real call: Missing.
+Component rows: template-files S-4, S-10, S-15 to S-17; notes-menu S-5, S-14, S-15; template-files S-12; summary-preview-templates S-3, S-5. Real call: `CallsSummaryLive.brokenTemplatesAndFolder` checks disabled Default and Daily, their reasons, untouched files, the built-in choice, folder opening and failed opening; `editedTemplateIsRefreshed` repairs an unusable Review before reopening.
 
 ## S-13 Default without usable files
 
-Component rows: template-files S-6, S-7, S-9; notes-menu S-6, S-16. Built-in Default: `CallsSummaryLive.templateMenuVersionsKeepingFailureAndCancellation` starts with an empty templates folder. File failure reasons: Missing (unusable-template UI is outside this slice).
+Component rows: template-files S-6, S-7, S-9; notes-menu S-6, S-16. Built-in Default: `CallsSummaryLive.templateMenuVersionsKeepingFailureAndCancellation` starts with an empty templates folder. File failure reasons: `CallsSummaryLive.brokenTemplatesAndFolder` checks the files line and built-in Default with an empty folder and with every file broken.
 
 ## S-14 Older calls
 

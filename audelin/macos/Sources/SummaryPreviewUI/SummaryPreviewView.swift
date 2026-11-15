@@ -63,6 +63,13 @@ public struct SummaryPreviewView: View {
                 header(state)
                 if let progress = state.progress { remaking(progress) }
                 if let failure = state.failure { remakeFailure(failure) }
+                if let reason = state.menu?.folderFailure {
+                    Text(reason).font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.rec)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(tokens.space12).background(tokens.errBg)
+                        .accessibilityIdentifier("preview.openTemplatesFailure")
+                        .accessibilityLabel(reason).accessibilityValue(reason)
+                }
                 switch state.notes {
                 case let .markdown(source, made):
                     NotesText(text: notes(source, made: made, template: state.templateName), background: NSColor(tokens.surface),

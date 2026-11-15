@@ -27,7 +27,7 @@ struct RecordingsInputs {
 
 /// What the detail asks of the call it shows.
 public enum CallsDetailEvent: Equatable, Sendable {
-    case notesMenuOpened, chooseNotesTemplate(String), toggleKeeping, chooseNotesVersion(CallNotesVersion), cancelNotes
+    case notesMenuOpened, chooseNotesTemplate(String), toggleKeeping, openTemplatesFolder, chooseNotesVersion(CallNotesVersion), cancelNotes
     case makeSummaryWithTemplate(String)
     case copy, open, rename, makeSummary, cancelSummary, retrySummary, delete
     /// The tags line: open the field, type, take the completion, remove a chip, save, cancel.
@@ -102,7 +102,8 @@ public final class AudelinCalls {
          notes: @escaping (String) async throws -> CallNotesPair? = { _ in nil },
          makeSummary: @escaping (String) -> Void = { _ in },
          makeWithTemplate: @escaping (String, String) -> Void = { _, _ in },
-         catalogue: @escaping @Sendable () async -> [NotesMenuState.Template] = { [.init(id: "Default", name: "Default", enabled: true)] },
+         catalogue: @escaping @Sendable () async -> NotesMenuState.Catalogue = { .init(templates: [.init(id: "Default", name: "Default", enabled: true, isFile: false)]) },
+         openTemplatesFolder: @escaping @Sendable () async throws -> Void = {},
          previewText: @escaping @Sendable () -> SummaryPreviewText = { .init(language: .russian) },
          summaryTemplates: @escaping () -> [String: String] = { [:] },
          summaryFailures: @escaping () -> [String: CallDetailFailure] = { [:] },
@@ -137,9 +138,9 @@ public final class AudelinCalls {
                                       handleEffect: { effect in oneEvent { await handler.handle(effect) } })
         self.inputs = inputs; self.timeZone = timeZone; self.now = now; self.recordingState = recordingState
         self.location = location; self.openFolder = openFolder; self.present = present
-        let menuHandler = NotesMenuEffectHandler(catalogue: catalogue, save: { @MainActor in try saveKeeping($0) })
+        let menuHandler = NotesMenuEffectHandler(catalogue: catalogue, save: { @MainActor in try saveKeeping($0) }, openFolder: openTemplatesFolder)
         menuModel = ObservableModel(initialState: .init(keeping: readKeeping()),
-                                    reduce: NotesMenuReducer(section: { previewText()($0 ? .makeAgainSection : .makeSection) }).reduce,
+                                    reduce: NotesMenuReducer(section: { previewText()($0 ? .makeAgainSection : .makeSection) }, noUsableFiles: { previewText()(.noUsableTemplates) }).reduce,
                                     handleEffect: { effect in oneEvent { await menuHandler.handle(effect) } })
         let forwardCancellation: @MainActor @Sendable (String) async -> Void = { [weak self] call in
             await self?.cancelSummary(call)
@@ -472,6 +473,7 @@ public final class AudelinCalls {
         guard let shown = detail else { return }
         switch event {
         case .notesMenuOpened: menuModel.event(.opened)
+        case .openTemplatesFolder: menuModel.event(.openFolder)
         case let .chooseNotesTemplate(template): menuModel.event(.choose(template))
         case .toggleKeeping: menuModel.event(.toggleKeeping)
         case let .chooseNotesVersion(version): detailModel.event(.versionChosen(version))

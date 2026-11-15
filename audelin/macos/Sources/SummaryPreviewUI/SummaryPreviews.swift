@@ -71,7 +71,7 @@ public enum SummaryPreviews {
                                   tags: .editing(.init(tags: english ? ["client"] : ["клиент"],
                                                        failure: english ? "Couldn’t save the tags: disk is full" : "Не удалось сохранить теги: диск заполнен")))),
             ("no-selection", nil),
-        ] + templateStates(in: text)
+        ] + templateStates(in: text) + brokenTemplateStates(in: text)
     }
 
     /// The template menu, versions and outcomes, built directly as presentation values.
@@ -101,6 +101,21 @@ public enum SummaryPreviews {
         off.menu?.keeping = false
         return [("templates-current", current), ("templates-previous", previous), ("templates-single", single),
                 ("templates-empty", empty), ("templates-remaking", remaking), ("templates-failed", failure), ("templates-keep-off", off)]
+    }
+
+    public static func brokenTemplateStates(in text: SummaryPreviewText = .init(language: .russian)) -> [(name: String, state: SummaryPreviewState?)] {
+        var menu = brokenMenu(noUsableFiles: true, text: text)
+        menu.folderFailure = text.language == .english ? "The templates folder could not be opened." : "Не удалось открыть папку шаблонов."
+        return [("templates-folder-failed", .init(title: "Zoom", date: "17.10 · 11:00", duration: text.language == .english ? "28 min" : "28 мин",
+                                                  notes: .none, menu: menu))]
+    }
+
+    public static func brokenMenu(noUsableFiles: Bool, text: SummaryPreviewText) -> SummaryPreviewState.Menu {
+        .init(section: text(.makeAgainSection), templates: [
+            .init(id: "Default", name: "Default", enabled: true),
+            .init(id: "file:/Daily.md", name: "Daily", enabled: false,
+                  reason: text.language == .english ? "Metadata needs required headings" : "В метаданных нет обязательных заголовков"),
+        ], keeping: true, filesReason: noUsableFiles ? text(.noUsableTemplates) : nil, offersFolder: true)
     }
 
     public static func state(_ name: String, in text: SummaryPreviewText = .init(language: .russian)) -> SummaryPreviewState? {

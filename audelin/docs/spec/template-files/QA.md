@@ -46,11 +46,11 @@ reason and the built-in Default entry. Evidence: `TemplateFilesTests.unreadableF
 ## S-10 Opening the folder
 
 Drive: fake workspace binding answering success; read back opened and the
-path it was given. Evidence: Missing.
+path it was given. Evidence: `TemplateFilesTests.openingReportsTheBindingOutcomeAndUsesTheTemplatesFolder` (success).
 
 ## S-12 A folder that cannot be opened
 
-Drive: fake workspace binding failing; read back its reason. Evidence: Missing.
+Drive: fake workspace binding failing; read back its reason. Evidence: `TemplateFilesTests.openingReportsTheBindingOutcomeAndUsesTheTemplatesFolder` (failure).
 
 ## S-11 Shipped Daily asks for a handoff
 

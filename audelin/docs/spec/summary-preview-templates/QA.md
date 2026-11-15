@@ -20,7 +20,7 @@ and each newer answer presents exactly once per opening, including reopening. Ev
 ## S-3 A disabled template
 
 Drive: fixture with Daily unusable; read back Daily disabled with its
-reason, and pressing it records no interaction. Evidence: Missing.
+reason, and pressing it records no interaction. Evidence: `BrokenTemplatesMenuTests.unusableFilesDrawReasonsAndOnlyUsableChoicesSendEvents` (Russian and English, with and without usable files).
 
 ## S-4 The keep check item
 
@@ -31,7 +31,7 @@ Evidence: `NotesTemplatePreviewTests.nativeMenuDrawsItsSectionItemsAndKeepCheck`
 
 Drive: choose the folder action; read back the one recorded interaction.
 The folder opening itself is template-files S-10 through composer wiring.
-Evidence: Missing.
+Evidence: `BrokenTemplatesMenuTests.unusableFilesDrawReasonsAndOnlyUsableChoicesSendEvents` and `openingFolderDisablesDuplicateActionsAndDisplaysItsFailure`; `NotesMenuCompositionTests.brokenFilesAndFolderOutcomesReachThePresentedMenu` covers the composition. `BrokenTemplatesMenuTests.drawsFolderFailureFromItsNamedState` compares the failure banner in both languages and themes.
 
 ## S-6 The version switch
 
