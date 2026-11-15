@@ -28,9 +28,9 @@ and S-19. An adapter over the file system.
   place, then delete the source. A failure removes the copy and leaves the
   source; a call already in the target fails the move.
 - **Counting gives the calls' number and size in bytes.**
-- **A call's text is its notes and its transcript lines,** for search.
-  Notes are `summary.md` as written, none when missing or empty. The
-  transcript's lines come from an injected reader given `transcript.md`
+- **A call's text is its transcript lines,** for search; notes are read
+  only by Summary files, and the composer adds Current beside them
+  (`../calls-notes/SPEC.md`). The transcript's lines come from an injected reader given `transcript.md`
   as written; the root passes Transcript format's, the format's one reader.
 - **Every action finds its call by id at the time it runs,** so a call
   renamed in Finder is still found; one no longer there fails.
@@ -96,5 +96,5 @@ Feature: Keeping recorded calls on disk
   Scenario: S-12 A call's text is read by its readers
     Given a call with notes and a transcript
     When I read its text
-    Then I get the notes and the lines the transcript reader gives for the file
+    Then I get the lines the transcript reader gives for the file, without the notes
 ```

@@ -13,6 +13,9 @@ Oracle: the design brief `../../design/calls-list.md`.
 - **Cancelling returns the call to no notes, with no error.** The user chose
   to stop; nothing failed. Whatever makes the notes never reports a run
   it was told to stop, so a cancelled run's notes never show.
+- **This covers a call's first notes.** Making notes again for a call that
+  has them, where failing or cancelling keeps the notes it had, is
+  `../notes-templates/SPEC.md`.
 - **A call's notes are made once at a time.** Make, retry or cancel sent
   while they cannot apply change nothing.
 - **Notes submitted after a call start the call in being made,** so the
