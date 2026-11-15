@@ -56,14 +56,16 @@ public struct RecordingsState: Equatable, Sendable {
     public var mergeSelection: Set<String> = []
     /// The call the last merge made, to be selected in the list.
     public var mergedCallID: String?
+    /// Audelin is idle enough to merge, as compose last said; not until it says so.
+    public var mergeAvailable = false
 
     public init(calls: [RecordedCall] = [], isListing: Bool = false, phase: Phase = .idle,
                 recordingID: String? = nil, failure: Failure? = nil, callsFolder: URL? = nil,
                 callsFolderAvailable: Bool = true, stopping: Bool = false, stopped: Bool = false, move: CallsFolderMove? = nil,
-                mergeSelection: Set<String> = [], mergedCallID: String? = nil) {
+                mergeSelection: Set<String> = [], mergedCallID: String? = nil, mergeAvailable: Bool = false) {
         self.calls = calls; self.isListing = isListing; self.phase = phase; self.recordingID = recordingID
         self.failure = failure; self.callsFolder = callsFolder; self.callsFolderAvailable = callsFolderAvailable; self.stopping = stopping; self.stopped = stopped; self.move = move
-        self.mergeSelection = mergeSelection; self.mergedCallID = mergedCallID
+        self.mergeSelection = mergeSelection; self.mergedCallID = mergedCallID; self.mergeAvailable = mergeAvailable
     }
 }
 
@@ -79,6 +81,8 @@ public enum RecordingsEvent: Equatable, Sendable {
     case askDelete(String), confirmDelete, cancelDelete, deleted(String), deleteFailed(id: String, reason: String)
     case enterMergeMode, leaveMergeMode, toggleMergeSelection(String)
     case confirmMerge, mergeAnyway, goBackFromWarning, merged(String), mergeFailed(String)
+    /// Whether Audelin is idle enough to merge, sent whenever it changes.
+    case mergeAvailability(Bool)
 }
 
 public enum RecordingsEffect: Equatable, Sendable {
@@ -92,15 +96,13 @@ public struct RecordingsReducer: Sendable {
     private let failureMessage: @Sendable (String, String) -> String
 
     let moveText: @Sendable (CallsFolderMove) -> MoveText
-    private let isIdle: @Sendable () -> Bool
     private let busyMessage: @Sendable () -> String
 
-    /// `isIdle` answers whether Audelin is idle enough to merge; `busyMessage` says it is not.
+    /// `busyMessage` says Audelin is not idle enough to merge.
     public init(failureMessage: @escaping @Sendable (String, String) -> String, moveText: @escaping @Sendable (CallsFolderMove) -> MoveText,
-                isIdle: @escaping @Sendable () -> Bool, busyMessage: @escaping @Sendable () -> String) {
+                busyMessage: @escaping @Sendable () -> String) {
         self.failureMessage = failureMessage
         self.moveText = moveText
-        self.isIdle = isIdle
         self.busyMessage = busyMessage
     }
 
@@ -116,6 +118,8 @@ public struct RecordingsReducer: Sendable {
         switch event {
         case .stopActions:
             state.stopping = true
+        case let .mergeAvailability(available):
+            state.mergeAvailable = available
         case let .recordingChanged(id):
             state.recordingID = id
             if id == nil, state.phase == .refusedMove { state.phase = .idle; state.move = nil }
@@ -186,7 +190,7 @@ public struct RecordingsReducer: Sendable {
             return (state, .list)
         case .enterMergeMode:
             guard Self.acceptsAction(state) else { return (state, nil) }
-            guard isIdle() else {
+            guard state.mergeAvailable else {
                 state.failure = .init(id: nil, reason: busyMessage())
                 return (state, nil)
             }
@@ -232,7 +236,7 @@ public struct RecordingsReducer: Sendable {
 
     private func startMerge(_ state: RecordingsState) -> (RecordingsState, RecordingsEffect?) {
         var state = state
-        guard !state.stopping, isIdle() else {
+        guard !state.stopping, state.mergeAvailable else {
             state.phase = .merging
             state.failure = .init(id: nil, reason: busyMessage())
             return (state, nil)

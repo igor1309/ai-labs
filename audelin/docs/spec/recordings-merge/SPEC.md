@@ -8,9 +8,10 @@ a time and fresh listings after results hold as in `../recordings/SPEC.md`.
 
 ## Decided
 
-- **Idleness is a query the reducer is given,** asked when merge mode is
-  entered and when a merge is confirmed. Recordings never learns why
-  Audelin is busy, only that it is; compose answers the query.
+- **Idleness arrives as an event.** Compose sends whether Audelin is idle
+  whenever it changes; Recordings keeps the value in its state, which starts
+  as not idle, and checks it when merge mode is entered and when a merge is
+  confirmed. Recordings never learns why Audelin is busy, only that it is.
 - **Merge mode is a phase, like asking to delete.** No rename, delete or
   move starts in it, and a merge does not start during another action.
 - **A selection needs two or more calls.** Confirming fewer does nothing.
@@ -90,4 +91,9 @@ Feature: Merging calls
     Given I was warned that the selected calls are far apart, and Audelin is no longer idle
     When I merge them anyway
     Then nothing is asked of the merge port, the calls stay selected and I can tell that Audelin is busy
+
+  Scenario: S-14 Idleness is kept until it changes
+    Given Recordings has not been told that Audelin is idle
+    When compose says Audelin is idle, and later that it is not
+    Then each value is kept as it arrives and nothing is asked of any port
 ```

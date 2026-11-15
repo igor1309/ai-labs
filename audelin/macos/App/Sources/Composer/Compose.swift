@@ -3,6 +3,7 @@ import CallsStorage
 import CoreAudioProcesses
 import CallsListUI
 import Foundation
+import Observation
 import Preferences
 import Recordings
 import TrackFile
@@ -85,19 +86,18 @@ public func compose(
                                 await summaries.merged(call: call, parts: parts, entries: entries,
                                                        notesOn: preferences.read().notes.enabled)
                             })
-    menu.installCalls(AudelinCalls(inputs: makeRecordings(handler: RecordingsEffectHandler(calls: disk,
+    let recordings = makeRecordings(handler: RecordingsEffectHandler(calls: disk,
                                       reserve: { [weak menu] in await menu?.reserveCallsFolder() ?? false },
                                       release: { [weak menu] in await menu?.releaseCallsFolder() },
                                       storeFolder: { destination in
                                           try await storage.commitFolder(destination) { try preferences.updateCallsFolder(destination) }
                                       }, describe: { language.language.settings.callsFailure($0) }), text: { language.language.settings },
-                                      isIdle: { [weak menu] in
-                                          MainActor.assumeIsolated {
-                                              idleToMerge(recording: menu?.state.phase ?? .idle,
-                                                          finishing: finalization.state.calls.values.map(\.stage),
-                                                          notesBusy: summaries.busy)
-                                          }
-                                      }, initial: .init(callsFolder: preferences.read().callsFolder)),
+                                      initial: .init(callsFolder: preferences.read().callsFolder))
+    menu.installMergeAvailability(subscribeMergeAvailability({ [weak menu] in
+        idleToMerge(recording: menu?.state.phase ?? .idle, finishing: finalization.state.calls.values.map(\.stage),
+                    notesBusy: summaries.busy)
+    }, to: { recordings.send($0) }))
+    menu.installCalls(AudelinCalls(inputs: recordings,
                                   timeZone: timeZone, now: boundary.time.now, recordingState: { [weak menu] in menu?.state ?? .init() },
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
                                   present: presentCalls, summaryStatuses: { summaries.statuses }, summaryBadges: { summaries.badges },
@@ -117,6 +117,18 @@ public func compose(
 /// Sends each calls-storage transaction state to SummaryJobs, which holds note publication while one runs.
 @MainActor func subscribeTransactions(_ transactions: AsyncStream<CallsTransaction>, to summaries: SummariesModel) -> Task<Void, Never> {
     Task { for await transaction in transactions { summaries.send(.transaction(running: transaction == .running)) } }
+}
+
+/// Sends Recordings whether Audelin is idle enough to merge: the current value at once, then each change.
+@MainActor func subscribeMergeAvailability(_ idle: @escaping @MainActor () -> Bool,
+                                           to send: @escaping @MainActor (RecordingsEvent) -> Void) -> Task<Void, Never> {
+    Task {
+        var last: Bool?
+        for await available in Observations({ idle() }) where available != last {
+            last = available
+            send(.mergeAvailability(available))
+        }
+    }
 }
 
 func summaryExecutable(path: String, home: String) -> ClaudeExecutable {

@@ -210,6 +210,8 @@ public final class AudelinMenu {
         finalizationSubscriptions = [speakers, transactions]
     }
 
+    func installMergeAvailability(_ subscription: Task<Void, Never>) { finalizationSubscriptions.append(subscription) }
+
     func installFolderPicker(_ choose: @escaping () async throws -> URL?) { chooseFolder = choose }
     func reserveCallsFolder() async -> Bool { await reserveStorage() }
     func releaseCallsFolder() async { await releaseStorage() }

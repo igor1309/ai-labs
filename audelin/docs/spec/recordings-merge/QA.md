@@ -1,24 +1,23 @@
 # Recordings — merging calls — QA
 
 An async machine: each row is reducer cases with the effect each event
-asks for, paired with effect tests for the same state and event. The idle
-query is a spy: not called on init or on events that neither enter merge
-mode nor confirm, called once on each of those, and its stub answer decides
-the result. The handler's merge port is a spy whose completion is
+asks for, paired with effect tests for the same state and event. Whether
+Audelin is idle is a state field set by its event. The busy message is a
+spy: not called on init or when nothing is refused, called once on each
+refusal, and its stub text is the reason in the state. The handler's merge port is a spy whose completion is
 delivered as the result event. A row without evidence is Missing.
 
 ## S-1 Merge mode opens while idle
 
-Idle, enter merge mode with the query answering idle: merge mode, nothing
-selected, no effect. Evidence:
+Idle and available, enter merge mode: merge mode, nothing selected, no
+effect. Evidence:
 `RecordingsMergeTests.S1_mergeModeOpensWithNothingSelected()`,
-`S1_enteringMergeModeAsksTheIdleQueryOnce()`,
-`mergeModeWaitsForOtherActions()`, `theIdleQueryIsNotAskedOnInit()` and
-`theIdleQueryIsNotAskedOutsideMergeEntry()`.
+`mergeModeWaitsForOtherActions()`, `theBusyMessageIsNotAskedOnInit()` and
+`theBusyMessageIsAskedOnlyWhenAMergeIsRefused()`.
 
 ## S-2 Merge mode is refused while busy
 
-Idle, enter merge mode with the query answering busy: idle with the busy
+Idle and not available, enter merge mode: idle with the busy
 reason, no effect. Evidence:
 `RecordingsMergeTests.S2_mergeModeIsRefusedWhileBusy()`.
 
@@ -29,12 +28,12 @@ Merge mode, select A then B, unselect A: B selected, no effect. Evidence:
 
 ## S-4 Fewer than two calls do not merge
 
-Merge mode with A selected, confirm: no change, no effect; the query is
-not called. Evidence: `RecordingsMergeTests.S4_fewerThanTwoCallsDoNotMerge()`.
+Merge mode with A selected, confirm: no change, no effect, whether or not
+merging is available. Evidence: `RecordingsMergeTests.S4_fewerThanTwoCallsDoNotMerge()`.
 
 ## S-5 Neighbouring calls merge
 
-Merge mode with neighbours A and B, confirm, idle: merging A and B, effect
+Merge mode with neighbours A and B, available, confirm: merging A and B, effect
 merge. The handler asks the port for A and B. Evidence:
 `RecordingsMergeTests.S5_neighbouringCallsMerge()` and
 `RecordingsMergeEffectTests.S5_theHandlerAsksThePortForTheCallsAndDeliversTheMergedCall()`.
@@ -45,12 +44,13 @@ Merge mode with A and C, B between them in the full list, confirm: warned,
 no effect. With a search hiding B the result is the same. Evidence:
 `RecordingsMergeTests.S6_farApartCallsAskAgain()`; the rule reads only the
 whole list, which a search does not change:
-`callsAreFarApartWhenAnUnselectedCallLiesBetween(_:_:)`; the query is not
-asked: `S6_theWarningDoesNotAskTheIdleQuery()`.
+`callsAreFarApartWhenAnUnselectedCallLiesBetween(_:_:)`; the warning comes
+whether or not merging is available:
+`theBusyMessageIsAskedOnlyWhenAMergeIsRefused()`.
 
 ## S-7 Merging anyway after the warning
 
-Warned about A and C, merge anyway with the query answering idle: merging A
+Warned about A and C, available, merge anyway: merging A
 and C, effect merge. Evidence: `RecordingsMergeTests.S7_mergingAnywayAfterTheWarning()`.
 
 ## S-8 Going back after the warning
@@ -61,7 +61,7 @@ and `theWarningTakesNoSelectionChange()`.
 
 ## S-9 Confirming while busy is refused
 
-Merge mode with A and B, confirm, query answering busy: merge mode with the
+Merge mode with A and B, not available, confirm: merge mode with the
 busy reason, no effect. Evidence:
 `RecordingsMergeTests.S9_confirmingWhileBusyIsRefused()`.
 
@@ -87,6 +87,17 @@ action starts in merge mode: `noOtherActionStartsInMergeMode()`.
 
 ## S-13 Merging anyway while busy is refused
 
-Warned about A and C, merge anyway with the query answering busy: merge
+Warned about A and C, not available, merge anyway: merge
 mode with A and C and the busy reason, no effect. Evidence:
 `RecordingsMergeTests.S13_mergingAnywayWhileBusyIsRefused()`.
+
+## S-14 Idleness is kept until it changes
+
+Not available, available arrives: available; available, not available
+arrives: not available; the same value again: no change; during a merge
+the value is kept and the merge goes on. No effect. A new state is not
+available. Evidence:
+`RecordingsMergeTests.S14_mergeAvailabilityIsKeptUntilItChanges()` and
+`S14_mergeAvailabilityIsNotKnownBeforeItArrives()`; compose sends the
+current value and each change once:
+`MergeAvailabilityWiringTests.recordingsHearsTheCurrentValueAndEachChangeOnce()`.
