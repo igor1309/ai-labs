@@ -68,9 +68,6 @@ state inside Recording's state and is not a machine or a module of its own.
 The code does not yet follow rules 4 and 5 everywhere. Each item below
 becomes part of a machine's state, or is shown to be only mapping:
 
-- Recordings reserves the calls folder through Recording and waits on
-  Recording's state for the answer. The calls-folder claim (Calls storage)
-  replaces it.
 - The session's composition sends TranscriptFinalization its events
   directly instead of the root subscribing Recording's output.
 - The panel's composition builds a Reading and a CallNames for each

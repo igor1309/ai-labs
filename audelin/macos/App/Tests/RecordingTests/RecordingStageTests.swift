@@ -89,11 +89,6 @@ struct RecordingStageTests {
         assert(waiting, .sessionReported(id: 1, .ended), delivers: .claimFolder(id: 2))
     }
 
-    @Test func storageIsNotReservedWhileReleasing() {
-        assert(makeReleasing(), .reserveStorage(request: 1)) { $0.reservations = [1: false] }
-        assert(makeReleasing(), .reserveStorage(request: 1), delivers: nil)
-    }
-
     @Test func shutdownSettlesOnlyOnceCallAudioIsReleased() {
         let releasing = makeState(makeReleasing()) { $0.shutdown = .requested }
         assert(releasing, .session(id: 1, .outputReleased))

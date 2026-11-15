@@ -76,9 +76,6 @@ public struct RecordingState: Equatable, Sendable {
         }
     }
 
-    public var storageReserved = false
-    /// Each storage reservation request's decision, kept until its caller has read it.
-    public var reservations: [UInt64: Bool] = [:]
     public var pendingStart: Origin?
     public var automatic: Bool
     public var missing: Set<RecordingCondition>
@@ -127,10 +124,9 @@ public struct RecordingState: Equatable, Sendable {
     }
 
     /// Conditions start unknown, so a start waits for each to be reported available.
-    public init(automatic: Bool = false, missing: Set<RecordingCondition> = Set(RecordingCondition.allCases), storageReserved: Bool = false, pendingStart: Origin? = nil) {
+    public init(automatic: Bool = false, missing: Set<RecordingCondition> = Set(RecordingCondition.allCases), pendingStart: Origin? = nil) {
 
         self.automatic = automatic
-        self.storageReserved = storageReserved
         self.pendingStart = pendingStart
         self.missing = missing
     }
@@ -141,8 +137,6 @@ public enum RecordingEvent: Equatable, Sendable {
     case callStarted
     case callEnded
     case userStart
-    case reserveStorage(request: UInt64), reservationAnswered(request: UInt64)
-    case releaseStorage
     case userStop
     case automaticChanged(Bool)
     case conditionChanged(RecordingCondition, available: Bool)
@@ -317,19 +311,6 @@ public struct RecordingReducer: Sendable {
             state = end(&state)
             state.shutdown = state.phase == .idle ? .settled : .requested
             return state
-        case let .reserveStorage(request):
-            guard state.reservations[request] == nil else { return state }
-            let granted = state.phase == .idle && !state.storageReserved
-            if granted { state.storageReserved = true }
-            state.reservations[request] = granted
-            return state
-        case let .reservationAnswered(request):
-            state.reservations[request] = nil
-            return state
-        case .releaseStorage:
-            state.storageReserved = false
-            if let origin = state.pendingStart { return begin(&state, origin: origin) }
-            return state
         case .callStarted:
             guard !state.callOn else { return state }
             state.callOn = true
@@ -338,7 +319,7 @@ public struct RecordingReducer: Sendable {
                 state.pendingCall = true
                 return state
             }
-            if state.storageReserved || state.folderMoving, state.shutdown == nil {
+            if state.folderMoving, state.shutdown == nil {
                 if state.pendingStart == nil { state.pendingStart = .call }
                 return state
             }
@@ -354,7 +335,7 @@ public struct RecordingReducer: Sendable {
             return end(&state)
 
         case .userStart:
-            if state.storageReserved || state.folderMoving, state.shutdown == nil { state.pendingStart = .hand; return state }
+            if state.folderMoving, state.shutdown == nil { state.pendingStart = .hand; return state }
             return begin(&state, origin: .hand)
 
         case .userStop:
@@ -414,7 +395,7 @@ public struct RecordingReducer: Sendable {
     private static func begin(_ state: inout RecordingState, origin: RecordingState.Origin) -> RecordingState {
 
         // Call-audio evidence is refreshed while preparing, including when the last reading failed.
-        guard state.shutdown == nil, !state.storageReserved, !state.folderMoving, state.phase == .idle, state.missing.subtracting([.callAudioAccess]).isEmpty else { return state }
+        guard state.shutdown == nil, !state.folderMoving, state.phase == .idle, state.missing.subtracting([.callAudioAccess]).isEmpty else { return state }
         state.pendingStart = nil
         state.callID = nil
         state.lastSessionID += 1

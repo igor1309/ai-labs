@@ -53,18 +53,8 @@ final class AudelinRecording: Sendable {
         }
     }
 
-    func reserveStorage() async -> Bool {
-        guard await inputs.reserveStorage() else { return false }
-        await conditions.setStorageMoving(true)
-        return true
-    }
     /// Tells RecordingConditions whether a folder move holds the calls folder.
     func storageMoving(_ moving: Bool) async { await conditions.setStorageMoving(moving) }
-
-    func releaseStorage() async {
-        await conditions.setStorageMoving(false)
-        await inputs.releaseStorage()
-    }
 
     /// Stops call detection, the processes it watches and the model load, so no new
     /// recording is reported while the app quits.

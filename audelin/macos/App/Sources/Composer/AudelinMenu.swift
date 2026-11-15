@@ -21,8 +21,6 @@ private struct MenuApplication {
     let send: (RecordingEvent) async -> Void
     let stopDelivery: () async -> Void
     let end: @Sendable () async -> Void
-    let reserveStorage: () async -> Bool
-    let releaseStorage: () async -> Void
     let storageMoving: (Bool) async -> Void
     let panelStates: () async -> AsyncStream<PanelState>
     let sendPanel: (PanelEvent) async -> Void
@@ -60,8 +58,6 @@ public final class AudelinMenu {
     private let send: (RecordingEvent) async -> Void
     private let openFolder: (URL) -> Void
     private let openURL: (URL) -> Void
-    private let reserveStorage: () async -> Bool
-    private let releaseStorage: () async -> Void
     private let storageMoving: (Bool) async -> Void
     private let termination: ObservableModel<TerminationState, TerminationEvent, TerminationEffect>
     private var shutdownObservation: Task<Void, Never>?
@@ -152,7 +148,6 @@ public final class AudelinMenu {
                 states: { await recording.inputs.states() }, failures: recording.detectionFailures,
                 send: { await recording.inputs.send($0) },
                 stopDelivery: { await recording.stopDelivery() }, end: { await recording.inputs.end() },
-                reserveStorage: { await recording.reserveStorage() }, releaseStorage: { await recording.releaseStorage() },
                 storageMoving: { await recording.storageMoving($0) },
                 panelStates: { await recording.panel.states() },
                 sendPanel: { await recording.panel.send($0) }
@@ -169,8 +164,6 @@ public final class AudelinMenu {
         self.send = send
         self.openFolder = openFolder
         self.openURL = openURL
-        self.reserveStorage = application?.reserveStorage ?? { false }
-        self.releaseStorage = application?.releaseStorage ?? {}
         self.storageMoving = application?.storageMoving ?? { _ in }
         self.sendPanelEvent = application?.sendPanel ?? { _ in }
         let termination = makeTermination(
@@ -236,8 +229,6 @@ public final class AudelinMenu {
     func installMoveHold(_ subscription: Task<Void, Never>) { finalizationSubscriptions.append(subscription) }
 
     func installFolderPicker(_ choose: @escaping () async throws -> URL?) { chooseFolder = choose }
-    func reserveCallsFolder() async -> Bool { await reserveStorage() }
-    func releaseCallsFolder() async { await releaseStorage() }
     /// Whether a folder move holds the calls folder, as Recordings says; RecordingConditions hears it.
     func callsFolderMoving(_ moving: Bool) async { await storageMoving(moving) }
 

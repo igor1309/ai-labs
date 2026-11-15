@@ -31,12 +31,10 @@ func composeRecording(
     Task {
         for await state in states { await pieces.observe(state) }
     }
-    var recording = RecordingInputs(send: model.send, state: model.state, states: model.states, end: {
+    let recording = RecordingInputs(send: model.send, state: model.state, states: model.states, end: {
         destination.withLock { $0 = nil }
         await model.end()
     })
-    recording.reserveStorage = model.reserveStorage
-    recording.releaseStorage = model.releaseStorage
     let connected = recording
     destination.withLock { $0 = connected }
     return recording

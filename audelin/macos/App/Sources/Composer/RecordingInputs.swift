@@ -3,8 +3,6 @@ import Recording
 /// Recording's model as used by the composer.
 struct RecordingInputs: Sendable {
 
-    var reserveStorage: @Sendable () async -> Bool = { false }
-    var releaseStorage: @Sendable () async -> Void = {}
     var send: @Sendable (RecordingEvent) async -> Void
     /// Returns state that includes every event whose `send` already returned.
     var state: @Sendable () async -> RecordingState
