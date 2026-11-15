@@ -105,7 +105,7 @@ public final class AudelinCalls {
         let searchOn = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         if searchOn {
             for call in recordings.calls {
-                let title = CallsSearch.match(query, title: call.title, transcript: [], notes: nil)?.title ?? []
+                let title = CallsSearch.match(query, title: call.title, tags: [], transcript: [], notes: nil)?.title ?? []
                 let snippet = textMatches[call.id] ?? nil
                 guard !title.isEmpty || snippet != nil else { continue }
                 found[call.id] = .init(title: title, snippet: snippet.map(rowSnippet))
@@ -179,7 +179,7 @@ public final class AudelinCalls {
                 let read = try? await callText(id)
                 guard !Task.isCancelled else { return }
                 let match = read.flatMap { read in
-                    CallsSearch.match(text, title: "", transcript: read.transcript.map { .init(start: $0.start, words: $0.words) }, notes: read.notes)
+                    CallsSearch.match(text, title: "", tags: [], transcript: read.transcript.map { .init(start: $0.start, words: $0.words) }, notes: read.notes)
                 }
                 let previousSelection = state.selectedID
                 textMatches[id] = .some(match?.snippet)
