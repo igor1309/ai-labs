@@ -36,6 +36,25 @@ does. The frames are in Screen 6, "General — light" and "General — dark".
   тёмное / dark under Dark.
 - Only System is drawn selected; Light and Dark selected are not drawn.
 
+## AGENTS.md for AI agents
+
+While the recordings root has no `AGENTS.md`, General shows a third row,
+«Для ИИ-агентов» / "For AI agents", under Appearance. It is a Settings row
+whose control holds:
+
+- "Нет файла AGENTS.md" / "No AGENTS.md file" in `text`, weight 600;
+- a hint in `gutter` at `type-small`: «Он объясняет ИИ-агенту, как устроена
+  папка звонков: где расшифровка, заметки и теги. Audelin не создаёт его
+  сам.» / "It explains the calls folder to an AI agent: where the
+  transcript, notes and tags are. Audelin doesn't create it on its own.";
+- Button/Secondary «Создать AGENTS.md» / "Create AGENTS.md", which writes the
+  file to the recordings root.
+
+Audelin never writes the file on its own. Once the file exists, the row is
+hidden. The frames are "general-agents-missing-light" and its dark instance.
+
+When writing fails, the row stays and the hint says why (`../spec/agents-file/SPEC.md`).
+
 ## Segmented control
 
 Settings has one segmented control, in the native macOS style and one
@@ -64,6 +83,7 @@ size: the tab bar, Language, Appearance and the debug chunk size use it.
 | general-fallback | English | System | German |
 | general-english | English | English | Russian |
 | general-russian | Russian | Русский | English |
+| general-agents-missing | Russian | System | Russian; no AGENTS.md in the recordings root |
 
 Each light frame is a component; its dark frame is an instance with
 `theme: {mode: "dark"}`.

@@ -46,6 +46,42 @@ struct TranscriptFinalizationCompositionTests {
     }
 
     @MainActor @Test
+    func updateWaitsForFinalTranscriptPublicationAfterRecordingStops() async throws {
+        try await withComposeFolder { root in
+            let publishing = Signal(), publish = Signal()
+            defer { publishing.end(); publish.end() }
+            let clock = FixtureClock()
+            defer { clock.finish() }
+            let boundary = rehearsalBoundary(capturePersistence: .recorded,
+                microphone: { throw ScriptFailure.failed }, call: { _ in throw ScriptFailure.failed },
+                mine: RehearsalRecognizer(SessionRecognizer(name: "mine")), theirs: RehearsalRecognizer(SessionRecognizer(name: "theirs")),
+                now: clock.time.now, timeZone: { .gmt }, sleep: clock.sleep, intervals: testIntervals)
+            let resources = FinalizationResources(), events = Values<String>()
+            let finalization = TranscriptFinalizationModel(diarizing: FinalizationDiarizing(resources: resources),
+                cleanup: FinalizationCleanup(resources: resources), replacement: FinalizationReplacement(resources: resources),
+                finals: FinalTranscriptsPort(resources: resources, deliver: { _, _ in
+                    publishing.send()
+                    await publish.next()
+                    events.append("published")
+                }))
+            let menu = try await finalizationMenu(root: root, boundary: boundary, clock: clock, liveText: false,
+                finalization: finalization, resources: resources, terminate: { events.append("terminated") })
+            await menu.perform(.start)
+            for await state in finalization.states() where !state.calls.isEmpty { break }
+            await menu.perform(.stop)
+            await publishing.next()
+            for await state in await menu.states() where state.phase == .idle { break }
+            #expect(await !menu.relaunchIfIdle { events.append("relaunch") })
+            #expect(events.all.isEmpty)
+            #expect(!finalization.state.shuttingDown)
+            publish.send()
+            for await state in finalization.states() where state.calls.values.allSatisfy(\.published) { break }
+            #expect(await menu.relaunchIfIdle { events.append("relaunch") })
+            #expect(events.all == ["published", "relaunch", "terminated"])
+        }
+    }
+
+    @MainActor @Test
     func quitDuringTranscriptOpenPublishesItsFinalBeforeTermination() async throws {
         try await withComposeFolder { root in
             let opening = Signal(), open = Signal(), publishing = Signal(), publish = Signal()

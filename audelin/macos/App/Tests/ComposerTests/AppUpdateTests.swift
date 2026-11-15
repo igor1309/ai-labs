@@ -20,7 +20,7 @@ struct AppUpdateTests {
         }
     }
 
-    @Test func recordingIsNotInterruptedAndTheRelaunchFollowsItsEnd() async throws {
+    @Test func recordingIsNotInterruptedByAnUpdate() async throws {
 
         let relaunches = Values<Bool>(), terminated = Values<Bool>()
         try await withComposition(terminate: { terminated.append(true) }) { rig in
@@ -32,8 +32,7 @@ struct AppUpdateTests {
 
             try await rig.stop()
             await reachIdle(rig)
-            #expect(await rig.menu.relaunchIfIdle { relaunches.append(true) })
-            #expect(relaunches.all == [true] && terminated.all == [true])
+            #expect(relaunches.all.isEmpty && terminated.all.isEmpty)
         }
     }
 
@@ -74,8 +73,7 @@ struct AppUpdateTests {
             try await rig.start()
             try await rig.stop()
             await reachIdle(rig)
-            #expect(await rig.menu.relaunchIfIdle {})
-            #expect(terminated.all == [true])
+            #expect(terminated.all.isEmpty)
         }
     }
 

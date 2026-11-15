@@ -1,3 +1,4 @@
+import AgentsFile
 import CoreAudioProcesses
 import Calls
 import Recordings
@@ -38,17 +39,22 @@ public final class AudelinMenu {
     }
     public private(set) var quitting = false
     public private(set) var panelState = PanelState(recording: .off, log: .empty)
-    private(set) var panelPresence = PanelPresence()
+    /// The panel's presence, composed once the menu can show the calls list.
+    @ObservationIgnored private var presence: ObservableModel<PanelPresence, PanelPresence.Event, [PanelPresence.Effect]>!
+    @ObservationIgnored private var presenceHandler: PanelPresenceEffectHandler?
+    var panelPresence: PanelPresence { presence.state }
     public private(set) var summarySettings: AudelinSettings?
     private var chooseFolder: () async throws -> URL? = { nil }
     private var pickerFailed = false
+    /// Why the last AGENTS.md write failed, until the next attempt; the file's presence is read from disk.
+    private var agentsFailure: String?
+    /// Bumped after each write so General is built again with the disk's answer.
+    private var agentsWrites = 0
+    private let finalization: TranscriptFinalizationModel
     private var summaries: SummariesModel?
     private var presentSettings: () -> Void = {}
-    private let presentPanel: (Bool) -> Void
-    private let sleep: @Sendable (Duration) async throws -> Void
     private let sendPanelEvent: (PanelEvent) async -> Void
     private var panelObservation: Task<Void, Never>?
-    private var hideDelay: Task<Void, Never>?
     /// What stopped call watching, written in the menu's language when shown.
     private var failure: (phrase: MenuBarPhrase, reason: String)?
     private let sink: any LogSink
@@ -137,9 +143,8 @@ public final class AudelinMenu {
 
         self.sink = sink
         self.panel = panel
+        self.finalization = finalization
         self.summaries = summaries
-        self.presentPanel = presentPanel
-        self.sleep = sleep
         let application: MenuApplication?
         do {
             let recording = try await AudelinRecording(preferences: storage, folderClaim: folderClaim, occupiedCallNames: occupiedCallNames, boundary: boundary,
@@ -180,6 +185,15 @@ public final class AudelinMenu {
             unsettled: application == nil ? [.finalization, .summaries, .storage] : Set(TerminationParticipant.allCases),
             terminate: { [end = application?.end] in await end?(); await terminate() })
         self.termination = termination
+        let presenceHandler = PanelPresenceEffectHandler(
+            present: { visible, reason in
+                presentPanel(visible)
+                sink.write(.init(category: .panel, message: "\(visible ? "shown" : "hidden") reason=\(reason.rawValue)"))
+            },
+            showCalls: { [weak self] in self?.calls?.show() },
+            sleep: sleep)
+        self.presenceHandler = presenceHandler
+        presence = makePanelPresence(handler: presenceHandler)
         // What blocks a relaunch reaches Lifecycle first as it is and then on each change.
         blockerObservation = Task { [weak self] in
             for await blockers in Observations({ [weak self] in self?.relaunchBlockers ?? [] }) {
@@ -207,7 +221,7 @@ public final class AudelinMenu {
                     guard let self else { return }
                     self.state = state
                     self.calls?.recordingChanged(state)
-                    self.receivePanelPresence(.recordingChanged(panelRecordingID(state)))
+                    self.presence.event(.recordingChanged(panelRecordingID(state)))
                     sink.write(.init(category: .menu, message: "item symbol=\(self.menu.item.symbol) red=\(self.menu.item.isRed)"))
                 }
             }
@@ -243,13 +257,31 @@ public final class AudelinMenu {
                       selectedEngine: "parakeet", explainKeys: "", selectedTab: summarySettings?.selectedTab ?? .general,
                       callNotes: summarySettings?.notes ?? .loading(settingsText(.notesLoading)),
                       general: settingsText.general(languageChoice, appearance: appearance, preferred: preferredLanguages()))
+        _ = agentsWrites
+        result.general.agents = agentsOffer(in: settings.callsFolder)
         if pickerFailed, case .idle = result.folder.status { result.folder.status = .pickerFailed(reason: settingsText(.pickerFailedReason)) }
         if let recordings = calls?.recordingsState { applyFolderMove(recordings, text: settingsText, to: &result) }
         return result
     }
+    /// The General row while the recordings root has no AGENTS.md; none when it has one or is unavailable.
+    func agentsOffer(in root: URL) -> SettingsState.General.Agents? {
+        guard AgentsFile.presence(in: root) == .absent else { return nil }
+        return .init(hint: agentsFailure.map { settingsText(.agentsFailed, $0) } ?? settingsText(.agentsHint))
+    }
+
     public func sendSettings(_ event: SettingsEvent) async {
         guard !quitting else { return }
         switch event {
+        case .createAgentsFile:
+            do {
+                try AgentsFile.write(in: settings.callsFolder)
+                agentsFailure = nil
+                sink.write(.init(category: .menu, message: "AGENTS.md written"))
+            } catch {
+                sink.write(.init(category: .menu, message: "AGENTS.md write failed", error: String(describing: error)))
+                agentsFailure = error.localizedDescription
+            }
+            agentsWrites += 1
         case .changeFolder:
             choosingFolder = true
             defer { choosingFolder = false }
@@ -317,8 +349,8 @@ public final class AudelinMenu {
             await settings.setLiveText(enabled)
         case .showCalls: calls?.show()
         case .showSettings: presentSettings()
-        case .showPanel: receivePanelPresence(.reopen)
-        case .hidePanel: receivePanelPresence(.userClosed)
+        case .showPanel: presence.event(.reopen)
+        case .hidePanel: presence.event(.userClosed)
         case .openCallsFolder: openFolder(settings.callsFolder)
         case .quit:
             quitting = true
@@ -403,18 +435,19 @@ public final class AudelinMenu {
 
     private var relaunchBlockers: Set<RelaunchBlocker> {
         var blockers: Set<RelaunchBlocker> = []
+        if finalization.state.calls.values.contains(where: { !$0.published }) { blockers.insert(.finalization) }
         if choosingFolder { blockers.insert(.folderPicker) }
         if calls?.idle == false { blockers.insert(.callsWindow) }
         if summaries?.busy == true { blockers.insert(.summaries) }
         return blockers
     }
 
-    public func panelClosed() { receivePanelPresence(.userClosed) }
+    public func panelClosed() { presence.event(.userClosed) }
 
     public func appReopened() {
 
         guard !quitting else { return }
-        receivePanelPresence(.appReopen)
+        presence.event(.appReopen)
     }
 
     public func sendPanel(_ event: PanelEvent) async {
@@ -430,39 +463,10 @@ public final class AudelinMenu {
         }
     }
 
-    private func receivePanelPresence(_ event: PanelPresence.Event) {
-
-        let (next, effects) = PanelPresence.reduce(panelPresence, event)
-        panelPresence = next
-        for effect in effects {
-            switch effect {
-            case let .show(reason):
-                presentPanel(true)
-                sink.write(.init(category: .panel, message: "shown reason=\(reason.rawValue)"))
-            case let .hide(reason):
-                presentPanel(false)
-                sink.write(.init(category: .panel, message: "hidden reason=\(reason.rawValue)"))
-            case .showCalls:
-                calls?.show()
-            case .cancelDelay:
-                hideDelay?.cancel()
-                hideDelay = nil
-            case let .hideAfter(seconds, generation):
-                hideDelay = Task { [weak self, sleep] in
-                    do {
-                        try await sleep(.seconds(seconds))
-                        guard !Task.isCancelled else { return }
-                        self?.receivePanelPresence(.delayElapsed(generation))
-                    } catch {}
-                }
-            }
-        }
-    }
-
     isolated deinit {
 
         for subscription in finalizationSubscriptions { subscription.cancel() }
-        hideDelay?.cancel()
+        presenceHandler?.cancel()
         panelObservation?.cancel()
         observation?.cancel()
         detectionObservation?.cancel()

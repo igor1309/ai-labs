@@ -44,4 +44,16 @@ struct CallTagsTests {
     @Test func noTagsMeansNoneInUse() {
         #expect(CallTags.inUse([[], []]).isEmpty)
     }
+
+    @Test func anEntryCompletesToTheFirstTagInUseItStartsIgnoringCaseAndYo() {
+        #expect(CallTags.completion(of: "Кл", draft: [], inUse: ["банк", "клиент", "клиника"]) == "иент")
+        #expect(CallTags.completion(of: "се", draft: [], inUse: ["сёрфинг"]) == "рфинг")
+    }
+
+    @Test func noCompletionForAnEmptyEntryAWholeTagOrATagAlreadyInTheDraft() {
+        #expect(CallTags.completion(of: "", draft: [], inUse: ["клиент"]) == "")
+        #expect(CallTags.completion(of: "клиент", draft: [], inUse: ["клиент"]) == "")
+        #expect(CallTags.completion(of: "кл", draft: ["Клиент"], inUse: ["клиент", "клиника"]) == "иника")
+        #expect(CallTags.completion(of: "зз", draft: [], inUse: ["клиент"]) == "")
+    }
 }

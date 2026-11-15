@@ -34,7 +34,10 @@ designing, specifying or building anything.
    fixed order, keeps nothing between runs and is observed by no one is a
    plain component. One line of work is one machine: its state holds every
    stage, and its stages are collaborators behind its effect handler, never
-   machines that drive each other.
+   machines that drive each other. State is what Audelin keeps; what an
+   adapter can read again (a file's presence, a folder's contents) is the
+   outside world's, not a machine's, and one kept last outcome is a value,
+   not a machine.
 6. **Cross-cutting concerns are decorators at the root.** Logging, metrics
    and retries wrap interfaces in the composition root. No component logs.
 
@@ -48,7 +51,7 @@ platform; anything else breaks rule 1. The lanes of
 |---|---|---|
 | Machine | nothing | Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, NotesMenu, CallsList, TranscriptFinalization, RecordingConditions, CallNames |
 | Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, LatestText, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch, CallTags |
-| Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, TemplateFiles, NotesGeneration, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, TagsFile, Calls, CallsStorage, Preferences |
+| Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, TemplateFiles, NotesGeneration, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, TagsFile, AgentsFile, Calls, CallsStorage, Preferences |
 | Shared helper | nothing | SplitRows, CallFolderName, AudioConversion, ModelLoading |
 | UI | GlassLedger, NotesMarkdown, other UI | PanelUI, SettingsUI, MenuBar, CallsListUI, CallsWindowUI, SummaryPreviewUI, NotesMarkdown, GlassLedger |
 | Composition | anything | Composer, LiveAudio, RecordedCapture, CallsWindowShell, Audelin |
@@ -469,8 +472,10 @@ calls.
 
 **CallsList owns the filter and the tags editor.** Its state holds the
 query and the chosen tags, both reset when the window is shown, and one
-editor: the call, the draft, and while a save is pending its request id.
-Return or a selection move submits the draft under a new request id; an
+editor: the call, the draft, the tag being typed with its completion from
+the tags in use when editing began, and while a save is pending its request
+id. Return or a selection move submits the draft with the typed tag, under a
+new request id; an
 outcome applies only if its id is the pending one, so a late outcome of an
 earlier attempt, even for the same call and the same tags, is ignored. A
 failed save keeps the draft and shows the failure for retry, under a new
@@ -488,6 +493,40 @@ transcript write failure does. Calls and Recordings do not learn of tags.
 
 CallsListUI draws row tags and the filter strip; the detail header draws
 the tags line and its editing field. They render state and send events.
+
+## Agents file
+
+Settings → General offers to write an `AGENTS.md` that explains the
+recordings root to an AI agent (LAB-1647, `docs/spec/agents-file/`, text in
+`docs/agents-md.md`). New responsibilities: knowing whether the root has the
+file and writing it, and drawing the General row.
+
+**AgentsFile** is the only reader and writer of the root's `AGENTS.md`. It
+is given a folder and answers whether the file is there, or that the folder
+is unavailable; on request it writes the fixed text whole or not at all,
+readable by the user only, and never replaces a file already there. A
+failure carries the system's reason. The text is its resource; a test
+compares the bytes it writes with `docs/agents-md.md`, so a change to the
+call folder layout that updates the doc fails until the resource follows.
+It knows nothing of calls, Settings or when to write.
+
+**No machine decides the row.** Whether the file is there is the disk's
+state, read when General is built; nothing is kept but the reason of the
+last failed write, which the menu composition already keeps for a failed
+folder picker in the same way. A write is one quick synchronous call, so
+there is no pending write and no stale answer to order.
+
+**Construction, ownership and connections.** The menu composition, which
+already builds Settings' state, constructs and holds AgentsFile for the
+app's life. Building General's state asks AgentsFile about the current
+calls folder from preferences: absent shows the row, present or an
+unavailable folder hides it (Recording conditions shows the latter). The
+create event writes; success clears the kept failure, a failure keeps its
+reason for the row, and the next build of General shows the result.
+Nothing else constructs AgentsFile, so no recording, merge, tag or launch
+path can write the file. Calls lists only call folders, so the file in the
+root is never a call; CallsStorage and Recordings do not learn of it, and a
+folder move leaves it behind, so the new root is offered again.
 
 ## Transcript pipeline
 

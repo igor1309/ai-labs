@@ -70,11 +70,13 @@ struct MenuBarActionTests {
                 let recording = rig.menu.state
                 #expect(rig.menu.menu.entries.contains(.button("Скрыть панель", .hidePanel)))
                 await rig.menu.perform(.hidePanel)
+                await settled { visibility.all.count == 2 }
                 #expect(rig.menu.state == recording)
                 #expect(rig.menu.preferences.liveText)
                 #expect(rig.menu.menu.entries.contains(.button("Показать панель", .showPanel)))
 
                 await rig.menu.perform(.showPanel)
+                await settled { visibility.all.count == 3 }
 
                 #expect(visibility.all == [true, false, true])
                 #expect(rig.menu.state == recording)
@@ -94,13 +96,16 @@ struct MenuBarActionTests {
             let rig = try await ComposeFixture.make(root: root, presentCalls: { calls.append(true) }, presentPanel: visibility.append)
             do {
                 rig.menu.appReopened()
+                await settled { !calls.all.isEmpty }
                 #expect(calls.all == [true])
                 try await rig.start()
                 for await state in Observations({ rig.menu.state }) where state.phase == .recording { break }
+                await settled { !visibility.all.isEmpty }
                 #expect(visibility.all == [true])
                 rig.menu.appReopened()
                 rig.menu.panelClosed()
                 rig.menu.appReopened()
+                await settled { visibility.all.count == 4 }
                 #expect(visibility.all == [true, true, false, true])
                 let first = panelContentBinding(rig.menu)
                 #expect(first.state == rig.menu.panelState)

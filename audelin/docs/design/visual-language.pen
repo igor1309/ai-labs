@@ -35992,6 +35992,248 @@
                   ]
                 }
               ]
+            },
+            {
+              "type": "frame",
+              "id": "q6QCOF",
+              "name": "general-agents-missing-light",
+              "theme": {
+                "mode": "light"
+              },
+              "reusable": true,
+              "width": 668,
+              "fill": "$back",
+              "layout": "vertical",
+              "padding": "$space-24",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "Wt5uB",
+                  "name": "Settings content",
+                  "width": 620,
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "gap": "$space-24",
+                  "padding": "$space-24",
+                  "children": [
+                    {
+                      "id": "C6thl",
+                      "type": "ref",
+                      "ref": "Cb0Qc",
+                      "name": "Settings tabs",
+                      "width": "fill_container",
+                      "descendants": {
+                        "ctTw8": {
+                          "fill": "$segThumb",
+                          "effect": {
+                            "type": "shadow",
+                            "shadowType": "outer",
+                            "color": "$segShadow",
+                            "offset": {
+                              "x": 0,
+                              "y": 1
+                            },
+                            "blur": 2
+                          }
+                        },
+                        "ctTw8/EWsWH": {
+                          "content": "Основные",
+                          "fill": "$text",
+                          "fontWeight": "500"
+                        },
+                        "nor3c": {
+                          "fill": "#00000000",
+                          "effect": []
+                        },
+                        "nor3c/EWsWH": {
+                          "content": "Запись",
+                          "fill": "$text",
+                          "fontWeight": "normal"
+                        },
+                        "cUhH9": {
+                          "fill": "#00000000",
+                          "effect": []
+                        },
+                        "cUhH9/EWsWH": {
+                          "content": "Итоги звонков",
+                          "fill": "$text",
+                          "fontWeight": "normal"
+                        }
+                      }
+                    },
+                    {
+                      "id": "yHZp6",
+                      "type": "ref",
+                      "ref": "W8h2bZ",
+                      "name": "Row Язык",
+                      "width": "fill_container",
+                      "descendants": {
+                        "jasWr": {
+                          "content": "Язык"
+                        },
+                        "X4Fk5p": {
+                          "type": "frame",
+                          "id": "DDLHx",
+                          "name": "Control",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": "$space-6",
+                          "children": [
+                            {
+                              "id": "AWxXC",
+                              "type": "ref",
+                              "ref": "rT0HO",
+                              "name": "Language picker",
+                              "width": "fill_container",
+                              "descendants": {
+                                "JMakE/uluhv": {
+                                  "content": "Системный"
+                                },
+                                "tQ8hK/OdXwE": {
+                                  "content": "Русский"
+                                },
+                                "sni1W/OdXwE": {
+                                  "content": "English"
+                                }
+                              }
+                            },
+                            {
+                              "type": "text",
+                              "id": "T93lW",
+                              "name": "Language hint",
+                              "fill": "$gutter",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Сейчас русский — язык macOS. Если язык macOS не русский и не английский, Audelin на английском.",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "id": "XtSRT",
+                      "type": "ref",
+                      "ref": "W8h2bZ",
+                      "name": "Row Оформление",
+                      "width": "fill_container",
+                      "descendants": {
+                        "jasWr": {
+                          "content": "Оформление"
+                        },
+                        "X4Fk5p": {
+                          "type": "frame",
+                          "id": "PQ1fa",
+                          "name": "Control",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": "$space-6",
+                          "children": [
+                            {
+                              "id": "zoeby",
+                              "type": "ref",
+                              "ref": "rT0HO",
+                              "name": "Appearance picker",
+                              "width": "fill_container",
+                              "descendants": {
+                                "JMakE/uluhv": {
+                                  "content": "Системное"
+                                },
+                                "tQ8hK/OdXwE": {
+                                  "content": "Светлое"
+                                },
+                                "sni1W/OdXwE": {
+                                  "content": "Тёмное"
+                                }
+                              }
+                            },
+                            {
+                              "type": "text",
+                              "id": "PPerF",
+                              "name": "Appearance hint",
+                              "fill": "$gutter",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Как в macOS.",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "normal"
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    {
+                      "id": "RNtSt",
+                      "type": "ref",
+                      "ref": "W8h2bZ",
+                      "name": "Row AGENTS.md",
+                      "width": "fill_container",
+                      "descendants": {
+                        "jasWr": {
+                          "content": "Для ИИ-агентов"
+                        },
+                        "X4Fk5p": {
+                          "type": "frame",
+                          "id": "autyZ",
+                          "name": "Control",
+                          "width": "fill_container",
+                          "layout": "vertical",
+                          "gap": "$space-6",
+                          "children": [
+                            {
+                              "type": "text",
+                              "id": "Q5Nxze",
+                              "name": "T",
+                              "fill": "$text",
+                              "content": "Нет файла AGENTS.md",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-body",
+                              "fontWeight": "600"
+                            },
+                            {
+                              "type": "text",
+                              "id": "ZC1Bl",
+                              "name": "Hint",
+                              "fill": "$gutter",
+                              "textGrowth": "fixed-width",
+                              "width": "fill_container",
+                              "content": "Он объясняет ИИ-агенту, как устроена папка звонков: где расшифровка, заметки и теги. Audelin не создаёт его сам.",
+                              "lineHeight": 1.45,
+                              "fontFamily": "$font-ui",
+                              "fontSize": "$type-small",
+                              "fontWeight": "normal"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "p6eIw",
+                              "name": "Actions",
+                              "children": [
+                                {
+                                  "id": "xnqg8",
+                                  "type": "ref",
+                                  "ref": "wmGeO",
+                                  "name": "Create",
+                                  "descendants": {
+                                    "EWsWH": {
+                                      "content": "Создать AGENTS.md"
+                                    }
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
             }
           ]
         },
@@ -36039,6 +36281,15 @@
               "theme": {
                 "mode": "dark"
               }
+            },
+            {
+              "id": "nmbXG",
+              "type": "ref",
+              "ref": "q6QCOF",
+              "name": "general-agents-missing-dark",
+              "theme": {
+                "mode": "dark"
+              }
             }
           ]
         },
@@ -36048,7 +36299,7 @@
           "name": "General behavior",
           "width": 1100,
           "height": 200,
-          "content": "General. Window content only; the native title bar is not drawn. The first tab holds Language (System / Русский / English) and Appearance (System / Light / Dark), each a three-part segmented control across the row; language names are written in their own language. System language uses the first macOS preferred language Audelin supports and English otherwise. A change applies at once to every window, the panel and the menu bar, with no relaunch and no confirmation. The grey line under Language names the language System gives, or the macOS language when one is forced. Language covers UI text only: transcription, summaries and call folders do not change. Tabs, Language, Appearance and the debug chunk size are one native-style segmented control in one size. Mouse clicks a segment; Tab focuses the control and rings its selected segment in the accent colour, with no ring around the control; the arrow keys move between segments. macOS only; no phone or tablet layout."
+          "content": "General. Window content only; the native title bar is not drawn. The first tab holds Language (System / Русский / English) and Appearance (System / Light / Dark), each a three-part segmented control across the row; language names are written in their own language. System language uses the first macOS preferred language Audelin supports and English otherwise. A change applies at once to every window, the panel and the menu bar, with no relaunch and no confirmation. The grey line under Language names the language System gives, or the macOS language when one is forced. Language covers UI text only: transcription, summaries and call folders do not change. Tabs, Language, Appearance and the debug chunk size are one native-style segmented control in one size. Mouse clicks a segment; Tab focuses the control and rings its selected segment in the accent colour, with no ring around the control; the arrow keys move between segments. macOS only; no phone or tablet layout. AGENTS.md: while the recordings root has no AGENTS.md, General shows a fourth row «Для ИИ-агентов» / \"For AI agents\" with \"Нет файла AGENTS.md\", a grey hint and Button/Secondary «Создать AGENTS.md», which writes the file. When the file exists the row is hidden. Open: wording and behaviour if writing fails."
         }
       ]
     },

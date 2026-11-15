@@ -4,20 +4,70 @@ import Testing
 
 struct CallsListTagsEditorTests {
     @Test func S1_beginningStartsADraftFromTheCallsTags() {
-        assert(makeState(), .beginTags("a")) { $0.tagsEditor = .init(id: "a", draft: ["клиент"]) }
-        assert(makeState(), .beginTags("a"), delivers: nil)
+        assert(makeState(), .beginTags("a", inUse: ["клиент", "банк"])) {
+            $0.tagsEditor = .init(id: "a", draft: ["клиент"], inUse: ["клиент", "банк"])
+        }
+        assert(makeState(), .beginTags("a", inUse: []), delivers: nil)
     }
 
     @Test func aCallThatCannotBeEditedOrABusyListStartsNoDraft() {
-        assert(makeState(rows: [row("a", editable: false)]), .beginTags("a"))
-        assert(makeState(busy: true), .beginTags("a"))
-        assert(makeState(), .beginTags("missing"))
+        assert(makeState(rows: [row("a", editable: false)]), .beginTags("a", inUse: []))
+        assert(makeState(busy: true), .beginTags("a", inUse: []))
+        assert(makeState(), .beginTags("missing", inUse: []))
     }
 
-    @Test func editingChangesOnlyTheDraft() {
-        assert(makeState(editor: .init(id: "a", draft: ["клиент"])), .editTags(["клиент", "банк"])) {
-            $0.tagsEditor?.draft = ["клиент", "банк"]
+    @Test func editingTheDraftCompletesTheEntryAgainstIt() {
+        let complete = CompleteSpy("")
+        let state = makeState(editor: .init(id: "a", draft: ["клиент", "банк"], entry: "к", completion: "лиент", inUse: ["клиент"]))
+        assert(state, .editTags(["банк"]), using: makeSUT(complete: complete)) {
+            $0.tagsEditor?.draft = ["банк"]
+            $0.tagsEditor?.completion = ""
         }
+        #expect(complete.payloads == [.init(entry: "к", draft: ["банк"], inUse: ["клиент"])])
+        assert(state, .editTags(["банк"]), delivers: nil, using: makeSUT(complete: CompleteSpy("")))
+    }
+
+    @Test func typingSetsTheEntryAndItsCompletion() {
+        let complete = CompleteSpy("иент")
+        let state = makeState(editor: .init(id: "a", draft: ["банк"], inUse: ["клиент"]))
+        assert(state, .typeTag("кл"), using: makeSUT(complete: complete)) {
+            $0.tagsEditor?.entry = "кл"
+            $0.tagsEditor?.completion = "иент"
+        }
+        #expect(complete.payloads == [.init(entry: "кл", draft: ["банк"], inUse: ["клиент"])])
+        assert(state, .typeTag("кл"), delivers: nil, using: makeSUT(complete: CompleteSpy("иент")))
+    }
+
+    @Test func tabTakesTheCompletionIntoTheEntry() {
+        let complete = CompleteSpy("")
+        let state = makeState(editor: .init(id: "a", draft: [], entry: "кл", completion: "иент", inUse: ["клиент"]))
+        assert(state, .completeTag, using: makeSUT(complete: complete)) {
+            $0.tagsEditor?.entry = "клиент"
+            $0.tagsEditor?.completion = ""
+        }
+        #expect(complete.payloads == [.init(entry: "клиент", draft: [], inUse: ["клиент"])])
+        assert(state, .completeTag, delivers: nil, using: makeSUT(complete: CompleteSpy("")))
+    }
+
+    @Test func tabWithNoCompletionOrTypingWithNoEditorChangesNothing() {
+        assert(makeState(editor: .init(id: "a", draft: [], entry: "зз")), .completeTag)
+        assert(makeState(), .typeTag("кл"))
+        assert(makeState(), .completeTag)
+        assert(makeState(), .editTags(["банк"]))
+    }
+
+    @Test func returnSavesTheEntryAsTheLastTagAndClearsIt() {
+        let normalize = Spy<[String], [String]> { _ in ["банк", "клиент"] }
+        let state = makeState(editor: .init(id: "a", draft: ["банк"], entry: " клиент", completion: "", inUse: ["клиент"]))
+        assert(state, .submitTags, using: makeSUT(normalize: normalize)) {
+            $0.tagsEditor = .init(id: "a", draft: ["банк", "клиент"], pending: 1, inUse: ["клиент"])
+            $0.tagsRequest = 1
+            $0.requests = [.setTags(request: 1, id: "a", tags: ["банк", "клиент"])]
+            $0.asked += 1
+        }
+        #expect(normalize.payloads == [["банк", " клиент"]])
+        assert(state, .submitTags, delivers: [.setTags(request: 1, id: "a", tags: ["банк", "клиент"])],
+               using: makeSUT(normalize: .init(transform: { _ in ["банк", "клиент"] })))
     }
 
     @Test func returnSubmitsTheNormalizedDraftUnderANewRequestID() {
@@ -25,12 +75,13 @@ struct CallsListTagsEditorTests {
         let sut = makeSUT(normalize: normalize)
         let state = makeState(editor: .init(id: "a", draft: [" клиент", "банк", "Клиент"]), tagsRequest: 4)
         assert(state, .submitTags, using: sut) {
+            $0.tagsEditor?.draft = ["клиент", "банк"]
             $0.tagsEditor?.pending = 5
             $0.tagsRequest = 5
             $0.requests = [.setTags(request: 5, id: "a", tags: ["клиент", "банк"])]
             $0.asked += 1
         }
-        #expect(normalize.payloads == [[" клиент", "банк", "Клиент"]])
+        #expect(normalize.payloads == [[" клиент", "банк", "Клиент", ""]])
         assert(state, .submitTags, delivers: [.setTags(request: 5, id: "a", tags: ["клиент", "банк"])], using: sut)
     }
 
@@ -80,7 +131,7 @@ struct CallsListTagsEditorTests {
 
     @Test func editingAnotherCallIsUnavailableWhileASaveIsPending() {
         let state = makeState(editor: .init(id: "a", draft: ["банк"], pending: 2), tagsRequest: 2)
-        assert(state, .beginTags("b"))
+        assert(state, .beginTags("b", inUse: []))
         assert(state, .tagsFinished(request: 2, .failed("disk"))) {
             $0.tagsEditor = .init(id: "a", draft: ["банк"], failure: "disk")
         }
@@ -88,7 +139,7 @@ struct CallsListTagsEditorTests {
 
     @Test func anotherCallCanBeEditedOnceNothingIsPending() {
         let state = makeState(editor: .init(id: "a", draft: ["банк"], failure: "disk"))
-        assert(state, .beginTags("b")) { $0.tagsEditor = .init(id: "b", draft: []) }
+        assert(state, .beginTags("b", inUse: [])) { $0.tagsEditor = .init(id: "b", draft: []) }
     }
 
     @Test func escapeDropsADraftNotYetPending() {
@@ -113,14 +164,33 @@ private final class Spy<Payload: Sendable, Answer: Sendable>: Sendable {
     }
 }
 
-private func makeSUT(normalize: Spy<[String], [String]> = .init(transform: { $0 })) -> CallsListReducer {
+private struct Completing: Equatable, Sendable {
+    var entry: String
+    var draft: [String]
+    var inUse: [String]
+}
+
+private typealias CompleteSpy = Spy<Completing, String>
+
+private extension Spy where Payload == Completing, Answer == String {
+    convenience init(_ answer: String) { self.init(transform: { _ in answer }) }
+}
+
+private func makeSUT(normalize: Spy<[String], [String]> = .init(transform: { $0.filter { !$0.isEmpty } }),
+                     complete: CompleteSpy? = nil) -> CallsListReducer {
     CallsListReducer(splitQuery: { _ in
         Issue.record("The query is not split while editing tags")
         return ([], "")
     }, tagKey: { _ in
         Issue.record("No tag is compared while editing tags")
         return ""
-    }, normalizeTags: { normalize.call($0) })
+    }, normalizeTags: { normalize.call($0) }, complete: { entry, draft, inUse in
+        guard let complete else {
+            Issue.record("No tag is completed for this event")
+            return ""
+        }
+        return complete.call(.init(entry: entry, draft: draft, inUse: inUse))
+    })
 }
 
 private func row(_ id: String, editable: Bool = true) -> CallsListMachineState.Row {

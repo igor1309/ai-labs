@@ -88,6 +88,8 @@ leaves no `summary.md` or `.summary-job.json`, saves screenshots of the making,
 completed and cancelled states (and of any failed wait), and quits each run. The
 folder it prints under `$TMPDIR` keeps the fixtures and screenshots.
 
+`sh scripts/live-calls-rename.sh` runs the same way for renaming a call in the list
+(Return, click, right-click, arrow, Escape), and runs nightly on the self-hosted Mac.
 `sh scripts/live-calls-merge.sh` runs the same way for merging calls, on calls
 seeded through the app's own writers. What each live test proves, its fixtures
 and its output are in `macos/scripts/live/README.md`.

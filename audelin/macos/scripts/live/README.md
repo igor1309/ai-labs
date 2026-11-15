@@ -10,6 +10,7 @@ no component test reaches.
 | `sh scripts/live-calls-summary.sh` | A call's notes are made, shown and written, and a cancel leaves no notes or job file. |
 | `sh scripts/live-calls-merge.sh` | Merging calls in the calls window, end to end (below). |
 | `sh scripts/live-calls-tags.sh` | Tags typed in the detail are written to the call's folder and shown in its row and the strip; a chip filters the list; merged calls keep both parts' tags. |
+| `sh scripts/live-calls-rename.sh` | Renaming a call in the list: Return saves without opening the folder; clicking, right-clicking or arrowing to another row saves; Escape cancels (below). |
 | `sh scripts/live-browser-names.sh` | A rehearsed call with recorded Telemost extension events names the remote speakers in the panel and the transcript. |
 
 ## Running
@@ -33,6 +34,8 @@ coordinates or OCR.
 `--calls`, `--state` and `--trash` folders, so a run never touches the user's
 calls, preferences or Trash; notes are made by a fake service that writes
 `state/control/started-N` and answers once the driver writes `finish-N`.
+The rehearsal never opens Finder: opening a call's folder writes `state/control/opened-<uuid>`
+holding the folder's path, so a driver can check that nothing was opened.
 `--seed merge` writes calls through the app's own track and transcript writers
 before launch: A at 10:00 and B at 10:06, one call cut off, each with two remote
 speakers and notes; C, whose transcript failed (a track, no transcript); and D,
@@ -60,3 +63,21 @@ a crash leaves a merge of A and B: B inside the merge's prepared folder.
 
 The run removes the seeded folders and keeps the screenshots and the merged
 transcript.
+
+## Renaming calls
+
+`live-calls-rename.sh` starts each scenario from a fresh `--seed merge` folder and
+renames A from its row's ⌘R. The rename field is `calls.rename`; while it is open
+its row (`calls.select.<id>`) is not a button, so the field is reachable through
+accessibility.
+
+1. Return saves: the folder becomes `<id> <title>`, A stays selected and no folder
+   is opened.
+2. Clicking B saves A's title and selects B.
+3. Right-clicking B saves A's title and selects B. The right-click goes to the
+   middle of B's accessibility frame, since the row's menu is AppKit's.
+4. Up saves A's title and selects B, the row above it.
+5. Escape closes the field and leaves the folder and nothing opened.
+
+The scenarios fail if the list's key handler takes Return while a rename is open.
+The run keeps screenshots of the editing, saved and cancelled states.
