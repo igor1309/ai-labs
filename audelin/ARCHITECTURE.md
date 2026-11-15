@@ -46,9 +46,9 @@ platform; anything else breaks rule 1. The lanes of
 
 | Kind | May import | Targets |
 |---|---|---|
-| Machine | nothing | Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, NotesMenu, CallsList, TranscriptFinalization, RecordingConditions, CallNames |
+| Machine | nothing | Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, NotesMenu, CallsList, TranscriptFinalization, RecordingConditions, CallNames, AgentsOffer |
 | Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, LatestText, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch, CallTags |
-| Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, TemplateFiles, NotesGeneration, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, TagsFile, Calls, CallsStorage, Preferences |
+| Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, TemplateFiles, NotesGeneration, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, TagsFile, AgentsFile, Calls, CallsStorage, Preferences |
 | Shared helper | nothing | SplitRows, CallFolderName, AudioConversion, ModelLoading |
 | UI | GlassLedger, NotesMarkdown, other UI | PanelUI, SettingsUI, MenuBar, CallsListUI, CallsWindowUI, SummaryPreviewUI, NotesMarkdown, GlassLedger |
 | Composition | anything | Composer, LiveAudio, RecordedCapture, CallsWindowShell, Audelin |
@@ -490,6 +490,46 @@ transcript write failure does. Calls and Recordings do not learn of tags.
 
 CallsListUI draws row tags and the filter strip; the detail header draws
 the tags line and its editing field. They render state and send events.
+
+## Agents file
+
+Settings → General offers to write an `AGENTS.md` that explains the
+recordings root to an AI agent (LAB-1647, `docs/spec/agents-file/`, text in
+`docs/agents-md.md`). New responsibilities: knowing whether the root has the
+file and writing it, deciding what the General row shows, and drawing it.
+
+**AgentsFile** is the only reader and writer of the root's `AGENTS.md`. It
+is given a folder and answers whether the file is there, or that the folder
+is unavailable; on request it writes the fixed text whole or not at all,
+readable by the user only, and never replaces a file already there. A
+failure carries the system's reason. The text is its resource; a test
+compares the bytes it writes with `docs/agents-md.md`, so a change to the
+call folder layout that updates the doc fails until the resource follows.
+It knows nothing of calls, Settings or when to write.
+
+**AgentsOffer** is a small machine that decides the row. Its state is
+hidden, offered, writing, or failed with a reason. It asks its check port
+when General is shown and after a write, and its create port when the user
+presses the button; a check answer applies only if it answers the latest
+check, so a slow check never brings back a row a write just hid. It owns
+these two ports and its outcome words; it never sees a folder or a file.
+
+**SettingsUI** draws the row from an optional part of General's state (the
+reason replaces the hint when the write failed; the button is disabled only
+while writing) and sends one event, create. It reads no file.
+
+**Construction, ownership and connections.** The menu composition, which
+already holds Settings' state, constructs and holds one AgentsOffer for the
+app's life. It answers both ports with AgentsFile on the current calls
+folder from preferences, off the main actor, and maps AgentsFile's answers
+into AgentsOffer's words; an unavailable folder maps to hidden, since
+Recording conditions shows that state. It sends shown when Settings opens
+on General or General is selected, maps the machine's state into
+SettingsUI's row with localised text, and routes create. Nothing else
+constructs AgentsFile, so no recording, merge, tag or launch path can
+write the file. Calls lists only call folders, so the file in the root is
+never a call; CallsStorage and Recordings do not learn of it, and a folder
+move leaves it behind, so the new root is offered again.
 
 ## Transcript pipeline
 
