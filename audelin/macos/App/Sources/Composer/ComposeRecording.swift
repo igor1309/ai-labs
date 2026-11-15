@@ -30,7 +30,7 @@ func composeRecording(
     let model = await makeRecording(initial: initial, session: LoggingRecordingSession(base: sessions, sink: sink), log: log, callAudioReady: {
         guard await access.refresh() else { return false }
         return await access.reserve()
-    }, callAudioReleased: { await access.release() })
+    }, callAudioReleased: { await access.release() }, runPiece: { id, effect in await sessions.runPiece(id: id, effect) })
     var recording = RecordingInputs(send: model.send, state: model.state, states: model.states, end: {
         destination.withLock { $0 = nil }
         await model.end()

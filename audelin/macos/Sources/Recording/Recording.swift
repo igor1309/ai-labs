@@ -99,6 +99,8 @@ public struct RecordingState: Equatable, Sendable {
     public var shutdown: Shutdown?
     /// The work running for the current session, if any.
     public var stage: Stage?
+    /// The current session's pieces, as the Session reducer leaves them.
+    public var pieces: SessionState?
 
     /// One session's line of work: get call audio, begin the Session, end it, release call audio.
     public enum Stage: Equatable, Sendable {
@@ -145,6 +147,8 @@ public enum RecordingEvent: Equatable, Sendable {
     case sessionAccepted(id: UInt64)
     /// The Session has finished, asked to or on its own.
     case sessionFinished(id: UInt64)
+    /// A result or report of the session's pieces.
+    case session(id: UInt64, SessionEvent)
 }
 
 public enum RecordingEffect: Equatable, Sendable {
@@ -153,11 +157,38 @@ public enum RecordingEffect: Equatable, Sendable {
     case begin(id: UInt64)
     case end(id: UInt64)
     case releaseCallAudio(id: UInt64)
+    /// Work for one of the session's pieces.
+    case session(id: UInt64, SessionEffect)
 }
 
-public enum RecordingReducer {
+public struct RecordingReducer: Sendable {
+
+    private let session: @Sendable (SessionState, SessionEvent) -> (SessionState, SessionEffect?)
+
+    /// `session` advances the current session's pieces.
+    public init(session: @escaping @Sendable (SessionState, SessionEvent) -> (SessionState, SessionEffect?)) {
+
+        self.session = session
+    }
 
     public static func reduce(_ state: RecordingState, _ event: RecordingEvent) -> (RecordingState, RecordingEffect?) {
+
+        Self(session: SessionReducer.reduce).reduce(state, event)
+    }
+
+    public func reduce(_ state: RecordingState, _ event: RecordingEvent) -> (RecordingState, RecordingEffect?) {
+
+        var state = state
+        if case let .session(id, event) = event {
+            guard state.session?.id == id, let pieces = state.pieces else { return (state, nil) }
+            let (next, effect) = session(pieces, event)
+            state.pieces = next
+            return (state, effect.map { .session(id: id, $0) })
+        }
+        return Self.reduceRecording(state, event)
+    }
+
+    private static func reduceRecording(_ state: RecordingState, _ event: RecordingEvent) -> (RecordingState, RecordingEffect?) {
 
         var state = state
         if let id = state.session?.id {
@@ -214,7 +245,7 @@ public enum RecordingReducer {
 
         var state = state
         switch event {
-        case .callAudioPrepared, .sessionAccepted, .sessionFinished:
+        case .callAudioPrepared, .sessionAccepted, .sessionFinished, .session:
             return state
         case .shutdown:
             guard state.shutdown == nil else { return state }
@@ -357,14 +388,18 @@ public final class RecordingEffectHandler: Sendable {
     private let session: any RecordingSession
     private let prepareCallAudio: @Sendable () async -> Bool
     private let releaseCallAudio: @Sendable () async -> Void
+    private let runPiece: @Sendable (UInt64, SessionEffect) async -> SessionEvent
 
+    /// `runPiece` runs one piece's work for the session with that id and answers with its result.
     public init(session: any RecordingSession,
                 prepareCallAudio: @escaping @Sendable () async -> Bool,
-                releaseCallAudio: @escaping @Sendable () async -> Void) {
+                releaseCallAudio: @escaping @Sendable () async -> Void,
+                runPiece: @escaping @Sendable (UInt64, SessionEffect) async -> SessionEvent) {
 
         self.session = session
         self.prepareCallAudio = prepareCallAudio
         self.releaseCallAudio = releaseCallAudio
+        self.runPiece = runPiece
     }
 
     public func handle(_ effect: RecordingEffect) async -> RecordingEvent {
@@ -381,6 +416,8 @@ public final class RecordingEffectHandler: Sendable {
         case let .releaseCallAudio(id):
             await releaseCallAudio()
             return .sessionReported(id: id, .ended)
+        case let .session(id, effect):
+            return .session(id: id, await runPiece(id, effect))
         }
     }
 }

@@ -147,20 +147,93 @@ struct RecordingEffectHandlerTests {
         #expect(await event == .sessionReported(id: 3, .ended))
         #expect(await spies.release.count == 1)
     }
+
+    @Test func aPieceEffectAnswersWithThePieceResultForItsSession() async {
+        let (sut, spies) = makeHandler()
+        async let event = sut.handle(.session(id: 3, .createFolder))
+        await spies.piece.complete(with: .folderFinished(error: nil))
+        #expect(await event == .session(id: 3, .folderFinished(error: nil)))
+        #expect(await spies.pieceCalls.calls == [.init(id: 3, effect: .createFolder)])
+    }
 }
 
 private struct HandlerSpies {
     let session = SessionSpy()
     let prepare = CallSpy<Bool>()
     let release = CallSpy<Void>()
+    let piece = CallSpy<SessionEvent>()
+    let pieceCalls = PieceCalls()
+}
+
+actor PieceCalls {
+    struct Call: Equatable { let id: UInt64; let effect: SessionEffect }
+    private(set) var calls: [Call] = []
+    func record(_ id: UInt64, _ effect: SessionEffect) { calls.append(.init(id: id, effect: effect)) }
 }
 
 private func makeHandler() -> (RecordingEffectHandler, HandlerSpies) {
     let spies = HandlerSpies()
     let sut = RecordingEffectHandler(session: spies.session,
                                      prepareCallAudio: { [prepare = spies.prepare] in await prepare.call() },
-                                     releaseCallAudio: { [release = spies.release] in await release.call() })
+                                     releaseCallAudio: { [release = spies.release] in await release.call() },
+                                     runPiece: { [piece = spies.piece, calls = spies.pieceCalls] id, effect in
+                                         await calls.record(id, effect)
+                                         return await piece.call()
+                                     })
     return (sut, spies)
 }
 
 private func makeReleasing() -> RecordingState { makeState(makeEnding()) { $0.stage = .releasing } }
+
+/// The current session's pieces advance through the injected Session reducer.
+@Suite(.timeLimit(.minutes(1)))
+struct RecordingPiecesTests {
+
+    @Test func aPieceEventForTheCurrentSessionAdvancesItsPieces() {
+        let spy = PieceReducerSpy(stub: (SessionState(phase: .recording), .createFolder))
+        let sut = RecordingReducer(session: spy.reduce)
+        let state = makeWithPieces()
+        let event = RecordingEvent.session(id: 1, .modelsChecked(missing: []))
+        let (next, effect) = sut.reduce(state, event)
+        #expect(next == makeState(state) { $0.pieces = SessionState(phase: .recording) })
+        #expect(effect == .session(id: 1, .createFolder))
+        #expect(spy.calls == [.init(state: SessionState(phase: .bringingUp), event: .modelsChecked(missing: []))])
+    }
+
+    @Test func aPieceEventForAnotherSessionChangesNothing() {
+        let spy = PieceReducerSpy(stub: (SessionState(phase: .recording), .createFolder))
+        let sut = RecordingReducer(session: spy.reduce)
+        let state = makeWithPieces()
+        #expect(sut.reduce(state, .session(id: 2, .end)).0 == state)
+        #expect(sut.reduce(state, .session(id: 2, .end)).1 == nil)
+        #expect(spy.calls.isEmpty)
+    }
+
+    @Test func aPieceEventWithoutPiecesChangesNothing() {
+        let spy = PieceReducerSpy(stub: (SessionState(phase: .recording), .createFolder))
+        let sut = RecordingReducer(session: spy.reduce)
+        #expect(sut.reduce(makeRunning(), .session(id: 1, .end)).0 == makeRunning())
+        #expect(sut.reduce(makeRunning(), .session(id: 1, .end)).1 == nil)
+        #expect(spy.calls.isEmpty)
+    }
+
+    @Test func otherEventsDoNotCallTheSessionReducer() {
+        let spy = PieceReducerSpy(stub: (SessionState(), nil))
+        let sut = RecordingReducer(session: spy.reduce)
+        _ = sut.reduce(makeWithPieces(), .automaticChanged(false))
+        #expect(spy.calls.isEmpty)
+    }
+}
+
+private func makeWithPieces() -> RecordingState { makeState(makeRunning()) { $0.pieces = SessionState(phase: .bringingUp) } }
+
+private final class PieceReducerSpy: @unchecked Sendable {
+    struct Call: Equatable { let state: SessionState; let event: SessionEvent }
+    private(set) var calls: [Call] = []
+    private let stub: (SessionState, SessionEffect?)
+    init(stub: (SessionState, SessionEffect?)) { self.stub = stub }
+    func reduce(_ state: SessionState, _ event: SessionEvent) -> (SessionState, SessionEffect?) {
+        calls.append(.init(state: state, event: event))
+        return stub
+    }
+}

@@ -26,7 +26,7 @@ struct RecordingReservationTests {
 
 private func makeHandler() -> RecordingEffectHandler {
 
-    RecordingEffectHandler(session: IdleSession(), prepareCallAudio: { false }, releaseCallAudio: {})
+    RecordingEffectHandler(session: IdleSession(), prepareCallAudio: { false }, releaseCallAudio: {}, runPiece: { _, _ in .outputReleased })
 }
 
 private struct IdleSession: RecordingSession {

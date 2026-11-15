@@ -37,11 +37,12 @@ func oneEvent<Event: Sendable>(_ handle: @escaping @Sendable () async -> Event) 
 func makeRecording(
     initial: RecordingState, session: any RecordingSession, log: @escaping @Sendable (RecordingState) -> Void,
     callAudioReady: @escaping @Sendable () async -> Bool,
-    callAudioReleased: @escaping @Sendable () async -> Void
+    callAudioReleased: @escaping @Sendable () async -> Void,
+    runPiece: @escaping @Sendable (UInt64, SessionEffect) async -> SessionEvent
 ) -> RecordingInputs {
 
     let handler = RecordingEffectHandler(session: session, prepareCallAudio: callAudioReady,
-                                         releaseCallAudio: callAudioReleased)
+                                         releaseCallAudio: callAudioReleased, runPiece: runPiece)
     let model = RecordingModel(initial: initial, handler: handler, log: log)
     var inputs = RecordingInputs(
         send: { await model.send($0) },

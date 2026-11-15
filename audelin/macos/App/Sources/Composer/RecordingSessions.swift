@@ -12,6 +12,7 @@ actor RecordingSessions: RecordingSession {
         let session: SessionInputs
         let subscription: Task<Void, Never>
         let pieces: SessionPieces
+        let handler: SessionEffectHandler
         var observation: Task<Void, Never>?
         var enders: [CheckedContinuation<Void, Never>] = []
     }
@@ -57,7 +58,7 @@ actor RecordingSessions: RecordingSession {
             let forwarding = subscribe(pieces, to: session)
             await withTaskCancellationHandler { await forwarding.value } onCancel: { forwarding.cancel() }
         }
-        running[id] = Running(session: session, subscription: subscription, pieces: pieces)
+        running[id] = Running(session: session, subscription: subscription, pieces: pieces, handler: handler)
         // Register before begin so even a short-lived state is retained.
         let states = await session.states()
         let feed = await pieces.readingText()
@@ -85,6 +86,13 @@ actor RecordingSessions: RecordingSession {
         guard let entry = running[id] else { return }
         entry.session.send(.end)
         await withCheckedContinuation { running[id]?.enders.append($0) }
+    }
+
+    /// Runs one piece's work for that session; a session no longer held has nothing left to run.
+    func runPiece(id: UInt64, _ effect: SessionEffect) async -> SessionEvent {
+
+        guard let handler = running[id]?.handler else { return .outputReleased }
+        return await handler.handle(effect)
     }
 
     private func send(_ event: SessionEvent, id: UInt64) {
