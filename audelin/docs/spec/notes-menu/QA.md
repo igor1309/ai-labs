@@ -1,4 +1,4 @@
-# Call detail, templates — QA
+# Notes menu — QA
 
 Each row is a reducer test paired with its effect test, through fake
 notes, catalogue, keep and folder ports; intentions are read from the
@@ -57,7 +57,8 @@ catalogue. Evidence: Missing.
 Reducer: catalogue failed → built-in Default enabled with the reason.
 Effect: the fake fails the read. Evidence: Missing.
 
-## S-17 Cancelling making notes again
+## S-18 No template while notes are being made
 
-Reducer: progress + cancel chosen → intention (call, cancel), no effect.
-Effect: none. Read back the output's one value. Evidence: Missing.
+Reducer: facts changed busy + menu opened → every template disabled; a
+template chosen while busy publishes no intention. Effect: read catalogue as
+S-1. Evidence: Missing.

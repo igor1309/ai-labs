@@ -1,7 +1,7 @@
 # Call detail, versions — QA
 
 Each row is a reducer test paired with its effect test, through a fake
-notes port.
+notes port; intentions and facts are read from the machine's output.
 
 ## S-1 Attribution
 
@@ -27,3 +27,13 @@ Evidence: Missing.
 
 Reducer: notes + progress ended cancelled → no progress, same pair.
 Effect: none. Evidence: Missing.
+
+## S-6 Cancelling making notes again
+
+Reducer: progress + cancel chosen → intention (call, cancel), no effect.
+Effect: none. Read back the output's one value. Evidence: Missing.
+
+## S-7 The menu's facts
+
+Reducer: notes made with Daily + progress started → facts (call, has notes,
+Daily, busy). Effect: none. Read back the output's last value. Evidence: Missing.

@@ -1,7 +1,7 @@
 # Template files — the templates folder and its catalogue
 
 Observer: the client listing templates and resolving one for notes, through
-interfaces it owns (CallDetail for the catalogue, SummaryJobs for
+interfaces it owns (NotesMenu for the catalogue, SummaryJobs for
 resolution, both wired by the composer). Oracle: `../notes-templates/SPEC.md`
 S-1, S-11 to S-13, `../daily-notes/SPEC.md` and `../../ARCHITECTURE.md`
 § Generation.
@@ -11,17 +11,14 @@ S-1, S-11 to S-13, `../daily-notes/SPEC.md` and `../../ARCHITECTURE.md`
 - **Shipped Default and Daily are written only when the folder is absent**
   (notes-templates Decided); an existing folder, empty included, is never
   replenished, so a deletion stays.
-- **A bad file is an unusable entry with its reason, never rewritten,**
-  so an edit is never lost or silently fixed.
-- **A built-in Default always resolves,** independent of any file, so notes
-  can always be made (notes-templates S-13).
-- **A chosen template that is missing or broken is reported,** never
-  replaced by another, so notes are never made with the wrong template.
-- **Each resolution reads the file afresh,** so an edit is used next time
-  without a restart (notes-templates S-11).
+- **A bad file is an unusable entry with its reason, never rewritten,** so
+  an edit is never lost or silently fixed.
+- **A built-in Default always resolves,** independent of any file
+  (notes-templates S-13); a chosen template that is missing or broken is
+  reported, never replaced by another.
+- **Each resolution reads the file afresh** (notes-templates S-11).
 - **What Default and Daily ask for is their file content,** owned here only:
-  Default keeps today's notes sections; Daily asks for the handoff
-  `../daily-notes/SPEC.md` describes.
+  Default keeps today's sections; Daily asks for `../daily-notes/SPEC.md`.
 
 ```gherkin
 Feature: Templates folder and catalogue
@@ -36,10 +33,25 @@ Feature: Templates folder and catalogue
     When the catalogue is listed
     Then I can list no Daily file entry
 
-  Scenario: S-3 An unusable file is listed with its reason
-    Given a template file cannot be parsed
+  Scenario: S-13 A valid file is resolved
+    Given a template file with a name, headings and instructions
+    When it is resolved
+    Then I can read its name, required and optional headings in order, and instructions
+
+  Scenario: S-15 Unreadable metadata
+    Given a template file whose metadata cannot be parsed
     When the catalogue is listed
-    Then I can read that entry as unusable with its reason
+    Then I can read that entry as unusable with why
+
+  Scenario: S-16 No required headings
+    Given a template file that declares no required heading
+    When the catalogue is listed
+    Then I can read that entry as unusable with why
+
+  Scenario: S-17 Empty instructions
+    Given a template file with no instructions
+    When the catalogue is listed
+    Then I can read that entry as unusable with why
 
   Scenario: S-4 An unusable file is left as it was
     Given a template file cannot be parsed

@@ -2,36 +2,36 @@
 
 Observer: the app's calls window, which hosts the detail view the shell
 builds. Drawing is `../summary-preview-templates/SPEC.md`; deciding is
-`../call-detail-templates/SPEC.md`. Oracle: `../../ARCHITECTURE.md`
+`../notes-menu/SPEC.md` and `../call-detail/SPEC.md`. Oracle: `../../ARCHITECTURE.md`
 § Construction, ownership and connections.
 
 ## Decided
 
-- **The shell maps each menu interaction to one CallDetail event** and
-  holds no menu policy.
+- **The shell maps each menu interaction to one event of NotesMenu or
+  CallDetail** and holds no menu policy.
 
 ```gherkin
 Feature: The template menu's interactions
 
-  Scenario: S-1 A chosen template reaches the detail
+  Scenario: S-1 A chosen template reaches the menu
     Given the detail view is shown
     When a template item is chosen
-    Then I can observe the detail receiving that template
+    Then I can observe the menu receiving that template
 
   Scenario: S-2 The version switch reaches the detail
     Given the detail view shows the version switch
     When Previous is chosen
     Then I can observe the detail receiving Previous
 
-  Scenario: S-3 The keep item reaches the detail
+  Scenario: S-3 The keep item reaches the menu
     Given the menu is open
     When the keep item is chosen
-    Then I can observe the detail receiving the toggle
+    Then I can observe the menu receiving the toggle
 
-  Scenario: S-4 The folder action reaches the detail
+  Scenario: S-4 The folder action reaches the menu
     Given the menu is open
     When the folder action is chosen
-    Then I can observe the detail receiving it
+    Then I can observe the menu receiving it
 
   Scenario: S-6 Cancel reaches the detail
     Given notes are being made again

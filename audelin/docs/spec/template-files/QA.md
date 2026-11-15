@@ -13,11 +13,6 @@ folder's files and the listed entries. Evidence: Missing.
 Drive: make the temp folder with only a Default file; list; read back that no
 Daily file was written and no Daily file entry is listed. Evidence: Missing.
 
-## S-3 An unusable file is listed with its reason
-
-Drive: write a file without instructions; list; read back the entry's
-unusable reason text. Evidence: Missing.
-
 ## S-4 An unusable file is left as it was
 
 Drive: as S-3, then compare the file's bytes and modification date with
@@ -63,3 +58,24 @@ Drive: resolve the shipped Daily from a fresh folder; read back that its
 instructions ask for continuation, owners, blockers, planned fixes and
 meetings, agreed versus suggested, unclear owners and fixes, and topics not
 discussed. Evidence: Missing.
+
+## S-13 A valid file is resolved
+
+Drive: resolve each of the shipped Default and Daily and a fixture custom
+file; read back name, required and optional headings in their order, and
+instructions equal to the fixture's. Evidence: Missing.
+
+## S-15 Unreadable metadata
+
+Drive: fixture with unterminated front matter; list; read back unusable and
+a reason naming the metadata. Evidence: Missing.
+
+## S-16 No required headings
+
+Drive: fixture whose metadata omits required headings; list; read back the
+reason. Evidence: Missing.
+
+## S-17 Empty instructions
+
+Drive: fixture with metadata and an empty body; list; read back the reason.
+Evidence: Missing.

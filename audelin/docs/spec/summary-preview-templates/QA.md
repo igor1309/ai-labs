@@ -46,3 +46,8 @@ Drive: Daily fixture; read back the header's template text. Evidence: Missing.
 
 Drive: progress-with-notes fixture; read back both progress and notes
 text. Evidence: Missing.
+
+## S-10 The menu while notes are being made
+
+Drive: busy fixture; read back every template item disabled, pressing one
+records no interaction, and Cancel records cancel. Evidence: Missing.

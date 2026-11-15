@@ -1,12 +1,20 @@
 # Call detail — Previous, Current and the notes beside a run
 
 Observer: SummaryPreviewUI, which draws CallDetail's state and sends back
-the version the user chooses. The menu is `../call-detail-templates/SPEC.md`,
-whose Machine section names the `State`, `Event` and `Effect` this spec
-uses: here the shown version, its template, and progress beside the pair.
-Each scenario is one reducer test paired with one effect test. Oracle:
-`../notes-templates/SPEC.md` S-5, S-6, S-9, S-10, S-14 and
-`../../ARCHITECTURE.md` § Presentation.
+the version chosen and cancel, and the composer, which routes the cancel
+intention to SummaryJobs and the menu's facts to NotesMenu. The menu is
+`../notes-menu/SPEC.md`. Oracle: `../notes-templates/SPEC.md` S-5, S-6,
+S-9, S-10, S-14, `../summary-preview/SPEC.md` and `../../ARCHITECTURE.md`
+§ Presentation and menu.
+
+## Machine
+
+The existing async CallDetail machine. `State` gains the published pair,
+the shown version with its template, and progress or failure beside the
+pair. `Event` gains version chosen, cancel chosen and publication notified.
+`Effect` reuses read notes; cancel and the menu's facts are published as
+intentions and values, never effects on another machine. Each scenario is
+one reducer test paired with one effect test.
 
 ## Decided
 
@@ -42,4 +50,14 @@ Feature: Previous, Current and the notes beside a run
     Given the shown call's notes are being made again
     When the run ends cancelled
     Then I can draw the notes it had with no progress
+
+  Scenario: S-6 Cancelling making notes again
+    Given the shown call's notes are being made again
+    When cancel is chosen
+    Then I can observe an intention to cancel the call's notes
+
+  Scenario: S-7 The menu's facts
+    Given the shown call has notes made with Daily
+    When a run for it starts
+    Then I can observe the call, its notes, Daily and busy published
 ```

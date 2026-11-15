@@ -1,8 +1,8 @@
 # Calls window shell, templates — QA
 
-Driven with a spy CallDetail event sink and fixture presentation values.
+Driven with spy NotesMenu and CallDetail event sinks and fixture presentation values.
 
-## S-1 A chosen template reaches the detail
+## S-1 A chosen template reaches the menu
 
 Drive: invoke the view's template interaction for Daily; read back the
 spy's one event. Evidence: Missing.
@@ -11,11 +11,11 @@ spy's one event. Evidence: Missing.
 
 As S-1 with Previous. Evidence: Missing.
 
-## S-3 The keep item reaches the detail
+## S-3 The keep item reaches the menu
 
 As S-1 with the keep item. Evidence: Missing.
 
-## S-4 The folder action reaches the detail
+## S-4 The folder action reaches the menu
 
 As S-1 with the folder action. Evidence: Missing.
 

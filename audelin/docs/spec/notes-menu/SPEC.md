@@ -1,22 +1,21 @@
-# Call detail — the template menu
+# Notes menu — choosing how the shown call's notes are made
 
-Observer: SummaryPreviewUI, which draws CallDetail's state and sends back
-the user's actions, and the composer, which routes its intentions to
-SummaryJobs. Oracle: `../notes-templates/SPEC.md` S-1 to S-4, S-8, S-10, S-12, S-13;
-versions and attribution are `../call-detail-versions/SPEC.md`;
-`../summary-preview/SPEC.md` and `../../ARCHITECTURE.md` § Presentation.
+Observer: SummaryPreviewUI, which draws NotesMenu's state and sends back
+the user's actions, and the composer, which gives it CallDetail's facts and
+routes its intentions to SummaryJobs. Oracle: `../notes-templates/SPEC.md`
+S-1 to S-4, S-8, S-12, S-13, the design brief `../../design/notes-templates.md`
+and `../../ARCHITECTURE.md` § Presentation and menu.
 
 ## Machine
 
-The existing async CallDetail machine. `State` gains the published pair and
-shown version with their template, the catalogue with reasons, the keep
-choice and its save outcome, and progress or failure beside existing notes.
-`Event` gains menu opened, catalogue answered, template chosen, version
-chosen, keep toggled, keep answered, open folder and folder answered.
-`Effect` gains read catalogue, save keep choice and open folder; a chosen
-template is published as an intention (call, template, generate), never an
-effect on SummaryJobs. Each scenario is one reducer test paired with one
-effect test.
+An async machine. `State`: the shown call's facts (call, has notes, shown
+template, busy), the catalogue with reasons, the keep choice and its save
+outcome, and the folder outcome. `Event`: facts changed, menu opened,
+catalogue answered, template chosen, keep toggled, keep answered, open
+folder, folder answered. `Effect`: read catalogue, save keep choice, open
+folder; a chosen template is published as an intention (call, template),
+never an effect on SummaryJobs. Each scenario is one reducer test paired
+with one effect test.
 
 ## Decided
 
@@ -27,7 +26,7 @@ effect test.
 - **Opening the menu reads the catalogue afresh,** so a fixed file is usable.
 
 ```gherkin
-Feature: Template menu
+Feature: Notes menu
 
   Scenario: S-1 Make section without notes
     Given the shown call has no notes
@@ -79,10 +78,10 @@ Feature: Template menu
     When the menu is opened
     Then I can draw Default enabled and why the others are missing
 
-  Scenario: S-17 Cancelling making notes again
-    Given the shown call's notes are being made again
-    When cancel is chosen
-    Then I can observe an intention to cancel the call's notes
+  Scenario: S-18 No template while notes are being made
+    Given the shown call's notes are being made
+    When the menu is opened
+    Then I can draw every template disabled
 
   Scenario: S-14 Opening the folder
     Given an unusable template is listed

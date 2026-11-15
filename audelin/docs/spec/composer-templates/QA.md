@@ -43,3 +43,8 @@ value off. Evidence: Missing.
 
 Drive: gate the runtime, send cancel to the detail; read back SummaryJobs'
 ended run and the fake storage's unchanged pair. Evidence: Missing.
+
+## S-9 The menu follows the shown call
+
+Drive: gate the runtime, start a run from the menu, reopen it; read back the
+menu's templates all disabled. Evidence: Missing.

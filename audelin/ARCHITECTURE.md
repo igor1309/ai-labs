@@ -46,7 +46,7 @@ platform; anything else breaks rule 1. The lanes of
 
 | Kind | May import | Targets |
 |---|---|---|
-| Machine | nothing | Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, CallsList, TranscriptFinalization, RecordingConditions, CallNames |
+| Machine | nothing | Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, NotesMenu, CallsList, TranscriptFinalization, RecordingConditions, CallNames |
 | Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, LatestText, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch |
 | Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, TemplateFiles, NotesGeneration, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, Calls, CallsStorage, Preferences |
 | Shared helper | nothing | SplitRows, CallFolderName, AudioConversion, ModelLoading |
@@ -104,8 +104,8 @@ than its own.
 
 ## Optional call notes
 
-SummaryJobs owns making a call's notes; CallDetail owns reading and acting
-on the notes shown. Template files, model answers, published notes and
+SummaryJobs owns making a call's notes; CallDetail owns reading the notes
+shown, NotesMenu choosing how they are made. Template files, model answers, published notes and
 preferences each have one boundary owner. The components below own their
 interfaces, including failures; composition translates between them.
 
@@ -200,7 +200,7 @@ global keep choice, initially on. It offers reading, updating only that
 choice and observing successful changes through its settings-storage
 binding. Other preference updates preserve it. Toggling it does not prune
 saved notes; it affects subsequent runs. The menu edits it through
-CallDetail's preference port; SummaryJobs reads it through its own port.
+NotesMenu's preference port; SummaryJobs reads it through its own port.
 SummarySettings and SettingsUI do not own or display this choice.
 
 SummaryFiles is the only reader of published notes. **Calls** offers call
@@ -212,31 +212,38 @@ storage or exposes Previous as another call.
 
 ### Presentation and menu
 
-**CallDetail** is the state machine for the shown call, including the
-template menu and Previous/Current selection. Its state holds the
-published pair, shown version and template attribution, catalogue and
-unusable-entry reasons, keep choice and preference outcomes, and rendered
-progress or failure alongside existing notes. Its pure reducer decides
-whether the menu's section is make (no notes) or make again (notes), and
-whether the keep item is offered (only with notes). Opening the menu
-refreshes the catalogue. Every menu action is a template: choosing one
-publishes a request for that call and template, the template of the shown
-notes included. An unusable template cannot be chosen; Default remains
-available.
+**CallDetail** is the state machine for the shown call and its notes
+versions. Its state holds the published pair, shown version and template
+attribution, and rendered progress or failure alongside existing notes. Its
+own ports read published notes; formatting is injected as pure
+dependencies. It publishes the shown call's cancellation intention and the
+facts the menu needs (call, whether it has notes, the shown notes'
+template, whether a run is under way) as plain values. Superseded reads
+cannot replace the shown call; failed or cancelled regeneration leaves the
+existing pair readable with its outcome. A publication shows the new
+Current. Copy uses the shown version.
 
-Its own ports read published notes and the catalogue, read and save the
-keep choice, and open the templates folder. Formatting is injected as pure
-dependencies. Its effect handler only dispatches these operations and
-returns their outcomes. It publishes generation and cancellation
-intentions as plain values (call, template, action), the only route for
-these actions; root subscriptions deliver them to SummaryJobs and return
-progress and publication notifications. It keeps no record of an
-intention's outcome beyond the progress SummaryJobs publishes. It never
-drives that machine from an effect, reads its internals or waits for its
-work. Changing the
-selected call does not stop generation. Superseded reads cannot replace
-the shown call; failed or cancelled regeneration leaves the existing pair
-readable with its outcome. Copy uses the shown version.
+**NotesMenu** is the state machine for the template menu: one
+responsibility, choosing how the shown call's notes are made, with its own
+reason to change (catalogue, keep choice and menu rules), apart from
+reading notes. Its state holds those facts, the catalogue with
+unusable-entry reasons, the keep choice and its save outcome, and folder
+outcomes. Its pure reducer decides whether the section is make (no notes)
+or make again (notes), offers the keep item only with notes, and disables
+every template while a run is under way; cancellation stays with
+CallDetail. Opening the menu refreshes the catalogue. Every menu action is
+a template: choosing one publishes a generation intention (call,
+template), the template of the shown notes included. An unusable template
+cannot be chosen; Default remains available.
+
+Its own ports read the catalogue, read and save the keep choice and open
+the templates folder; its effect handler only dispatches them. Root
+subscriptions give it CallDetail's facts and deliver both machines'
+intentions to SummaryJobs, the only route for these actions, returning
+progress and publication notifications. Neither machine keeps a record of
+an intention's outcome beyond the progress SummaryJobs publishes, drives
+another machine from an effect, reads its internals or waits for its
+work. Changing the selected call does not stop generation.
 
 **SummaryPreviewUI** renders supplied detail, version choices, template
 attribution and the regenerate menu button trailing Copy: one section of
@@ -251,16 +258,16 @@ The **Composer** composition root constructs the app-lifetime SummaryJobs
 machine, TemplateFiles, NotesGeneration, SummaryFiles and Preferences. The
 app retains the assembled machines, boundaries and subscriptions until
 shutdown; collaborators are retained through the supplied consumer ports.
-It constructs CallDetail for the lifetime of each detail presentation and
-holds it with the calls-window composition. CallDetail's state supplies
-SummaryPreviewUI, held by its view hierarchy. The root constructs and
+It constructs CallDetail and NotesMenu for the lifetime of each detail
+presentation and holds them with the calls-window composition. Their state
+supplies SummaryPreviewUI, held by its view hierarchy. The root constructs and
 holds Calls and CallsStorage with the calls composition for the app
 lifetime. No instance is built per job.
 
 Composer maps each consumer's ports to these concrete pieces and
 subscribes intentions, progress, publication notifications and global
 preference changes. **CallsWindowShell** constructs the detail view from
-supplied presentation values and maps its interactions back to CallDetail;
+supplied presentation values and maps its interactions back to CallDetail or NotesMenu;
 the app owns that window and its view hierarchy. Both composition packages
 keep mappings and subscriptions, without prompt, validation, persistence
 format or menu policy.
@@ -343,10 +350,12 @@ ready to open.
 ### Making a call's notes on request
 
 The user can make notes for a call that has none, cancel them while they
-are being made and retry a failed summary. CallDetail publishes these as
-the shown call's intentions, and the composer routes them to SummaryJobs,
-whose work continues when another call is selected. CallDetail's effect
-handler never starts, cancels or retries generation. Calls lists folders and reads
+are being made and retry a failed summary. Making notes with a template,
+first or again, is NotesMenu's intention; cancelling a run and retrying a
+failed one with its own template are CallDetail's, shown beside that run.
+The composer routes them to SummaryJobs, whose work continues when another
+call is selected. Neither machine's effect handler starts, cancels or
+retries generation. Calls lists folders and reads
 transcripts through Transcript format.
 
 ## Merging calls

@@ -1,7 +1,7 @@
 # Summary preview UI — the template menu and versions
 
 Observer: the user, reading the shown call. What the menu offers and when
-is `../call-detail-templates/SPEC.md`; this spec owns how it is drawn and
+is `../notes-menu/SPEC.md`; this spec owns how it is drawn and
 which interaction it sends. Oracle: the design brief
 `../../design/notes-templates.md` and `../notes-templates/SPEC.md`.
 
@@ -29,6 +29,11 @@ Feature: Template menu and versions drawn
     Given a template is unusable
     When I open the menu
     Then I can read its reason and not choose it
+
+  Scenario: S-10 The menu while notes are being made
+    Given notes are being made
+    When I open the menu
+    Then I can not choose a template and can still cancel
 
   Scenario: S-4 The keep check item
     Given the menu offers keeping
