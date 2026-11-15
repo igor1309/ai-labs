@@ -15,6 +15,9 @@ Daily writes is [../spec/daily-notes/SPEC.md](../spec/daily-notes/SPEC.md).
 - The menu has one section of buttons, headed СДЕЛАТЬ ЗАНОВО when the call
   has notes and СДЕЛАТЬ when it has none. Each button is a template;
   choosing one makes the notes with it. No template carries a check.
+- The menu follows the native NSMenu: `type-body` items, a `type-caption`
+  600 section header in `gutter`, a check column, and the highlighted item
+  in the accent colour (`selBg`, `selText`).
 - Below a separator, Сохранять прежние итоги is a check item for every
   call, on by default: on keeps the shown notes as Предыдущие, off
   overwrites them. A call without notes has no such item.
@@ -33,7 +36,9 @@ Daily writes is [../spec/daily-notes/SPEC.md](../spec/daily-notes/SPEC.md).
   `type-caption`); the date line under the notes repeats it. Notes made
   before templates read Default.
 - When a previous set is kept, the line leads with a Предыдущие / Текущие
-  segmented control; Текущие is selected after new notes.
+  segmented control that picks which set the summary shows; Текущие is
+  selected after new notes. The template line and the date line follow the
+  shown set.
 
 ## Making notes again
 
@@ -53,6 +58,7 @@ Daily writes is [../spec/daily-notes/SPEC.md](../spec/daily-notes/SPEC.md).
 | Calls — regenerate menu, broken template | Daily disabled with its reason; Открыть папку шаблонов |
 | Calls — regenerate menu, no usable files | Only Default enabled; why the files cannot be used |
 | Calls — notes kept, current | Предыдущие / Текущие, Текущие selected, Шаблон: Daily |
+| Calls — notes kept, previous | Предыдущие selected: the older notes, Шаблон: Default |
 | Calls — remaking notes | Old notes dimmed under the making line |
 | Calls — remake failed | Error banner over the kept notes |
 

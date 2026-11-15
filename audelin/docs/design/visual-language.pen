@@ -63804,7 +63804,7 @@
     },
     {
       "type": "frame",
-      "id": "Bag0X",
+      "id": "GvanV",
       "x": 0,
       "y": 30560,
       "name": "Notes templates — components",
@@ -63816,7 +63816,7 @@
       "children": [
         {
           "type": "text",
-          "id": "lBPDG",
+          "id": "cJpj2",
           "name": "Board title",
           "fill": "$text",
           "content": "Notes templates — components",
@@ -63826,14 +63826,14 @@
         },
         {
           "type": "frame",
-          "id": "K6n3O9",
+          "id": "uTov3",
           "name": "Comp row",
           "width": "fill_container",
           "gap": "$space-40",
           "children": [
             {
               "type": "frame",
-              "id": "y9hWF",
+              "id": "vTIdC",
               "name": "Col 1",
               "width": 300,
               "layout": "vertical",
@@ -63841,7 +63841,7 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "cA7kU",
+                  "id": "hsDRY",
                   "name": "Menu item",
                   "reusable": true,
                   "width": 260,
@@ -63856,7 +63856,7 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "GRNsm",
+                      "id": "Y2h86",
                       "name": "Check slot",
                       "width": 12,
                       "height": 16,
@@ -63865,7 +63865,7 @@
                       "children": [
                         {
                           "type": "text",
-                          "id": "acviH",
+                          "id": "svE8Z",
                           "name": "Check",
                           "fill": "$text",
                           "content": "✓",
@@ -63877,27 +63877,35 @@
                     },
                     {
                       "type": "text",
-                      "id": "CRG9V",
+                      "id": "j3jM8k",
                       "name": "Label",
                       "fill": "$text",
                       "content": "Default",
                       "fontFamily": "$font-ui",
-                      "fontSize": "$type-small",
+                      "fontSize": "$type-body",
                       "fontWeight": "normal"
                     }
                   ]
                 },
                 {
-                  "id": "xreFI",
+                  "id": "v4Ktk",
                   "type": "ref",
                   "reusable": true,
-                  "ref": "cA7kU",
+                  "ref": "hsDRY",
                   "name": "Menu item/Highlighted",
-                  "fill": "$okBg"
+                  "fill": "$selBg",
+                  "descendants": {
+                    "svE8Z": {
+                      "fill": "$selText"
+                    },
+                    "j3jM8k": {
+                      "fill": "$selText"
+                    }
+                  }
                 },
                 {
                   "type": "frame",
-                  "id": "kfELO",
+                  "id": "heGs3",
                   "name": "Menu item/Disabled",
                   "reusable": true,
                   "width": 260,
@@ -63911,14 +63919,14 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "TO5Ge",
+                      "id": "drbTU",
                       "name": "Check slot",
                       "width": 12,
                       "height": 16
                     },
                     {
                       "type": "frame",
-                      "id": "Dxv4P",
+                      "id": "q3sWV",
                       "name": "Text",
                       "width": "fill_container",
                       "layout": "vertical",
@@ -63926,17 +63934,17 @@
                       "children": [
                         {
                           "type": "text",
-                          "id": "u8S2o7",
+                          "id": "n3GZlR",
                           "name": "Label",
                           "fill": "$disText",
                           "content": "Daily",
                           "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
+                          "fontSize": "$type-body",
                           "fontWeight": "normal"
                         },
                         {
                           "type": "text",
-                          "id": "N5nEl7",
+                          "id": "VmEsv",
                           "name": "Reason",
                           "fill": "$rec",
                           "textGrowth": "fixed-width",
@@ -63952,7 +63960,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "xxyop",
+                  "id": "MLa3t",
                   "name": "Regenerate button",
                   "reusable": true,
                   "fill": "$btn",
@@ -63978,7 +63986,7 @@
                   "children": [
                     {
                       "type": "icon",
-                      "id": "diRMz",
+                      "id": "caeV7",
                       "name": "Icon",
                       "width": 14,
                       "height": 14,
@@ -63989,29 +63997,29 @@
                   ]
                 },
                 {
-                  "id": "vXrCz",
+                  "id": "aVqlY",
                   "type": "ref",
                   "reusable": true,
-                  "ref": "xxyop",
+                  "ref": "MLa3t",
                   "name": "Regenerate button/Open",
                   "fill": "$chip"
                 },
                 {
                   "type": "frame",
-                  "id": "mFHRN",
+                  "id": "k4qkqJ",
                   "name": "Notes actions",
                   "reusable": true,
                   "gap": "$space-6",
                   "alignItems": "center",
                   "children": [
                     {
-                      "id": "PzpcP",
+                      "id": "OYyX0",
                       "type": "ref",
-                      "ref": "xxyop",
+                      "ref": "MLa3t",
                       "name": "Template"
                     },
                     {
-                      "id": "dEbHT",
+                      "id": "q86zho",
                       "type": "ref",
                       "ref": "hb8Q9",
                       "name": "Copy"
@@ -64020,20 +64028,20 @@
                 },
                 {
                   "type": "frame",
-                  "id": "qyedq",
+                  "id": "q2hxqT",
                   "name": "Notes actions/Menu open",
                   "reusable": true,
                   "gap": "$space-6",
                   "alignItems": "center",
                   "children": [
                     {
-                      "id": "q6Zmdz",
+                      "id": "RQr32",
                       "type": "ref",
-                      "ref": "vXrCz",
+                      "ref": "aVqlY",
                       "name": "Template"
                     },
                     {
-                      "id": "C4qlq",
+                      "id": "waxWA",
                       "type": "ref",
                       "ref": "hb8Q9",
                       "name": "Copy"
@@ -64042,16 +64050,16 @@
                 },
                 {
                   "type": "frame",
-                  "id": "z8syv",
+                  "id": "e4HeAx",
                   "name": "Notes actions/No notes, menu open",
                   "reusable": true,
                   "gap": "$space-6",
                   "alignItems": "center",
                   "children": [
                     {
-                      "id": "yca38",
+                      "id": "kjrB7",
                       "type": "ref",
-                      "ref": "vXrCz",
+                      "ref": "aVqlY",
                       "name": "Template"
                     }
                   ]
@@ -64060,7 +64068,7 @@
             },
             {
               "type": "frame",
-              "id": "m2qPI0",
+              "id": "q0PTOh",
               "name": "Col 2",
               "width": 300,
               "layout": "vertical",
@@ -64068,7 +64076,7 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "zAmch",
+                  "id": "A5TuX",
                   "name": "Regenerate menu",
                   "reusable": true,
                   "width": 260,
@@ -64092,7 +64100,7 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "j7iZXe",
+                      "id": "BEpfW",
                       "name": "Heading",
                       "width": "fill_container",
                       "padding": [
@@ -64104,7 +64112,7 @@
                       "children": [
                         {
                           "type": "text",
-                          "id": "F2AuIk",
+                          "id": "Da69X",
                           "name": "Text",
                           "fill": "$gutter",
                           "content": "СДЕЛАТЬ ЗАНОВО",
@@ -64115,54 +64123,54 @@
                       ]
                     },
                     {
-                      "id": "jFlgh",
+                      "id": "Osq5V",
                       "type": "ref",
-                      "ref": "xreFI",
+                      "ref": "v4Ktk",
                       "name": "Default",
                       "width": "fill_container",
                       "descendants": {
-                        "acviH": {
+                        "svE8Z": {
                           "enabled": false
                         },
-                        "CRG9V": {
+                        "j3jM8k": {
                           "content": "Default"
                         }
                       }
                     },
                     {
-                      "id": "qDpwx",
+                      "id": "mlLLf",
                       "type": "ref",
-                      "ref": "cA7kU",
+                      "ref": "hsDRY",
                       "name": "Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "acviH": {
+                        "svE8Z": {
                           "enabled": false
                         },
-                        "CRG9V": {
+                        "j3jM8k": {
                           "content": "Daily"
                         }
                       }
                     },
                     {
                       "type": "rectangle",
-                      "id": "cBiWi",
+                      "id": "Jw1Fs",
                       "name": "Separator",
                       "fill": "$rule",
                       "width": "fill_container",
                       "height": 1
                     },
                     {
-                      "id": "RFKfs",
+                      "id": "OkdcE",
                       "type": "ref",
-                      "ref": "cA7kU",
+                      "ref": "hsDRY",
                       "name": "Keep",
                       "width": "fill_container",
                       "descendants": {
-                        "acviH": {
+                        "svE8Z": {
                           "enabled": true
                         },
-                        "CRG9V": {
+                        "j3jM8k": {
                           "content": "Сохранять прежние итоги"
                         }
                       }
@@ -64171,7 +64179,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "EMFbH",
+                  "id": "iPlvd",
                   "name": "Regenerate menu/No notes",
                   "reusable": true,
                   "width": 260,
@@ -64195,7 +64203,7 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "X7XN4G",
+                      "id": "l4Rsk",
                       "name": "Heading",
                       "width": "fill_container",
                       "padding": [
@@ -64207,7 +64215,7 @@
                       "children": [
                         {
                           "type": "text",
-                          "id": "Pp4Rd",
+                          "id": "x0ygEf",
                           "name": "Text",
                           "fill": "$gutter",
                           "content": "СДЕЛАТЬ",
@@ -64218,31 +64226,31 @@
                       ]
                     },
                     {
-                      "id": "mTWk1",
+                      "id": "gzm28",
                       "type": "ref",
-                      "ref": "xreFI",
+                      "ref": "v4Ktk",
                       "name": "Default",
                       "width": "fill_container",
                       "descendants": {
-                        "acviH": {
+                        "svE8Z": {
                           "enabled": false
                         },
-                        "CRG9V": {
+                        "j3jM8k": {
                           "content": "Default"
                         }
                       }
                     },
                     {
-                      "id": "y7jQe7",
+                      "id": "h1vYdx",
                       "type": "ref",
-                      "ref": "cA7kU",
+                      "ref": "hsDRY",
                       "name": "Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "acviH": {
+                        "svE8Z": {
                           "enabled": false
                         },
-                        "CRG9V": {
+                        "j3jM8k": {
                           "content": "Daily"
                         }
                       }
@@ -64251,7 +64259,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "qkkUg",
+                  "id": "S9QURJ",
                   "name": "Regenerate menu/Broken template",
                   "reusable": true,
                   "width": 260,
@@ -64275,7 +64283,7 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "hGg2R",
+                      "id": "o9xrGa",
                       "name": "Heading",
                       "width": "fill_container",
                       "padding": [
@@ -64287,7 +64295,7 @@
                       "children": [
                         {
                           "type": "text",
-                          "id": "qDR1j",
+                          "id": "j5u3s",
                           "name": "Text",
                           "fill": "$gutter",
                           "content": "СДЕЛАТЬ ЗАНОВО",
@@ -64298,69 +64306,69 @@
                       ]
                     },
                     {
-                      "id": "BYsw5",
+                      "id": "KPq1k",
                       "type": "ref",
-                      "ref": "cA7kU",
+                      "ref": "hsDRY",
                       "name": "Default",
                       "width": "fill_container",
                       "descendants": {
-                        "acviH": {
+                        "svE8Z": {
                           "enabled": false
                         },
-                        "CRG9V": {
+                        "j3jM8k": {
                           "content": "Default"
                         }
                       }
                     },
                     {
-                      "id": "n1ljw",
+                      "id": "e2RUTJ",
                       "type": "ref",
-                      "ref": "kfELO",
+                      "ref": "heGs3",
                       "name": "Daily",
                       "width": "fill_container",
                       "descendants": {
-                        "u8S2o7": {
+                        "n3GZlR": {
                           "content": "Daily"
                         },
-                        "N5nEl7": {
+                        "VmEsv": {
                           "content": "daily.md: файл пуст"
                         }
                       }
                     },
                     {
-                      "id": "Zi2Wg",
+                      "id": "wlA6r",
                       "type": "ref",
-                      "ref": "xreFI",
+                      "ref": "v4Ktk",
                       "name": "Folder",
                       "width": "fill_container",
                       "descendants": {
-                        "acviH": {
+                        "svE8Z": {
                           "enabled": false
                         },
-                        "CRG9V": {
+                        "j3jM8k": {
                           "content": "Открыть папку шаблонов…"
                         }
                       }
                     },
                     {
                       "type": "rectangle",
-                      "id": "AZSup",
+                      "id": "L5Ag1",
                       "name": "Separator",
                       "fill": "$rule",
                       "width": "fill_container",
                       "height": 1
                     },
                     {
-                      "id": "jOGe5",
+                      "id": "ZKL6E",
                       "type": "ref",
-                      "ref": "cA7kU",
+                      "ref": "hsDRY",
                       "name": "Keep",
                       "width": "fill_container",
                       "descendants": {
-                        "acviH": {
+                        "svE8Z": {
                           "enabled": true
                         },
-                        "CRG9V": {
+                        "j3jM8k": {
                           "content": "Сохранять прежние итоги"
                         }
                       }
@@ -64369,7 +64377,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "sdk2e",
+                  "id": "T8aUU",
                   "name": "Regenerate menu/No usable files",
                   "reusable": true,
                   "width": 260,
@@ -64393,7 +64401,7 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "w8Qlh",
+                      "id": "sevDP",
                       "name": "Heading",
                       "width": "fill_container",
                       "padding": [
@@ -64405,7 +64413,7 @@
                       "children": [
                         {
                           "type": "text",
-                          "id": "aGT9l",
+                          "id": "L9uaxk",
                           "name": "Text",
                           "fill": "$gutter",
                           "content": "СДЕЛАТЬ ЗАНОВО",
@@ -64416,69 +64424,69 @@
                       ]
                     },
                     {
-                      "id": "A9n9d",
+                      "id": "GAqFP",
                       "type": "ref",
-                      "ref": "cA7kU",
+                      "ref": "hsDRY",
                       "name": "Default",
                       "width": "fill_container",
                       "descendants": {
-                        "acviH": {
+                        "svE8Z": {
                           "enabled": false
                         },
-                        "CRG9V": {
+                        "j3jM8k": {
                           "content": "Default"
                         }
                       }
                     },
                     {
-                      "id": "YEMzV",
+                      "id": "xGTvB",
                       "type": "ref",
-                      "ref": "kfELO",
+                      "ref": "heGs3",
                       "name": "Files",
                       "width": "fill_container",
                       "descendants": {
-                        "u8S2o7": {
+                        "n3GZlR": {
                           "content": "Файлы шаблонов"
                         },
-                        "N5nEl7": {
+                        "VmEsv": {
                           "content": "Папку шаблонов не удалось прочитать: нет доступа. Default встроен в приложение."
                         }
                       }
                     },
                     {
-                      "id": "F1eK7",
+                      "id": "lcRIA",
                       "type": "ref",
-                      "ref": "xreFI",
+                      "ref": "v4Ktk",
                       "name": "Folder",
                       "width": "fill_container",
                       "descendants": {
-                        "acviH": {
+                        "svE8Z": {
                           "enabled": false
                         },
-                        "CRG9V": {
+                        "j3jM8k": {
                           "content": "Открыть папку шаблонов…"
                         }
                       }
                     },
                     {
                       "type": "rectangle",
-                      "id": "cvJlA",
+                      "id": "HNYrE",
                       "name": "Separator",
                       "fill": "$rule",
                       "width": "fill_container",
                       "height": 1
                     },
                     {
-                      "id": "qclB0",
+                      "id": "wTlqh",
                       "type": "ref",
-                      "ref": "cA7kU",
+                      "ref": "hsDRY",
                       "name": "Keep",
                       "width": "fill_container",
                       "descendants": {
-                        "acviH": {
+                        "svE8Z": {
                           "enabled": true
                         },
-                        "CRG9V": {
+                        "j3jM8k": {
                           "content": "Сохранять прежние итоги"
                         }
                       }
@@ -64489,7 +64497,7 @@
             },
             {
               "type": "frame",
-              "id": "c7OeS",
+              "id": "LhqY0",
               "name": "Col 3",
               "width": 760,
               "layout": "vertical",
@@ -64497,7 +64505,7 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "BJEAJ",
+                  "id": "yAiyH",
                   "name": "Notes bar",
                   "reusable": true,
                   "width": 760,
@@ -64512,7 +64520,7 @@
                   "children": [
                     {
                       "type": "text",
-                      "id": "hLk4r",
+                      "id": "KvVf4",
                       "name": "Template",
                       "fill": "$gutter",
                       "content": "Шаблон: Default",
@@ -64524,7 +64532,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "n3qEM",
+                  "id": "kURef",
                   "name": "Notes bar/Kept",
                   "reusable": true,
                   "width": 760,
@@ -64538,7 +64546,7 @@
                   "alignItems": "center",
                   "children": [
                     {
-                      "id": "fFwE0",
+                      "id": "N3m2W",
                       "type": "ref",
                       "ref": "ksNeX",
                       "name": "Versions",
@@ -64557,7 +64565,7 @@
                     },
                     {
                       "type": "text",
-                      "id": "WBjIN",
+                      "id": "lHvA8",
                       "name": "Template",
                       "fill": "$gutter",
                       "content": "Шаблон: Daily",
@@ -64568,7 +64576,7 @@
                   ]
                 },
                 {
-                  "id": "P7BDmQ",
+                  "id": "cXJtn",
                   "type": "ref",
                   "reusable": true,
                   "ref": "YbRfD",
@@ -64583,7 +64591,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "haTzt",
+                  "id": "CNTB2",
                   "name": "Remake failed",
                   "reusable": true,
                   "width": 760,
@@ -64593,7 +64601,7 @@
                   ],
                   "children": [
                     {
-                      "id": "S4Mx9p",
+                      "id": "aeaBS",
                       "type": "ref",
                       "ref": "qAImO",
                       "name": "Banner",
@@ -64608,6 +64616,51 @@
                       }
                     }
                   ]
+                },
+                {
+                  "type": "frame",
+                  "id": "S2skG",
+                  "name": "Notes bar/Kept, previous",
+                  "reusable": true,
+                  "width": 760,
+                  "gap": "$space-12",
+                  "padding": [
+                    "$space-8",
+                    "$space-28",
+                    0,
+                    "$space-28"
+                  ],
+                  "alignItems": "center",
+                  "children": [
+                    {
+                      "id": "u0m3X",
+                      "type": "ref",
+                      "ref": "rT0HO",
+                      "name": "Versions",
+                      "width": 220,
+                      "descendants": {
+                        "JMakE/uluhv": {
+                          "content": "Предыдущие"
+                        },
+                        "tQ8hK/OdXwE": {
+                          "content": "Текущие"
+                        },
+                        "sni1W": {
+                          "enabled": false
+                        }
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "id": "BFgZ0",
+                      "name": "Template",
+                      "fill": "$gutter",
+                      "content": "Шаблон: Default",
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-caption",
+                      "fontWeight": "normal"
+                    }
+                  ]
                 }
               ]
             }
@@ -64617,7 +64670,7 @@
     },
     {
       "type": "frame",
-      "id": "tnsA8",
+      "id": "C3Wtj",
       "x": 0,
       "y": 31320,
       "name": "Calls — regenerate menu",
@@ -64636,7 +64689,7 @@
       "children": [
         {
           "type": "frame",
-          "id": "Yfa5Y",
+          "id": "jGDTW",
           "x": 0,
           "y": 0,
           "name": "Content",
@@ -64645,7 +64698,7 @@
           "children": [
             {
               "type": "frame",
-              "id": "m7C8p6",
+              "id": "KTBSX",
               "name": "List pane",
               "width": 340,
               "height": "fill_container",
@@ -64656,14 +64709,14 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "gtjty",
+                  "id": "FZQ8n",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
                   "width": "fill_container"
                 },
                 {
-                  "id": "zqT38",
+                  "id": "IoI7K",
                   "type": "ref",
                   "ref": "FE6zE",
                   "name": "List search",
@@ -64671,7 +64724,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "QdPuv",
+                  "id": "USRpf",
                   "name": "List",
                   "clip": true,
                   "width": "fill_container",
@@ -64680,7 +64733,7 @@
                   "layout": "vertical",
                   "children": [
                     {
-                      "id": "iJ0mF",
+                      "id": "hLFnM",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Сегодня",
@@ -64695,7 +64748,7 @@
                       }
                     },
                     {
-                      "id": "ImUEH",
+                      "id": "uM0l5",
                       "type": "ref",
                       "ref": "rowSel",
                       "name": "Row ЦР ID",
@@ -64716,7 +64769,7 @@
                       }
                     },
                     {
-                      "id": "B0Vrj",
+                      "id": "hhqUU",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row ЦР",
@@ -64737,7 +64790,7 @@
                       }
                     },
                     {
-                      "id": "Kre1F",
+                      "id": "a41jRr",
                       "type": "ref",
                       "ref": "rowPre",
                       "name": "Row iOS Daily",
@@ -64758,7 +64811,7 @@
                       }
                     },
                     {
-                      "id": "AjPyJ",
+                      "id": "QXOqJ",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Вчера",
@@ -64773,7 +64826,7 @@
                       }
                     },
                     {
-                      "id": "jQOVt",
+                      "id": "G9CY0Y",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Люда — передача дел",
@@ -64794,7 +64847,7 @@
                       }
                     },
                     {
-                      "id": "a6qlW",
+                      "id": "Exic2",
                       "type": "ref",
                       "ref": "rowFai",
                       "name": "Row iOS & Android daily",
@@ -64815,7 +64868,7 @@
                       }
                     },
                     {
-                      "id": "Ori0j",
+                      "id": "HRWXh",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Понедельник, 9 ноября",
@@ -64830,7 +64883,7 @@
                       }
                     },
                     {
-                      "id": "xvuuY",
+                      "id": "pJ3kC",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row ЦР Статус",
@@ -64851,7 +64904,7 @@
                       }
                     },
                     {
-                      "id": "ZwzwH",
+                      "id": "h6kPcz",
                       "type": "ref",
                       "ref": "rowUnt",
                       "name": "Row 2026.11.09-1000",
@@ -64872,7 +64925,7 @@
                       }
                     },
                     {
-                      "id": "YWdKT",
+                      "id": "s3adp9",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Пятница, 6 ноября",
@@ -64887,7 +64940,7 @@
                       }
                     },
                     {
-                      "id": "MYTRD",
+                      "id": "DVs1O",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Лера 17820",
@@ -64908,7 +64961,7 @@
                       }
                     },
                     {
-                      "id": "S8S6Xp",
+                      "id": "P0ljF",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row iOS Daily",
@@ -64929,7 +64982,7 @@
                       }
                     },
                     {
-                      "id": "Y9TIH2",
+                      "id": "WLQau",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Четверг, 5 ноября",
@@ -64944,7 +64997,7 @@
                       }
                     },
                     {
-                      "id": "me0Do",
+                      "id": "Hjm0Z",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Планирование",
@@ -64970,14 +65023,14 @@
             },
             {
               "type": "frame",
-              "id": "DPiAP",
+              "id": "Bf6l1",
               "name": "Detail pane",
               "width": "fill_container",
               "height": "fill_container",
               "layout": "vertical",
               "children": [
                 {
-                  "id": "etPPL",
+                  "id": "BMPQ8",
                   "type": "ref",
                   "ref": "s033x",
                   "name": "Header",
@@ -64993,7 +65046,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "nitBb",
+                  "id": "Y0LfBu",
                   "name": "Scroll",
                   "clip": true,
                   "width": "fill_container",
@@ -65008,14 +65061,14 @@
                   ],
                   "children": [
                     {
-                      "id": "lK7SA",
+                      "id": "sMDyh",
                       "type": "ref",
-                      "ref": "BJEAJ",
+                      "ref": "yAiyH",
                       "name": "Notes bar",
                       "width": "fill_container"
                     },
                     {
-                      "id": "DR9Iz",
+                      "id": "Cyu1I",
                       "type": "ref",
                       "ref": "s035x",
                       "name": "S О ЧЁМ ВСТРЕЧА",
@@ -65027,7 +65080,7 @@
                       }
                     },
                     {
-                      "id": "uXUtb",
+                      "id": "CsS8j",
                       "type": "ref",
                       "ref": "s039x",
                       "name": "P Встреча была пос",
@@ -65039,7 +65092,7 @@
                       }
                     },
                     {
-                      "id": "Ibj3I",
+                      "id": "zFweR",
                       "type": "ref",
                       "ref": "s035x",
                       "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
@@ -65051,7 +65104,7 @@
                       }
                     },
                     {
-                      "id": "BLSKx",
+                      "id": "xtuo6",
                       "type": "ref",
                       "ref": "s037x",
                       "name": "H Пополнение счёта",
@@ -65063,7 +65116,7 @@
                       }
                     },
                     {
-                      "id": "ZrFbK",
+                      "id": "scBlb",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Пополнение работ",
@@ -65075,7 +65128,7 @@
                       }
                     },
                     {
-                      "id": "PlUmv",
+                      "id": "xYLlx",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Отдельные вопрос",
@@ -65087,7 +65140,7 @@
                       }
                     },
                     {
-                      "id": "FZMDd",
+                      "id": "jwWTC",
                       "type": "ref",
                       "ref": "s037x",
                       "name": "H Идентификаторы с",
@@ -65099,7 +65152,7 @@
                       }
                     },
                     {
-                      "id": "qGs0m",
+                      "id": "s2CGK",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Application mess",
@@ -65111,7 +65164,7 @@
                       }
                     },
                     {
-                      "id": "e4fHQM",
+                      "id": "fTinA",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B По correlation m",
@@ -65123,7 +65176,7 @@
                       }
                     },
                     {
-                      "id": "i1aOvT",
+                      "id": "H2vZx",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Предложение: Ope",
@@ -65135,7 +65188,7 @@
                       }
                     },
                     {
-                      "id": "zJdwi",
+                      "id": "nQKma",
                       "type": "ref",
                       "ref": "lSAuc",
                       "name": "Date",
@@ -65149,18 +65202,18 @@
                   ]
                 },
                 {
-                  "id": "C2RiPb",
+                  "id": "L0BiTl",
                   "type": "ref",
-                  "ref": "qyedq",
+                  "ref": "q2hxqT",
                   "name": "Notes actions",
                   "layoutPosition": "absolute",
                   "y": 10,
                   "x": 670
                 },
                 {
-                  "id": "ZAlgm",
+                  "id": "Xpqzr",
                   "type": "ref",
-                  "ref": "zAmch",
+                  "ref": "A5TuX",
                   "name": "Template menu",
                   "layoutPosition": "absolute",
                   "x": 484,
@@ -65174,7 +65227,7 @@
     },
     {
       "type": "frame",
-      "id": "y3zo4",
+      "id": "qMzQE",
       "x": 1180,
       "y": 31320,
       "name": "Calls — generate menu, no notes",
@@ -65193,7 +65246,7 @@
       "children": [
         {
           "type": "frame",
-          "id": "F5A5JI",
+          "id": "hQjvR",
           "x": 0,
           "y": 0,
           "name": "Content",
@@ -65202,7 +65255,7 @@
           "children": [
             {
               "type": "frame",
-              "id": "IHQcW",
+              "id": "E1WmK",
               "name": "List pane",
               "width": 340,
               "height": "fill_container",
@@ -65213,14 +65266,14 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "O4OXW",
+                  "id": "VEK2o",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
                   "width": "fill_container"
                 },
                 {
-                  "id": "RUvFV",
+                  "id": "U3a3pS",
                   "type": "ref",
                   "ref": "FE6zE",
                   "name": "List search",
@@ -65228,7 +65281,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "XYp9O",
+                  "id": "A6ImL",
                   "name": "List",
                   "clip": true,
                   "width": "fill_container",
@@ -65237,7 +65290,7 @@
                   "layout": "vertical",
                   "children": [
                     {
-                      "id": "MlTJ0",
+                      "id": "U5XSo",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Сегодня",
@@ -65252,7 +65305,7 @@
                       }
                     },
                     {
-                      "id": "OJA3d",
+                      "id": "hHXcV",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row ЦР ID",
@@ -65273,7 +65326,7 @@
                       }
                     },
                     {
-                      "id": "eamzk",
+                      "id": "s5JIS",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row ЦР",
@@ -65294,7 +65347,7 @@
                       }
                     },
                     {
-                      "id": "yauQp",
+                      "id": "gshfU",
                       "type": "ref",
                       "ref": "rowPre",
                       "name": "Row iOS Daily",
@@ -65315,7 +65368,7 @@
                       }
                     },
                     {
-                      "id": "Lwtaa",
+                      "id": "MRQZc",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Вчера",
@@ -65330,7 +65383,7 @@
                       }
                     },
                     {
-                      "id": "rVvxN",
+                      "id": "lNoZD",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Люда — передача дел",
@@ -65351,7 +65404,7 @@
                       }
                     },
                     {
-                      "id": "tsYfk",
+                      "id": "BZiQ4",
                       "type": "ref",
                       "ref": "rowFai",
                       "name": "Row iOS & Android daily",
@@ -65372,7 +65425,7 @@
                       }
                     },
                     {
-                      "id": "ziskv",
+                      "id": "hzjui",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Понедельник, 9 ноября",
@@ -65387,7 +65440,7 @@
                       }
                     },
                     {
-                      "id": "wwCUB",
+                      "id": "JJcT9",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row ЦР Статус",
@@ -65408,7 +65461,7 @@
                       }
                     },
                     {
-                      "id": "JXjb9",
+                      "id": "Nw59Y",
                       "type": "ref",
                       "ref": "rowSel",
                       "name": "Row 2026.11.09-1000",
@@ -65432,7 +65485,7 @@
                       }
                     },
                     {
-                      "id": "PmPlK",
+                      "id": "X77E0a",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Пятница, 6 ноября",
@@ -65447,7 +65500,7 @@
                       }
                     },
                     {
-                      "id": "RD0Uo",
+                      "id": "G32i0T",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Лера 17820",
@@ -65468,7 +65521,7 @@
                       }
                     },
                     {
-                      "id": "EZzBe",
+                      "id": "Af2AG",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row iOS Daily",
@@ -65489,7 +65542,7 @@
                       }
                     },
                     {
-                      "id": "hw0Wq",
+                      "id": "HVjSR",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Четверг, 5 ноября",
@@ -65504,7 +65557,7 @@
                       }
                     },
                     {
-                      "id": "fm97Y",
+                      "id": "sqp79",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Планирование",
@@ -65530,14 +65583,14 @@
             },
             {
               "type": "frame",
-              "id": "cZlXF",
+              "id": "u8TCf",
               "name": "Detail pane",
               "width": "fill_container",
               "height": "fill_container",
               "layout": "vertical",
               "children": [
                 {
-                  "id": "qzovm",
+                  "id": "y4u2e",
                   "type": "ref",
                   "ref": "s033x",
                   "name": "Header",
@@ -65553,7 +65606,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "H60ieT",
+                  "id": "V9iJ3",
                   "name": "Scroll",
                   "clip": true,
                   "width": "fill_container",
@@ -65569,7 +65622,7 @@
                   "children": [
                     {
                       "type": "frame",
-                      "id": "EMLkM",
+                      "id": "t9AZxG",
                       "name": "Body",
                       "width": "fill_container",
                       "height": "fill_container",
@@ -65578,7 +65631,7 @@
                       "gap": "$space-4",
                       "children": [
                         {
-                          "id": "c0zxbX",
+                          "id": "rxZdS",
                           "type": "ref",
                           "ref": "IUa4N",
                           "name": "No summary",
@@ -65589,18 +65642,18 @@
                   ]
                 },
                 {
-                  "id": "hOXOQ",
+                  "id": "saJck",
                   "type": "ref",
-                  "ref": "z8syv",
+                  "ref": "e4HeAx",
                   "name": "Notes actions",
                   "layoutPosition": "absolute",
                   "y": 10,
                   "x": 708
                 },
                 {
-                  "id": "NHSjE",
+                  "id": "SalxZ",
                   "type": "ref",
-                  "ref": "EMFbH",
+                  "ref": "iPlvd",
                   "name": "Template menu",
                   "layoutPosition": "absolute",
                   "x": 484,
@@ -65614,7 +65667,7 @@
     },
     {
       "type": "frame",
-      "id": "QhYq7",
+      "id": "k1WGHs",
       "x": 2360,
       "y": 31320,
       "name": "Calls — regenerate menu, broken template",
@@ -65633,7 +65686,7 @@
       "children": [
         {
           "type": "frame",
-          "id": "VrOV4",
+          "id": "pSU4s",
           "x": 0,
           "y": 0,
           "name": "Content",
@@ -65642,7 +65695,7 @@
           "children": [
             {
               "type": "frame",
-              "id": "G08dau",
+              "id": "MW4Na",
               "name": "List pane",
               "width": 340,
               "height": "fill_container",
@@ -65653,14 +65706,14 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "yd4G4",
+                  "id": "oOGMF",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
                   "width": "fill_container"
                 },
                 {
-                  "id": "Ix8it",
+                  "id": "AkJ4S",
                   "type": "ref",
                   "ref": "FE6zE",
                   "name": "List search",
@@ -65668,7 +65721,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "bywj8",
+                  "id": "u3zy0K",
                   "name": "List",
                   "clip": true,
                   "width": "fill_container",
@@ -65677,7 +65730,7 @@
                   "layout": "vertical",
                   "children": [
                     {
-                      "id": "jmvRa",
+                      "id": "ef00y",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Сегодня",
@@ -65692,7 +65745,7 @@
                       }
                     },
                     {
-                      "id": "Dpql6",
+                      "id": "K9Ksw",
                       "type": "ref",
                       "ref": "rowSel",
                       "name": "Row ЦР ID",
@@ -65713,7 +65766,7 @@
                       }
                     },
                     {
-                      "id": "cDC8m",
+                      "id": "ObDQ5",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row ЦР",
@@ -65734,7 +65787,7 @@
                       }
                     },
                     {
-                      "id": "N17seZ",
+                      "id": "yjuDl",
                       "type": "ref",
                       "ref": "rowPre",
                       "name": "Row iOS Daily",
@@ -65755,7 +65808,7 @@
                       }
                     },
                     {
-                      "id": "X33eS",
+                      "id": "bOFaB",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Вчера",
@@ -65770,7 +65823,7 @@
                       }
                     },
                     {
-                      "id": "KhbnX",
+                      "id": "cGSI8",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Люда — передача дел",
@@ -65791,7 +65844,7 @@
                       }
                     },
                     {
-                      "id": "FCH5B",
+                      "id": "vPwKb",
                       "type": "ref",
                       "ref": "rowFai",
                       "name": "Row iOS & Android daily",
@@ -65812,7 +65865,7 @@
                       }
                     },
                     {
-                      "id": "Clwlh",
+                      "id": "w9MHZ",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Понедельник, 9 ноября",
@@ -65827,7 +65880,7 @@
                       }
                     },
                     {
-                      "id": "l0jz8",
+                      "id": "o1qTY8",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row ЦР Статус",
@@ -65848,7 +65901,7 @@
                       }
                     },
                     {
-                      "id": "x2IgH",
+                      "id": "YMOtk",
                       "type": "ref",
                       "ref": "rowUnt",
                       "name": "Row 2026.11.09-1000",
@@ -65869,7 +65922,7 @@
                       }
                     },
                     {
-                      "id": "LR3FM",
+                      "id": "YkNQF",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Пятница, 6 ноября",
@@ -65884,7 +65937,7 @@
                       }
                     },
                     {
-                      "id": "qEKoc",
+                      "id": "SxI8C",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Лера 17820",
@@ -65905,7 +65958,7 @@
                       }
                     },
                     {
-                      "id": "ExEor",
+                      "id": "VIJqA",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row iOS Daily",
@@ -65926,7 +65979,7 @@
                       }
                     },
                     {
-                      "id": "OT0LS",
+                      "id": "qlRUa",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Четверг, 5 ноября",
@@ -65941,7 +65994,7 @@
                       }
                     },
                     {
-                      "id": "Zyt2W",
+                      "id": "vGuRr",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Планирование",
@@ -65967,14 +66020,14 @@
             },
             {
               "type": "frame",
-              "id": "OE3LT",
+              "id": "pNOQk",
               "name": "Detail pane",
               "width": "fill_container",
               "height": "fill_container",
               "layout": "vertical",
               "children": [
                 {
-                  "id": "c639J",
+                  "id": "F3xN7",
                   "type": "ref",
                   "ref": "s033x",
                   "name": "Header",
@@ -65990,7 +66043,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "vy7Ow",
+                  "id": "h3TVjo",
                   "name": "Scroll",
                   "clip": true,
                   "width": "fill_container",
@@ -66005,14 +66058,14 @@
                   ],
                   "children": [
                     {
-                      "id": "A8Okja",
+                      "id": "nuZ9F",
                       "type": "ref",
-                      "ref": "BJEAJ",
+                      "ref": "yAiyH",
                       "name": "Notes bar",
                       "width": "fill_container"
                     },
                     {
-                      "id": "e16Uu",
+                      "id": "TeUr2",
                       "type": "ref",
                       "ref": "s035x",
                       "name": "S О ЧЁМ ВСТРЕЧА",
@@ -66024,7 +66077,7 @@
                       }
                     },
                     {
-                      "id": "Q5uctG",
+                      "id": "P9ezw",
                       "type": "ref",
                       "ref": "s039x",
                       "name": "P Встреча была пос",
@@ -66036,7 +66089,7 @@
                       }
                     },
                     {
-                      "id": "G55CV",
+                      "id": "z5Qfz3",
                       "type": "ref",
                       "ref": "s035x",
                       "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
@@ -66048,7 +66101,7 @@
                       }
                     },
                     {
-                      "id": "JYepY",
+                      "id": "r9Jge",
                       "type": "ref",
                       "ref": "s037x",
                       "name": "H Пополнение счёта",
@@ -66060,7 +66113,7 @@
                       }
                     },
                     {
-                      "id": "AuQUa",
+                      "id": "e1wu8s",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Пополнение работ",
@@ -66072,7 +66125,7 @@
                       }
                     },
                     {
-                      "id": "G818c",
+                      "id": "yXjJr",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Отдельные вопрос",
@@ -66084,7 +66137,7 @@
                       }
                     },
                     {
-                      "id": "R8vPg9",
+                      "id": "rNUa2",
                       "type": "ref",
                       "ref": "s037x",
                       "name": "H Идентификаторы с",
@@ -66096,7 +66149,7 @@
                       }
                     },
                     {
-                      "id": "k1o6G1",
+                      "id": "OLu45",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Application mess",
@@ -66108,7 +66161,7 @@
                       }
                     },
                     {
-                      "id": "YQxAC",
+                      "id": "XI2Vz",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B По correlation m",
@@ -66120,7 +66173,7 @@
                       }
                     },
                     {
-                      "id": "a1UeVF",
+                      "id": "l50ne",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Предложение: Ope",
@@ -66132,7 +66185,7 @@
                       }
                     },
                     {
-                      "id": "tbZQC",
+                      "id": "lSLtY",
                       "type": "ref",
                       "ref": "lSAuc",
                       "name": "Date",
@@ -66146,18 +66199,18 @@
                   ]
                 },
                 {
-                  "id": "ohHN0",
+                  "id": "g2waK",
                   "type": "ref",
-                  "ref": "qyedq",
+                  "ref": "q2hxqT",
                   "name": "Notes actions",
                   "layoutPosition": "absolute",
                   "y": 10,
                   "x": 670
                 },
                 {
-                  "id": "M3wtQG",
+                  "id": "C8jJS",
                   "type": "ref",
-                  "ref": "qkkUg",
+                  "ref": "S9QURJ",
                   "name": "Template menu",
                   "layoutPosition": "absolute",
                   "x": 484,
@@ -66171,7 +66224,7 @@
     },
     {
       "type": "frame",
-      "id": "G9PlE",
+      "id": "fStNE",
       "x": 3540,
       "y": 31320,
       "name": "Calls — regenerate menu, no usable files",
@@ -66190,7 +66243,7 @@
       "children": [
         {
           "type": "frame",
-          "id": "p0xIp",
+          "id": "HdKl5",
           "x": 0,
           "y": 0,
           "name": "Content",
@@ -66199,7 +66252,7 @@
           "children": [
             {
               "type": "frame",
-              "id": "J3wd3",
+              "id": "XQBDY",
               "name": "List pane",
               "width": 340,
               "height": "fill_container",
@@ -66210,14 +66263,14 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "e3DFg",
+                  "id": "C3hjs",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
                   "width": "fill_container"
                 },
                 {
-                  "id": "aaQFV",
+                  "id": "IzU4c",
                   "type": "ref",
                   "ref": "FE6zE",
                   "name": "List search",
@@ -66225,7 +66278,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "H0Dkw8",
+                  "id": "rXbFE",
                   "name": "List",
                   "clip": true,
                   "width": "fill_container",
@@ -66234,7 +66287,7 @@
                   "layout": "vertical",
                   "children": [
                     {
-                      "id": "cHkEK",
+                      "id": "k3Tzi",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Сегодня",
@@ -66249,7 +66302,7 @@
                       }
                     },
                     {
-                      "id": "ooQx7",
+                      "id": "aRTmo",
                       "type": "ref",
                       "ref": "rowSel",
                       "name": "Row ЦР ID",
@@ -66270,7 +66323,7 @@
                       }
                     },
                     {
-                      "id": "axcjk",
+                      "id": "JWF5c",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row ЦР",
@@ -66291,7 +66344,7 @@
                       }
                     },
                     {
-                      "id": "KZ5vt",
+                      "id": "kIF49",
                       "type": "ref",
                       "ref": "rowPre",
                       "name": "Row iOS Daily",
@@ -66312,7 +66365,7 @@
                       }
                     },
                     {
-                      "id": "sTCYw",
+                      "id": "xEAdV",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Вчера",
@@ -66327,7 +66380,7 @@
                       }
                     },
                     {
-                      "id": "MqgM3",
+                      "id": "Xzp6N",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Люда — передача дел",
@@ -66348,7 +66401,7 @@
                       }
                     },
                     {
-                      "id": "PGCfB",
+                      "id": "Go6hm",
                       "type": "ref",
                       "ref": "rowFai",
                       "name": "Row iOS & Android daily",
@@ -66369,7 +66422,7 @@
                       }
                     },
                     {
-                      "id": "q8pQM",
+                      "id": "fXIxj",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Понедельник, 9 ноября",
@@ -66384,7 +66437,7 @@
                       }
                     },
                     {
-                      "id": "ylfwN",
+                      "id": "A7ScO2",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row ЦР Статус",
@@ -66405,7 +66458,7 @@
                       }
                     },
                     {
-                      "id": "R2iZB0",
+                      "id": "escdB",
                       "type": "ref",
                       "ref": "rowUnt",
                       "name": "Row 2026.11.09-1000",
@@ -66426,7 +66479,7 @@
                       }
                     },
                     {
-                      "id": "sDeBR",
+                      "id": "KaPFE",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Пятница, 6 ноября",
@@ -66441,7 +66494,7 @@
                       }
                     },
                     {
-                      "id": "E2BeY",
+                      "id": "P77Yk",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Лера 17820",
@@ -66462,7 +66515,7 @@
                       }
                     },
                     {
-                      "id": "phl5H",
+                      "id": "OnBdv",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row iOS Daily",
@@ -66483,7 +66536,7 @@
                       }
                     },
                     {
-                      "id": "MMKv8",
+                      "id": "DvFnR",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Четверг, 5 ноября",
@@ -66498,7 +66551,7 @@
                       }
                     },
                     {
-                      "id": "UNqLQ",
+                      "id": "j3M6V",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Планирование",
@@ -66524,14 +66577,14 @@
             },
             {
               "type": "frame",
-              "id": "xhKAw",
+              "id": "gKY8y",
               "name": "Detail pane",
               "width": "fill_container",
               "height": "fill_container",
               "layout": "vertical",
               "children": [
                 {
-                  "id": "WiszB",
+                  "id": "P9hvHR",
                   "type": "ref",
                   "ref": "s033x",
                   "name": "Header",
@@ -66547,7 +66600,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "f8xRaF",
+                  "id": "A5q5Ou",
                   "name": "Scroll",
                   "clip": true,
                   "width": "fill_container",
@@ -66562,14 +66615,14 @@
                   ],
                   "children": [
                     {
-                      "id": "dAc9l",
+                      "id": "d5zSH",
                       "type": "ref",
-                      "ref": "BJEAJ",
+                      "ref": "yAiyH",
                       "name": "Notes bar",
                       "width": "fill_container"
                     },
                     {
-                      "id": "sUNEy",
+                      "id": "wB5bc",
                       "type": "ref",
                       "ref": "s035x",
                       "name": "S О ЧЁМ ВСТРЕЧА",
@@ -66581,7 +66634,7 @@
                       }
                     },
                     {
-                      "id": "GYFIk",
+                      "id": "rbKlT",
                       "type": "ref",
                       "ref": "s039x",
                       "name": "P Встреча была пос",
@@ -66593,7 +66646,7 @@
                       }
                     },
                     {
-                      "id": "wKApQ",
+                      "id": "E31fQR",
                       "type": "ref",
                       "ref": "s035x",
                       "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
@@ -66605,7 +66658,7 @@
                       }
                     },
                     {
-                      "id": "B2Uo60",
+                      "id": "eqCLf",
                       "type": "ref",
                       "ref": "s037x",
                       "name": "H Пополнение счёта",
@@ -66617,7 +66670,7 @@
                       }
                     },
                     {
-                      "id": "o4IZE4",
+                      "id": "Gz0KH",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Пополнение работ",
@@ -66629,7 +66682,7 @@
                       }
                     },
                     {
-                      "id": "VlZq3",
+                      "id": "kId4X",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Отдельные вопрос",
@@ -66641,7 +66694,7 @@
                       }
                     },
                     {
-                      "id": "izJsv",
+                      "id": "PElPT",
                       "type": "ref",
                       "ref": "s037x",
                       "name": "H Идентификаторы с",
@@ -66653,7 +66706,7 @@
                       }
                     },
                     {
-                      "id": "cS6zD",
+                      "id": "edOIC",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Application mess",
@@ -66665,7 +66718,7 @@
                       }
                     },
                     {
-                      "id": "Vfbjf",
+                      "id": "J4cBsl",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B По correlation m",
@@ -66677,7 +66730,7 @@
                       }
                     },
                     {
-                      "id": "gtlw8",
+                      "id": "u5pXq",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Предложение: Ope",
@@ -66689,7 +66742,7 @@
                       }
                     },
                     {
-                      "id": "R7y62",
+                      "id": "pPeI2",
                       "type": "ref",
                       "ref": "lSAuc",
                       "name": "Date",
@@ -66703,18 +66756,18 @@
                   ]
                 },
                 {
-                  "id": "DvW9j",
+                  "id": "cXo50",
                   "type": "ref",
-                  "ref": "qyedq",
+                  "ref": "q2hxqT",
                   "name": "Notes actions",
                   "layoutPosition": "absolute",
                   "y": 10,
                   "x": 670
                 },
                 {
-                  "id": "D5y1Xi",
+                  "id": "F4oCuw",
                   "type": "ref",
-                  "ref": "sdk2e",
+                  "ref": "T8aUU",
                   "name": "Template menu",
                   "layoutPosition": "absolute",
                   "x": 484,
@@ -66728,7 +66781,7 @@
     },
     {
       "type": "frame",
-      "id": "DMmYP",
+      "id": "aSauY",
       "x": 4720,
       "y": 31320,
       "name": "Calls — notes kept, current",
@@ -66747,7 +66800,7 @@
       "children": [
         {
           "type": "frame",
-          "id": "LAYjz",
+          "id": "b1XFV",
           "x": 0,
           "y": 0,
           "name": "Content",
@@ -66756,7 +66809,7 @@
           "children": [
             {
               "type": "frame",
-              "id": "Y3cRDM",
+              "id": "DkWGQ",
               "name": "List pane",
               "width": 340,
               "height": "fill_container",
@@ -66767,14 +66820,14 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "Z5Bysu",
+                  "id": "Z0MMy",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
                   "width": "fill_container"
                 },
                 {
-                  "id": "rlZkY",
+                  "id": "JHcLi",
                   "type": "ref",
                   "ref": "FE6zE",
                   "name": "List search",
@@ -66782,7 +66835,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "uEz3U",
+                  "id": "WTUXi",
                   "name": "List",
                   "clip": true,
                   "width": "fill_container",
@@ -66791,7 +66844,7 @@
                   "layout": "vertical",
                   "children": [
                     {
-                      "id": "vKaAq",
+                      "id": "E1sN9D",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Сегодня",
@@ -66806,7 +66859,7 @@
                       }
                     },
                     {
-                      "id": "u61A0z",
+                      "id": "y2Eoq",
                       "type": "ref",
                       "ref": "rowSel",
                       "name": "Row ЦР ID",
@@ -66827,7 +66880,7 @@
                       }
                     },
                     {
-                      "id": "pCDtJ",
+                      "id": "r4b381",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row ЦР",
@@ -66848,7 +66901,7 @@
                       }
                     },
                     {
-                      "id": "u1mbFI",
+                      "id": "MlMuO",
                       "type": "ref",
                       "ref": "rowPre",
                       "name": "Row iOS Daily",
@@ -66869,7 +66922,7 @@
                       }
                     },
                     {
-                      "id": "Ec72n",
+                      "id": "RDnz7",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Вчера",
@@ -66884,7 +66937,7 @@
                       }
                     },
                     {
-                      "id": "jw8Eh",
+                      "id": "mh8ys",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Люда — передача дел",
@@ -66905,7 +66958,7 @@
                       }
                     },
                     {
-                      "id": "zB6uq",
+                      "id": "v9tQe5",
                       "type": "ref",
                       "ref": "rowFai",
                       "name": "Row iOS & Android daily",
@@ -66926,7 +66979,7 @@
                       }
                     },
                     {
-                      "id": "Mc1Qb",
+                      "id": "niFFd",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Понедельник, 9 ноября",
@@ -66941,7 +66994,7 @@
                       }
                     },
                     {
-                      "id": "gfIV4",
+                      "id": "ziMy5",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row ЦР Статус",
@@ -66962,7 +67015,7 @@
                       }
                     },
                     {
-                      "id": "U5oHEt",
+                      "id": "xm6Ou",
                       "type": "ref",
                       "ref": "rowUnt",
                       "name": "Row 2026.11.09-1000",
@@ -66983,7 +67036,7 @@
                       }
                     },
                     {
-                      "id": "u1x9Df",
+                      "id": "gMY55",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Пятница, 6 ноября",
@@ -66998,7 +67051,7 @@
                       }
                     },
                     {
-                      "id": "V5DfR",
+                      "id": "X0uqbs",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Лера 17820",
@@ -67019,7 +67072,7 @@
                       }
                     },
                     {
-                      "id": "M0kla",
+                      "id": "yi2Gy",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row iOS Daily",
@@ -67040,7 +67093,7 @@
                       }
                     },
                     {
-                      "id": "wX7At",
+                      "id": "fURK6",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Четверг, 5 ноября",
@@ -67055,7 +67108,7 @@
                       }
                     },
                     {
-                      "id": "D3o7w",
+                      "id": "AdHqc",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Планирование",
@@ -67081,14 +67134,14 @@
             },
             {
               "type": "frame",
-              "id": "kQpc1",
+              "id": "o7x1Q",
               "name": "Detail pane",
               "width": "fill_container",
               "height": "fill_container",
               "layout": "vertical",
               "children": [
                 {
-                  "id": "jSstL",
+                  "id": "bG0G6",
                   "type": "ref",
                   "ref": "s033x",
                   "name": "Header",
@@ -67104,7 +67157,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "uEvsS",
+                  "id": "kGUR0",
                   "name": "Scroll",
                   "clip": true,
                   "width": "fill_container",
@@ -67119,14 +67172,14 @@
                   ],
                   "children": [
                     {
-                      "id": "lXVF0",
+                      "id": "Rn3Vh",
                       "type": "ref",
-                      "ref": "n3qEM",
+                      "ref": "kURef",
                       "name": "Notes bar",
                       "width": "fill_container"
                     },
                     {
-                      "id": "Y7J1VH",
+                      "id": "wI0xo",
                       "type": "ref",
                       "ref": "s035x",
                       "name": "S О ЧЁМ ВСТРЕЧА",
@@ -67138,7 +67191,7 @@
                       }
                     },
                     {
-                      "id": "O1h4a",
+                      "id": "C98fkN",
                       "type": "ref",
                       "ref": "s039x",
                       "name": "P Встреча была пос",
@@ -67150,7 +67203,7 @@
                       }
                     },
                     {
-                      "id": "tCEIw",
+                      "id": "r49enK",
                       "type": "ref",
                       "ref": "s035x",
                       "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
@@ -67162,7 +67215,7 @@
                       }
                     },
                     {
-                      "id": "GhyyU",
+                      "id": "uGzQf",
                       "type": "ref",
                       "ref": "s037x",
                       "name": "H Пополнение счёта",
@@ -67174,7 +67227,7 @@
                       }
                     },
                     {
-                      "id": "iOn8U",
+                      "id": "j4DyH",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Пополнение работ",
@@ -67186,7 +67239,7 @@
                       }
                     },
                     {
-                      "id": "rZjWK",
+                      "id": "GCH2K",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Отдельные вопрос",
@@ -67198,7 +67251,7 @@
                       }
                     },
                     {
-                      "id": "sPOj1",
+                      "id": "C2kAp",
                       "type": "ref",
                       "ref": "s037x",
                       "name": "H Идентификаторы с",
@@ -67210,7 +67263,7 @@
                       }
                     },
                     {
-                      "id": "Wmq3m",
+                      "id": "rDRkX",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Application mess",
@@ -67222,7 +67275,7 @@
                       }
                     },
                     {
-                      "id": "yYNJU",
+                      "id": "TP2Su",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B По correlation m",
@@ -67234,7 +67287,7 @@
                       }
                     },
                     {
-                      "id": "Ezmie",
+                      "id": "zSNox",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Предложение: Ope",
@@ -67246,7 +67299,7 @@
                       }
                     },
                     {
-                      "id": "EUXYb",
+                      "id": "pwRjc",
                       "type": "ref",
                       "ref": "lSAuc",
                       "name": "Date",
@@ -67260,9 +67313,9 @@
                   ]
                 },
                 {
-                  "id": "ASJ1f",
+                  "id": "DjfOm",
                   "type": "ref",
-                  "ref": "mFHRN",
+                  "ref": "k4qkqJ",
                   "name": "Notes actions",
                   "layoutPosition": "absolute",
                   "y": 10,
@@ -67276,7 +67329,555 @@
     },
     {
       "type": "frame",
-      "id": "S37607",
+      "id": "n6gYJO",
+      "x": 8260,
+      "y": 31320,
+      "name": "Calls — notes kept, previous",
+      "theme": {
+        "mode": "light"
+      },
+      "reusable": true,
+      "clip": true,
+      "width": 1100,
+      "height": 680,
+      "fill": "$win",
+      "cornerRadius": "$radius-card",
+      "stroke": "$rule",
+      "strokeWidth": 1,
+      "layout": "none",
+      "children": [
+        {
+          "type": "frame",
+          "id": "a2lN0",
+          "x": 0,
+          "y": 0,
+          "name": "Content",
+          "width": 1100,
+          "height": 680,
+          "children": [
+            {
+              "type": "frame",
+              "id": "j4ragQ",
+              "name": "List pane",
+              "width": 340,
+              "height": "fill_container",
+              "stroke": "$rule",
+              "strokeWidth": {
+                "right": 1
+              },
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "mgSb4",
+                  "type": "ref",
+                  "ref": "bncv0",
+                  "name": "List bar",
+                  "width": "fill_container"
+                },
+                {
+                  "id": "F5leYx",
+                  "type": "ref",
+                  "ref": "FE6zE",
+                  "name": "List search",
+                  "width": "fill_container"
+                },
+                {
+                  "type": "frame",
+                  "id": "yp7ct",
+                  "name": "List",
+                  "clip": true,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "children": [
+                    {
+                      "id": "bDgBn",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Сегодня",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Сегодня"
+                        },
+                        "u0i8d": {
+                          "content": "3 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "W1Aeiy",
+                      "type": "ref",
+                      "ref": "rowSel",
+                      "name": "Row ЦР ID",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "12:58"
+                        },
+                        "s023x": {
+                          "content": "ЦР ID"
+                        },
+                        "s026x": {
+                          "content": "41:11"
+                        },
+                        "s027x": {
+                          "content": "Идентификаторы и связка ответов"
+                        }
+                      }
+                    },
+                    {
+                      "id": "rK0MF",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row ЦР",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "11:00"
+                        },
+                        "s023x": {
+                          "content": "ЦР"
+                        },
+                        "s026x": {
+                          "content": "38:20"
+                        },
+                        "s027x": {
+                          "content": "Статус задач и план релиза"
+                        }
+                      }
+                    },
+                    {
+                      "id": "Pzmyt",
+                      "type": "ref",
+                      "ref": "rowPre",
+                      "name": "Row iOS Daily",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
+                        },
+                        "s026x": {
+                          "content": "15:02"
+                        },
+                        "s027x": {
+                          "content": "Подготовка итогов…"
+                        }
+                      }
+                    },
+                    {
+                      "id": "k71zO",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Вчера",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Вчера"
+                        },
+                        "u0i8d": {
+                          "content": "2 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "ZmCF9",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row Люда — передача дел",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "17:00"
+                        },
+                        "s023x": {
+                          "content": "Люда — передача дел"
+                        },
+                        "s026x": {
+                          "content": "52:40"
+                        },
+                        "s027x": {
+                          "content": "Передача задач и доступов перед отпуском"
+                        }
+                      }
+                    },
+                    {
+                      "id": "d5359M",
+                      "type": "ref",
+                      "ref": "rowFai",
+                      "name": "Row iOS & Android daily",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS & Android daily"
+                        },
+                        "s026x": {
+                          "content": "14:51"
+                        },
+                        "s027x": {
+                          "content": "Не удалось подготовить итоги"
+                        }
+                      }
+                    },
+                    {
+                      "id": "ZxXso",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Понедельник, 9 ноября",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Понедельник, 9 ноября"
+                        },
+                        "u0i8d": {
+                          "content": "2 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "eQVPU",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row ЦР Статус",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "11:02"
+                        },
+                        "s023x": {
+                          "content": "ЦР Статус"
+                        },
+                        "s026x": {
+                          "content": "29:45"
+                        },
+                        "s027x": {
+                          "content": "Сроки по пополнению и открытые вопросы"
+                        }
+                      }
+                    },
+                    {
+                      "id": "toPDS",
+                      "type": "ref",
+                      "ref": "rowUnt",
+                      "name": "Row 2026.11.09-1000",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "10:00"
+                        },
+                        "s023x": {
+                          "content": "2026.11.09-1000"
+                        },
+                        "s026x": {
+                          "content": "16:10"
+                        },
+                        "s027x": {
+                          "content": ""
+                        }
+                      }
+                    },
+                    {
+                      "id": "N8YUk",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Пятница, 6 ноября",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Пятница, 6 ноября"
+                        },
+                        "u0i8d": {
+                          "content": "2 звонка"
+                        }
+                      }
+                    },
+                    {
+                      "id": "QaAFF",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row Лера 17820",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "14:59"
+                        },
+                        "s023x": {
+                          "content": "Лера 17820"
+                        },
+                        "s026x": {
+                          "content": "33:05"
+                        },
+                        "s027x": {
+                          "content": "Разбор заявки 17820 и следующие шаги"
+                        }
+                      }
+                    },
+                    {
+                      "id": "leSuy",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row iOS Daily",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "09:59"
+                        },
+                        "s023x": {
+                          "content": "iOS Daily"
+                        },
+                        "s026x": {
+                          "content": "15:30"
+                        },
+                        "s027x": {
+                          "content": "Короткий синк по задачам спринта"
+                        }
+                      }
+                    },
+                    {
+                      "id": "x3aUF4",
+                      "type": "ref",
+                      "ref": "pmtOb",
+                      "name": "Day Четверг, 5 ноября",
+                      "width": "fill_container",
+                      "descendants": {
+                        "OPQgF": {
+                          "content": "Четверг, 5 ноября"
+                        },
+                        "u0i8d": {
+                          "content": "8 звонков"
+                        }
+                      }
+                    },
+                    {
+                      "id": "RZMsW",
+                      "type": "ref",
+                      "ref": "s030x",
+                      "name": "Row Планирование",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s024x": {
+                          "content": "17:34"
+                        },
+                        "s023x": {
+                          "content": "Планирование"
+                        },
+                        "s026x": {
+                          "content": "58:00"
+                        },
+                        "s027x": {
+                          "content": "Цели спринта и оценки"
+                        }
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "BqlhM",
+              "name": "Detail pane",
+              "width": "fill_container",
+              "height": "fill_container",
+              "layout": "vertical",
+              "children": [
+                {
+                  "id": "XiUlT",
+                  "type": "ref",
+                  "ref": "s033x",
+                  "name": "Header",
+                  "width": "fill_container",
+                  "descendants": {
+                    "s031x": {
+                      "content": "ЦР ID"
+                    },
+                    "s032x": {
+                      "content": "Сегодня, 12:58 · 41:11"
+                    }
+                  }
+                },
+                {
+                  "type": "frame",
+                  "id": "Z0wo1z",
+                  "name": "Scroll",
+                  "clip": true,
+                  "width": "fill_container",
+                  "height": "fill_container",
+                  "fill": "$surface",
+                  "layout": "vertical",
+                  "padding": [
+                    0,
+                    0,
+                    "$space-24",
+                    0
+                  ],
+                  "children": [
+                    {
+                      "id": "tZBS7",
+                      "type": "ref",
+                      "ref": "S2skG",
+                      "name": "Notes bar",
+                      "width": "fill_container"
+                    },
+                    {
+                      "id": "CAa3d",
+                      "type": "ref",
+                      "ref": "s035x",
+                      "name": "S О ЧЁМ ВСТРЕЧА",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s034x": {
+                          "content": "О ЧЁМ ВСТРЕЧА"
+                        }
+                      }
+                    },
+                    {
+                      "id": "s4wZU",
+                      "type": "ref",
+                      "ref": "s039x",
+                      "name": "P Встреча была пос",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s038x": {
+                          "content": "Встреча была посвящена идентификаторам в сообщениях (application message ID, Oper ID, message ID, doc ID, correlation message ID) и тому, как связывать ответы с запросами между шиной, бэком и фронтом. Также обсудили пополнение счёта и классификацию асинхронных сообщений."
+                        }
+                      }
+                    },
+                    {
+                      "id": "Zvzd6",
+                      "type": "ref",
+                      "ref": "s035x",
+                      "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s034x": {
+                          "content": "КЛЮЧЕВЫЕ МОМЕНТЫ"
+                        }
+                      }
+                    },
+                    {
+                      "id": "RJcP5",
+                      "type": "ref",
+                      "ref": "s037x",
+                      "name": "H Пополнение счёта",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s036x": {
+                          "content": "Пополнение счёта"
+                        }
+                      }
+                    },
+                    {
+                      "id": "HA4W5",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Пополнение работ",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Пополнение работает, открыты лишь вопросы по ответам [02:02–03:10]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "wnv9U",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Отдельные вопрос",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Отдельные вопросы остаются по C2C и по Oper ID в пополнении [03:10]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "StYEO",
+                      "type": "ref",
+                      "ref": "s037x",
+                      "name": "H Идентификаторы с",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s036x": {
+                          "content": "Идентификаторы сообщений"
+                        }
+                      }
+                    },
+                    {
+                      "id": "EK9Cs",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Application mess",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Application message ID — поле ЦБ; operation ID — поле адаптера [04:41–08:08]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "YLnhO",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B По correlation m",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "По correlation message ID есть расхождение между примерами XML и XSD-схемой; нужно выяснить у смежных систем [07:38–08:08]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "MrHiL",
+                      "type": "ref",
+                      "ref": "s042x",
+                      "name": "B Предложение: Ope",
+                      "width": "fill_container",
+                      "descendants": {
+                        "s041x": {
+                          "content": "Предложение: Oper ID как ключ верхнего уровня для всех ответов на запрос [08:08–10:04]."
+                        }
+                      }
+                    },
+                    {
+                      "id": "y34gw7",
+                      "type": "ref",
+                      "ref": "lSAuc",
+                      "name": "Date",
+                      "width": "fill_container",
+                      "descendants": {
+                        "ugxZS": {
+                          "content": "Сделано 12 ноября, 14:05 · Default"
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "g79KzV",
+                  "type": "ref",
+                  "ref": "k4qkqJ",
+                  "name": "Notes actions",
+                  "layoutPosition": "absolute",
+                  "y": 10,
+                  "x": 670
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "frame",
+      "id": "YmUKy",
       "x": 5900,
       "y": 31320,
       "name": "Calls — remaking notes",
@@ -67295,7 +67896,7 @@
       "children": [
         {
           "type": "frame",
-          "id": "e7ja4",
+          "id": "Wu67b",
           "x": 0,
           "y": 0,
           "name": "Content",
@@ -67304,7 +67905,7 @@
           "children": [
             {
               "type": "frame",
-              "id": "Y4tGdP",
+              "id": "IOrEM",
               "name": "List pane",
               "width": 340,
               "height": "fill_container",
@@ -67315,14 +67916,14 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "b7a2Ai",
+                  "id": "Dhoq7",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
                   "width": "fill_container"
                 },
                 {
-                  "id": "upTOK",
+                  "id": "vnDxl",
                   "type": "ref",
                   "ref": "FE6zE",
                   "name": "List search",
@@ -67330,7 +67931,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "u4C13",
+                  "id": "uHozV",
                   "name": "List",
                   "clip": true,
                   "width": "fill_container",
@@ -67339,7 +67940,7 @@
                   "layout": "vertical",
                   "children": [
                     {
-                      "id": "AKyy0",
+                      "id": "fCtXI",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Сегодня",
@@ -67354,7 +67955,7 @@
                       }
                     },
                     {
-                      "id": "TW63Z",
+                      "id": "SVw21",
                       "type": "ref",
                       "ref": "rowSel",
                       "name": "Row ЦР ID",
@@ -67375,7 +67976,7 @@
                       }
                     },
                     {
-                      "id": "rbpby",
+                      "id": "yqUjd",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row ЦР",
@@ -67396,7 +67997,7 @@
                       }
                     },
                     {
-                      "id": "f638LX",
+                      "id": "Muyf3",
                       "type": "ref",
                       "ref": "rowPre",
                       "name": "Row iOS Daily",
@@ -67417,7 +68018,7 @@
                       }
                     },
                     {
-                      "id": "qljMa",
+                      "id": "SRFTA",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Вчера",
@@ -67432,7 +68033,7 @@
                       }
                     },
                     {
-                      "id": "RdUkj",
+                      "id": "N1yuyU",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Люда — передача дел",
@@ -67453,7 +68054,7 @@
                       }
                     },
                     {
-                      "id": "xjEnB",
+                      "id": "g3395",
                       "type": "ref",
                       "ref": "rowFai",
                       "name": "Row iOS & Android daily",
@@ -67474,7 +68075,7 @@
                       }
                     },
                     {
-                      "id": "Qcnkn",
+                      "id": "pNMaY",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Понедельник, 9 ноября",
@@ -67489,7 +68090,7 @@
                       }
                     },
                     {
-                      "id": "UDXfG",
+                      "id": "PQC9H",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row ЦР Статус",
@@ -67510,7 +68111,7 @@
                       }
                     },
                     {
-                      "id": "vT7pm",
+                      "id": "RnUQC",
                       "type": "ref",
                       "ref": "rowUnt",
                       "name": "Row 2026.11.09-1000",
@@ -67531,7 +68132,7 @@
                       }
                     },
                     {
-                      "id": "WHRlB",
+                      "id": "y3UW5",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Пятница, 6 ноября",
@@ -67546,7 +68147,7 @@
                       }
                     },
                     {
-                      "id": "D98up",
+                      "id": "R52bf",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Лера 17820",
@@ -67567,7 +68168,7 @@
                       }
                     },
                     {
-                      "id": "LqOPq",
+                      "id": "JL4Lx",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row iOS Daily",
@@ -67588,7 +68189,7 @@
                       }
                     },
                     {
-                      "id": "FsZml",
+                      "id": "V1PnUh",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Четверг, 5 ноября",
@@ -67603,7 +68204,7 @@
                       }
                     },
                     {
-                      "id": "mPYwg",
+                      "id": "U9I7P",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Планирование",
@@ -67629,14 +68230,14 @@
             },
             {
               "type": "frame",
-              "id": "R0JcV",
+              "id": "YnnXi",
               "name": "Detail pane",
               "width": "fill_container",
               "height": "fill_container",
               "layout": "vertical",
               "children": [
                 {
-                  "id": "Losjk",
+                  "id": "RsDtK",
                   "type": "ref",
                   "ref": "s033x",
                   "name": "Header",
@@ -67652,7 +68253,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "P8bjK",
+                  "id": "SCx6z",
                   "name": "Scroll",
                   "clip": true,
                   "width": "fill_container",
@@ -67667,21 +68268,21 @@
                   ],
                   "children": [
                     {
-                      "id": "GJ86c",
+                      "id": "WG6eU",
                       "type": "ref",
-                      "ref": "P7BDmQ",
+                      "ref": "cXJtn",
                       "name": "Remaking",
                       "width": "fill_container"
                     },
                     {
-                      "id": "j9OzIQ",
+                      "id": "WvxJP",
                       "type": "ref",
-                      "ref": "BJEAJ",
+                      "ref": "yAiyH",
                       "name": "Notes bar",
                       "width": "fill_container"
                     },
                     {
-                      "id": "Kr1Wp",
+                      "id": "kqhHk",
                       "type": "ref",
                       "ref": "s035x",
                       "name": "S О ЧЁМ ВСТРЕЧА",
@@ -67694,7 +68295,7 @@
                       }
                     },
                     {
-                      "id": "I3qxr",
+                      "id": "mbXtD",
                       "type": "ref",
                       "ref": "s039x",
                       "name": "P Встреча была пос",
@@ -67707,7 +68308,7 @@
                       }
                     },
                     {
-                      "id": "Axlno",
+                      "id": "GEWbu",
                       "type": "ref",
                       "ref": "s035x",
                       "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
@@ -67720,7 +68321,7 @@
                       }
                     },
                     {
-                      "id": "itBjZ",
+                      "id": "ynmr5",
                       "type": "ref",
                       "ref": "s037x",
                       "name": "H Пополнение счёта",
@@ -67733,7 +68334,7 @@
                       }
                     },
                     {
-                      "id": "KyLbU",
+                      "id": "lon3R",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Пополнение работ",
@@ -67746,7 +68347,7 @@
                       }
                     },
                     {
-                      "id": "fXMjw",
+                      "id": "G3jJY",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Отдельные вопрос",
@@ -67759,7 +68360,7 @@
                       }
                     },
                     {
-                      "id": "accur",
+                      "id": "hzxyT",
                       "type": "ref",
                       "ref": "s037x",
                       "name": "H Идентификаторы с",
@@ -67772,7 +68373,7 @@
                       }
                     },
                     {
-                      "id": "BiKtl",
+                      "id": "Ptn1r",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Application mess",
@@ -67785,7 +68386,7 @@
                       }
                     },
                     {
-                      "id": "yqCVL",
+                      "id": "NLwLI",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B По correlation m",
@@ -67798,7 +68399,7 @@
                       }
                     },
                     {
-                      "id": "A1nBq",
+                      "id": "OZJaX",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Предложение: Ope",
@@ -67811,7 +68412,7 @@
                       }
                     },
                     {
-                      "id": "zpaGt",
+                      "id": "bcF3C",
                       "type": "ref",
                       "ref": "lSAuc",
                       "name": "Date",
@@ -67826,9 +68427,9 @@
                   ]
                 },
                 {
-                  "id": "iPCZ1",
+                  "id": "gucHg",
                   "type": "ref",
-                  "ref": "mFHRN",
+                  "ref": "k4qkqJ",
                   "name": "Notes actions",
                   "layoutPosition": "absolute",
                   "y": 10,
@@ -67842,7 +68443,7 @@
     },
     {
       "type": "frame",
-      "id": "r91Zs",
+      "id": "DbPgd",
       "x": 7080,
       "y": 31320,
       "name": "Calls — remake failed",
@@ -67861,7 +68462,7 @@
       "children": [
         {
           "type": "frame",
-          "id": "Li4rY",
+          "id": "nrPg4",
           "x": 0,
           "y": 0,
           "name": "Content",
@@ -67870,7 +68471,7 @@
           "children": [
             {
               "type": "frame",
-              "id": "q0iDX",
+              "id": "b6m5lz",
               "name": "List pane",
               "width": 340,
               "height": "fill_container",
@@ -67881,14 +68482,14 @@
               "layout": "vertical",
               "children": [
                 {
-                  "id": "t8wIU",
+                  "id": "N1sIDp",
                   "type": "ref",
                   "ref": "bncv0",
                   "name": "List bar",
                   "width": "fill_container"
                 },
                 {
-                  "id": "gjSMX",
+                  "id": "NDssr",
                   "type": "ref",
                   "ref": "FE6zE",
                   "name": "List search",
@@ -67896,7 +68497,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "gMqj1",
+                  "id": "XYXot",
                   "name": "List",
                   "clip": true,
                   "width": "fill_container",
@@ -67905,7 +68506,7 @@
                   "layout": "vertical",
                   "children": [
                     {
-                      "id": "Y7FN9b",
+                      "id": "qv3Cl",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Сегодня",
@@ -67920,7 +68521,7 @@
                       }
                     },
                     {
-                      "id": "eqHVn",
+                      "id": "tePHH",
                       "type": "ref",
                       "ref": "rowSel",
                       "name": "Row ЦР ID",
@@ -67941,7 +68542,7 @@
                       }
                     },
                     {
-                      "id": "qSBaR",
+                      "id": "aFztV",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row ЦР",
@@ -67962,7 +68563,7 @@
                       }
                     },
                     {
-                      "id": "TW5Ww",
+                      "id": "Q5vh3O",
                       "type": "ref",
                       "ref": "rowPre",
                       "name": "Row iOS Daily",
@@ -67983,7 +68584,7 @@
                       }
                     },
                     {
-                      "id": "SUW5Q",
+                      "id": "abQhv",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Вчера",
@@ -67998,7 +68599,7 @@
                       }
                     },
                     {
-                      "id": "r5w1OQ",
+                      "id": "xA6HX",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Люда — передача дел",
@@ -68019,7 +68620,7 @@
                       }
                     },
                     {
-                      "id": "WHbaW",
+                      "id": "kUgwn",
                       "type": "ref",
                       "ref": "rowFai",
                       "name": "Row iOS & Android daily",
@@ -68040,7 +68641,7 @@
                       }
                     },
                     {
-                      "id": "jhKxZ",
+                      "id": "YpNBC",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Понедельник, 9 ноября",
@@ -68055,7 +68656,7 @@
                       }
                     },
                     {
-                      "id": "qG0rz",
+                      "id": "R6xL0o",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row ЦР Статус",
@@ -68076,7 +68677,7 @@
                       }
                     },
                     {
-                      "id": "hu7bt",
+                      "id": "D1Gey",
                       "type": "ref",
                       "ref": "rowUnt",
                       "name": "Row 2026.11.09-1000",
@@ -68097,7 +68698,7 @@
                       }
                     },
                     {
-                      "id": "qoChu",
+                      "id": "sQHBr",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Пятница, 6 ноября",
@@ -68112,7 +68713,7 @@
                       }
                     },
                     {
-                      "id": "JMxhi",
+                      "id": "AmFTv",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Лера 17820",
@@ -68133,7 +68734,7 @@
                       }
                     },
                     {
-                      "id": "x1ATD",
+                      "id": "mWNrk",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row iOS Daily",
@@ -68154,7 +68755,7 @@
                       }
                     },
                     {
-                      "id": "mJGll",
+                      "id": "pZ7Dj",
                       "type": "ref",
                       "ref": "pmtOb",
                       "name": "Day Четверг, 5 ноября",
@@ -68169,7 +68770,7 @@
                       }
                     },
                     {
-                      "id": "E5NWMQ",
+                      "id": "MQPox",
                       "type": "ref",
                       "ref": "s030x",
                       "name": "Row Планирование",
@@ -68195,14 +68796,14 @@
             },
             {
               "type": "frame",
-              "id": "oAgw9",
+              "id": "T5lfot",
               "name": "Detail pane",
               "width": "fill_container",
               "height": "fill_container",
               "layout": "vertical",
               "children": [
                 {
-                  "id": "i4Rdb",
+                  "id": "OCrwx",
                   "type": "ref",
                   "ref": "s033x",
                   "name": "Header",
@@ -68218,7 +68819,7 @@
                 },
                 {
                   "type": "frame",
-                  "id": "ZjU8J",
+                  "id": "X14OF",
                   "name": "Scroll",
                   "clip": true,
                   "width": "fill_container",
@@ -68233,21 +68834,21 @@
                   ],
                   "children": [
                     {
-                      "id": "f7CW5Z",
+                      "id": "KYsGf",
                       "type": "ref",
-                      "ref": "haTzt",
+                      "ref": "CNTB2",
                       "name": "Failed",
                       "width": "fill_container"
                     },
                     {
-                      "id": "aGzcV",
+                      "id": "Z5Geke",
                       "type": "ref",
-                      "ref": "BJEAJ",
+                      "ref": "yAiyH",
                       "name": "Notes bar",
                       "width": "fill_container"
                     },
                     {
-                      "id": "jfDFD",
+                      "id": "ZKlHE",
                       "type": "ref",
                       "ref": "s035x",
                       "name": "S О ЧЁМ ВСТРЕЧА",
@@ -68259,7 +68860,7 @@
                       }
                     },
                     {
-                      "id": "BP75u",
+                      "id": "tqY3R",
                       "type": "ref",
                       "ref": "s039x",
                       "name": "P Встреча была пос",
@@ -68271,7 +68872,7 @@
                       }
                     },
                     {
-                      "id": "NJlrS",
+                      "id": "fN0ok",
                       "type": "ref",
                       "ref": "s035x",
                       "name": "S КЛЮЧЕВЫЕ МОМЕНТЫ",
@@ -68283,7 +68884,7 @@
                       }
                     },
                     {
-                      "id": "zZVq5",
+                      "id": "j3MVO",
                       "type": "ref",
                       "ref": "s037x",
                       "name": "H Пополнение счёта",
@@ -68295,7 +68896,7 @@
                       }
                     },
                     {
-                      "id": "Jt1Ne",
+                      "id": "Z5v4qr",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Пополнение работ",
@@ -68307,7 +68908,7 @@
                       }
                     },
                     {
-                      "id": "GzTTR",
+                      "id": "wzfSM",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Отдельные вопрос",
@@ -68319,7 +68920,7 @@
                       }
                     },
                     {
-                      "id": "aPP9Q",
+                      "id": "X1JLME",
                       "type": "ref",
                       "ref": "s037x",
                       "name": "H Идентификаторы с",
@@ -68331,7 +68932,7 @@
                       }
                     },
                     {
-                      "id": "qoqQM",
+                      "id": "e0J4Z0",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Application mess",
@@ -68343,7 +68944,7 @@
                       }
                     },
                     {
-                      "id": "Mm7j2",
+                      "id": "a6GWG",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B По correlation m",
@@ -68355,7 +68956,7 @@
                       }
                     },
                     {
-                      "id": "P0ywvI",
+                      "id": "w05wW",
                       "type": "ref",
                       "ref": "s042x",
                       "name": "B Предложение: Ope",
@@ -68367,7 +68968,7 @@
                       }
                     },
                     {
-                      "id": "sg7MX",
+                      "id": "pJjL9",
                       "type": "ref",
                       "ref": "lSAuc",
                       "name": "Date",
@@ -68381,9 +68982,9 @@
                   ]
                 },
                 {
-                  "id": "pivw0",
+                  "id": "aR6ED",
                   "type": "ref",
-                  "ref": "mFHRN",
+                  "ref": "k4qkqJ",
                   "name": "Notes actions",
                   "layoutPosition": "absolute",
                   "y": 10,
@@ -68396,9 +68997,9 @@
       ]
     },
     {
-      "id": "svKu1",
+      "id": "HCLuh",
       "type": "ref",
-      "ref": "tnsA8",
+      "ref": "C3Wtj",
       "name": "Calls — regenerate menu (dark)",
       "x": 0,
       "y": 32060,
@@ -68407,9 +69008,9 @@
       }
     },
     {
-      "id": "sJ8cr",
+      "id": "nGbyL",
       "type": "ref",
-      "ref": "y3zo4",
+      "ref": "qMzQE",
       "name": "Calls — generate menu, no notes (dark)",
       "x": 1180,
       "y": 32060,
@@ -68418,9 +69019,9 @@
       }
     },
     {
-      "id": "G3GUx",
+      "id": "eNXHe",
       "type": "ref",
-      "ref": "QhYq7",
+      "ref": "k1WGHs",
       "name": "Calls — regenerate menu, broken template (dark)",
       "x": 2360,
       "y": 32060,
@@ -68429,9 +69030,9 @@
       }
     },
     {
-      "id": "AgN7C",
+      "id": "zwi6o",
       "type": "ref",
-      "ref": "G9PlE",
+      "ref": "fStNE",
       "name": "Calls — regenerate menu, no usable files (dark)",
       "x": 3540,
       "y": 32060,
@@ -68440,9 +69041,9 @@
       }
     },
     {
-      "id": "p7lXZH",
+      "id": "KuVrS",
       "type": "ref",
-      "ref": "DMmYP",
+      "ref": "aSauY",
       "name": "Calls — notes kept, current (dark)",
       "x": 4720,
       "y": 32060,
@@ -68451,9 +69052,20 @@
       }
     },
     {
-      "id": "xgPoa",
+      "id": "Ub34h",
       "type": "ref",
-      "ref": "S37607",
+      "ref": "n6gYJO",
+      "name": "Calls — notes kept, previous (dark)",
+      "x": 8260,
+      "y": 32060,
+      "theme": {
+        "mode": "dark"
+      }
+    },
+    {
+      "id": "gU2sX",
+      "type": "ref",
+      "ref": "YmUKy",
       "name": "Calls — remaking notes (dark)",
       "x": 5900,
       "y": 32060,
@@ -68462,9 +69074,9 @@
       }
     },
     {
-      "id": "jH9z1",
+      "id": "UKfIX",
       "type": "ref",
-      "ref": "r91Zs",
+      "ref": "DbPgd",
       "name": "Calls — remake failed (dark)",
       "x": 7080,
       "y": 32060,
@@ -68474,13 +69086,13 @@
     },
     {
       "type": "note",
-      "id": "BSbmO",
+      "id": "tUKZM",
       "x": 0,
       "y": 32800,
       "name": "Note notes templates",
       "width": 760,
       "height": 380,
-      "content": "Notes templates\n\nTwo icon buttons sit in the summary's top-right corner: the regenerate menu button (arrow.triangle.2.circlepath; lucide refresh-cw stands in) and Копировать. A call without notes shows only the menu button.\n\nThe menu has one section, headed СДЕЛАТЬ ЗАНОВО when the call has notes and СДЕЛАТЬ when it has none. Its items are the templates; choosing one makes the notes with that template. Below a separator, Сохранять прежние итоги is a check item for every call, on by default: on keeps the shown notes as Предыдущие, off overwrites them. It is absent when the call has no notes.\n\nA template file that cannot be used stays listed, disabled, with its reason, followed by Открыть папку шаблонов…. When no file is usable, Default (built in) is still enabled and one disabled line says why.\n\nThe notes bar reads «Шаблон: <name>», led by the Предыдущие / Текущие switch when a previous set is kept. Making notes again keeps the shown notes, dimmed, under «Делаю заново · <name>…» with Отменить; cancel returns to them, a failure shows the error banner above them.\n\nOpen: keyboard shortcut for the menu's items."
+      "content": "Notes templates\n\nTwo icon buttons sit in the summary's top-right corner: the regenerate menu button (arrow.triangle.2.circlepath; lucide refresh-cw stands in) and Копировать. A call without notes shows only the menu button.\n\nThe menu has one section, headed СДЕЛАТЬ ЗАНОВО when the call has notes and СДЕЛАТЬ when it has none. Its items are the templates; choosing one makes the notes with that template. Below a separator, Сохранять прежние итоги is a check item for every call, on by default: on keeps the shown notes as Предыдущие, off overwrites them. It is absent when the call has no notes.\n\nA template file that cannot be used stays listed, disabled, with its reason, followed by Открыть папку шаблонов…. When no file is usable, Default (built in) is still enabled and one disabled line says why.\n\nThe notes bar reads «Шаблон: <name>», led by the Предыдущие / Текущие switch when a previous set is kept. Making notes again keeps the shown notes, dimmed, under «Делаю заново · <name>…» with Отменить; cancel returns to them, a failure shows the error banner above them.\n\nThe menu follows the native NSMenu: 13 pt items, an 11 pt grey section header, a check column, and the highlighted item in the accent colour (selBg on selText).\n\nThe Предыдущие / Текущие switch picks which notes the summary shows; the template line and the date line follow the shown set.\n\nOpen: keyboard shortcut for the menu's items."
     }
   ],
   "themes": {
