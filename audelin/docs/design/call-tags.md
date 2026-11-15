@@ -3,7 +3,7 @@
 Tags in the calls window (LAB-1617). The owner picked this variation over
 chips in each row and a search-only design. Frames are the "Calls — …"
 tag screens in `visual-language.pen` (frame index); parts are Tag chip,
-Tag chip/On, Tag strip and Tags line on "Calls window — shared components".
+Tag chip/On, Tag strip and Tags line on the "Calls window — components" board.
 
 ## Storage
 
