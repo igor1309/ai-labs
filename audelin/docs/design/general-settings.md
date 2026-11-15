@@ -45,7 +45,8 @@ whose control holds:
 - "Нет файла AGENTS.md" / "No AGENTS.md file" in `text`, weight 600;
 - a hint in `gutter` at `type-small`: «Он объясняет ИИ-агенту, как устроена
   папка звонков: где расшифровка, заметки и теги. Audelin не создаёт его
-  сам.»;
+  сам.» / "It explains the calls folder to an AI agent: where the
+  transcript, notes and tags are. Audelin doesn't create it on its own.";
 - Button/Secondary «Создать AGENTS.md» / "Create AGENTS.md", which writes the
   file to the recordings root.
 

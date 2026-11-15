@@ -72,7 +72,20 @@ extension SettingsView {
 
             row(text(.languageRow)) { segmented(state.general.language, id: "language") { event(.selectLanguage($0)) } }
             row(text(.appearanceRow)) { segmented(state.general.appearance, id: "appearance") { event(.selectAppearance($0)) } }
+            if let agents = state.general.agents { row(text(.agentsRow)) { agentsOffer(agents) } }
         }
+    }
+
+    /// The AGENTS.md offer: what is missing, why it helps or why writing failed, and the button.
+    @ViewBuilder
+    func agentsOffer(_ agents: SettingsState.General.Agents) -> some View {
+
+        uiText(text(.agentsMissing), tokens.typeBody, tokens.text, .semibold)
+            .padding(.top, tokens.space6)
+        uiText(agents.hint, tokens.typeSmall, tokens.gutter)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier("agents-hint")
+        button(text(.agentsCreate), .secondary, id: "agents-create") { event(.createAgentsFile) }
     }
 
     /// Equal segments across the row; the selected one is raised on the track.

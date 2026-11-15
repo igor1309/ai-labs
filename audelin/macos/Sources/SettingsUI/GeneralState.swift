@@ -1,18 +1,33 @@
 public extension SettingsState {
 
-    /// The General tab: the language and appearance pickers.
+    /// The General tab: the language and appearance pickers, and the AGENTS.md offer.
     struct General: Equatable, Sendable {
+
+        /// Offers to write AGENTS.md while the recordings root has none.
+        public struct Agents: Equatable, Sendable {
+
+            /// The hint line, or why the last write failed, in the hint's own style.
+            public var hint: String
+
+            public init(hint: String) {
+
+                self.hint = hint
+            }
+        }
 
         public enum Language: String, CaseIterable, Sendable { case system, russian, english }
         public enum Appearance: String, CaseIterable, Sendable { case system, light, dark }
 
         public var language: Segmented<Language>
         public var appearance: Segmented<Appearance>
+        /// No row when nil.
+        public var agents: Agents?
 
-        public init(language: Segmented<Language>, appearance: Segmented<Appearance>) {
+        public init(language: Segmented<Language>, appearance: Segmented<Appearance>, agents: Agents? = nil) {
 
             self.language = language
             self.appearance = appearance
+            self.agents = agents
         }
 
         /// Nothing to pick yet.

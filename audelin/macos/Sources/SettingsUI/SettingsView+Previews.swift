@@ -31,6 +31,12 @@ extension SettingsState {
             ("general-fallback", general(.system, hint: text(.languageHintFallback, "Deutsch"), base: base, in: text)),
             ("general-english", general(.english, hint: text(.languageHintForced, "Русский"), base: base, in: text)),
             ("general-russian", general(.russian, hint: text(.languageHintForced, "English"), base: base, in: text)),
+            ("general-agents-missing", with(general(.system, hint: text(.languageHintSystem), base: base, in: text)) {
+                $0.general.agents = .init(hint: text(.agentsHint))
+            }),
+            ("general-agents-failed", with(general(.system, hint: text(.languageHintSystem), base: base, in: text)) {
+                $0.general.agents = .init(hint: text(.agentsFailed, english ? "You don't have permission." : "Нет прав на запись."))
+            }),
         ] + summaryPreviews(in: text)
     }
 

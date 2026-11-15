@@ -1,3 +1,4 @@
+import AgentsFile
 import CoreAudioProcesses
 import Calls
 import Recordings
@@ -45,6 +46,10 @@ public final class AudelinMenu {
     public private(set) var summarySettings: AudelinSettings?
     private var chooseFolder: () async throws -> URL? = { nil }
     private var pickerFailed = false
+    /// Why the last AGENTS.md write failed, until the next attempt; the file's presence is read from disk.
+    private var agentsFailure: String?
+    /// Bumped after each write so General is built again with the disk's answer.
+    private var agentsWrites = 0
     private let finalization: TranscriptFinalizationModel
     private var summaries: SummariesModel?
     private var presentSettings: () -> Void = {}
@@ -252,13 +257,31 @@ public final class AudelinMenu {
                       selectedEngine: "parakeet", explainKeys: "", selectedTab: summarySettings?.selectedTab ?? .general,
                       callNotes: summarySettings?.notes ?? .loading(settingsText(.notesLoading)),
                       general: settingsText.general(languageChoice, appearance: appearance, preferred: preferredLanguages()))
+        _ = agentsWrites
+        result.general.agents = agentsOffer(in: settings.callsFolder)
         if pickerFailed, case .idle = result.folder.status { result.folder.status = .pickerFailed(reason: settingsText(.pickerFailedReason)) }
         if let recordings = calls?.recordingsState { applyFolderMove(recordings, text: settingsText, to: &result) }
         return result
     }
+    /// The General row while the recordings root has no AGENTS.md; none when it has one or is unavailable.
+    func agentsOffer(in root: URL) -> SettingsState.General.Agents? {
+        guard AgentsFile.presence(in: root) == .absent else { return nil }
+        return .init(hint: agentsFailure.map { settingsText(.agentsFailed, $0) } ?? settingsText(.agentsHint))
+    }
+
     public func sendSettings(_ event: SettingsEvent) async {
         guard !quitting else { return }
         switch event {
+        case .createAgentsFile:
+            do {
+                try AgentsFile.write(in: settings.callsFolder)
+                agentsFailure = nil
+                sink.write(.init(category: .menu, message: "AGENTS.md written"))
+            } catch {
+                sink.write(.init(category: .menu, message: "AGENTS.md write failed", error: String(describing: error)))
+                agentsFailure = error.localizedDescription
+            }
+            agentsWrites += 1
         case .changeFolder:
             choosingFolder = true
             defer { choosingFolder = false }

@@ -57,6 +57,12 @@ public enum SettingsPhrase: String, CaseIterable, Sendable {
     case languageHintFallback = "general.languageHintFallback"
     /// Takes the macOS language's name, while another language is chosen.
     case languageHintForced = "general.languageHintForced"
+    case agentsRow = "general.agentsRow"
+    case agentsMissing = "general.agentsMissing"
+    case agentsHint = "general.agentsHint"
+    case agentsCreate = "general.agentsCreate"
+    /// Takes the system's reason.
+    case agentsFailed = "general.agentsFailed"
     case recordingTab = "tab.recording"
     case callNotesTab = "tab.callNotes"
     case recordingRow = "row.recording"
