@@ -17,7 +17,8 @@ Drive: gate the fake runtime; read back the detail's progress. Evidence: Missing
 ## S-3 A publication reaches the detail
 
 Drive: release the runtime; read back the detail's new Current text.
-Evidence: Missing.
+Evidence: `CallNotesWiringTests.requestedNotesWorkWithAutomaticNotesOff`.
+Previous/Current selection remains Missing.
 
 ## S-4 The keep choice is shared
 
@@ -27,7 +28,8 @@ storage's replacement commit. Evidence: Missing.
 ## S-5 Search reads Current
 
 Drive: pair fixture with a word only in Current and one only in Previous;
-search both; read back one hit, then none. Evidence: Missing.
+search both; read back one hit, then none, with the Current gist. Evidence:
+`CallsSearchWiringTests.searchAndGistsReadOnlyCurrentOfAPair`.
 
 ## S-6 Work survives another selection
 

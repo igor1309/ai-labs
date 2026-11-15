@@ -16,7 +16,7 @@ import Testing
         sut.send(.finalized("call", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true, notesOn: true))
         try await waitUntil("notes are saved") { sut.state.calls["call"]?.stage == .succeeded }
         #expect(files.claimed.map(\.job) == ["job"])
-        #expect(files.writes.contains { if case .publish(_, "notes") = $0 { true } else { false } })
+        #expect(files.writes.contains { if case .publish(_, "notes", .default, .replacement) = $0 { true } else { false } })
         #expect(sut.state.calls["call"]?.status == CallsListText(language: .english)(.summaryReady))
         #expect(sut.state.calls["call"]?.badge == SummariesState.Call.Badge.none)
     }
@@ -136,7 +136,7 @@ import Testing
         #expect(!files.writes.contains { if case .publish = $0 { true } else { false } })
         transactions.continuation.yield(.idle)
         try await waitUntil("notes are saved") { sut.state.calls["call"]?.stage == .succeeded }
-        #expect(files.writes.contains { if case .publish(_, "notes") = $0 { true } else { false } })
+        #expect(files.writes.contains { if case .publish(_, "notes", .default, .replacement) = $0 { true } else { false } })
     }
     @Test func shutdownReturnsOnceTheMachineHasSettled() async {
         let sut = makeSUT(FilesFake())
@@ -148,7 +148,7 @@ import Testing
         SummariesModel(templates: TestDefaultTemplates(), text: { CallsListText(language: .english) },
                        preparation: SummariesPreparationPort(notes: { .init(enabled: notes, speakers: false, primary: .init(kind: "cli", model: "m", executable: "/bin/p", endpoint: "", credentialVariable: "")) },
                                                              makeID: { "job" },
-                                                             callText: { _ in if readFails { throw CocoaError(.fileReadNoSuchFile) }; return .init(notes: nil, transcript: transcript) }),
+                                                             callText: { _ in if readFails { throw CocoaError(.fileReadNoSuchFile) }; return .init(transcript: transcript) }),
                        files: .init(files: files, makeID: { "fresh" }), generation: GenerationStub())
     }
     private func record(phase: String) async throws -> SummaryFiles.Record {

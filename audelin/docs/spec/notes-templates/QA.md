@@ -57,4 +57,5 @@ Component rows: template-files S-6, S-7, S-9; notes-menu S-6, S-16. Real call: M
 
 ## S-14 Older calls
 
-Component rows: summary-files-versions S-6. Real call: Missing.
+Component rows: summary-files-versions S-6, proven by
+`SummaryVersionsTests.legacyNotesReadAsDefaultWithoutRewriting`. Real call: Missing.

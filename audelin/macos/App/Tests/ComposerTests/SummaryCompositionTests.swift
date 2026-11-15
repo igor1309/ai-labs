@@ -43,6 +43,11 @@ struct SummaryCompositionTests {
                 let published = try await read(rig.folder().appendingPathComponent("summary.md"))
                 #expect(published.contains(output))
                 #expect(!published.contains("## What this was about"))
+                let files = SummaryFiles.Files(locations: callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash),
+                                               disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
+                let id = try #require(try await callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash).list().first?.id)
+                let pair = try #require(try await files.versions(call: id))
+                #expect(pair.current.text == output && pair.current.template == .default && pair.previous == nil)
                 await rig.finish()
             } catch { storage.release.send(); await rig.finish(); throw error }
         }

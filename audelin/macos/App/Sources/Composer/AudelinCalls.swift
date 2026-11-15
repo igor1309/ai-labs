@@ -72,7 +72,7 @@ public final class AudelinCalls {
     private let describe: (any Error) -> String
     /// The calls list's text, in the language Audelin is shown in.
     public private(set) var listText: CallsListText
-    private let callText: (String) async throws -> Calls.Text
+    private let callText: (String) async throws -> CallsText
     /// The tag being typed in the detail's tags field; it joins the draft on Return.
     private var tagEntry = ""
     private var tagsFollow: Task<Void, Never>?
@@ -95,7 +95,7 @@ public final class AudelinCalls {
          retrySummary: @escaping (String) async throws -> Void = { _ in throw CocoaError(.fileWriteUnknown) },
          describe: @escaping (any Error) -> String = SettingsText(language: .russian).callsFailure,
          listText: CallsListText = .init(language: .russian),
-         callText: @escaping (String) async throws -> Calls.Text = { _ in .init(notes: nil, transcript: []) }) {
+         callText: @escaping (String) async throws -> CallsText = { _ in .init(notes: nil, transcript: []) }) {
         self.callText = callText
         self.describe = describe
         self.listText = listText

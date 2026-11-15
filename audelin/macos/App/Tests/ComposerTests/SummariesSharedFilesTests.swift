@@ -206,7 +206,7 @@ import Testing
         })
         return SummariesModel(templates: TestDefaultTemplates(), text: { CallsListText(language: .russian) },
                               preparation: SummariesPreparationPort(notes: { .init(enabled: true, speakers: false, primary: current, fallback: current) },
-                                                                    makeID: { UUID().uuidString }, callText: { _ in .init(notes: nil, transcript: []) }),
+                                                                    makeID: { UUID().uuidString }, callText: { _ in .init(transcript: []) }),
                               files: port(root), generation: SummaryGeneration(runtime: runtime, sink: TestLogSink()))
     }
 }
