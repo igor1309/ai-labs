@@ -1,3 +1,4 @@
+import Synchronization
 import BlockingTestWork
 import CallFolder
 import Calls
@@ -249,19 +250,26 @@ struct CallsWiringTests {
     }
 
     @Test func recordingIDStaysProtectedUntilCleanupEnds() {
+        let reported = Mutex(RecordingSessionStatus())
+        let reducer = RecordingReducer(session: SessionReducer.reduce, status: { _ in reported.withLock { $0 } })
+        func report(_ status: RecordingSessionStatus, _ state: RecordingState, _ id: UInt64) -> RecordingState {
+            reported.withLock { $0 = status }
+            return reducer.reduce(state, .session(id: id, .textFeedFinished)).0
+        }
         var state = RecordingState(missing: [])
-        state = RecordingReducer.reduce(state, .userStart).0
+        state = reducer.reduce(state, .userStart).0
         let session = state.session!.id
-        state = RecordingReducer.reduce(state, .sessionChanged(id: session, .init(callID: "A"))).0
+        state = reducer.reduce(state, .callAudioPrepared(id: session, ready: true, liveText: false)).0
+        state = report(.init(callID: "A"), state, session)
         #expect(recordedCallID(state) == "A")
-        state = RecordingReducer.reduce(state, .sessionChanged(id: session, .init(recording: true))).0
+        state = report(.init(callID: "A", recording: true), state, session)
         #expect(recordedCallID(state) == "A")
-        state = RecordingReducer.reduce(state, .userStop).0
+        state = reducer.reduce(state, .userStop).0
         #expect(recordedCallID(state) == "A")
-        state = RecordingReducer.reduce(state, .sessionReported(id: session, .ended)).0
+        state = reducer.reduce(state, .sessionReported(id: session, .ended)).0
         #expect(recordedCallID(state) == nil)
         #expect(state.callID == nil)
-        state = RecordingReducer.reduce(state, .sessionChanged(id: session, .init(callID: "stale"))).0
+        state = report(.init(callID: "stale"), state, session)
         #expect(state.callID == nil)
     }
 }

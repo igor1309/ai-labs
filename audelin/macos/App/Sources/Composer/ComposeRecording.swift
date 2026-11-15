@@ -13,24 +13,24 @@ func composeRecording(
     let initial = RecordingState(automatic: preferences.read().automaticRecording)
     let access = accessPolicy(boundary.access)
     let sink = boundary.log
-    // Ending Recording clears the report path, which otherwise keeps the model alive through its Session.
+    // Ending Recording clears the path its pieces report on, which otherwise keeps the model alive.
     let destination = Mutex<RecordingInputs?>(nil)
-    let sessions = RecordingSessions(preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: callApp, processes: processes, boundary: boundary, report: { id, report in
+    let pieces = RecordingPieces(preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: callApp, processes: processes, boundary: boundary, send: { event in
         guard let recording = destination.withLock({ $0 }) else { return }
-        // A session that ended on its own still releases call audio before Recording settles.
-        switch report {
-        case .ended: await recording.send(.sessionFinished(id: id))
-        }
-    }, status: { id, status in
-        guard let recording = destination.withLock({ $0 }) else { return }
-        await recording.send(.sessionChanged(id: id, status))
+        await recording.send(event)
     }, panel: panel, finalization: finalization, finalizationResources: finalizationResources, summaries: summaries)
     let log = { @Sendable state in StateLog(sink: sink).recording(state) }
     log(initial)
-    let model = await makeRecording(initial: initial, session: LoggingRecordingSession(base: sessions, sink: sink), log: log, callAudioReady: {
+    let model = await makeRecording(initial: initial, log: log, callAudioReady: {
         guard await access.refresh() else { return false }
         return await access.reserve()
-    }, callAudioReleased: { await access.release() }, runPiece: { id, effect in await sessions.runPiece(id: id, effect) })
+    }, liveText: { preferences.read().liveText }, callAudioReleased: { await access.release() },
+    runPiece: { id, effect in await pieces.run(id: id, effect) }, status: pieces.status)
+    // The panel follows the pieces in the order Recording reduced them.
+    let states = await model.states()
+    Task {
+        for await state in states { await pieces.observe(state) }
+    }
     var recording = RecordingInputs(send: model.send, state: model.state, states: model.states, end: {
         destination.withLock { $0 = nil }
         await model.end()

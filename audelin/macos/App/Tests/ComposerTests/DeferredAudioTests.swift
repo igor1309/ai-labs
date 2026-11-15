@@ -73,8 +73,8 @@ struct DeferredAudioCompositionTests {
             #expect(await rig.mine.chunks.isEmpty)
             #expect(rig.microphone.starts.all.isEmpty)
             #expect(rig.call.starts.all == (stopDuringBringUp ? [] : [true]))
-            await rig.log.wait { $0.message == "end id=1 finished" }
-            #expect(rig.log.entries.all.contains { $0.message == "end id=1 finished" })
+            // The session's pieces, the text listener among them, all end.
+            await rig.log.wait { $0.category == .session && $0.message.hasPrefix("state id=1 ") && $0.message.contains("phase=ended") }
         }
     }
 

@@ -22,7 +22,7 @@ struct SessionPiecesDefaultsTests {
                 ])
             }
             let states = rig.log.entries.all.filter { $0.category == .session && $0.message.hasPrefix("state ") }
-            #expect(states.first?.message.contains("phase=idle") == true)
+            #expect(states.first?.message.contains("phase=bringingUp") == true)
             #expect(states.last?.message.contains("phase=ended") == true)
             #expect(states.allSatisfy { !$0.message.contains(rig.root.path) })
             #expect(states.last?.message.contains("microphoneCapture=closed callCapture=closed transcript=closed callText=closed") == true)

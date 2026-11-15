@@ -104,6 +104,8 @@ struct MenuBarActionTests {
                 #expect(visibility.all == [true, true, false, true])
                 let first = panelContentBinding(rig.menu)
                 #expect(first.state == rig.menu.panelState)
+                // The panel learns of the recording from Recording's state, after the menu does.
+                _ = try await rig.panel { $0.recording == .on(elapsed: "00:00:00") }
                 rig.clock.advance(65)
                 _ = try await rig.panel { $0.recording == .on(elapsed: "00:01:05") }
                 for await state in Observations({ rig.menu.panelState }) where state.recording == .on(elapsed: "00:01:05") { break }

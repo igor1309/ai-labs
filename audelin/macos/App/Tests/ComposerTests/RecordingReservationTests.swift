@@ -7,7 +7,7 @@ struct RecordingReservationTests {
 
     @Test @MainActor func competingReservationsGetOneGrant() async {
 
-        let model = RecordingModel(initial: RecordingState(missing: []), handler: makeHandler(), log: { _ in })
+        let model = RecordingModel(initial: RecordingState(missing: []), reducer: RecordingReducer(session: SessionReducer.reduce, status: { _ in RecordingSessionStatus() }), handler: makeHandler(), log: { _ in })
         async let first = model.reserveStorage()
         async let second = model.reserveStorage()
         let answers = await [first, second]
@@ -17,7 +17,7 @@ struct RecordingReservationTests {
 
     @Test @MainActor func aReservationWhileRecordingIsDenied() async {
 
-        let model = RecordingModel(initial: RecordingState(missing: []), handler: makeHandler(), log: { _ in })
+        let model = RecordingModel(initial: RecordingState(missing: []), reducer: RecordingReducer(session: SessionReducer.reduce, status: { _ in RecordingSessionStatus() }), handler: makeHandler(), log: { _ in })
         model.send(.userStart)
         #expect(await model.reserveStorage() == false)
         #expect(!model.state.storageReserved)
@@ -26,11 +26,5 @@ struct RecordingReservationTests {
 
 private func makeHandler() -> RecordingEffectHandler {
 
-    RecordingEffectHandler(session: IdleSession(), prepareCallAudio: { false }, releaseCallAudio: {}, runPiece: { _, _ in .outputReleased })
-}
-
-private struct IdleSession: RecordingSession {
-
-    func begin(id: UInt64) async {}
-    func end(id: UInt64) async {}
+    RecordingEffectHandler(prepareCallAudio: { false }, liveText: { false }, releaseCallAudio: {}, runPiece: { _, _ in .outputReleased })
 }

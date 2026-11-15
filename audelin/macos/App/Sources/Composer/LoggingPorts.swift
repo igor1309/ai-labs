@@ -93,20 +93,3 @@ struct LoggingOutput: SessionOutput {
 
     func release() async { try? await log.call("release") { await base.release() } }
 }
-
-struct LoggingRecordingSession: RecordingSession {
-    let base: any RecordingSession
-    let sink: any LogSink
-
-    func begin(id: UInt64) async {
-        sink.write(.init(category: .recording, message: "begin id=\(id) called"))
-        await base.begin(id: id)
-        sink.write(.init(category: .recording, message: "begin id=\(id) accepted"))
-    }
-
-    func end(id: UInt64) async {
-        sink.write(.init(category: .recording, message: "end id=\(id) called"))
-        await base.end(id: id)
-        sink.write(.init(category: .recording, message: "end id=\(id) finished"))
-    }
-}

@@ -1,5 +1,3 @@
-import Synchronization
-
 /// The two destinations in one recording.
 public enum SessionSide: Hashable, Sendable {
 
