@@ -116,6 +116,12 @@ publishing and saving, stopping dispatch and shutdown. Its state holds every
 call's stage; storage, generation and preferences are its collaborators. No
 coordinator, per-call job model or registry of models sits beside it. It
 owns its consumer-owned ports.
+It answers whether a call has notes and where they stand, for any call in
+the calls folder, not only one recorded in this session. Its input is a
+call's final transcript: handed over when a recording's transcript is made
+final, or read from the stored transcript when the user asks for notes,
+retries or a saved job is recovered. It knows nothing of how a transcript
+is made final.
 It decides which calls get notes: a call the user asked for always does, a
 finished recording only while notes are on, which the preferences port
 reports with each prepared job. It holds made notes in a deferred stage while
@@ -129,11 +135,12 @@ Each keeps its own types. SummarySettings owns editable configuration, rendered
 validation/save/load outcomes and its preference/availability ports.
 
 The root maps those ports and decorates attempts with fallback and logging.
-It hands SummaryJobs TranscriptFinalization's final transcripts
-(Transcript finalization), so a call's notes start from its final form, and
-to CallsStorage's transaction state.
-On quit, SummaryJobs stops dispatch and shuts down once TranscriptFinalization
-has settled, so the last final transcripts reach it first (Shutdown).
+The root sends SummaryJobs each final transcript TranscriptFinalization
+publishes (Transcript finalization), so a call's automatic notes start from
+its final form, and sends it whether a calls-storage transaction is running.
+On quit the root sends SummaryJobs stop dispatch at once, and shutdown only
+after TranscriptFinalization publishes settled, so the last final
+transcripts reach it first (Shutdown). Neither machine waits on the other.
 Root storage integration coordinates publication with call rename, deletion,
 merging and calls-folder moves.
 
@@ -327,7 +334,10 @@ Fill-in and Side text.
 ## Transcript finalization
 
 A recording's transcript is written live; once the recording closes, it is
-made final. TranscriptFinalization is the state machine for that line. Its
+made final. TranscriptFinalization is the state machine for that line. It
+answers what each call's transcript is in its final form, for every call
+recorded, whether or not notes are on, and knows nothing of notes: its
+final transcript goes to a receiver port, which the root answers. Its
 state holds each call's stage, writing, diarizing, cleaning, committing,
 then finalized or failed, with the call's last saved text, the speaker
 names taken when its transcript closed, its attributed far side and its
