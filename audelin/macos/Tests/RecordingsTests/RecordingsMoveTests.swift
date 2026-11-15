@@ -43,7 +43,7 @@ struct RecordingsMoveTests {
         let storing = makeState { $0.phase = .storingFolder; $0.move = plan(completed: [older, newer]); $0.moveToken = 1; $0.callsFolderAvailable = false }
         assert(storing, .folderStored, delivers: .releaseMove(token: 1)) { $0.phase = .releasingMove; $0.callsFolder = destination }
         let releasing = makeState { $0.phase = .releasingMove; $0.move = plan(completed: [older, newer]); $0.moveToken = 1; $0.callsFolderAvailable = false; $0.callsFolder = destination }
-        assert(releasing, .moveReleased, delivers: .list) { $0.phase = .idle; $0.move = nil; $0.moveToken = nil; $0.callsFolderAvailable = true; $0.isListing = true }
+        assert(releasing, .moveReleased, delivers: .list(request: 1)) { $0.phase = .idle; $0.move = nil; $0.moveToken = nil; $0.callsFolderAvailable = true; $0.isListing = true; $0.listRequest = 1 }
         assert(moving, .callMoved(id: newer.id, bytes: 7), delivers: nil)
         assert(moving, .folderStored, delivers: nil)
     }
@@ -55,7 +55,7 @@ struct RecordingsMoveTests {
         }
         let releasing = makeState { $0.phase = .releasingMove; $0.move = plan(completed: [older]); $0.moveToken = 1; $0.callsFolderAvailable = false; $0.failure = .init(id: newer.id, reason: "full") }
         assert(releasing, .clearFailure, delivers: nil)
-        assert(releasing, .moveReleased, delivers: .list) { $0.phase = .failedMove; $0.moveToken = nil; $0.callsFolderAvailable = true; $0.isListing = true }
+        assert(releasing, .moveReleased, delivers: .list(request: 1)) { $0.phase = .failedMove; $0.moveToken = nil; $0.callsFolderAvailable = true; $0.isListing = true; $0.listRequest = 1 }
         let failed = makeState { $0.phase = .failedMove; $0.move = plan(completed: [older]); $0.failure = .init(id: newer.id, reason: "full") }
         assert(failed, .retryMove, delivers: .reserveMove) { $0.phase = .reservingMove; $0.failure = nil }
         assert(failed, .cancelMove, delivers: nil) { $0.phase = .idle; $0.move = nil; $0.failure = nil }
@@ -164,8 +164,8 @@ struct RecordingsMoveTests {
 
     @Test func stoppingSettlesWhenTheMoveReleasesTheFolder() {
         let releasing = makeState { $0.stopping = true; $0.phase = .releasingMove; $0.move = plan(completed: [older, newer]); $0.moveToken = 1; $0.callsFolderAvailable = false }
-        assert(releasing, .moveReleased, delivers: .list) {
-            $0.stopped = true; $0.moveToken = nil; $0.callsFolderAvailable = true; $0.phase = .idle; $0.move = nil; $0.isListing = true
+        assert(releasing, .moveReleased, delivers: .list(request: 1)) {
+            $0.stopped = true; $0.moveToken = nil; $0.callsFolderAvailable = true; $0.phase = .idle; $0.move = nil; $0.isListing = true; $0.listRequest = 1
         }
     }
 
@@ -178,7 +178,7 @@ struct RecordingsMoveTests {
         let reserving = makeState { $0.stopping = true; $0.phase = .reservingMove; $0.move = plan() }
         assert(reserving, .moveReserved(token: 1), delivers: .releaseMove(token: 1)) { $0.phase = .releasingMove; $0.moveToken = 1; $0.move = nil }
         let releasing = makeState { $0.stopping = true; $0.phase = .releasingMove; $0.moveToken = 1 }
-        assert(releasing, .moveReleased, delivers: .list) { $0.stopped = true; $0.moveToken = nil; $0.phase = .idle; $0.isListing = true }
+        assert(releasing, .moveReleased, delivers: .list(request: 1)) { $0.stopped = true; $0.moveToken = nil; $0.phase = .idle; $0.isListing = true; $0.listRequest = 1 }
     }
 
     @Test(arguments: handlerCases)
@@ -250,6 +250,7 @@ private actor MoveSpy: RecordingsCalls {
     func rename(id: String, title: String) async throws { throw MoveError() }
     func delete(id: String) async throws { throw MoveError() }
     func merge(ids: [String]) async throws -> String { throw MoveError() }
+    func setTags(id: String, tags: [String]) async throws { throw MoveError() }
 }
 private func expect(_ sut: RecordingsEffectHandler, with effect: RecordingsEffect, toDeliver expected: RecordingsEvent,
                     on action: @escaping @Sendable () async -> Void, sourceLocation: SourceLocation = #_sourceLocation) async {

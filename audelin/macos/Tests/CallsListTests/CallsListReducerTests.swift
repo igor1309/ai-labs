@@ -360,11 +360,24 @@ private func assert(_ state: CallsListMachineState, _ event: CallsListMachineEve
                     mutation: (inout CallsListMachineState) -> Void = { _ in }) {
     var expected = state
     mutation(&expected)
-    #expect(CallsListReducer().reduce(state, event) == expected, sourceLocation: sourceLocation)
+    #expect(makeSUT().reduce(state, event) == expected, sourceLocation: sourceLocation)
 }
 
 private func assert(_ state: CallsListMachineState, _ event: CallsListMachineEvent, delivers requests: [CallsListMachineState.Request]?,
                     sourceLocation: SourceLocation = #_sourceLocation) {
-    let next = CallsListReducer().reduce(state, event)
+    let next = makeSUT().reduce(state, event)
     #expect((next.asked > state.asked ? next.requests : nil) == requests, sourceLocation: sourceLocation)
+}
+
+private func makeSUT() -> CallsListReducer {
+    CallsListReducer(splitQuery: { _ in
+        Issue.record("The query is not split for this event")
+        return ([], "")
+    }, tagKey: { _ in
+        Issue.record("No tag is compared for this event")
+        return ""
+    }, normalizeTags: { _ in
+        Issue.record("No tags are saved for this event")
+        return []
+    })
 }

@@ -14,3 +14,11 @@
 "preview.notesLabel" = "Notes";
 "preview.mergeCalls" = "Merge calls…";
 "preview.mergeCancel" = "Cancel";
+"preview.tags" = "Tags:";
+"preview.noTags" = "none";
+"preview.editTags" = "Edit";
+"preview.addTags" = "Add";
+"preview.newTag" = "+ tag";
+"preview.tagsHint" = "Return to save, Esc to cancel";
+"preview.savingTags" = "Saving…";
+"preview.removeTag" = "Remove tag %@";

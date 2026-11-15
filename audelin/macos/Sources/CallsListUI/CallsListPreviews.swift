@@ -51,6 +51,17 @@ public enum CallsListPreviews {
             }),
             ("merge-failed", with(notes) { $0.merge = .init(marked: [$0.rows[0].id, $0.rows[1].id]); $0.failure = words.diskFull }),
             ("search-none", CallsListState(search: .init(query: "Kubernetes", searching: false), searchText: "Kubernetes")),
+            ("tags", tagged(words)),
+            ("tags-filter", with(tagged(words)) {
+                $0.tagStrip = strip(on: "клиент")
+                $0.rows.remove(at: 1)
+            }),
+            ("tags-search", with(tagged(words)) {
+                $0.tagStrip = strip(on: "клиент")
+                $0.searchText = "#клиент"
+                $0.search = .init(query: "#клиент", searching: false)
+                $0.rows.remove(at: 1)
+            }),
         ]
     }
 
@@ -119,6 +130,19 @@ public enum CallsListPreviews {
             text: english ? "Agreed to align the OKR wording before the review…" : "Договорились сверить формулировки OKR до ревью…",
             hits: [english ? 20 : 34].map { $0..<($0 + 3) }, more: nil))
         return state
+    }
+
+    /// The notes sample with tags on two calls and the strip of tags in use, none chosen.
+    private static func tagged(_ words: Words) -> CallsListState {
+        with(notes(words)) {
+            $0.rows[0].tags = ["клиент", "банк"]
+            $0.rows[2].tags = ["клиент"]
+            $0.tagStrip = strip(on: nil)
+        }
+    }
+
+    private static func strip(on chosen: String?) -> [CallsListState.TagChip] {
+        ["клиент", "банк"].map { .init(name: $0, on: $0 == chosen) }
     }
 
     private static func with(_ state: CallsListState, _ change: (inout CallsListState) -> Void) -> CallsListState {

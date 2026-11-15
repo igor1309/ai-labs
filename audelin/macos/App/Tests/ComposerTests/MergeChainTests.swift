@@ -1,8 +1,10 @@
+import CallTags
 import Calls
 import CallsStorage
 import Foundation
 import Synchronization
 import SummaryJobs
+import TagsFile
 import Testing
 import TranscriptFile
 import TranscriptFormat
@@ -51,6 +53,40 @@ struct MergeChainTests {
             }
 
             #expect(try await sut.list().map(\.id) == [second, first])
+            #expect(handed.withLock { $0 } == 0)
+        }
+    }
+
+    @Test func theMergedCallHasEveryPartsTagsOnceEarliestFirst() async throws {
+        try await withComposeFolder { root in
+            try call(first, in: root, [.init(side: .mine, start: 1, settled: "hello", pending: "")])
+            try call(second, in: root, [.init(side: .mine, start: 1, settled: "again", pending: "")])
+            try TagsFile.write(["клиент", "банк"], in: root.appendingPathComponent(first))
+            try TagsFile.write(["Банк", "найм"], in: root.appendingPathComponent(second))
+            let sut = SummaryCalls(storage: storage(root), deleted: { _ in }, merged: { _, _, _ in })
+
+            #expect(try await sut.merge(ids: [second, first]) == first)
+
+            #expect(try TagsFile.read(in: root.appendingPathComponent(first)) == ["клиент", "банк", "найм"])
+        }
+    }
+
+    @Test func aPartWithUnreadableTagsFailsTheMergeAndLeavesTheParts() async throws {
+        try await withComposeFolder { root in
+            try call(first, in: root, [.init(side: .mine, start: 1, settled: "hello", pending: "")])
+            try call(second, in: root, [.init(side: .mine, start: 1, settled: "again", pending: "")])
+            try TagsFile.write(["клиент"], in: root.appendingPathComponent(first))
+            try Data([0xFF, 0xFE]).write(to: root.appendingPathComponent("\(second)/tags.txt"))
+            let handed = Mutex(0)
+            let sut = SummaryCalls(storage: storage(root), deleted: { _ in }, merged: { _, _, _ in handed.withLock { $0 += 1 } })
+
+            let failure = await #expect(throws: CallsFailure.self) { _ = try await sut.merge(ids: [first, second]) }
+            guard case .mergeFailed(step: .writingTranscript, _) = failure else {
+                Issue.record("expected a failed write, got \(String(describing: failure))"); return
+            }
+
+            #expect(try await sut.list().map(\.id) == [second, first])
+            #expect(try TagsFile.read(in: root.appendingPathComponent(first)) == ["клиент"])
             #expect(handed.withLock { $0 } == 0)
         }
     }

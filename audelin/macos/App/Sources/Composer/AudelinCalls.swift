@@ -5,6 +5,7 @@ import Calls
 import CallsList
 import CallsListUI
 import CallsSearch
+import CallTags
 import Foundation
 import NotesMarkdown
 import Observation
@@ -23,7 +24,19 @@ struct RecordingsInputs {
 }
 
 /// What the detail asks of the call it shows.
-public enum CallsDetailEvent: Equatable, Sendable { case copy, open, rename, makeSummary, cancelSummary, retrySummary, delete }
+public enum CallsDetailEvent: Equatable, Sendable {
+    case copy, open, rename, makeSummary, cancelSummary, retrySummary, delete
+    /// The tags line: open the field, type, take the completion, remove a chip, save, cancel.
+    case editTags, typeTag(String), completeTag, removeTag(String), submitTags, cancelTags
+}
+
+/// The detail header's tags line for the call shown.
+public enum CallsDetailTags: Equatable, Sendable {
+    case shown([String])
+    /// The field: its chips, the tag being typed, the rest of a tag in use it starts, a save
+    /// under way and why the last save failed.
+    case editing(tags: [String], entry: String, completion: String, saving: Bool, failure: String?)
+}
 
 @MainActor @Observable
 public final class AudelinCalls {
@@ -38,7 +51,7 @@ public final class AudelinCalls {
     private let makeSummary: (String) -> Void
     private let cancelSummary: (String) async -> Void
     /// The list's selection and rename editing.
-    private let list = SyncModel<CallsListMachineState, CallsListMachineEvent>(initialState: .init(), reduce: CallsListReducer().reduce)
+    private let list = SyncModel<CallsListMachineState, CallsListMachineEvent>(initialState: .init(), reduce: CallsListReducer(splitQuery: { let query = CallTags.query($0); return (query.tags, query.text) }, tagKey: CallTags.key, normalizeTags: CallTags.normalized).reduce)
     private var withNotes: Set<String> = []
     /// Each call's gist, read with its notes.
     private var gists: [String: String] = [:]
@@ -60,7 +73,9 @@ public final class AudelinCalls {
     /// The calls list's text, in the language Audelin is shown in.
     public private(set) var listText: CallsListText
     private let callText: (String) async throws -> Calls.Text
-    private var query = ""
+    /// The tag being typed in the detail's tags field; it joins the draft on Return.
+    private var tagEntry = ""
+    private var tagsFollow: Task<Void, Never>?
     /// Each read call's transcript or notes match, nil when they hold none; a call
     /// not yet read is absent. Titles are matched afresh, so a rename shows at once.
     private var textMatches: [String: CallsSearch.Snippet?] = [:]
@@ -101,20 +116,27 @@ public final class AudelinCalls {
 
     public var state: CallsListState {
         var recordings = inputs.state()
+        let everyCall = recordings.calls
+        let filter = list.state.filterTags, words = list.state.searchText
+        recordings.calls = CallTags.keep(recordings.calls, having: filter, tags: knownTags)
         var found: [String: CallsListState.Row.Match] = [:]
-        let searchOn = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let searchOn = !words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         if searchOn {
             for call in recordings.calls {
-                let title = CallsSearch.match(query, title: call.title, transcript: [], notes: nil)?.title ?? []
+                let match = CallsSearch.match(words, title: call.title, tags: knownTags(call), transcript: [], notes: nil)
+                let title = match?.title ?? [], tags = match?.tags ?? []
                 let snippet = textMatches[call.id] ?? nil
-                guard !title.isEmpty || snippet != nil else { continue }
+                guard !title.isEmpty || !tags.isEmpty || snippet != nil else { continue }
                 found[call.id] = .init(title: title, snippet: snippet.map(rowSnippet))
             }
             recordings.calls = recordings.calls.filter { found[$0.id] != nil }
         }
         var state = callsListState(recordings, timeZone: timeZone, now: now(), text: listText)
-        state.searchText = query
-        state.search = searchOn ? .init(query: query, searching: searching) : nil
+        state.searchText = list.state.query
+        state.search = searchOn ? .init(query: words, searching: searching) : nil
+        let on = Set(filter.map(CallTags.key))
+        state.tagStrip = CallTags.inUse(everyCall.map(knownTags)).map { .init(name: $0, on: on.contains(CallTags.key($0))) }
+        let tagsByID = Dictionary(recordings.calls.map { ($0.id, knownTags($0)) }, uniquingKeysWith: { first, _ in first })
         let statuses = summaryStatuses()
         let badges = summaryBadges()
         let retryable = retryableSummaries().subtracting(list.state.retrying)
@@ -127,6 +149,7 @@ public final class AudelinCalls {
                 && state.rows[index].summary == .none
             state.rows[index].gist = gists[state.rows[index].id]
             state.rows[index].match = found[state.rows[index].id]
+            state.rows[index].tags = tagsByID[state.rows[index].id] ?? []
         }
         let selectedID = list.state.selectedID
         state.selectedID = state.rows.contains { $0.id == selectedID } ? selectedID : nil
@@ -161,10 +184,11 @@ public final class AudelinCalls {
 
     /// Reads each listed call's transcript and notes once for the query; a newer query
     /// cancels the older reading. Rows join as their calls are read.
-    private func search(_ text: String) {
+    private func search(_ query: String) {
         searchTask?.cancel()
         let previousSelection = state.selectedID
-        query = text
+        list.event(.search(query))
+        let text = list.state.searchText
         textMatches = [:]
         defer { followSelection(previousSelection) }
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -179,7 +203,7 @@ public final class AudelinCalls {
                 let read = try? await callText(id)
                 guard !Task.isCancelled else { return }
                 let match = read.flatMap { read in
-                    CallsSearch.match(text, title: "", transcript: read.transcript.map { .init(start: $0.start, words: $0.words) }, notes: read.notes)
+                    CallsSearch.match(text, title: "", tags: [], transcript: read.transcript.map { .init(start: $0.start, words: $0.words) }, notes: read.notes)
                 }
                 let previousSelection = state.selectedID
                 textMatches[id] = .some(match?.snippet)
@@ -214,12 +238,82 @@ public final class AudelinCalls {
     }
 
     public func show() {
-        search(query)
         list.event(.shown)
+        search("")
         inputs.send(.refresh)
         present()
         scanNotes()
         followMerges()
+        followTagsSaves()
+    }
+
+    /// Hands the list each answer to a tags save, as Recordings gives it.
+    private func followTagsSaves() {
+        tagsFollow?.cancel()
+        tagsFollow = Task {
+            for await outcome in Observations({ self.inputs.state().tagsOutcome }) {
+                guard let outcome else { continue }
+                let result: CallsListMachineState.TagsOutcome
+                switch outcome.result {
+                case .saved: result = .saved
+                case let .failed(reason): result = .failed(reason)
+                }
+                await sendList(.tagsFinished(request: outcome.request, result))
+            }
+        }
+    }
+
+    /// The tags line for the call the detail shows.
+    public var detailTags: CallsDetailTags {
+        guard let id = detail?.id else { return .shown([]) }
+        guard let editor = list.state.tagsEditor, editor.id == id else {
+            return .shown(inputs.state().calls.first { $0.id == id }.map(knownTags) ?? [])
+        }
+        return .editing(tags: editor.draft, entry: tagEntry, completion: tagCompletion(editor.draft),
+                        saving: editor.pending != nil, failure: editor.failure)
+    }
+
+    /// The rest of the first tag in use that the entry starts and the draft lacks.
+    private func tagCompletion(_ draft: [String]) -> String {
+        let typed = CallTags.key(tagEntry)
+        guard !typed.isEmpty else { return "" }
+        let taken = Set(draft.map(CallTags.key))
+        let tag = CallTags.inUse(inputs.state().calls.map(knownTags)).first {
+            let key = CallTags.key($0)
+            return key.hasPrefix(typed) && key != typed && !taken.contains(key)
+        }
+        return tag.map { String($0.dropFirst(tagEntry.count)) } ?? ""
+    }
+
+    /// Hands the list the rows as they are listed, so its actions see each call's state and tags.
+    private func syncRows() async -> CallsListState {
+        let snapshot = state
+        await sendList(.rowsChanged(snapshot.rows.map { .init(id: $0.id, title: $0.title, editable: $0.editable,
+                                                               canRetry: $0.canRetrySummary, tags: $0.tags) },
+                                    busy: snapshot.busy))
+        return snapshot
+    }
+
+    private func sendTags(_ event: CallsDetailEvent, id: String) async {
+        let draft = list.state.tagsEditor?.draft ?? []
+        switch event {
+        case .editTags:
+            _ = await syncRows()
+            tagEntry = ""
+            await sendList(.beginTags(id))
+        case let .typeTag(text): tagEntry = text
+        case .completeTag: tagEntry += tagCompletion(draft)
+        case let .removeTag(tag): await sendList(.editTags(draft.filter { $0 != tag }))
+        case .submitTags:
+            let entry = tagEntry.trimmingCharacters(in: .whitespaces)
+            if !entry.isEmpty { await sendList(.editTags(draft + [entry])) }
+            tagEntry = ""
+            await sendList(.submitTags)
+        case .cancelTags:
+            tagEntry = ""
+            await sendList(.cancelTags)
+        default: break
+        }
     }
 
     /// The calls window became narrow or wide: below the width for the call beside the list,
@@ -234,6 +328,8 @@ public final class AudelinCalls {
         notesScan = nil
         mergeFollow?.cancel()
         mergeFollow = nil
+        tagsFollow?.cancel()
+        tagsFollow = nil
     }
 
     /// Selects the call a merge made, so the detail reads it as any selected call.
@@ -324,6 +420,7 @@ public final class AudelinCalls {
         case .cancelSummary: await cancelSummary(shown.id)
         case .retrySummary: await send(.retrySummary(shown.id))
         case .delete: await send(.askDelete(shown.id))
+        case .editTags, .typeTag, .completeTag, .removeTag, .submitTags, .cancelTags: await sendTags(event, id: shown.id)
         }
     }
 
@@ -335,6 +432,7 @@ public final class AudelinCalls {
         for request in list.state.requests {
             switch request {
             case let .rename(id, title): inputs.send(.rename(id: id, title: title))
+            case let .setTags(request, id, tags): inputs.send(.setTags(request: request, id: id, tags: tags))
             case .clearFailure: inputs.send(.clearFailure)
             case let .retrySummary(id):
                 let succeeded: Bool
@@ -358,9 +456,7 @@ public final class AudelinCalls {
     public func send(_ event: CallsListEvent) async {
         guard !list.state.opening else { return }
         recordingChanged(recordingState())
-        let snapshot = state
-        await sendList(.rowsChanged(snapshot.rows.map { .init(id: $0.id, title: $0.title, editable: $0.editable, canRetry: $0.canRetrySummary) },
-                                     busy: snapshot.busy))
+        let snapshot = await syncRows()
         switch event {
         case let .beginRename(id): await sendList(.beginRename(id))
         case let .editTitle(title): await sendList(.editTitle(title))
@@ -377,6 +473,10 @@ public final class AudelinCalls {
             await sendList(.select(id))
             selectDetail()
         case let .search(text): search(text)
+        case let .toggleTag(tag):
+            let previous = state.selectedID
+            await sendList(.toggleTag(tag))
+            followSelection(previous)
         case let .toggleMark(id): inputs.send(.toggleMergeSelection(id))
         case .confirmMerge: inputs.send(.confirmMerge)
         case .leaveMerge: inputs.send(.leaveMergeMode)
@@ -449,4 +549,9 @@ func callsListState(_ state: RecordingsState, timeZone: TimeZone, now: Date, tex
     }, busy: busy || state.isListing, failure: state.failure.map { failure in
         (failure.id.map { "«\($0)»: " } ?? "") + failure.reason
     }, merge: merge)
+}
+
+/// A call's tags; unreadable ones count as none for filtering and showing.
+func knownTags(_ call: RecordedCall) -> [String] {
+    if case let .known(tags) = call.tags { tags } else { [] }
 }
