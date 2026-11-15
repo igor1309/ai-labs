@@ -71,8 +71,6 @@ becomes part of a machine's state, or is shown to be only mapping:
 - Recordings reserves the calls folder through Recording and waits on
   Recording's state for the answer. The calls-folder claim (Calls storage)
   replaces it.
-- The session's composition sends TranscriptFinalization its events
-  directly instead of the root subscribing Recording's output.
 - The panel's composition builds a Reading and a CallNames for each
   recording and decides what Reading is sent.
 - The menu runs panel presence's reducer and its delay by hand.

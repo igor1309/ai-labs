@@ -1,3 +1,9 @@
+import CoreAudioProcesses
+import SessionRehearsal
+import CallNames
+import Recording
+import TranscriptFormat
+@testable import CallText
 import CallDiarizer
 import Foundation
 import LiveText
@@ -9,6 +15,90 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)))
 struct TranscriptFinalizationCompositionTests {
+    @Test func subscriptionMapsEveryValueAndDrainsTheLastDelivery() async {
+        let output = AsyncStream<RecordingTranscript>.makeStream()
+        let received = Values<TranscriptFinalizationModel.Event>()
+        let deliveringClose = Signal(), acceptClose = Signal()
+        defer { deliveringClose.end(); acceptClose.end() }
+        let text = CallState(status: .finished, entries: [], finalCount: 0)
+        let names = CallNamesState(roster: ["Vera"], rowNames: [3: "Vera"])
+        let delivery = subscribeTranscriptFinalization(output.stream) { event in
+            if case .closed(call: "second", names: _) = event {
+                deliveringClose.send()
+                await acceptClose.next()
+            }
+            received.append(event)
+        }
+        let values: [RecordingTranscript] = [.opened(call: "first"), .wrote(call: "first", text),
+            .wrote(call: "first", text), .writeFailed(call: "first"), .closed(call: "first", names: names),
+            .opened(call: "second"), .closed(call: "second", names: names)]
+        for value in values { output.continuation.yield(value) }
+        output.continuation.finish()
+        await deliveringClose.next()
+        let prefix: [TranscriptFinalizationModel.Event] = [.opened(call: "first"), .wrote(call: "first", text),
+            .wrote(call: "first", text), .writeFailed(call: "first"), .closed(call: "first", names: names), .opened(call: "second")]
+        #expect(received.all == prefix)
+        acceptClose.send()
+        await delivery.value
+        #expect(received.all == prefix + [.closed(call: "second", names: names)])
+    }
+
+    @MainActor @Test
+    func quitDuringTranscriptOpenPublishesItsFinalBeforeTermination() async throws {
+        try await withComposeFolder { root in
+            let opening = Signal(), open = Signal(), publishing = Signal(), publish = Signal()
+            defer { opening.end(); open.end(); publishing.end(); publish.end() }
+            let clock = FixtureClock()
+            defer { clock.finish() }
+            var boundary = rehearsalBoundary(capturePersistence: .recorded,
+                microphone: { throw ScriptFailure.failed }, call: { _ in throw ScriptFailure.failed },
+                mine: RehearsalRecognizer(SessionRecognizer(name: "mine")), theirs: RehearsalRecognizer(SessionRecognizer(name: "theirs")),
+                now: clock.time.now, timeZone: { .gmt }, sleep: clock.sleep, intervals: testIntervals)
+            boundary.time = clock.time
+            boundary.transcripts = OpeningTranscriptStorage(opening: opening, open: open)
+            boundary.processes = FixtureProcesses(binding: CallBinding(fails: false, input: false))
+            boundary.access = ComposerAccess(refresh: { true }, reserve: { true }, release: {},
+                states: { AsyncStream { $0.yield(true); $0.finish() } }, invalidate: {})
+            boundary.microphonePermission = FixturePermission(status: { true }, prompt: {})
+            boundary.capacity = FixtureCapacity(read: { _ in Int64.max })
+            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
+            try preferences.write(Preferences(automaticRecording: false, liveText: false, callsFolder: root))
+            let processes = CoreAudioProcesses(binding: BoundaryProcesses(base: boundary.processes), clock: BoundaryCallClock(time: boundary.time))
+            let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: boundary.log,
+                intervals: testIntervals, browser: { nil }, sleep: clock.sleep)
+            let resources = FinalizationResources()
+            let events = Values<String>(), calls = Values<String>()
+            let finalization = TranscriptFinalizationModel(diarizing: FinalizationDiarizing(resources: resources),
+                cleanup: FinalizationCleanup(resources: resources), replacement: FinalizationReplacement(resources: resources),
+                finals: FinalTranscriptsPort(resources: resources, deliver: { call, _ in
+                    publishing.send()
+                    await publish.next()
+                    calls.append(call)
+                    events.append("published")
+                }))
+            let menu = await AudelinMenu(storage: preferences, occupiedCallNames: { [] }, boundary: boundary,
+                processes: processes, panel: panel, openFolder: { _ in }, openURL: { _ in },
+                terminate: { events.append("terminated") }, sink: boundary.log, presentPanel: { _ in }, sleep: clock.sleep,
+                finalization: finalization, finalizationResources: resources, language: CurrentLanguage(.english))
+            await menu.perform(.start)
+            await opening.next()
+            let quit = Task { await menu.perform(.quit) }
+            for await state in await menu.states() where state.shutdown == .requested { break }
+            open.send()
+            await publishing.next()
+            #expect(events.all.isEmpty)
+            #expect(!finalization.state.settled)
+            publish.send()
+            await quit.value
+            #expect(events.all == ["published", "terminated"])
+            let call = try #require(calls.all.first)
+            #expect(calls.all == [call])
+            #expect(finalization.state.calls[call]?.published == true)
+            #expect(finalization.state.settled)
+            #expect(resources.resource(call: call) == nil)
+        }
+    }
+
     @MainActor @Test
     func stoppedSessionReceivesSpeakersWhileCleanupWaitsAndNotesTakeTheSavedFinalForm() async throws {
         try await withComposeFolder { root in
@@ -92,4 +182,15 @@ private final class FinalizationHTTP: HTTPRequesting, Sendable {
         return .init(status: 200, body: try JSONSerialization.data(withJSONObject: ["choices": [["finish_reason": "stop", "message": ["content": notes]]]]))
     }
     deinit { started.end() }
+}
+
+private struct OpeningTranscriptStorage: TranscriptStorage {
+    let opening: Signal
+    let open: Signal
+    func open(at url: URL, names: RecordingNames, sink: any LogSink) async throws -> OpenedTranscript {
+        let file = try await FileTranscriptStorage(diarizer: CallDiarizer.unavailable).open(at: url, names: names, sink: sink)
+        opening.send()
+        await open.next()
+        return file
+    }
 }

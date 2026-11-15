@@ -135,3 +135,21 @@ Evidence: `RecordingTests.sessionFaultsStayNamedUntilTheNextRecording(_:)`.
 A fault reported with an id other than the running Session's leaves the
 state as it was.
 Evidence: `RecordingReducerTests.faultsFollowTheCurrentSession(_:)`.
+
+## S-18 to S-22 Transcript output and shutdown
+
+Pieces over a temporary calls folder and a fake transcript writer report every
+successful save and failure in order, snapshot names after the file closes,
+report nothing when opening fails, and share one output across successive calls.
+Evidence: `RecordingTranscriptOutputTests.transcriptReportsEverySaveOutcomeInOrder()`,
+`RecordingTranscriptOutputTests.closedCarriesNamesAtFileClose()`,
+`RecordingTranscriptOutputTests.unopenedTranscriptReportsNothing()`,
+`RecordingTranscriptOutputTests.successiveRecordingsShareOneOrderedOutput()`.
+
+The composed Recording ends its output after its last close on shutdown. The
+subscription forwards every value, including repeated saves, and drains its last
+delivery. Quit during an opening waits for that call's final publication before
+termination.
+Evidence: `RecordingPiecesWiringTests.shutdownFinishesTranscriptOutputAfterLastClose()`,
+`TranscriptFinalizationCompositionTests.subscriptionMapsEveryValueAndDrainsTheLastDelivery()`,
+`TranscriptFinalizationCompositionTests.quitDuringTranscriptOpenPublishesItsFinalBeforeTermination()`.
