@@ -44,6 +44,17 @@ struct RecordingsMergeTests {
         assert(merging, .chooseFolder(URL(fileURLWithPath: "/elsewhere")), delivers: nil)
     }
 
+    @Test func S14_mergeAvailabilityIsKeptUntilItChanges() {
+        assert(listed(), .mergeAvailability(true), delivers: nil) { $0.mergeAvailable = true }
+        assert(listed { $0.mergeAvailable = true }, .mergeAvailability(false), delivers: nil) { $0.mergeAvailable = false }
+        assert(listed { $0.mergeAvailable = true }, .mergeAvailability(true), delivers: nil)
+        assert(listed { $0.phase = .runningMerge }, .mergeAvailability(true), delivers: nil) { $0.mergeAvailable = true }
+    }
+
+    @Test func S14_mergeAvailabilityIsNotKnownBeforeItArrives() {
+        #expect(RecordingsState().mergeAvailable == false)
+    }
+
     @Test func theIdleQueryIsNotAskedOnInit() {
         let idle = IdleSpy(answer: true)
         _ = idle.reducer
