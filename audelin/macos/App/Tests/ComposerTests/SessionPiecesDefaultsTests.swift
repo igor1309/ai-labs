@@ -10,6 +10,8 @@ struct SessionPiecesDefaultsTests {
             await rig.mine.heard.next(); await rig.theirs.heard.next()
             _ = try await rig.panel { if case let .lines(lines) = $0.log { lines.entries.count == 2 } else { false } }
             try await rig.stop()
+            // The pieces' state is logged after Recording reduces it.
+            await rig.log.wait { $0.category == .session && $0.message.hasPrefix("state ") && $0.message.contains("phase=ended") }
             #expect(profiling.began.all.contains("Hearing"))
             #expect(profiling.began.all.contains("TranscriptWrite"))
             #expect(profiling.began.all.contains("PanelUpdate"))

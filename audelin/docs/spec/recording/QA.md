@@ -122,7 +122,7 @@ Compose maps the Session's failures to faults: microphone access or
 capture to no microphone, call access or capture to no call audio, a
 track on either side to disk full; a transcript or call text failure to
 none.
-Evidence: `RecordingSessionsTests.sessionHealthMapsToFaultsOnce()`, `RecordingSessionsTests.faultsBeforeReadyAreDeliveredAfterReady()`, `RecordingSessionsTests.faultsAreDeduplicatedPerSession()`.
+Evidence: `RecordingPiecesWiringTests.cannotRecordAndFaultsReachRecording()`, `RecordingReducerTests.faultsFollowTheCurrentSession(_:)`.
 
 ## S-16 Faults are named until the next recording
 

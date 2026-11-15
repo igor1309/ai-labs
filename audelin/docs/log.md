@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-15
+
+- LAB-1577: One state machine runs each recording, from getting call audio through bringing its pieces up and down to releasing call audio; there is no longer a separate session machine per recording. Behaviour is unchanged.
+
 ## 2026-11-14
 
 - LAB-1469: The calls list's selection, inline rename, summary retry and opening a call's folder, and opening a call in its own window once its notes are read, are decided by the list and detail state machines instead of the app's composition; behaviour is unchanged.

@@ -108,7 +108,7 @@ struct RecordingReducerTests {
         assert(makeRunning(id: 7), .conditionChanged(c, available: false)) { $0.missing = [c]; if losesStorage(c) { $0.phase = .ending; endPieces(&$0) } }
     }
 
-    // A prior call-audio reading cannot prevent the doer from refreshing readiness.
+    // A prior call-audio reading does not stop a new session from preparing call audio again.
     @Test func missingCallAudioIsRecheckedBeforeSessionBegins() {
         assert(makeBlocked(.callAudioAccess), .userStart) { $0.phase = .beginning; $0.stage = .preparing; $0.session = .init(id: 1, origin: .hand); $0.lastSessionID = 1 }
         assert(makeBlocked(.callAudioAccess), .callStarted) { $0.phase = .beginning; $0.stage = .preparing; $0.session = .init(id: 1, origin: .call); $0.lastSessionID = 1; $0.callOn = true; $0.sessionBeganDuringCall = true }
