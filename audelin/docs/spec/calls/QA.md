@@ -74,6 +74,6 @@ two and the size is the sum of the calls' files.
 ## S-12 A call's text is read by its readers
 
 A call with notes and a transcript, read with a reader spy that returns
-fixed lines: the text holds the notes and those lines, and the spy got
+fixed lines: the text holds those lines and no notes text, and the spy got
 the transcript file's text once. At the root, the bound reader maps
 Transcript format's entries to lines, words exactly as written.

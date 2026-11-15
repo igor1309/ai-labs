@@ -4,6 +4,13 @@ import CallsListUI
 import IMRxObservation
 import Observation
 import SummaryJobs
+import NotesGeneration
+
+public typealias SummariesState = SummaryJobs.SummariesState<NotesGeneration.Template>
+public typealias SummariesEvent = SummaryJobs.SummariesEvent<NotesGeneration.Template>
+public typealias SummariesEffect = SummaryJobs.SummariesEffect<NotesGeneration.Template>
+public typealias SummariesReducer = SummaryJobs.SummariesReducer<NotesGeneration.Template>
+public typealias SummariesEffectHandler = SummaryJobs.SummariesEffectHandler<NotesGeneration.Template>
 
 /// The Summaries machine, assembled from its reducer, its effect handler and the ports over files and the runtime.
 @MainActor @Observable
@@ -11,12 +18,12 @@ public final class SummariesModel {
     private let model: ObservableModel<SummariesState, SummariesEvent, SummariesEffect>
     private let reducer: SummariesReducer
     private var listText: CallsListText
-    public init(text: @escaping @Sendable () -> CallsListText, preparation: any SummariesPreparation, files: SummariesFilesPort,
-         generation: any SummariesGeneration) {
+    public init(templates: any SummariesTemplates<NotesGeneration.Template>, text: @escaping @Sendable () -> CallsListText, preparation: any SummariesPreparation, files: SummariesFilesPort,
+         generation: any SummariesGeneration<NotesGeneration.Template>) {
         listText = text()
         let reducer = SummariesReducer(format: { text().summariesStatus($0, $1) }, badge: summariesBadge)
         self.reducer = reducer
-        let handler = SummariesEffectHandler(preparation: preparation, claims: files, records: files, starts: files,
+        let handler = SummariesEffectHandler(templates: templates, preparation: preparation, claims: files, records: files, starts: files,
                                              storage: files, generation: generation)
         model = ObservableModel(initialState: .init(), reduce: reducer.reduce,
                                 handleEffect: { effect in oneEvent { await handler.handle(effect) } })
@@ -120,7 +127,7 @@ extension CallsListText {
         switch stage {
         case .waiting, .recovering, .preparing: self(.summaryWaiting)
         case .claiming, .pending, .observed, .retrying, .discarding: self(.summaryPending)
-        case .reading, .starting, .identifying, .checkpointing, .noting, .deferred, .publishing, .saving: self(.summaryRunning)
+        case .reading, .starting, .identifying, .checkpointing, .resolving, .noting, .deferred, .publishing, .saving: self(.summaryRunning)
         case .succeeded: warning ? self(.summaryReadyUnnamed) : self(.summaryReady)
         case .failed: self(.summaryFailed)
         case .interrupted: self(.summaryInterrupted)

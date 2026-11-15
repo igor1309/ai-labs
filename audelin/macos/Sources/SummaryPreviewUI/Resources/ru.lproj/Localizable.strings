@@ -13,4 +13,12 @@
 "preview.noSelection" = "Звонок не выбран";
 "preview.notesLabel" = "Итоги";
 "preview.mergeCalls" = "Объединить звонки…";
-"preview.mergeDone" = "Готово";
+"preview.mergeCancel" = "Отменить";
+"preview.tags" = "Теги:";
+"preview.noTags" = "нет";
+"preview.editTags" = "Изменить";
+"preview.addTags" = "Добавить";
+"preview.newTag" = "+ тег";
+"preview.tagsHint" = "Return — сохранить, Esc — отменить";
+"preview.savingTags" = "Сохраняю…";
+"preview.removeTag" = "Убрать тег %@";

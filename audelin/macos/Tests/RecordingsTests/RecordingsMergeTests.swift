@@ -60,7 +60,7 @@ struct RecordingsMergeTests {
             $0.phase = .warnedFarApart
         }
         assert(listed { $0.phase = .renaming("A"); $0.mergeAvailable = false }, .enterMergeMode, delivers: nil, using: busy.reducer)
-        assert(listed { $0.mergeAvailable = false }, .refresh, delivers: .list, using: busy.reducer) { $0.isListing = true }
+        assert(listed { $0.mergeAvailable = false }, .refresh, delivers: .list(request: 1), using: busy.reducer) { $0.isListing = true; $0.listRequest = 1 }
         #expect(busy.asked == 0)
     }
 
@@ -156,11 +156,11 @@ struct RecordingsMergeTests {
     }
 
     @Test func S10_aMergedCallIsSelected() {
-        assert(listed { $0.phase = .runningMerge; $0.mergeSelection = ["A", "B"] }, .merged("A"), delivers: .list) {
+        assert(listed { $0.phase = .runningMerge; $0.mergeSelection = ["A", "B"] }, .merged("A"), delivers: .list(request: 1)) {
             $0.phase = .idle
             $0.mergeSelection = []
             $0.mergedCallID = "A"
-            $0.isListing = true
+            $0.isListing = true; $0.listRequest = 1
         }
         assert(listed { $0.phase = .merging }, .merged("A"), delivers: nil)
     }

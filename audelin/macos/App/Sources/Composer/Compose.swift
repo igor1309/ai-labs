@@ -9,6 +9,7 @@ import Recordings
 import TrackFile
 import SummaryRuntime
 import SummaryFiles
+import TemplateFiles
 import SettingsUI
 
 /// Builds the same recording, panel, menu and calls composition for every caller.
@@ -51,7 +52,8 @@ public func compose(
     let made: @Sendable (Date) -> String = { date in
         date.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened, locale: language.language.callsList.locale, timeZone: timeZone))
     }
-    let summaries = SummariesModel(text: { language.language.callsList },
+    let templates = TemplateFiles.Files(folder: preferencesURL.deletingLastPathComponent().appendingPathComponent("Templates"), disk: TemplateFiles.FileDisk())
+    let summaries = SummariesModel(templates: DefaultTemplatePort(files: templates), text: { language.language.callsList },
         preparation: SummariesPreparationPort(notes: { preferences.read().notes }, makeID: { UUID().uuidString },
                                               callText: { try await storage.text(id: $0) }),
         files: SummariesFilesPort(files: summaryFiles, makeID: { UUID().uuidString }),

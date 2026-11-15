@@ -3,6 +3,8 @@
 ## 2026-11-15
 
 - LAB-1609: Automatic update relaunch waits for every final transcript to finish processing, saving and reaching notes.
+- LAB-1631: Calls can carry tags, kept in `tags.txt` in each call's folder. The detail header shows and edits them, rows show them as `#tag`, a strip of chips under the search field filters the list by tag, a `#tag` in the search does the same, plain search matches tags, and merged calls keep every part's tags.
+- LAB-1625: Notes use the editable Default template file, including its headings; missing or broken Default files use the built-in template without overwriting edits.
 
 - LAB-1579: A recording, a calls-folder move and an update relaunch each hold the calls folder through one claim, so none starts behind another; a start during a move waits and begins once the move ends, a quit during a move or a relaunch lets the folder go first, and a relaunch still works when call watching failed to start.
 - LAB-1616: While recording, the menu-bar icon is the normal Audelin icon with a slowly pulsing red dot instead of a solid red record disc.

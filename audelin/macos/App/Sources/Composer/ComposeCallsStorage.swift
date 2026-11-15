@@ -1,9 +1,11 @@
+import CallTags
 import Calls
 import CallsStorage
 import Foundation
 import Recording
 import Recordings
 import SummaryJobs
+import TagsFile
 import TrackFile
 import TranscriptFile
 import TranscriptFormat
@@ -75,8 +77,12 @@ struct SummaryCalls: RecordingsCalls {
     var merged: @Sendable (String, [String], [Job.Entry]) async -> Void = { _, _, _ in }
     /// Writes a merged call's joined transcript.
     var binding: any TranscriptFileBinding = DiskTranscriptBinding()
+    /// Each call with its tags as first written; a tags file that cannot be read marks the call's tags unreadable.
     func list() async throws -> [RecordedCall] {
-        try await storage.list().map { .init(id: $0.id, title: $0.title, start: $0.start, duration: $0.duration) }
+        try await storage.list { call, folder in
+            let tags: RecordedCall.Tags = (try? TagsFile.read(in: folder)).map { .known(CallTags.normalized($0)) } ?? .unreadable
+            return RecordedCall(id: call.id, title: call.title, start: call.start, duration: call.duration, tags: tags)
+        }
     }
     func rename(id: String, title: String) async throws { try await storage.rename(id: id, title: title) }
     func delete(id: String) async throws {
@@ -89,5 +95,8 @@ struct SummaryCalls: RecordingsCalls {
         let merged = try await mergeCalls(ids: ids, storage: storage, binding: binding)
         await self.merged(merged.id, ids, merged.entries)
         return merged.id
+    }
+    func setTags(id: String, tags: [String]) async throws {
+        try await storage.writeTags(id: id) { try TagsFile.write(tags, in: $0) }
     }
 }
