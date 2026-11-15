@@ -47,7 +47,10 @@ public struct RecordingsState: Equatable, Sendable {
     public var failure: Failure?
 
     public var callsFolder: URL?
+    /// No folder move holds the calls folder: false from the claim's grant until its release.
     public var callsFolderAvailable = true
+    /// The calls-folder claim's token while a move holds it.
+    public var moveToken: UInt64?
     public var stopping = false
     /// Stopping, with no folder move holding the calls folder and no merge running: storage has settled for quit.
     public var stopped = false
@@ -61,10 +64,10 @@ public struct RecordingsState: Equatable, Sendable {
 
     public init(calls: [RecordedCall] = [], isListing: Bool = false, phase: Phase = .idle,
                 recordingID: String? = nil, failure: Failure? = nil, callsFolder: URL? = nil,
-                callsFolderAvailable: Bool = true, stopping: Bool = false, stopped: Bool = false, move: CallsFolderMove? = nil,
+                callsFolderAvailable: Bool = true, moveToken: UInt64? = nil, stopping: Bool = false, stopped: Bool = false, move: CallsFolderMove? = nil,
                 mergeSelection: Set<String> = [], mergedCallID: String? = nil, mergeAvailable: Bool = false) {
         self.calls = calls; self.isListing = isListing; self.phase = phase; self.recordingID = recordingID
-        self.failure = failure; self.callsFolder = callsFolder; self.callsFolderAvailable = callsFolderAvailable; self.stopping = stopping; self.stopped = stopped; self.move = move
+        self.failure = failure; self.callsFolder = callsFolder; self.callsFolderAvailable = callsFolderAvailable; self.moveToken = moveToken; self.stopping = stopping; self.stopped = stopped; self.move = move
         self.mergeSelection = mergeSelection; self.mergedCallID = mergedCallID; self.mergeAvailable = mergeAvailable
     }
 }
@@ -75,7 +78,8 @@ public enum RecordingsEvent: Equatable, Sendable {
     case recordingChanged(String?)
     case rename(id: String, title: String), renamed(String), renameFailed(id: String, reason: String)
     case chooseFolder(URL), movePrepared([MoveCall]), movePreparationFailed(String)
-    case confirmMove, retryMove, cancelMove, moveReserved(Bool), moveReleased
+    /// The claim's token for the move, or nil when another holder has the calls folder.
+    case confirmMove, retryMove, cancelMove, moveReserved(token: UInt64?), moveReleased
     case callMoved(id: String, bytes: Int64), callMoveFailed(id: String, reason: String)
     case folderStored, folderStoreFailed(String)
     case askDelete(String), confirmDelete, cancelDelete, deleted(String), deleteFailed(id: String, reason: String)
@@ -86,7 +90,7 @@ public enum RecordingsEvent: Equatable, Sendable {
 }
 
 public enum RecordingsEffect: Equatable, Sendable {
-    case prepareMove(URL), reserveMove, releaseMove, moveCall(id: String, to: URL), storeFolder(URL)
+    case prepareMove(URL), reserveMove, releaseMove(token: UInt64), moveCall(id: String, to: URL), storeFolder(URL)
     case list, rename(id: String, title: String), delete(String)
     /// The calls to merge, in list order.
     case merge([String])
@@ -108,7 +112,7 @@ public struct RecordingsReducer: Sendable {
 
     public func reduce(_ state: RecordingsState, _ event: RecordingsEvent) -> (RecordingsState, RecordingsEffect?) {
         var (next, effect) = reduceEvent(state, event)
-        if next.stopping, next.callsFolderAvailable, next.phase != .runningMerge { next.stopped = true }
+        if next.stopping, next.moveToken == nil, ![.reservingMove, .releasingMove, .runningMerge].contains(next.phase) { next.stopped = true }
         return (next, effect)
     }
 
@@ -264,13 +268,14 @@ public struct RecordingsReducer: Sendable {
 
 public struct RecordingsEffectHandler: Sendable {
     private let calls: any RecordingsCalls
-    private let reserve: @Sendable () async -> Bool
-    private let release: @Sendable () async -> Void
+    private let reserve: @Sendable () async -> UInt64?
+    private let release: @Sendable (UInt64) async -> Void
     private let storeFolder: @Sendable (URL) async throws -> Void
     private let describe: @Sendable (any Error) -> String
-    /// `describe` writes the sentence a failure shows, in the language the UI chose.
-    public init(calls: any RecordingsCalls, reserve: @escaping @Sendable () async -> Bool,
-                release: @escaping @Sendable () async -> Void, storeFolder: @escaping @Sendable (URL) async throws -> Void,
+    /// `reserve` takes the calls-folder claim for a move, answering its token or nil when refused;
+    /// `release` lets that token go. `describe` writes the sentence a failure shows, in the language the UI chose.
+    public init(calls: any RecordingsCalls, reserve: @escaping @Sendable () async -> UInt64?,
+                release: @escaping @Sendable (UInt64) async -> Void, storeFolder: @escaping @Sendable (URL) async throws -> Void,
                 describe: @escaping @Sendable (any Error) -> String) {
         self.calls = calls; self.reserve = reserve; self.release = release; self.storeFolder = storeFolder; self.describe = describe
     }
@@ -287,8 +292,8 @@ public struct RecordingsEffectHandler: Sendable {
 
     private func perform(_ effect: RecordingsEffect) async -> RecordingsEvent {
         switch effect {
-        case .reserveMove: return .moveReserved(await reserve())
-        case .releaseMove: await release(); return .moveReleased
+        case .reserveMove: return .moveReserved(token: await reserve())
+        case let .releaseMove(token): await release(token); return .moveReleased
         case let .prepareMove(destination):
             do { return .movePrepared(try await calls.prepareMove(to: destination)) }
             catch { return .movePreparationFailed(describe(error)) }

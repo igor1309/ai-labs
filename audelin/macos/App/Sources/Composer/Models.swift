@@ -36,6 +36,7 @@ func oneEvent<Event: Sendable>(_ handle: @escaping @Sendable () async -> Event) 
 @MainActor
 func makeRecording(
     initial: RecordingState, log: @escaping @Sendable (RecordingState) -> Void,
+    folderClaim: RecordingFolderClaim,
     callAudioReady: @escaping @Sendable () async -> Bool,
     liveText: @escaping @Sendable () -> Bool,
     callAudioReleased: @escaping @Sendable () async -> Void,
@@ -43,7 +44,8 @@ func makeRecording(
     status: @escaping @Sendable (SessionState) -> RecordingSessionStatus
 ) -> RecordingInputs {
 
-    let handler = RecordingEffectHandler(prepareCallAudio: callAudioReady, liveText: liveText,
+    let handler = RecordingEffectHandler(claimFolder: folderClaim.take, releaseFolder: folderClaim.release,
+                                         prepareCallAudio: callAudioReady, liveText: liveText,
                                          releaseCallAudio: callAudioReleased, runPiece: runPiece)
     let model = RecordingModel(initial: initial, reducer: RecordingReducer(session: SessionReducer.reduce, status: status),
                                handler: handler, log: log)
@@ -53,8 +55,6 @@ func makeRecording(
         states: { await model.states() },
         end: { await model.end() }
     )
-    inputs.reserveStorage = { await model.reserveStorage() }
-    inputs.releaseStorage = { await model.send(.releaseStorage) }
     return inputs
 }
 
@@ -80,21 +80,6 @@ final class RecordingModel {
     }
 
     var state: RecordingState { model.state }
-    private var lastReservation: UInt64 = 0
-
-    /// Answers this request's own decision; another caller's reservation is not this one's.
-    func reserveStorage() async -> Bool {
-        lastReservation += 1
-        let request = lastReservation
-        let states = feed.subscribe(from: model.state)
-        model.event(.reserveStorage(request: request))
-        for await state in states {
-            guard let granted = state.reservations[request] else { continue }
-            model.event(.reservationAnswered(request: request))
-            return granted
-        }
-        return false
-    }
 
     func send(_ event: RecordingEvent) { model.event(event) }
 
@@ -107,10 +92,11 @@ final class RecordingModel {
 
 /// The termination machine: publishes the quit intention and terminates once every participant settled.
 @MainActor
-func makeTermination(relaunch: @escaping @Sendable () async -> Bool, unsettled: Set<TerminationParticipant>,
+func makeTermination(claimFolder: @escaping @Sendable () async -> UInt64?, releaseFolder: @escaping @Sendable (UInt64) async -> Void,
+                     relaunch: @escaping @Sendable () async -> Bool, unsettled: Set<TerminationParticipant>,
                      terminate: @escaping @Sendable () async -> Void) -> ObservableModel<TerminationState, TerminationEvent, TerminationEffect> {
 
-    let handler = TerminationEffectHandler(relaunch: relaunch, terminate: terminate)
+    let handler = TerminationEffectHandler(claimFolder: claimFolder, releaseFolder: releaseFolder, relaunch: relaunch, terminate: terminate)
     return ObservableModel(initialState: TerminationState(unsettled: unsettled), reduce: TerminationReducer.reduce,
                            handleEffect: { effect in oneEvent { await handler.handle(effect) } })
 }

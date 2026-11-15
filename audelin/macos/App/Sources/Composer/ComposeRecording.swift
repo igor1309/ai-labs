@@ -6,7 +6,7 @@ import CallAudioAccess
 import Synchronization
 
 func composeRecording(
-    preferences: PreferencesStore, occupiedCallNames: @escaping @Sendable () throws -> [String],
+    preferences: PreferencesStore, folderClaim: RecordingFolderClaim, occupiedCallNames: @escaping @Sendable () throws -> [String],
     callApp: RecordingCallApp, processes: CoreAudioProcesses,
     boundary: ComposerBoundary, panel: AudelinPanel, finalizationResources: FinalizationResources, summaries: SummaryCallbacks = .disabled
 ) async -> RecordingInputs {
@@ -27,7 +27,7 @@ func composeRecording(
         StateLog(sink: sink).recording(state)
     }
     log(initial)
-    let model = await makeRecording(initial: initial, log: log, callAudioReady: {
+    let model = await makeRecording(initial: initial, log: log, folderClaim: folderClaim, callAudioReady: {
         guard await access.refresh() else { return false }
         return await access.reserve()
     }, liveText: { preferences.read().liveText }, callAudioReleased: { await access.release() },
@@ -50,8 +50,6 @@ func composeRecording(
         await observation.value
     })
     recording.transcriptOutput = transcriptOutput.stream
-    recording.reserveStorage = model.reserveStorage
-    recording.releaseStorage = model.releaseStorage
     let connected = recording
     destination.withLock { $0 = connected }
     return recording

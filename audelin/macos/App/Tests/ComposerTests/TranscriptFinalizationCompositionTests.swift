@@ -257,7 +257,9 @@ private func finalizationMenu(
     let processes = CoreAudioProcesses(binding: BoundaryProcesses(base: boundary.processes), clock: BoundaryCallClock(time: boundary.time))
     let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: boundary.log,
         intervals: testIntervals, browser: { nil }, sleep: clock.sleep)
-    return await AudelinMenu(storage: preferences, occupiedCallNames: { [] }, boundary: boundary,
+    let storage = callsStorage(folder: root, timeZone: .gmt, trash: { _ in })
+    return await AudelinMenu(storage: preferences, folderClaim: RecordingFolderClaim(storage: storage),
+        relaunchClaim: RelaunchFolderClaim(storage: storage), occupiedCallNames: { [] }, boundary: boundary,
         processes: processes, panel: panel, openFolder: { _ in }, openURL: { _ in },
         terminate: terminate, sink: boundary.log, presentPanel: { _ in }, sleep: clock.sleep,
         finalization: finalization, finalizationResources: resources, language: CurrentLanguage(.english))

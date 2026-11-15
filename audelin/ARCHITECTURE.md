@@ -68,9 +68,6 @@ state inside Recording's state and is not a machine or a module of its own.
 The code does not yet follow rules 4 and 5 everywhere. Each item below
 becomes part of a machine's state, or is shown to be only mapping:
 
-- Recordings reserves the calls folder through Recording and waits on
-  Recording's state for the answer. The calls-folder claim (Calls storage)
-  replaces it.
 - The panel's composition builds a Reading and a CallNames for each
   recording and decides what Reading is sent.
 - The menu runs panel presence's reducer and its delay by hand.
@@ -85,17 +82,21 @@ microphone, call-audio access, calls folder and room are available. Its
 state holds the latest readings, whether calls storage is moving, and the
 value last published for each condition; it publishes a condition only when
 that value changes. Readings carry the moment they were taken, and readings
-older than the latest are ignored. While storage moves, the calls folder is
-unavailable whatever the disk says; when the move ends, the latest readings
-decide it again. Room is a pure rule: at least 30 decimal gigabytes free in
+older than the latest are ignored. While a move holds the calls folder,
+the folder is published as moving, a reason of its own beside lost, so
+Recording can hold a start for the move rather than refuse it. When the move
+lets the folder go, the machine asks for a fresh reading and the folder
+stays moving until that reading decides it; a reading asked for before, or
+for an earlier move, cannot end it. Room is a pure rule: at least 30 decimal gigabytes free in
 an existing folder.
 
 The composer reads the microphone permission and the disk (a disk readings
 adapter: whether the folder is a directory, writable, and its free capacity)
-at startup, after the microphone request, before a call starts and after a
-storage move, and sends them to the machine. It refreshes call-audio access
-at the same moments; the machine never refreshes or reads access and hears
-its results only through a subscription. Each changed condition is logged
+at startup, after the microphone request and before a call starts, and
+sends them to the machine; after a storage move the machine asks for the
+reading through a port the composer answers with the same disk adapter. The
+composer refreshes call-audio access at those moments; the machine never
+reads access and hears its results only through a subscription. Each changed condition is logged
 and sent to Recording in the order it was reduced, and a refresh returns
 once its readings are published, so a call never starts on readings older
 than its own.

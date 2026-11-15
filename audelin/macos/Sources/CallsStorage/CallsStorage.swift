@@ -20,6 +20,8 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
     // so one waiting for a long folder move suspends instead of blocking a thread.
     private let turn = Turn()
     private let published = Mutex<(state: CallsTransaction, watchers: [UUID: AsyncStream<CallsTransaction>.Continuation])>((.idle, [:]))
+    /// The calls-folder claim: the current grant, if any, and the last token handed out.
+    let folderClaim = Mutex<(holder: (CallsFolderHolder, CallsFolderToken)?, lastToken: UInt64)>((nil, 0))
 
     /// `journal` is where the journal is kept; nil keeps it in memory only.
     /// `makeCalls` opens the calls of one folder.

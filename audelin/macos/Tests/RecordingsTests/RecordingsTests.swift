@@ -21,7 +21,7 @@ struct RecordingsTests {
             $0.isListing = false
         }
         let spy = CallsSpy()
-        await expect(RecordingsEffectHandler(calls: spy, reserve: { true }, release: {}, storeFolder: { _ in }, describe: { _ in "disk" }), with: .rename(id: "A", title: "New"), toDeliver: .renamed("A"), on: { await spy.complete(.success([])) })
+        await expect(RecordingsEffectHandler(calls: spy, reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { _ in "disk" }), with: .rename(id: "A", title: "New"), toDeliver: .renamed("A"), on: { await spy.complete(.success([])) })
         #expect(await spy.received == [.rename(id: "A", title: "New")])
     }
 
@@ -33,7 +33,7 @@ struct RecordingsTests {
             $0.isListing = true
         }
         let spy = CallsSpy()
-        await expect(RecordingsEffectHandler(calls: spy, reserve: { true }, release: {}, storeFolder: { _ in }, describe: { $0 is DiskFailure ? "disk" : "other" }), with: .rename(id: "A", title: "New"), toDeliver: .renameFailed(id: "A", reason: "disk"), on: { await spy.complete(.failure(DiskFailure())) })
+        await expect(RecordingsEffectHandler(calls: spy, reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { $0 is DiskFailure ? "disk" : "other" }), with: .rename(id: "A", title: "New"), toDeliver: .renameFailed(id: "A", reason: "disk"), on: { await spy.complete(.failure(DiskFailure())) })
     }
 
     @Test func S3_aDeleteWaitsForTheConfirm() {
@@ -60,7 +60,7 @@ struct RecordingsTests {
         }
         for failed in [false, true] {
             let spy = CallsSpy()
-            await expect(RecordingsEffectHandler(calls: spy, reserve: { true }, release: {}, storeFolder: { _ in }, describe: { _ in "disk" }), with: .delete("A"), toDeliver: failed ? .deleteFailed(id: "A", reason: "disk") : .deleted("A"), on: { await spy.complete(failed ? .failure(DiskFailure()) : .success([])) })
+            await expect(RecordingsEffectHandler(calls: spy, reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { _ in "disk" }), with: .delete("A"), toDeliver: failed ? .deleteFailed(id: "A", reason: "disk") : .deleted("A"), on: { await spy.complete(failed ? .failure(DiskFailure()) : .success([])) })
             #expect(await spy.received == [.delete("A")])
         }
     }
@@ -96,7 +96,7 @@ struct RecordingsTests {
         let call = RecordedCall(id: "A", title: "Zoom", start: .distantPast, duration: nil)
         for failed in [false, true] {
             let spy = CallsSpy()
-            await expect(RecordingsEffectHandler(calls: spy, reserve: { true }, release: {}, storeFolder: { _ in }, describe: { _ in "disk" }), with: .list, toDeliver: failed ? .listFailed("disk") : .listed([call]), on: { await spy.complete(failed ? .failure(DiskFailure()) : .success([call])) })
+            await expect(RecordingsEffectHandler(calls: spy, reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { _ in "disk" }), with: .list, toDeliver: failed ? .listFailed("disk") : .listed([call]), on: { await spy.complete(failed ? .failure(DiskFailure()) : .success([call])) })
             #expect(await spy.received == [.list])
         }
     }
@@ -237,14 +237,14 @@ struct RecordingsMergeEffectTests {
     @Test func S5_theHandlerAsksThePortForTheCallsAndDeliversTheMergedCall() async {
         let spy = CallsSpy()
         let merged = RecordedCall(id: "A", title: "", start: .distantPast, duration: 60)
-        await expect(RecordingsEffectHandler(calls: spy, reserve: { true }, release: {}, storeFolder: { _ in }, describe: { _ in "disk" }),
+        await expect(RecordingsEffectHandler(calls: spy, reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { _ in "disk" }),
                      with: .merge(["A", "B"]), toDeliver: .merged("A"), on: { await spy.complete(.success([merged])) })
         #expect(await spy.received == [.merge(["A", "B"])])
     }
 
     @Test func S11_theHandlerDeliversWhyAMergeFailed() async {
         let spy = CallsSpy()
-        await expect(RecordingsEffectHandler(calls: spy, reserve: { true }, release: {}, storeFolder: { _ in }, describe: { $0 is DiskFailure ? "disk" : "other" }),
+        await expect(RecordingsEffectHandler(calls: spy, reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { $0 is DiskFailure ? "disk" : "other" }),
                      with: .merge(["A", "B"]), toDeliver: .mergeFailed("disk"), on: { await spy.complete(.failure(DiskFailure())) })
     }
 }

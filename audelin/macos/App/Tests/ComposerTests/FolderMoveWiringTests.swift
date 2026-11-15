@@ -75,10 +75,12 @@ struct FolderMoveWiringTests {
     @Test func composedMoveHoldsAStartUntilReleaseAndRefreshesTheList() async throws {
         try await withComposition { rig in
             let spy = CallsMoveSpy()
-            let inputs = makeRecordings(handler: .init(calls: spy,
-                reserve: { await rig.menu.reserveCallsFolder() },
-                release: { await rig.menu.releaseCallsFolder() }, storeFolder: { await spy.store($0) }, describe: russianSettings.callsFailure),
+            let claim = MoveFolderClaim(storage: callsStorage(folder: rig.root, timeZone: .gmt, trash: { _ in }))
+            let inputs = makeRecordings(handler: .init(calls: spy, reserve: claim.take, release: claim.release,
+                storeFolder: { await spy.store($0) }, describe: russianSettings.callsFailure),
                 text: russianSettingsText, initial: .init(callsFolder: rig.root))
+            let hold = subscribeMoveHold({ inputs.state().callsFolderAvailable }, to: { await rig.menu.callsFolderMoving($0) })
+            defer { hold.cancel() }
             let calls = AudelinCalls(inputs: inputs, timeZone: .gmt, now: Date.init, recordingState: { rig.menu.state },
                                     location: { _ in rig.root }, openFolder: { _ in true }, present: {})
             rig.menu.installCalls(calls)
@@ -91,8 +93,7 @@ struct FolderMoveWiringTests {
             await spy.waitForMove()
             #expect(await spy.moved == ["A"])
             #expect(!inputs.state().callsFolderAvailable)
-            let reserved = try await rig.state { $0.storageReserved && $0.missing.contains(.callsFolder) }
-            #expect(reserved.phase == .idle)
+            #expect(try await idleOnceMoving(rig))
             await rig.menu.perform(.start)
             let held = try await rig.state { $0.pendingStart == .hand }
             #expect(held.phase == .idle)
@@ -117,10 +118,12 @@ struct FolderMoveWiringTests {
     @Test func aFailedMoveReleasesTheHeldStartKeepsTheSettingAndRetriesTheRest() async throws {
         try await withComposition { rig in
             let spy = CallsMoveSpy()
-            let inputs = makeRecordings(handler: .init(calls: spy,
-                reserve: { await rig.menu.reserveCallsFolder() },
-                release: { await rig.menu.releaseCallsFolder() }, storeFolder: { await spy.store($0) }, describe: russianSettings.callsFailure),
+            let claim = MoveFolderClaim(storage: callsStorage(folder: rig.root, timeZone: .gmt, trash: { _ in }))
+            let inputs = makeRecordings(handler: .init(calls: spy, reserve: claim.take, release: claim.release,
+                storeFolder: { await spy.store($0) }, describe: russianSettings.callsFailure),
                 text: russianSettingsText, initial: .init(callsFolder: rig.root))
+            let hold = subscribeMoveHold({ inputs.state().callsFolderAvailable }, to: { await rig.menu.callsFolderMoving($0) })
+            defer { hold.cancel() }
             let calls = AudelinCalls(inputs: inputs, timeZone: .gmt, now: Date.init, recordingState: { rig.menu.state },
                                     location: { _ in rig.root }, openFolder: { _ in true }, present: {})
             rig.menu.installCalls(calls)
@@ -131,6 +134,7 @@ struct FolderMoveWiringTests {
             await spy.waitForMove()
             await spy.completeMove()
             await spy.waitForMove()
+            #expect(try await idleOnceMoving(rig))
             await rig.menu.perform(.start)
             _ = try await rig.state { $0.pendingStart == .hand }
             await spy.failMove()
@@ -273,3 +277,7 @@ private struct MoveFailure: LocalizedError { var errorDescription: String? { "di
 
 @Sendable private func russianSettingsText() -> SettingsText { SettingsText(language: .russian) }
 
+/// Waits until Recording hears the move and says whether it is idle then.
+@MainActor private func idleOnceMoving(_ rig: ComposeFixture) async throws -> Bool {
+    try await rig.state { $0.folderMoving }.phase == .idle
+}
