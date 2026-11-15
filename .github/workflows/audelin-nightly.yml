@@ -56,6 +56,7 @@ jobs:
             ${{ env.NIGHTLY_OUT }}/endurance.log
             ${{ env.NIGHTLY_OUT }}/capture-*/summary.*
             ${{ env.NIGHTLY_OUT }}/capture-rehearsal/rehearsal.log
+            ${{ env.NIGHTLY_OUT }}/rehearsal-*/rehearsal.log
 
   # The live scenario of remote names from the browser extension: the
   # rehearsal replays recorded Telemost events through the app's socket and

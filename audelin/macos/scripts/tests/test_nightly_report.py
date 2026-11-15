@@ -131,8 +131,8 @@ class NightlyReportTests(unittest.TestCase):
         self.assertEqual(new["rehearsal"]["cpu_seconds"], 72.0)
         compared = nightly.comparison(new, old)
         self.assertEqual(compared["deltas"]["rehearsal.cpu_seconds"]["baseline"], 42.6)
-        self.assertIn("rehearsal.cpu_seconds increased: investigate and repeat before calling it a regression.",
-                      compared["warnings"])
+        self.assertIn("rehearsal.cpu_seconds increased (more than 10% over the comparison point): "
+                      "investigate and repeat before calling it a regression.", compared["warnings"])
         self.assertIn("CPU seconds: 72 (was 42.6, +29.4)", nightly.markdown(new, old))
 
     def test_a_missing_or_short_rehearsal_invalidates_the_run(self):
@@ -142,6 +142,64 @@ class NightlyReportTests(unittest.TestCase):
                 self.assertFalse(report["valid"])
                 self.assertFalse(report["rehearsal"]["correct"])
                 self.assertIn("- rehearsal: ", nightly.markdown(report))
+
+    def nights(self, cpu_values, loads=None):
+        """Runs in one history directory, a day apart, with the given real-model CPU seconds."""
+        history = self.root / "history"
+        for n, cpu in enumerate(cpu_values):
+            directory = history / f"night-{n}"
+            directory.mkdir(parents=True)
+            (directory / "identity.json").write_text(json.dumps({**IDENTITY, "commit": f"c{n}", "started": f"2026-11-{10 + n:02d}T01:43:00Z"}))
+            settled = f"load before the run, settled after 30 s: {{ {loads[n]} 2.0 2.0 }}\n" if loads else ""
+            (directory / "endurance.log").write_text(settled + LOG.replace("cpu 2166.0 s", f"cpu {cpu} s"))
+            result = subprocess.run([sys.executable, "-I", str(SCRIPT), str(directory), "--history", str(history)],
+                                    capture_output=True, text=True, timeout=20)
+            self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads((directory / "report.json").read_text())["comparison"]
+
+    def test_a_slow_climb_warns_above_the_band_though_no_night_rose_ten_percent(self):
+        compared = self.nights([1600, 1687, 1694, 1718, 1754, 1803])
+        self.assertEqual((compared["window"], compared["baseline_commit"]), (5, "c4"))
+        self.assertEqual(compared["deltas"]["cpu_seconds"]["band_median"], 1694)
+        self.assertTrue(any(w.startswith("cpu_seconds increased (above all 5 matching nights") for w in compared["warnings"]))
+
+    def test_a_night_inside_the_band_does_not_warn(self):
+        compared = self.nights([1700, 1650, 1750, 1690, 1720])
+        self.assertFalse([w for w in compared["warnings"] if w.startswith("cpu_seconds")])
+
+    def test_a_loaded_night_is_not_compared_and_not_a_baseline(self):
+        compared = self.nights([1600, 1600, 1600], loads=[1.0, 5.5, 1.0])
+        self.assertEqual((compared["window"], compared["baseline_commit"]), (1, "c0"))
+        loaded = json.loads((self.root / "history/night-1/report.json").read_text())["comparison"]
+        self.assertEqual(loaded["reason"], "Not compared: noisy night, load 5.5 before the run exceeds 4.")
+
+    def test_a_reset_baseline_names_what_changed(self):
+        old = run(self.root / "a", "aaa")
+        new = run(self.root / "b", "bbb", identity={**IDENTITY, "models": "m2"})
+        compared = nightly.comparison(new, old)
+        self.assertEqual(compared["identity_changes"], ['models: "m1" → "m2"'])
+        self.assertIn('- changed: models: "m1" → "m2"', nightly.markdown(new, old))
+
+    def test_rehearsal_repeats_compare_their_median_and_a_wide_spread_is_noise(self):
+        directory = self.root / "r"
+        directory.mkdir()
+        for name, cpu in (("capture-rehearsal", "40,0"), ("rehearsal-2", "50,0"), ("rehearsal-3", "41,0")):
+            (directory / name).mkdir()
+            (directory / name / "rehearsal.log").write_text(rehearsal_log(cpu))
+        result = nightly.rehearsal(directory, "AudelinRehearsal --minutes 10 --speed 10", repeats=3)
+        self.assertTrue(result["correct"])
+        self.assertEqual((result["cpu_seconds"], result["cpu_seconds_runs"]), (41.0, [40.0, 50.0, 41.0]))
+        self.assertTrue(result["noisy"])
+        (directory / "rehearsal-3" / "rehearsal.log").unlink()
+        self.assertFalse(nightly.rehearsal(directory, "AudelinRehearsal --minutes 10 --speed 10", repeats=3)["correct"])
+
+    def test_growth_lists_frames_whose_share_grew(self):
+        for name, shares in (("old", {"a": 10, "b": 50}), ("new", {"a": 30, "b": 50, "c": 0.5})):
+            (self.root / name / "capture-x").mkdir(parents=True)
+            (self.root / name / "capture-x" / "summary.json").write_text(json.dumps(
+                {"sampled_cpu_ns": 100, "inclusive_ns": shares}))
+        self.assertEqual(nightly.growth(self.root / "old", self.root / "new"),
+                         {"capture-x": [{"frame": "a", "percentage_points": 20.0}]})
 
     def cli(self, directory, previous=None):
         command = [sys.executable, "-I", str(SCRIPT), str(directory)]

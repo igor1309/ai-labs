@@ -61,7 +61,7 @@ git() { echo stub-commit; }
 xcrun() { if [[ "$2" == record && "$CAPTURE_FAIL" == 1 ]]; then return 1; fi; }
 ''')
             log = root / "input.log"
-            env = dict(os.environ, STUB_REHEARSAL=rehearsal_log(), HOME=str(root), BASH_ENV=str(shell_env), STUB_BIN=str(binary),
+            env = dict(os.environ, NIGHTLY_SETTLE_SECONDS="0", STUB_REHEARSAL=rehearsal_log(), HOME=str(root), BASH_ENV=str(shell_env), STUB_BIN=str(binary),
                        STUB_LOG=str(log), STUB_STATUS="0", CAPTURE_FAIL="0")
             # No real Swift, model, audio or profiler operation is reachable.
             history = root / "history"

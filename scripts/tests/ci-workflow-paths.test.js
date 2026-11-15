@@ -490,6 +490,8 @@ test("ciPathFilters_shouldRunAudelinCore_onANightlyLongRunChange", () => {
     ".github/workflows/audelin-nightly.yml",
     "audelin/macos/scripts/nightly.sh",
     "audelin/macos/scripts/nightly-report.py",
+    "audelin/macos/scripts/nightly-review.py",
+    "audelin/macos/scripts/tests/test_nightly_review.py",
     "audelin/macos/scripts/tests/test_nightly_report.py",
   ]) {
     assert.equal(jobRuns("audelin-core", [file]), true, `${file} does not run audelin-core`);

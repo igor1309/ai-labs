@@ -58,6 +58,7 @@ import json, sys
 json.dump({
     "workload": {"endurance": "AudelinBaseline --speech mine.wav --their-speech theirs.wav --minutes $minutes --speed 1",
                  "rehearsal": "AudelinRehearsal ${rehearsal_args[*]} (capture after 20 s for 30 s)",
+                 "rehearsal_runs": 3,
                  "speech": "$speech_id",
                  "captures": ["ProfileWord words %d 300 20" % lines for lines in (${captures[*]/%/,})]},
     "build": "swift build -c release",
@@ -78,7 +79,15 @@ trap 'rm -rf "$recordings"' EXIT
 # 1. The long run. Other work on the Mac, and on its Neural Engine, slows recognition.
 swift build --package-path Benchmarks/Baseline -c release
 baseline="$(swift build --package-path Benchmarks/Baseline -c release --show-bin-path)/AudelinBaseline"
-echo "load before the run: $(sysctl -n vm.loadavg)" > "$out/endurance.log"
+# The build's own load lingers in the 1-minute average; wait for it to settle, at most 5 minutes (NIGHTLY_SETTLE_SECONDS).
+settle() {
+  local waited=0
+  while ((waited < ${NIGHTLY_SETTLE_SECONDS:-300})) && python3 -I -c 'import os, sys; sys.exit(os.getloadavg()[0] < 3.0)'; do
+    sleep 10; waited=$((waited + 10))
+  done
+  echo "load before the run, settled after $waited s: $(sysctl -n vm.loadavg)"
+}
+settle > "$out/endurance.log"
 status=0
 "$baseline" --speech "$speech/mine.wav" --their-speech "$speech/theirs.wav" --minutes "$minutes" --speed 1 \
   --recordings-dir "$recordings" --report "$out/endurance.log" > /dev/null 2>&1 || status=$?
@@ -88,6 +97,10 @@ status=0
 scripts/profile-rehearsal.sh capture --capture-after 20 --capture-for 30 \
   --out "$out/capture-rehearsal" "${rehearsal_args[@]}" > /dev/null 2>&1 || status=1
 rm -rf "$out/capture-rehearsal/time.trace"
+# Two more, unprofiled: the report compares the median and calls a wide spread noise.
+for repeat in 2 3; do
+  scripts/profile-rehearsal.sh endurance --out "$out/rehearsal-$repeat" "${rehearsal_args[@]}" > /dev/null 2>&1 || status=1
+done
 
 # 3. Short windows at large preloaded sizes, under Time Profiler with its hangs.
 Benchmarks/Profile/build.sh
@@ -108,9 +121,8 @@ for lines in "${captures[@]}"; do
 done
 
 # 4. The report, against the last run.
-previous=()
-[[ -e "$history/latest/report.json" ]] && previous=(--previous "$history/latest")
-python3 -I scripts/nightly-report.py "$out" ${previous[@]+"${previous[@]}"} || {
+# The comparison point and noise band come from the earlier runs beside this one.
+python3 -I scripts/nightly-report.py "$out" --history "$(dirname "$out")" || {
   echo 'nightly report failed; previous baseline unchanged (see report.md)' >&2
   exit 1
 }
