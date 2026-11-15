@@ -52,7 +52,7 @@ whose control holds:
 Audelin never writes the file on its own. Once the file exists, the row is
 hidden. The frames are "general-agents-missing-light" and its dark instance.
 
-Open: the row's wording and state when writing the file fails.
+When writing fails, the row stays and the hint says why (`../spec/agents-file/SPEC.md`).
 
 ## Segmented control
 
