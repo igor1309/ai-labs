@@ -7,7 +7,7 @@ import SummaryPreviewUI
 import SwiftUI
 
 /// The detail as the summary view draws it; nil when no call is selected.
-func detailState(_ detail: CallsDetail?, text: SummaryPreviewText) -> SummaryPreviewState? {
+func detailState(_ detail: CallsDetail?, tags: CallsDetailTags = .shown([]), text: SummaryPreviewText) -> SummaryPreviewState? {
     guard let detail else { return nil }
     let notes: SummaryPreviewState.Notes, canRetry: Bool
     switch detail.content {
@@ -17,7 +17,13 @@ func detailState(_ detail: CallsDetail?, text: SummaryPreviewText) -> SummaryPre
     case let .failed(reason, retry): notes = .failed(reason); canRetry = retry
     case .none: notes = .none; canRetry = false
     }
-    return .init(title: detail.title, date: detail.date, duration: detail.duration, notes: notes, canRetry: canRetry)
+    let line: SummaryPreviewState.Tags
+    switch tags {
+    case let .shown(names): line = .shown(names)
+    case let .editing(names, entry, completion, saving, failure):
+        line = .editing(.init(tags: names, entry: entry, completion: completion, saving: saving, failure: failure))
+    }
+    return .init(title: detail.title, date: detail.date, duration: detail.duration, notes: notes, canRetry: canRetry, tags: line)
 }
 
 /// The detail's buttons, as the calls window's actions on the call it shows.
@@ -30,7 +36,12 @@ func detailEvent(_ event: SummaryPreviewEvent) -> CallsDetailEvent? {
     case .rename: .rename
     case .retrySummary: .retrySummary
     case .delete: .delete
-    case .editTags, .typeTag, .completeTag, .removeTag, .submitTags, .cancelTags: nil
+    case .editTags: .editTags
+    case let .typeTag(text): .typeTag(text)
+    case .completeTag: .completeTag
+    case let .removeTag(tag): .removeTag(tag)
+    case .submitTags: .submitTags
+    case .cancelTags: .cancelTags
     }
 }
 
@@ -42,7 +53,7 @@ struct CallsDetailContent: View {
     var body: some View {
         let text = text()
         // The summary's surface runs up under the window's transparent toolbar.
-        return SummaryPreviewView(state: detailState(model.detail, text: text), text: text,
+        return SummaryPreviewView(state: detailState(model.detail, tags: model.detailTags, text: text), text: text,
                                   event: detailSender { await model.send(detail: $0) }, render: renderNotes)
             .background(GlassLedger.for(scheme).surface.ignoresSafeArea())
     }
