@@ -142,8 +142,16 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
         return result.sorted { $0.id > $1.id }
     }
     public func list() async throws -> [Calls.Call] {
+        try await list { call, _ in call }
+    }
+    /// The listed calls, each passed with its resolved folder, wherever its root, to `enrich`
+    /// within this storage's turn; `enrich` must not call back into storage.
+    public func list<Value: Sendable>(_ enrich: @Sendable (Calls.Call, URL) throws -> Value) async throws -> [Value] {
         try await perform { [self] in
-            try state.withLock { state in recover(&state); return try list(state) }
+            try state.withLock { state in
+                recover(&state)
+                return try list(state).map { try enrich($0, location(id: $0.id, state: state)) }
+            }
         }
     }
     public func rename(id: String, title: String) async throws {

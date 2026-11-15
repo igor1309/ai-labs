@@ -269,3 +269,32 @@ import CallsStorage
         }
     }
 }
+
+@Suite(.timeLimit(.minutes(1)))
+struct CallsStorageListEnrichmentTests {
+
+    @Test func listingPassesEachCallWithItsResolvedFolderInEveryRoot() async throws {
+        try await withStorageFolder { temporaryRoot in
+            let root = temporaryRoot.resolvingSymlinksInPath()
+            let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("destination")
+            let stays = "1970.01.01-0000", moved = "1970.01.01-0001"
+            for folder in [source.appendingPathComponent(stays), source.appendingPathComponent(moved), destination] {
+                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            }
+            let storage = makeStorage(folder: source, journal: root.appendingPathComponent("moves.json"))
+            _ = try await storage.prepareMove(to: destination)
+            _ = try await storage.move(id: moved, to: destination)
+            let listed = try await storage.list { call, folder in (call.id, folder.resolvingSymlinksInPath().path) }
+            #expect(listed.map(\.0) == [moved, stays])
+            #expect(listed.map(\.1) == [destination.appendingPathComponent(moved).path, source.appendingPathComponent(stays).path])
+        }
+    }
+
+    @Test func aFailingEnrichmentFailsTheListing() async throws {
+        try await withStorageFolder { root in
+            try FileManager.default.createDirectory(at: root.appendingPathComponent("1970.01.01-0000"), withIntermediateDirectories: false)
+            let storage = makeStorage(folder: root)
+            await #expect(throws: ScriptFailure.failed) { _ = try await storage.list { _, _ -> Int in throw ScriptFailure.failed } }
+        }
+    }
+}
