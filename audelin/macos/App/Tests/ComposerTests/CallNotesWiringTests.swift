@@ -346,6 +346,7 @@ private final class RecoveringNotesDisk: Disk, Sendable {
         if failure.withLock({ $0 == "claim" }) { throw CocoaError(.fileWriteOutOfSpace) }
         return try base.create(data, at: url)
     }
+    func restore(_ data: Data, at url: URL, modified: Date) throws { try base.restore(data, at: url, modified: modified) }
     func remove(_ url: URL) throws {
         if failure.withLock({ $0 == "discard" }) { throw CocoaError(.fileWriteNoPermission) }
         try base.remove(url)

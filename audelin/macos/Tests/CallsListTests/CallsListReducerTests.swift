@@ -379,5 +379,8 @@ private func makeSUT() -> CallsListReducer {
     }, normalizeTags: { _ in
         Issue.record("No tags are saved for this event")
         return []
+    }, complete: { _, _, _ in
+        Issue.record("No tag is completed for this event")
+        return ""
     })
 }

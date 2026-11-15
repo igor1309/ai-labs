@@ -484,6 +484,7 @@ private final class FailingDisk: Disk, Sendable {
         if readFailure.withLock({ $0 == url.lastPathComponent }) { throw CocoaError(.fileReadUnknown) }
         return try disk.readStamped(url)
     }
+    func restore(_ data: Data, at url: URL, modified: Date) throws { try check(url); try disk.restore(data, at: url, modified: modified) }
     func remove(_ url: URL) throws { try check(url); try disk.remove(url) }
 }
 private func withFolder(_ body: (URL, Location) async throws -> Void) async throws {
@@ -508,6 +509,7 @@ private final class StaleFirstReadDisk: Disk, Sendable {
     func create(_ data: Data, at url: URL) throws -> Bool { try base.create(data, at: url) }
     func replace(_ data: Data, at url: URL) throws { try base.replace(data, at: url) }
     func readStamped(_ url: URL) throws -> (data: Data, modified: Date) { try base.readStamped(url) }
+    func restore(_ data: Data, at url: URL, modified: Date) throws { try base.restore(data, at: url, modified: modified) }
     func remove(_ url: URL) throws { try base.remove(url) }
 }
 

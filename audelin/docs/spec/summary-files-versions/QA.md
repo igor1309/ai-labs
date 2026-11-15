@@ -6,48 +6,51 @@ through a fake of its disk binding.
 ## S-1 Rotation keeps the old Current
 
 Drive: write a pair A/B, publish C with rotation; read back Previous B and
-Current C, and that A's text is gone. Evidence: Missing.
+Current C, and that A's text is gone. Evidence: `SummaryVersionsTests.rotationKeepsOnlyTheOldCurrent`.
 
 ## S-2 Rotation of a first pair
 
 Drive: write Current A, publish B with rotation; read back A and B.
-Evidence: Missing.
+Evidence: `SummaryVersionsTests.rotationKeepsOnlyTheOldCurrent`.
 
 ## S-3 Replacement keeps only the new notes
 
 Drive: pair A/B, publish C with replacement; read back Current C and no
-Previous. Evidence: Missing.
+Previous. Evidence: `SummaryVersionsTests.replacementKeepsOnlyNewCurrent`.
 
 ## S-4 Attribution is read back
 
-Drive: publish made with Daily; read back the name and date. Evidence: Missing.
+Drive: publish made with Daily; read back the name and date. Evidence: `SummaryVersionsTests.attributionAndDatesSurviveTemplateRemovalAndRotation`.
 
 ## S-5 Attribution survives the template file
 
 Drive: as S-4, then delete a temp Daily template file; read back Daily.
-Evidence: Missing.
+Evidence: `SummaryVersionsTests.attributionAndDatesSurviveTemplateRemovalAndRotation`.
 
 ## S-6 Older notes read as Default
 
-Drive: copy a recorded pre-template call fixture; read back Current, Default,
-and the file bytes unchanged. Evidence: Missing.
+Drive: write pre-template notes with and without a job receipt; read back Current, Default,
+and the file bytes unchanged. Evidence: `SummaryVersionsTests.legacyNotesReadAsDefaultWithoutRewriting`.
 
 ## S-7 A failed publication keeps the pair
 
-Drive: fake disk fails the commit's rename; read back the pair A/B.
-Evidence: Missing.
+Drive: fake disk fails the atomic replacement; read back the pair A/B.
+Evidence: `SummaryVersionsTests.failedPublicationAndDiscardKeepTheWholePair`.
 
 ## S-8 A discarded attempt keeps the pair
 
-Drive: claim then discard an attempt; read back the pair A/B and no
-attempt record. Evidence: Missing.
+Drive: discard an attempt before and after publication; read back the pair A/B and no
+attempt record. Evidence: `SummaryVersionsTests.failedPublicationAndDiscardKeepTheWholePair`.
 
 ## S-9 A reader during publication
 
-Drive: gate the fake disk between writes of a rotation; read at the gate;
-read back the old pair whole. Evidence: Missing.
+Drive: hold publication immediately before and after its single atomic
+replacement; read through an independent adapter; read back the old or new
+pair whole. Evidence: `SummaryVersionsTests.readersSeeAWholePairAcrossTheCommit`.
 
 ## S-10 Recovery after an interrupted publication
 
-Drive: stop a publication at each gated step, build a new adapter on the
-folder; read back a whole pair and the attempt's matching outcome. Evidence: Missing.
+Drive: publish with rotation and replacement, stopping at each gated step
+through the disk binding; build a new adapter on each captured folder state.
+Read back the complete old or new pair, including dates and attribution, and
+the attempt's matching outcome. Evidence: `SummaryVersionsTests.recoveryAgreesWithTheAtomicCommit`.

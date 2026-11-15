@@ -30,7 +30,7 @@ import Testing
 
     @Test func aStoredCallsTranscriptBecomesARequestedSubmission() async throws {
         let sut = SummariesPreparationPort(notes: { .init(enabled: false) }, makeID: { "id-1" },
-                                           callText: { _ in .init(notes: nil, transcript: [.init(start: 3, words: "spoken", label: "A")]) })
+                                           callText: { _ in .init(transcript: [.init(start: 3, words: "spoken", label: "A")]) })
         let submission = try await sut.submission(call: "call")
         #expect(submission.call == "call" && submission.entries == [.init(label: "A", time: "3.0", text: "spoken")]
                 && submission.finalWrite && submission.usable && submission.requested)
@@ -48,6 +48,6 @@ import Testing
         .init(call: "call", entries: entries, finalWrite: true, usable: true, requested: requested)
     }
     private func makeSUT(_ notes: NotesPreferences) -> SummariesPreparationPort {
-        .init(notes: { notes }, makeID: { "id-1" }, callText: { _ in .init(notes: nil, transcript: []) })
+        .init(notes: { notes }, makeID: { "id-1" }, callText: { _ in .init(transcript: []) })
     }
 }

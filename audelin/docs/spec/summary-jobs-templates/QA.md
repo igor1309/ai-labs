@@ -29,8 +29,11 @@ Effect: resolve Default delivers the template. Evidence:
 `SummariesGenerationReducerTests.aCheckpointDeliversDefaultResolution`,
 `TemplateResolutionTests.resolutionStoresTheTemplate`,
 `resolutionDeliversNotesWithTheTemplateAndEvidence`,
-`everyResolutionAsksForDefaultAfresh` and
-`SummaryCompositionTests.automaticNotesUseTheEditedDefaultFileAndItsHeadings`.
+`everyResolutionAsksForDefaultAfresh`,
+`SummaryCompositionTests.automaticNotesUseTheEditedDefaultFileAndItsHeadings`
+(which also reads back Default attribution) and
+`SummariesFilesPortTests.publishWritesTheNotes` (Default attribution and
+replacement at the storage boundary).
 
 ## S-5 Keeping on rotates
 

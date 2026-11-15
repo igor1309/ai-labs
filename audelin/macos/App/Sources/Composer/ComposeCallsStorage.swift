@@ -100,3 +100,9 @@ struct SummaryCalls: RecordingsCalls {
         try await storage.writeTags(id: id) { try TagsFile.write(tags, in: $0) }
     }
 }
+
+/// Search and list gists join Current notes with the call's transcript at composition.
+struct CallsText: Sendable {
+    let notes: String?
+    let transcript: [Calls.Text.Line]
+}
