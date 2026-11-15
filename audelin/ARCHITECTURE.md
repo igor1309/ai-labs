@@ -435,9 +435,16 @@ a call's tags, and keeping the parts' tags on a merge.
 
 **TagsFile** is the only reader and writer of a call's `tags.txt`; outward
 it speaks a call's tags as words, and tells an absent file (no tags) from
-an unreadable one. It reads and writes in a folder it is given; every
-write runs inside a CallsStorage operation, so it never lands in a moving
-folder.
+an unreadable one. It reads and writes synchronously in folders it is
+given and never resolves a call's folder itself.
+
+**CallsStorage supplies resolved folders inside its held turn.** Its turn
+is not reentrant, so nothing called within an operation asks it for a
+location again. Two operations gain a callback: listing hands each listed
+call's resolved folder, wherever its root, to an enrichment step; merging
+hands the parts' resolved folders beside the prepared folder to its write
+step. A tag write is one operation on the call's resolved folder. The turn
+excludes Audelin's own changes, not an edit made in another app.
 
 **CallTags** is a plain operator holding the tag rules: folding case and
 ё/е, trimming and deduplicating, taking `#tag` words out of a query,
@@ -450,31 +457,34 @@ ranges stay ranges into the shown title and no phrase spans title and tag.
 
 **Recordings owns the listed calls' tags and changing them.** Its list
 port answers each call with its tags or that they are unreadable; the
-composition answers it with Calls' listing and a TagsFile read per call in
-one CallsStorage operation. Every reload therefore refreshes tags: opening
-the window, a save, a merge, a rename, and a refresh, which also picks up
-an edit made outside the app. A list answer is applied only if it answers
-the latest list request, so an older read never overwrites a newer save.
-Its one new port, set this call's tags, reports set or why not; it admits
-the write only when no move or merge holds the calls and reloads after it.
+composition answers it with CallsStorage's listing, enriched by a TagsFile
+read per supplied folder. Every reload refreshes tags: opening the window,
+a save, a merge, a rename, and a refresh, which also picks up an edit made
+outside the app. A list answer applies only if it answers the latest list
+request, and a successful save invalidates every list request made before
+it and then requests a fresh list, so a snapshot read before the save never
+applies. Its one new port, set this call's tags, carries a request id the
+outcome echoes; it admits the write only when no move or merge holds the
+calls.
 
 **CallsList owns the filter and the tags editor.** Its state holds the
-query, the chosen tags (both reset when the window is shown) and the
-editor: the call being edited, the draft, and the submitted tags while a
-save is pending. It asks CallTags to split the query and filter the list.
-Return or a selection move submits the draft for that call; the draft is
-kept until the outcome for that call and those tags arrives, so a failed
-save shows the failure with the draft still there to retry, and a late
-outcome for another call or older tags is ignored. A call saved out of the
-active filter leaves the list once the save succeeds. The composer only
-routes the request to Recordings and its outcome back.
+query and the chosen tags, both reset when the window is shown, and one
+editor: the call, the draft, and while a save is pending its request id.
+Return or a selection move submits the draft under a new request id; an
+outcome applies only if its id is the pending one, so a late outcome of an
+earlier attempt, even for the same call and the same tags, is ignored. A
+failed save keeps the draft and shows the failure for retry, under a new
+id. While a save is pending, editing another call is unavailable, so a
+pending draft is never replaced. A call saved out of the active filter
+leaves the list once the save succeeds. The composer only routes requests
+and outcomes.
 
 **A merge writes the union of the parts' tags before it publishes.** In
-the merge's write step, inside the prepared folder and within the same
-CallsStorage operation, the composition reads each part's tags and writes
-their union with TagsFile beside the joined transcript. A tags write
-failure fails the merge and puts every part back, as a transcript write
-failure does. Calls and Recordings do not learn of tags.
+the merge's write step the composition reads each supplied part folder's
+tags with TagsFile and writes their union into the prepared folder beside
+the joined transcript. An unreadable part tags file, or a failed write,
+fails the merge before publication and puts every part back, as a
+transcript write failure does. Calls and Recordings do not learn of tags.
 
 CallsListUI draws row tags and the filter strip; the detail header draws
 the tags line and its editing field. They render state and send events.

@@ -26,7 +26,8 @@ two of three calls, two keep one.
 
 ## S-7 Searching finds a tag
 
-A call whose only match is its tag `бюджет` is found, as a title match.
+A call whose only match is its tag `бюджет` is found with a tag match
+and no title ranges.
 
 ## S-8 Tags differing in case are one
 
@@ -55,3 +56,11 @@ With no `tags.txt` in any call, the strip's tags are empty.
   selection moved shows the failure for the edited call, with its draft.
 - **External edit:** a `tags.txt` changed outside the app shows after a
   refresh; an unreadable one shows as unreadable, an absent one as no tags.
+- **Same-payload late outcome:** submit `A`, then `B`, then `A` again; the
+  first `A`'s outcome arriving last is ignored and the latest stays pending.
+- **Editing during a pending save:** while one call's save is pending,
+  editing another call is unavailable; a failure then shows with its draft.
+- **Snapshot between save and reload:** a list answer requested before a
+  successful save, arriving before the fresh list, is ignored.
+- **Unreadable part tags on merge:** an unreadable part `tags.txt` fails the
+  merge before publication with every part back in place.
