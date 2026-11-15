@@ -93,8 +93,7 @@ struct FolderMoveWiringTests {
             await spy.waitForMove()
             #expect(await spy.moved == ["A"])
             #expect(!inputs.state().callsFolderAvailable)
-            let reserved = try await rig.state { $0.folderMoving }
-            #expect(reserved.phase == .idle)
+            #expect(try await idleOnceMoving(rig))
             await rig.menu.perform(.start)
             let held = try await rig.state { $0.pendingStart == .hand }
             #expect(held.phase == .idle)
@@ -135,6 +134,7 @@ struct FolderMoveWiringTests {
             await spy.waitForMove()
             await spy.completeMove()
             await spy.waitForMove()
+            #expect(try await idleOnceMoving(rig))
             await rig.menu.perform(.start)
             _ = try await rig.state { $0.pendingStart == .hand }
             await spy.failMove()
@@ -277,3 +277,7 @@ private struct MoveFailure: LocalizedError { var errorDescription: String? { "di
 
 @Sendable private func russianSettingsText() -> SettingsText { SettingsText(language: .russian) }
 
+/// Waits until Recording hears the move and says whether it is idle then.
+@MainActor private func idleOnceMoving(_ rig: ComposeFixture) async throws -> Bool {
+    try await rig.state { $0.folderMoving }.phase == .idle
+}
