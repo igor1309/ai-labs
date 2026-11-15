@@ -46,3 +46,18 @@ public enum Prompts {
     timestamp from that label; otherwise leave name/time/quote null. Keep ambiguous or conflicting names unknown.
     """
 }
+
+/// The resolved instructions and heading requirements for one run.
+public struct Template: Equatable, Sendable {
+    public struct Heading: Equatable, Sendable {
+        public var name: String
+        public var required: Bool
+        public init(_ name: String, required: Bool = true) { self.name = name; self.required = required }
+    }
+    public var name: String
+    public var instructions: String
+    public var headings: [[Heading]]
+    public init(name: String, instructions: String, headings: [[Heading]]) {
+        self.name = name; self.instructions = instructions; self.headings = headings
+    }
+}

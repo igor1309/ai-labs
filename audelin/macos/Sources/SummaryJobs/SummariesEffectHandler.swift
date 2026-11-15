@@ -39,21 +39,28 @@ public protocol SummariesStorage: Sendable {
 /// Makes a job's speaker names and notes; each answer is already validated.
 public protocol SummariesGeneration: Sendable {
     func identify(_ job: Job) async throws -> [Identity]
-    func notes(_ job: Job, identities: [Identity]) async throws -> String
+    func notes(_ job: Job, identities: [Identity], template: Template) async throws -> String
     /// Stops the job's running call and returns once it has ended; the call throws. Does nothing when none runs.
     func cancel(_ job: Job) async
 }
 
+public protocol SummariesTemplates: Sendable {
+    /// Always answers, using built-in Default when its file cannot be used.
+    func resolveDefault() async -> Template
+}
+
 /// Hands each effect to its collaborator and answers with the event its result means; it keeps nothing.
 public struct SummariesEffectHandler: Sendable {
+    private let templates: any SummariesTemplates
     private let preparation: any SummariesPreparation
     private let claims: any SummariesClaims
     private let records: any SummariesRecords
     private let starts: any SummariesStarts
     private let storage: any SummariesStorage
     private let generation: any SummariesGeneration
-    public init(preparation: any SummariesPreparation, claims: any SummariesClaims, records: any SummariesRecords,
+    public init(templates: any SummariesTemplates, preparation: any SummariesPreparation, claims: any SummariesClaims, records: any SummariesRecords,
                 starts: any SummariesStarts, storage: any SummariesStorage, generation: any SummariesGeneration) {
+        self.templates = templates
         self.preparation = preparation; self.claims = claims; self.records = records; self.starts = starts
         self.storage = storage; self.generation = generation
     }
@@ -68,8 +75,10 @@ public struct SummariesEffectHandler: Sendable {
         case let .identify(job):
             do { return .identified(job.call, try await generation.identify(job)) }
             catch { return .identificationFailed(job.call) }
-        case let .notes(job, identities):
-            do { return .noted(job.call, try await generation.notes(job, identities: identities)) }
+        case let .resolve(job):
+            return .resolved(job.call, await templates.resolveDefault())
+        case let .notes(job, identities, template):
+            do { return .noted(job.call, try await generation.notes(job, identities: identities, template: template)) }
             catch { return .notesFailed(job.call) }
         case let .checkpoint(job, identities, warning):
             return await stored(job, .checkpointed(job.call)) { try await storage.checkpoint(job, identities: identities, warning: warning) }

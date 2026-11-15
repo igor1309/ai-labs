@@ -6,6 +6,8 @@ let package = Package(
     defaultLocalization: "ru",
     platforms: [.macOS(.v26)],
     products: [
+        .library(name: "TemplateFiles", targets: ["TemplateFiles"]),
+        .library(name: "NotesGeneration", targets: ["NotesGeneration"]),
         .library(name: "SummarySettings", targets: ["SummarySettings"]),
         .library(name: "SummaryJobs", targets: ["SummaryJobs"]),
         .library(name: "SummaryFiles", targets: ["SummaryFiles"]),
@@ -75,6 +77,10 @@ let package = Package(
         .package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.6.0"),
     ],
     targets: [
+        .target(name: "TemplateFiles"),
+        .testTarget(name: "TemplateFilesTests", dependencies: ["TemplateFiles"]),
+        .target(name: "NotesGeneration"),
+        .testTarget(name: "NotesGenerationTests", dependencies: ["NotesGeneration"]),
         .target(name: "SummarySettings"),
         .testTarget(name: "SummarySettingsTests", dependencies: ["SummarySettings", "BlockingTestWork"]),
         .target(name: "SummaryJobs"),

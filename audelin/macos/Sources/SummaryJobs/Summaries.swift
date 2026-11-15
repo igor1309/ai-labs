@@ -5,7 +5,7 @@ public struct SummariesState: Equatable, Sendable {
     public enum Lifecycle: Equatable, Sendable { case accepting, draining, settled }
     public struct Call: Equatable, Sendable {
         public enum Stage: Equatable, Sendable {
-            case waiting, reading, recovering, preparing, claiming, pending, starting, identifying, checkpointing, noting, deferred, publishing, saving
+            case waiting, reading, recovering, preparing, claiming, pending, starting, identifying, checkpointing, resolving, noting, deferred, publishing, saving
             case retrying, discarding
             case succeeded, failed, interrupted, unavailable, observed
         }
@@ -13,6 +13,7 @@ public struct SummariesState: Equatable, Sendable {
         public var job: Job?
         public var identities: [Identity]
         public var warning: Bool
+        public var template: Template?
         public var notes: String?
         public var terminal: Stage?
         public var requested: Bool
@@ -26,10 +27,10 @@ public struct SummariesState: Equatable, Sendable {
         public var badge: Badge
         /// The user can ask for this call's notes again.
         public var retryable: Bool
-        public init(stage: Stage, job: Job? = nil, identities: [Identity] = [], warning: Bool = false, notes: String? = nil,
+        public init(stage: Stage, template: Template? = nil, job: Job? = nil, identities: [Identity] = [], warning: Bool = false, notes: String? = nil,
                     terminal: Stage? = nil, requested: Bool = false, cancelling: Bool = false, retryFailed: Bool = false,
                     submission: SummariesSubmission? = nil, status: String = "", badge: Badge = .none, retryable: Bool = false) {
-            self.stage = stage; self.job = job; self.identities = identities; self.warning = warning; self.notes = notes
+            self.stage = stage; self.template = template; self.job = job; self.identities = identities; self.warning = warning; self.notes = notes
             self.terminal = terminal; self.requested = requested; self.cancelling = cancelling; self.retryFailed = retryFailed
             self.submission = submission; self.status = status; self.badge = badge; self.retryable = retryable
         }
@@ -100,6 +101,7 @@ public enum SummariesEvent: Equatable, Sendable {
     case identified(String, [Identity])
     case identificationFailed(String)
     case checkpointed(String)
+    case resolved(String, Template)
     case noted(String, String)
     case notesFailed(String)
     case published(String)
@@ -141,7 +143,8 @@ public enum SummariesEffect: Equatable, Sendable {
     case start(Job)
     case identify(Job)
     case checkpoint(Job, [Identity], warning: Bool)
-    case notes(Job, [Identity])
+    case resolve(Job)
+    case notes(Job, [Identity], Template)
     case publish(Job, String, warning: Bool)
     case save(Job, SummariesState.Call.Stage, warning: Bool)
     case retry(Job)
@@ -172,7 +175,7 @@ public struct SummariesReducer: Sendable {
         call.stage == .observed || ([.failed, .interrupted] as Set).contains(call.stage) && call.job != nil
     }
     /// The stages whose result a cancel waits for before it discards the job.
-    static let running: Set<SummariesState.Call.Stage> = [.starting, .identifying, .checkpointing, .noting, .publishing, .saving]
+    static let running: Set<SummariesState.Call.Stage> = [.starting, .identifying, .checkpointing, .resolving, .noting, .publishing, .saving]
     /// The call and stage a result answers, for the results a cancel turns into a discard.
     static func answered(_ event: SummariesEvent) -> (String, SummariesState.Call.Stage)? {
         switch event {
@@ -180,6 +183,7 @@ public struct SummariesReducer: Sendable {
         case let .started(id, owned: true): (id, .starting)
         case let .identified(id, _), let .identificationFailed(id): (id, .identifying)
         case let .checkpointed(id): (id, .checkpointing)
+        case let .resolved(id, _): (id, .resolving)
         case let .noted(id, _), let .notesFailed(id): (id, .noting)
         case let .published(id): (id, .publishing)
         case let .saved(id): (id, .saving)
@@ -187,8 +191,8 @@ public struct SummariesReducer: Sendable {
         }
     }
     /// The stages that wait on a storage answer shutdown lets arrive before the machine settles.
-    static let inFlight: Set<SummariesState.Call.Stage> = [.reading, .recovering, .preparing, .claiming, .retrying]
-    static let working: Set<SummariesState.Call.Stage> = [.claiming, .starting, .identifying, .checkpointing, .noting, .publishing, .saving, .discarding]
+    static let inFlight: Set<SummariesState.Call.Stage> = [.reading, .recovering, .preparing, .claiming, .retrying, .resolving]
+    static let working: Set<SummariesState.Call.Stage> = [.claiming, .starting, .identifying, .checkpointing, .resolving, .noting, .publishing, .saving, .discarding]
     public func reduce(_ state: SummariesState, _ event: SummariesEvent) -> (SummariesState, SummariesEffect?) {
         if case let .drop(id) = event { return reduce(state, state.calls[id]?.stage == .pending ? .cancel(id) : .forget(id)) }
         var (next, effect) = step(state, event)
@@ -214,7 +218,7 @@ public struct SummariesReducer: Sendable {
         var next = state
         var effect: SummariesEffect?
         let call: String
-        if let (id, stage) = SummariesReducer.answered(event), let work = state.calls[id], work.cancelling,
+        if state.lifecycle == .accepting, let (id, stage) = SummariesReducer.answered(event), let work = state.calls[id], work.cancelling,
            work.stage == stage, let job = work.job {
             next.calls[id]?.stage = .discarding
             next.calls[id]?.status = format(.discarding, work.warning); next.calls[id]?.badge = badge(.discarding)
@@ -297,7 +301,7 @@ public struct SummariesReducer: Sendable {
             guard owned else { next.calls[id]?.stage = .observed; next.calls[id]?.cancelling = false; break }
             guard let job = state.calls[id]?.job else { return (state, nil) }
             if job.speakers { next.calls[id]?.stage = .identifying; effect = .identify(job) }
-            else { next.calls[id]?.stage = .noting; effect = .notes(job, []) }
+            else { next.calls[id]?.stage = .resolving; effect = .resolve(job) }
         case let .identified(id, identities) where state.calls[id]?.stage == .identifying:
             guard let job = state.calls[id]?.job else { return (state, nil) }
             call = id
@@ -311,8 +315,15 @@ public struct SummariesReducer: Sendable {
         case let .checkpointed(id) where state.calls[id]?.stage == .checkpointing:
             guard let work = state.calls[id], let job = work.job else { return (state, nil) }
             call = id
-            next.calls[id]?.stage = .noting
-            effect = .notes(job, work.identities)
+            next.calls[id]?.stage = .resolving
+            effect = .resolve(job)
+        case let .resolved(id, template) where state.calls[id]?.stage == .resolving:
+            guard let work = state.calls[id], let job = work.job else { return (state, nil) }
+            call = id
+            if state.lifecycle == .accepting {
+                next.calls[id]?.template = template; next.calls[id]?.stage = .noting
+                effect = .notes(job, work.identities, template)
+            } else { next.calls[id]?.stage = .interrupted }
         case let .noted(id, notes) where state.calls[id]?.stage == .noting:
             guard let work = state.calls[id], let job = work.job else { return (state, nil) }
             call = id
@@ -401,8 +412,11 @@ public struct SummariesReducer: Sendable {
             var jobs: [Job] = []
             for (id, work) in state.calls.sorted(by: { $0.key < $1.key })
             where SummariesReducer.running.contains(work.stage) || work.stage == .discarding || work.stage == .deferred {
-                next.calls[id]?.stage = .interrupted
-                next.calls[id]?.status = format(.interrupted, work.warning); next.calls[id]?.badge = badge(.interrupted)
+                // Resolution cannot be cancelled; its answer must arrive before shutdown settles.
+                if work.stage != .resolving {
+                    next.calls[id]?.stage = .interrupted
+                    next.calls[id]?.status = format(.interrupted, work.warning); next.calls[id]?.badge = badge(.interrupted)
+                }
                 if let job = work.job { jobs.append(job) }
             }
             next.releasing = !jobs.isEmpty

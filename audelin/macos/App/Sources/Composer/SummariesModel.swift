@@ -11,12 +11,12 @@ public final class SummariesModel {
     private let model: ObservableModel<SummariesState, SummariesEvent, SummariesEffect>
     private let reducer: SummariesReducer
     private var listText: CallsListText
-    public init(text: @escaping @Sendable () -> CallsListText, preparation: any SummariesPreparation, files: SummariesFilesPort,
+    public init(templates: any SummariesTemplates, text: @escaping @Sendable () -> CallsListText, preparation: any SummariesPreparation, files: SummariesFilesPort,
          generation: any SummariesGeneration) {
         listText = text()
         let reducer = SummariesReducer(format: { text().summariesStatus($0, $1) }, badge: summariesBadge)
         self.reducer = reducer
-        let handler = SummariesEffectHandler(preparation: preparation, claims: files, records: files, starts: files,
+        let handler = SummariesEffectHandler(templates: templates, preparation: preparation, claims: files, records: files, starts: files,
                                              storage: files, generation: generation)
         model = ObservableModel(initialState: .init(), reduce: reducer.reduce,
                                 handleEffect: { effect in oneEvent { await handler.handle(effect) } })
@@ -120,7 +120,7 @@ extension CallsListText {
         switch stage {
         case .waiting, .recovering, .preparing: self(.summaryWaiting)
         case .claiming, .pending, .observed, .retrying, .discarding: self(.summaryPending)
-        case .reading, .starting, .identifying, .checkpointing, .noting, .deferred, .publishing, .saving: self(.summaryRunning)
+        case .reading, .starting, .identifying, .checkpointing, .resolving, .noting, .deferred, .publishing, .saving: self(.summaryRunning)
         case .succeeded: warning ? self(.summaryReadyUnnamed) : self(.summaryReady)
         case .failed: self(.summaryFailed)
         case .interrupted: self(.summaryInterrupted)

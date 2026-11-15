@@ -185,14 +185,14 @@ private func job(_ call: String) -> Job { var job = makeJob(); job.call = call; 
     }
     @Test func releaseAndReloadDoNothingElse() async {
         let preparation = PreparationSpy(), claims = ClaimsSpy(), starts = StartsSpy(), generation = GenerationsSpy()
-        let sut = SummariesEffectHandler(preparation: preparation, claims: claims, records: RecordsSpy(), starts: starts,
+        let sut = SummariesEffectHandler(templates: TemplatesSpy(), preparation: preparation, claims: claims, records: RecordsSpy(), starts: starts,
                                          storage: StorageSpy(), generation: generation)
         _ = await sut.handle(.release([makeJob()])); _ = await sut.handle(.reload(["a"]))
         #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && starts.payloads.isEmpty && generation.payloads == [.cancel(makeJob())])
     }
     private func makeSUT(records: RecordsSpy = RecordsSpy(), storage: StorageSpy = StorageSpy(),
                          generation: GenerationsSpy = GenerationsSpy()) -> SummariesEffectHandler {
-        .init(preparation: PreparationSpy(), claims: ClaimsSpy(), records: records, starts: StartsSpy(),
+        .init(templates: TemplatesSpy(), preparation: PreparationSpy(), claims: ClaimsSpy(), records: records, starts: StartsSpy(),
               storage: storage, generation: generation)
     }
 }

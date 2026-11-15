@@ -144,7 +144,7 @@ import Testing
     }
 
     private func makeSUT(_ files: FilesFake, notes: Bool = true, transcript: [Calls.Text.Line] = [], readFails: Bool = false) -> SummariesModel {
-        SummariesModel(text: { CallsListText(language: .english) },
+        SummariesModel(templates: TestDefaultTemplates(), text: { CallsListText(language: .english) },
                        preparation: SummariesPreparationPort(notes: { .init(enabled: notes, speakers: false, primary: .init(kind: "cli", model: "m", executable: "/bin/p", endpoint: "", credentialVariable: "")) },
                                                              makeID: { "job" },
                                                              callText: { _ in if readFails { throw CocoaError(.fileReadNoSuchFile) }; return .init(notes: nil, transcript: transcript) }),
@@ -161,6 +161,6 @@ import Testing
 
 private struct GenerationStub: SummariesGeneration {
     func identify(_ job: Job) async throws -> [Identity] { [] }
-    func notes(_ job: Job, identities: [Identity]) async throws -> String { "notes" }
+    func notes(_ job: Job, identities: [Identity], template: SummaryJobs.Template) async throws -> String { "notes" }
     func cancel(_ job: Job) async {}
 }
