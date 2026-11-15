@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-16
+
+- LAB-1655: Daily's content checked with the real notes model on recorded call transcripts; daily-notes S-1 to S-5 hold. `macos/scripts/daily-content.sh` reruns the check.
+
 ## 2026-11-15
 
 - LAB-1630: New templates folders include Daily for next-meeting handoffs: continuation, owners, blockers and planned fixes, and meetings, with agreements, suggestions and gaps stated explicitly. Existing folders keep their edits and deletions.
