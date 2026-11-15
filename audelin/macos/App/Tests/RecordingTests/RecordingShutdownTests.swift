@@ -14,7 +14,7 @@ struct RecordingShutdownTests {
 
     @Test func shutdownDropsAPendingCall() { assert(makePending(), .shutdown) { $0.pendingCall = false; $0.shutdown = .requested } }
 
-    @Test func shutdownDropsAPendingStart() { assert(makeState(makeReserved()) { $0.pendingStart = .hand }, .shutdown) { $0.pendingStart = nil; $0.shutdown = .settled } }
+    @Test func shutdownDropsAPendingStart() { assert(makeState(makeIdle()) { $0.folderMoving = true; $0.pendingStart = .hand }, .shutdown) { $0.pendingStart = nil; $0.shutdown = .settled } }
 
     @Test func secondShutdownChangesNothing() { assert(makeShuttingDown(), .shutdown) }
 
@@ -26,9 +26,11 @@ struct RecordingShutdownTests {
 
     @Test func callStartedAfterShutdownBeginsNothing() { assert(makeSettled(), .callStarted) { $0.callOn = true } }
 
-    @Test func reservedStartAfterShutdownIsNotKept() { assert(makeState(makeSettled()) { $0.storageReserved = true }, .userStart) }
+    @Test func aStartWhileMovingAfterShutdownIsNotKept() { assert(makeState(makeSettled()) { $0.folderMoving = true }, .userStart) }
 
-    @Test func releasingStorageAfterShutdownBeginsNothing() { assert(makeState(makeSettled()) { $0.storageReserved = true }, .releaseStorage) { $0.storageReserved = false } }
+    @Test func theMoveEndingAfterShutdownBeginsNothing() {
+        assert(makeState(makeSettled()) { $0.folderMoving = true }, .conditionChanged(.callsFolder, available: true)) { $0.folderMoving = false; $0.moveEnds = 1 }
+    }
 }
 
 private func makeShuttingDown() -> RecordingState { makeState(makeEnding()) { $0.shutdown = .requested } }

@@ -9,8 +9,8 @@ typealias Reducer = TranscriptFinalizationReducer<String, String, String, String
 
 let callID = "call"
 
-func makeState(_ call: State.Call? = nil, shuttingDown: Bool = false, settled: Bool = false) -> State {
-    State(calls: call.map { [callID: $0] } ?? [:], shuttingDown: shuttingDown, settled: settled)
+func makeState(_ call: State.Call? = nil, shuttingDown: Bool = false, inputEnded: Bool = false, settled: Bool = false) -> State {
+    State(calls: call.map { [callID: $0] } ?? [:], shuttingDown: shuttingDown, inputEnded: inputEnded, settled: settled)
 }
 
 func makeCall(

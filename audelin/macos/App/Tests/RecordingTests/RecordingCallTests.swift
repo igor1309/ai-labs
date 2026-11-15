@@ -6,12 +6,12 @@ struct RecordingCallTests {
     @Test func callWithAutomaticOffOnlyMarksTheCall() { assert(makeManualIdle(), .callStarted) { $0.callOn = true } }
 
     @Test func userStartWithAutomaticOffBeginsAHandSession() {
-        assert(makeManualIdle(), .userStart) { $0.phase = .beginning; $0.stage = .preparing; $0.session = .init(id: 1, origin: .hand); $0.lastSessionID = 1 }
+        assert(makeManualIdle(), .userStart) { $0.phase = .beginning; $0.stage = .claiming; $0.session = .init(id: 1, origin: .hand); $0.lastSessionID = 1 }
     }
 
     @Test func userStartDuringACallBeginsAHandSessionOfThatCall() {
         assert(makeState(makeManualIdle()) { $0.callOn = true }, .userStart) {
-            $0.phase = .beginning; $0.stage = .preparing; $0.session = .init(id: 1, origin: .hand); $0.lastSessionID = 1; $0.sessionBeganDuringCall = true
+            $0.phase = .beginning; $0.stage = .claiming; $0.session = .init(id: 1, origin: .hand); $0.lastSessionID = 1; $0.sessionBeganDuringCall = true
         }
     }
 
@@ -48,7 +48,7 @@ struct RecordingCallTests {
 
     @Test func aNewCallAfterTheHoldBeginsSessionTwo() {
         assert(makeState(makeIdleAfter(1)) { $0.automatic = true }, .callStarted) {
-            $0.callOn = true; $0.phase = .beginning; $0.stage = .preparing; $0.lastSessionID = 2
+            $0.callOn = true; $0.phase = .beginning; $0.stage = .claiming; $0.lastSessionID = 2
             $0.session = .init(id: 2, origin: .call); $0.sessionBeganDuringCall = true
         }
     }

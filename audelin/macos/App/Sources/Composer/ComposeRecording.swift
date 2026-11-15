@@ -6,10 +6,11 @@ import CallAudioAccess
 import Synchronization
 
 func composeRecording(
-    preferences: PreferencesStore, occupiedCallNames: @escaping @Sendable () throws -> [String],
+    preferences: PreferencesStore, folderClaim: RecordingFolderClaim, occupiedCallNames: @escaping @Sendable () throws -> [String],
     callApp: RecordingCallApp, processes: CoreAudioProcesses,
-    boundary: ComposerBoundary, panel: AudelinPanel, finalization: TranscriptFinalizationModel, finalizationResources: FinalizationResources, summaries: SummaryCallbacks = .disabled
+    boundary: ComposerBoundary, panel: AudelinPanel, finalizationResources: FinalizationResources, summaries: SummaryCallbacks = .disabled
 ) async -> RecordingInputs {
+    let transcriptOutput = AsyncStream<RecordingTranscript>.makeStream()
     let initial = RecordingState(automatic: preferences.read().automaticRecording)
     let access = accessPolicy(boundary.access)
     let sink = boundary.log
@@ -18,7 +19,7 @@ func composeRecording(
     let pieces = RecordingPieces(preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: callApp, processes: processes, boundary: boundary, send: { event in
         guard let recording = destination.withLock({ $0 }) else { return }
         await recording.send(event)
-    }, panel: panel, finalization: finalization, finalizationResources: finalizationResources, summaries: summaries)
+    }, panel: panel, transcriptOutput: transcriptOutput.continuation, finalizationResources: finalizationResources, summaries: summaries)
     let logged = Mutex<RecordingState?>(nil)
     let log = { @Sendable (state: RecordingState) in
         let own = recordingOwnState(state)
@@ -26,22 +27,29 @@ func composeRecording(
         StateLog(sink: sink).recording(state)
     }
     log(initial)
-    let model = await makeRecording(initial: initial, log: log, callAudioReady: {
+    let model = await makeRecording(initial: initial, log: log, folderClaim: folderClaim, callAudioReady: {
         guard await access.refresh() else { return false }
         return await access.reserve()
     }, liveText: { preferences.read().liveText }, callAudioReleased: { await access.release() },
     runPiece: { id, effect in await pieces.run(id: id, effect) }, status: pieces.status)
     // The panel follows the pieces in the order Recording reduced them.
     let states = await model.states()
-    Task {
+    let observation = Task {
         for await state in states { await pieces.observe(state) }
+    }
+    // The panel can still be reading finalization's speakers after Recording settles.
+    let transcriptStates = await model.states()
+    let transcriptCompletion = Task {
+        for await state in transcriptStates where state.shutdown == .settled { break }
+        transcriptOutput.continuation.finish()
     }
     var recording = RecordingInputs(send: model.send, state: model.state, states: model.states, end: {
         destination.withLock { $0 = nil }
         await model.end()
+        await transcriptCompletion.value
+        await observation.value
     })
-    recording.reserveStorage = model.reserveStorage
-    recording.releaseStorage = model.releaseStorage
+    recording.transcriptOutput = transcriptOutput.stream
     let connected = recording
     destination.withLock { $0 = connected }
     return recording

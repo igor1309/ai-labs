@@ -67,10 +67,7 @@ extension RecordingsReducer {
         case let .movePreparationFailed(reason):
             guard state.phase == .countingMove || state.phase == .preparingMove else { return (state, nil) }
             state.failure = .init(id: nil, reason: reason)
-            if state.phase == .preparingMove {
-                state.phase = .releasingMove
-                return (state, .releaseMove)
-            }
+            if state.phase == .preparingMove { return releaseMove(state) }
             state.phase = .countFailed
         case .confirmMove, .retryMove:
             if event == .retryMove, state.phase == .countFailed, !state.stopping, !state.isListing, let move = state.move {
@@ -82,15 +79,21 @@ extension RecordingsReducer {
             guard state.recordingID == nil else { state.phase = .refusedMove; return (state, nil) }
             state.phase = .reservingMove
             state.failure = nil
-            state.callsFolderAvailable = false
             return (state, .reserveMove)
-        case let .moveReserved(accepted):
+        case let .moveReserved(token):
             guard state.phase == .reservingMove, let move = state.move else { return (state, nil) }
-            if !accepted {
+            guard let token else {
                 state.phase = .refusedMove
-                state.callsFolderAvailable = true
                 return (state, nil)
             }
+            state.moveToken = token
+            if state.stopping {
+                // Granted after the quit: no call moves, and the folder is let go at once.
+                state.move = nil
+                state.phase = .releasingMove
+                return (state, .releaseMove(token: token))
+            }
+            state.callsFolderAvailable = false
             state.phase = .preparingMove
             return (state, .prepareMove(move.destination))
         case let .callMoved(id, bytes):
@@ -107,20 +110,18 @@ extension RecordingsReducer {
         case let .callMoveFailed(id, reason):
             guard state.phase == .moving, state.move?.remaining.first?.id == id else { return (state, nil) }
             state.failure = .init(id: id, reason: reason)
-            state.phase = .releasingMove
-            return (state, .releaseMove)
+            return releaseMove(state)
         case let .folderStoreFailed(reason):
             guard state.phase == .storingFolder else { return (state, nil) }
             state.failure = .init(id: nil, reason: reason)
-            state.phase = .releasingMove
-            return (state, .releaseMove)
+            return releaseMove(state)
         case .folderStored:
             guard state.phase == .storingFolder, let move = state.move else { return (state, nil) }
             state.callsFolder = move.destination
-            state.phase = .releasingMove
-            return (state, .releaseMove)
+            return releaseMove(state)
         case .moveReleased:
             guard state.phase == .releasingMove else { return (state, nil) }
+            state.moveToken = nil
             state.callsFolderAvailable = true
             state.phase = state.failure == nil ? .idle : .failedMove
             if state.failure == nil { state.move = nil }
@@ -134,6 +135,13 @@ extension RecordingsReducer {
         default: return nil
         }
         return (state, nil)
+    }
+
+    private func releaseMove(_ given: RecordingsState) -> (RecordingsState, RecordingsEffect?) {
+        var state = given
+        state.phase = .releasingMove
+        guard let token = state.moveToken else { return reduceMove(state, .moveReleased) ?? (state, nil) }
+        return (state, .releaseMove(token: token))
     }
 
     private func advanceMove(_ given: RecordingsState) -> (RecordingsState, RecordingsEffect?) {
