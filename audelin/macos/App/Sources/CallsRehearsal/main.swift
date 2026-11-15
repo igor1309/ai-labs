@@ -42,7 +42,11 @@ final class CallsRehearsalDelegate: NSObject, NSApplicationDelegate {
         boundary.trash = options.trash
         let model = await compose(
             boundary: boundary, preferencesURL: options.preferencesURL,
-            openCallsFolder: { NSWorkspace.shared.open($0) }, presentCalls: { window.show() },
+            openCallsFolder: { [options] folder in
+                // A live test checks what was opened; the rehearsal never opens Finder.
+                let marker = options.controlFolder.appendingPathComponent("opened-\(UUID().uuidString)")
+                return (try? Data(folder.path.utf8).write(to: marker)) != nil
+            }, presentCalls: { window.show() },
             openURL: { NSWorkspace.shared.open($0) }, presentPanel: { _ in },
             terminate: { [weak self] in
                 await MainActor.run {

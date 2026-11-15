@@ -86,7 +86,21 @@ public struct CallsListView: View {
 
     /// The whole row is a button that selects it. Renaming starts only from the menu or ⌘R.
     /// In merge mode a click marks the row instead, and the row has no menu or double-click.
-    private func callRow(_ row: CallsListState.Row) -> some View {
+    /// A row being renamed is not a button: a button hides its label from accessibility, and the
+    /// rename field must be reachable there. Its row stays one element holding the field.
+    @ViewBuilder private func callRow(_ row: CallsListState.Row) -> some View {
+        if state.editing?.id == row.id {
+            rowContent(row)
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("calls.select.\(row.id)")
+                .accessibilityLabel(row.displayTitle)
+                .accessibilityValue(rowValue(row))
+        } else {
+            rowButton(row)
+        }
+    }
+
+    private func rowButton(_ row: CallsListState.Row) -> some View {
         Button { click(row) } label: { rowContent(row).contentShape(.rect) }
             .buttonStyle(.plain)
             .accessibilityIdentifier("calls.select.\(row.id)")
@@ -214,8 +228,14 @@ public struct CallsListView: View {
                             TextField(text(.titlePlaceholder), text: Binding(get: { edit.title }, set: { event(.editTitle($0)) }))
                                 .textFieldStyle(.plain)
                                 .focused($editing)
+                                .accessibilityIdentifier("calls.rename")
                                 .onSubmit { event(.submitRename) }
                                 .onExitCommand { event(.cancelRename) }
+                                // Arrowing to another row saves the title, as a click on it does.
+                                .onKeyPress(keys: [.downArrow, .upArrow]) { press in
+                                    event(press.key == .downArrow ? .selectNext : .selectPrevious)
+                                    return .handled
+                                }
                         }
                         .padding(.horizontal, tokens.space4)
                         .background(tokens.surface, in: .rect(cornerRadius: tokens.radiusControl))
