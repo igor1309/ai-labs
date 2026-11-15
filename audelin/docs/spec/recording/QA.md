@@ -147,9 +147,11 @@ Evidence: `RecordingTranscriptOutputTests.transcriptReportsEverySaveOutcomeInOrd
 `RecordingTranscriptOutputTests.successiveRecordingsShareOneOrderedOutput()`.
 
 The composed Recording ends its output after its last close on shutdown. The
-subscription forwards every value, including repeated saves, and drains its last
-delivery. Quit during an opening waits for that call's final publication before
-termination.
+subscription forwards every value, including repeated saves, then sends
+finalization the end of its input. Quit during an opening waits for that call's
+final publication before termination, and quit with saved text makes it final as
+last saved without model work.
 Evidence: `RecordingPiecesWiringTests.shutdownFinishesTranscriptOutputAfterLastClose()`,
-`TranscriptFinalizationCompositionTests.subscriptionMapsEveryValueAndDrainsTheLastDelivery()`,
-`TranscriptFinalizationCompositionTests.quitDuringTranscriptOpenPublishesItsFinalBeforeTermination()`.
+`TranscriptFinalizationCompositionTests.subscriptionMapsEveryValueThenSendsInputEndedWhenTheOutputEnds()`,
+`TranscriptFinalizationCompositionTests.quitDuringTranscriptOpenPublishesItsFinalBeforeTermination()`,
+`TranscriptFinalizationCompositionTests.quitWithSavedTextPublishesLastSavedWithoutEnteringDiarizer()`.
