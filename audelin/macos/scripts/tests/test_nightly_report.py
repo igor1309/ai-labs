@@ -43,6 +43,28 @@ def run(directory, commit, identity=IDENTITY, log=LOG, capture=None):
     return nightly.report(directory)
 
 
+REHEARSAL_IDENTITY = {**IDENTITY, "workload": {**IDENTITY["workload"],
+                                                "rehearsal": "AudelinRehearsal --minutes 10 --speed 10"}}
+
+
+def rehearsal_log(cpu="42,6"):
+    return "\n".join([
+        "rehearsal: 10 min of audio in 60.0 s, at most 0,6 s behind, now 0,5 s, footprint 260 MiB, peak 263 MiB",
+        "rehearsal: done: 10 min at 10.0x in 60 s; mine 1000 words, theirs 997 words; recognisers at most 0,6 s behind; "
+        f"cpu {cpu} s, 71% of one core; footprint 364 MiB at the end, peak 364 MiB",
+        "rehearsal: written: microphone 600,0 s, call 600,0 s of 600,0 s fed; transcript Me 1000 words, Them 997 words"])
+
+
+def run_with_rehearsal(directory, commit, log):
+    directory.mkdir(parents=True)
+    if log is not None:
+        (directory / "capture-rehearsal").mkdir()
+        (directory / "capture-rehearsal" / "rehearsal.log").write_text(log)
+    (directory / "identity.json").write_text(json.dumps({**REHEARSAL_IDENTITY, "commit": commit, "started": "2026-11-07T01:43:00Z"}))
+    (directory / "endurance.log").write_text(LOG)
+    return nightly.report(directory)
+
+
 class NightlyReportTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
@@ -101,6 +123,25 @@ class NightlyReportTests(unittest.TestCase):
         self.assertEqual(new["captures"]["capture-6000"], {"main_thread_percent": 25.0, "hangs": 1, "longest_hang_ms": 300})
         self.assertIn("capture-6000: main thread 25.0 (was 25.0)% of sampled CPU, 1 (was 2) hangs, longest 300 (was 600) ms",
                       nightly.markdown(new, old))
+
+    def test_rehearsal_cpu_is_compared_and_an_increase_warns(self):
+        old = run_with_rehearsal(self.root / "a", "aaa", rehearsal_log("42,6"))
+        new = run_with_rehearsal(self.root / "b", "bbb", rehearsal_log("72,0"))
+        self.assertTrue(new["valid"], new)
+        self.assertEqual(new["rehearsal"]["cpu_seconds"], 72.0)
+        compared = nightly.comparison(new, old)
+        self.assertEqual(compared["deltas"]["rehearsal.cpu_seconds"]["baseline"], 42.6)
+        self.assertIn("rehearsal.cpu_seconds increased: investigate and repeat before calling it a regression.",
+                      compared["warnings"])
+        self.assertIn("CPU seconds: 72 (was 42.6, +29.4)", nightly.markdown(new, old))
+
+    def test_a_missing_or_short_rehearsal_invalidates_the_run(self):
+        for name, log in (("missing", None), ("short", rehearsal_log().replace("done: 10 min", "done: 9 min"))):
+            with self.subTest(name=name):
+                report = run_with_rehearsal(self.root / name, "aaa", log)
+                self.assertFalse(report["valid"])
+                self.assertFalse(report["rehearsal"]["correct"])
+                self.assertIn("- rehearsal: ", nightly.markdown(report))
 
     def cli(self, directory, previous=None):
         command = [sys.executable, "-I", str(SCRIPT), str(directory)]

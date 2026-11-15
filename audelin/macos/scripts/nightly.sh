@@ -7,8 +7,11 @@
 #
 # 1. A real-model run at 1x, no profiler: macOS speech on both sides through the
 #    app's composition and real Parakeet, lag and footprint every audio minute.
-# 2. Short Time Profiler windows, CPU and hangs, at large preloaded sizes.
-# 3. report.md and report.json: what ran, on which build, models, machine and
+# 2. A composition rehearsal at 10x with test recognisers, under Time Profiler:
+#    the CPU of the app's own wiring without the model, where a regression in
+#    composition shows plainly, and the frames that cost it.
+# 3. Short Time Profiler windows, CPU and hangs, at large preloaded sizes.
+# 4. report.md and report.json: what ran, on which build, models, machine and
 #    toolchain, compared with the last run only when all of those match.
 #
 # Needs a logged-in GUI session for the panel and Parakeet's models on disk.
@@ -49,10 +52,12 @@ models_id="$(cd "$models" && find . -type f -print0 | sort -z | xargs -0 stat -f
 speech_id="$(cat "$speech/mine.wav" "$speech/theirs.wav" | digest)"
 
 captures=(1620 6000)
+rehearsal_args=(--minutes 10 --speed 10)
 python3 -I - "$out/identity.json" <<EOF
 import json, sys
 json.dump({
     "workload": {"endurance": "AudelinBaseline --speech mine.wav --their-speech theirs.wav --minutes $minutes --speed 1",
+                 "rehearsal": "AudelinRehearsal ${rehearsal_args[*]} (capture after 20 s for 30 s)",
                  "speech": "$speech_id",
                  "captures": ["ProfileWord words %d 300 20" % lines for lines in (${captures[*]/%/,})]},
     "build": "swift build -c release",
@@ -79,7 +84,12 @@ status=0
   --recordings-dir "$recordings" --report "$out/endurance.log" > /dev/null 2>&1 || status=$?
 [[ $status == 0 ]] || echo "endurance failed: $status" >> "$out/endurance.log"
 
-# 2. Short windows at large preloaded sizes, under Time Profiler with its hangs.
+# 2. The composition rehearsal: about a minute, its whole CPU in rehearsal.log.
+scripts/profile-rehearsal.sh capture --capture-after 20 --capture-for 30 \
+  --out "$out/capture-rehearsal" "${rehearsal_args[@]}" > /dev/null 2>&1 || status=1
+rm -rf "$out/capture-rehearsal/time.trace"
+
+# 3. Short windows at large preloaded sizes, under Time Profiler with its hangs.
 Benchmarks/Profile/build.sh
 profile="Benchmarks/Profile/.build/release/ProfileWord"
 for lines in "${captures[@]}"; do
@@ -97,7 +107,7 @@ for lines in "${captures[@]}"; do
   rm -rf "$capture/time.trace" "$capture"/*.xml
 done
 
-# 3. The report, against the last run.
+# 4. The report, against the last run.
 previous=()
 [[ -e "$history/latest/report.json" ]] && previous=(--previous "$history/latest")
 python3 -I scripts/nightly-report.py "$out" ${previous[@]+"${previous[@]}"} || {

@@ -9,8 +9,11 @@ speaker. The fake-recognizer rehearsal remains useful for pipeline diagnostics.
 
 `Audelin Nightly` runs daily at 01:43 UTC (04:43 Europe/Moscow) on the quiet,
 self-hosted `local-mac`. `macos/scripts/nightly.sh` collects a three-hour run
-without Instruments, then short Time Profiler windows at 1,620 and 6,000
-preloaded entries. Nightly three-hour coverage supersedes the proposed monthly
+without Instruments, then a ten-minute composition rehearsal at 10x with test
+recognisers under Time Profiler (`capture-rehearsal`: the CPU of the app's own
+wiring without the model, compared night to night as `rehearsal.cpu_seconds`,
+with its heaviest frames in `summary.txt`), then short Time Profiler windows at
+1,620 and 6,000 preloaded entries. Nightly three-hour coverage supersedes the proposed monthly
 soak. Do not start a competing benchmark during collection.
 
 The `audelin-nightly` Actions artifact contains `identity.json`, `endurance.log`,

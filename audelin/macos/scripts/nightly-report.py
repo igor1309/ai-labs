@@ -214,6 +214,28 @@ def captures(run):
     return found
 
 
+REHEARSAL = "capture-rehearsal"
+
+
+def rehearsal(run, workload):
+    """The fast composition run with test recognisers: CPU of the app's own wiring, without the model."""
+    args = shlex.split(workload)
+    indices = [n for n, arg in enumerate(args) if arg == "--minutes"]
+    intended = number(args[indices[0] + 1]) if len(indices) == 1 else None
+    if intended is not None and intended <= 0:
+        raise ValueError("rehearsal minutes must be positive")
+    try:
+        log = (run / REHEARSAL / "rehearsal.log").read_text()
+    except OSError:
+        log = ""
+    result = endurance(log, intended)
+    if not log:
+        result["reasons"].insert(0, "rehearsal log missing")
+        result["correct"] = False
+    result["unmeasured"] = ["recognition by the real model", "real call audio"]
+    return result
+
+
 def mismatch(old, new):
     identity = old.get("identity")
     identity = identity if isinstance(identity, dict) else {}
@@ -236,9 +258,12 @@ def report(run):
             raise ValueError("workload minutes must be positive")
         new["endurance"] = endurance((run / "endurance.log").read_text(), intended)
         new["captures"] = captures(run)
+        if "rehearsal" in identity["workload"]:
+            new["rehearsal"] = rehearsal(run, identity["workload"]["rehearsal"])
     except (OSError, ValueError, KeyError, TypeError, IndexError, AttributeError) as error:
         new["errors"].append(f"cannot parse run evidence: {error}")
-    new["valid"] = not new["errors"] and bool(new["endurance"] and new["endurance"]["correct"])
+    new["valid"] = (not new["errors"] and bool(new["endurance"] and new["endurance"]["correct"])
+                    and (new.get("rehearsal") is None or new["rehearsal"]["correct"]))
     return new
 
 
@@ -261,6 +286,9 @@ def eligible(run):
             return False
     except (AttributeError, TypeError, ValueError, OverflowError):
         return False
+    composition = run.get("rehearsal")
+    if composition is not None and not (isinstance(composition, dict) and composition.get("correct") is True):
+        return False
     return (run.get("valid") is True and evidence.get("completed") is True and evidence.get("correct") is True
             and not evidence.get("reasons") and not run.get("errors")
             and all(run.get("identity", {}).get(field) for field in IDENTITY))
@@ -273,6 +301,10 @@ def metrics(run):
     final = all_samples.get(str(int(intended / 60)), {}) if intended is not None else {}
     values = {key: evidence.get(key) for key in ("cpu_seconds", "cpu_share_percent", "footprint_peak_mib")}
     values.update({key: final.get(key) for key in ("newest_lag_mean_s", "final_lag_mean_s", "backlog_s")})
+    composition = run.get("rehearsal")
+    if isinstance(composition, dict):
+        for key in ("cpu_seconds", "footprint_peak_mib"):
+            values[f"rehearsal.{key}"] = composition.get(key)
     for name, capture in run.get("captures", {}).items():
         for key in ("hangs", "longest_hang_ms"):
             values[f"{name}.{key}"] = capture.get(key)
@@ -320,6 +352,8 @@ def markdown(new, old=None):
     evidence = new["endurance"]
     for reason in new["errors"] + ((evidence or {}).get("reasons", [])):
         lines.append(f"- {reason}")
+    for reason in (new.get("rehearsal") or {}).get("reasons", []):
+        lines.append(f"- rehearsal: {reason}")
     if compared["reason"]:
         lines += ["", compared["reason"], ""]
         old = None
@@ -349,6 +383,15 @@ def markdown(new, old=None):
                   f"{change(None, trends['footprint_mib_per_hour'])} MiB/hour. Retained transcript growth is not evidence of a leak.",
                   f"Backlog trend: {change(None, trends['backlog_s_per_minute'])} s/min; maximum: {change(None, trends['backlog_max_s'])} s.",
                   "Unavailable / unmeasured: " + "; ".join(evidence["unmeasured"]) + ".", ""]
+    composition = new.get("rehearsal")
+    if composition:
+        was = (old or {}).get("rehearsal") or {}
+        lines += [f"### Composition rehearsal, test recognisers: {composition['minutes']} min at {change(None, composition['speed'])}x"
+                  f"{'' if composition['completed'] else ', did not finish'}", "",
+                  f"CPU seconds: {change(was.get('cpu_seconds'), composition['cpu_seconds'])}; "
+                  f"CPU % of one core: {change(was.get('cpu_share_percent'), composition['cpu_share_percent'])}; "
+                  f"peak footprint MiB: {change(was.get('footprint_peak_mib'), composition['footprint_peak_mib'])}. "
+                  f"The heaviest frames are in {REHEARSAL}/summary.txt.", ""]
     if not new["captures"]:
         lines.append("Time Profiler CPU and hangs: unavailable.")
     for name, capture in new["captures"].items():
