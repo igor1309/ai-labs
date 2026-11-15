@@ -2,6 +2,7 @@
 
 ## 2026-11-15
 
+- LAB-1653: A tag typed but not yet entered is saved with the others when the selection moves to another call, as it is on Return.
 - LAB-1631: Calls can carry tags, kept in `tags.txt` in each call's folder. The detail header shows and edits them, rows show them as `#tag`, a strip of chips under the search field filters the list by tag, a `#tag` in the search does the same, plain search matches tags, and merged calls keep every part's tags.
 - LAB-1625: Notes use the editable Default template file, including its headings; missing or broken Default files use the built-in template without overwriting edits.
 

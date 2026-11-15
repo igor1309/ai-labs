@@ -54,4 +54,16 @@ public enum CallTags {
             .sorted { (count[$0.element]!, -$0.offset) > (count[$1.element]!, -$1.offset) }
             .map { shown[$0.element]! }
     }
+
+    /// The rest of the first tag in use that the entry starts and the draft lacks; empty when none.
+    public static func completion(of entry: String, draft: [String], inUse: [String]) -> String {
+        let typed = key(entry)
+        guard !typed.isEmpty else { return "" }
+        let taken = Set(draft.map(key))
+        let tag = inUse.first {
+            let k = key($0)
+            return k.hasPrefix(typed) && k != typed && !taken.contains(k)
+        }
+        return tag.map { String($0.dropFirst(entry.count)) } ?? ""
+    }
 }

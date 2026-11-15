@@ -469,8 +469,10 @@ calls.
 
 **CallsList owns the filter and the tags editor.** Its state holds the
 query and the chosen tags, both reset when the window is shown, and one
-editor: the call, the draft, and while a save is pending its request id.
-Return or a selection move submits the draft under a new request id; an
+editor: the call, the draft, the tag being typed with its completion from
+the tags in use when editing began, and while a save is pending its request
+id. Return or a selection move submits the draft with the typed tag, under a
+new request id; an
 outcome applies only if its id is the pending one, so a late outcome of an
 earlier attempt, even for the same call and the same tags, is ignored. A
 failed save keeps the draft and shows the failure for retry, under a new

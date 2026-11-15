@@ -14,15 +14,24 @@ public struct CallsListMachineState: Equatable, Sendable {
         }
     }
 
-    /// The one call whose tags are being edited, its draft, and while a save is pending its request id.
+    /// The one call whose tags are being edited, its draft, the tag being typed, and while a save
+    /// is pending its request id.
     public struct TagsEditor: Equatable, Sendable {
         public var id: String
         public var draft: [String]
         public var pending: Int?
         /// Why the last save failed; the draft stays for a retry.
         public var failure: String?
-        public init(id: String, draft: [String], pending: Int? = nil, failure: String? = nil) {
+        /// The tag being typed.
+        public var entry: String
+        /// The rest of a tag in use that the entry starts, taken with Tab.
+        public var completion: String
+        /// The tags on every call when editing began, offered as completions.
+        public var inUse: [String]
+        public init(id: String, draft: [String], pending: Int? = nil, failure: String? = nil,
+                    entry: String = "", completion: String = "", inUse: [String] = []) {
             self.id = id; self.draft = draft; self.pending = pending; self.failure = failure
+            self.entry = entry; self.completion = completion; self.inUse = inUse
         }
     }
 
@@ -122,9 +131,14 @@ public enum CallsListMachineEvent: Equatable, Sendable {
     case search(String)
     /// A chip of the filter strip was clicked: its tag is chosen, or no longer.
     case toggleTag(String)
-    /// Starts editing a call's tags; unavailable while another call's save is pending.
-    case beginTags(String)
+    /// Starts editing a call's tags, with the tags in use to complete from; unavailable while
+    /// another call's save is pending.
+    case beginTags(String, inUse: [String])
     case editTags([String])
+    /// The tag being typed changed.
+    case typeTag(String)
+    /// Tab: the entry takes its completion.
+    case completeTag
     case cancelTags, submitTags
     case tagsFinished(request: Int, CallsListMachineState.TagsOutcome)
 }
@@ -133,13 +147,16 @@ public struct CallsListReducer: Sendable {
     private let splitQuery: @Sendable (String) -> (tags: [String], text: String)
     private let tagKey: @Sendable (String) -> String
     private let normalizeTags: @Sendable ([String]) -> [String]
+    private let complete: @Sendable (_ entry: String, _ draft: [String], _ inUse: [String]) -> String
 
     /// `splitQuery` takes a query's `#tag` words out of its text; `tagKey` is the form two tags
-    /// are compared in; `normalizeTags` makes a draft the tags to save.
+    /// are compared in; `normalizeTags` makes a draft the tags to save; `complete` gives the rest
+    /// of a tag in use that an entry starts and the draft lacks.
     public init(splitQuery: @escaping @Sendable (String) -> (tags: [String], text: String),
                 tagKey: @escaping @Sendable (String) -> String,
-                normalizeTags: @escaping @Sendable ([String]) -> [String]) {
-        self.splitQuery = splitQuery; self.tagKey = tagKey; self.normalizeTags = normalizeTags
+                normalizeTags: @escaping @Sendable ([String]) -> [String],
+                complete: @escaping @Sendable (_ entry: String, _ draft: [String], _ inUse: [String]) -> String) {
+        self.splitQuery = splitQuery; self.tagKey = tagKey; self.normalizeTags = normalizeTags; self.complete = complete
     }
 
     public func reduce(_ state: CallsListMachineState, _ event: CallsListMachineEvent) -> CallsListMachineState {
@@ -182,15 +199,25 @@ public struct CallsListReducer: Sendable {
             }
             filter(&state)
         case .submitRename: commitRename(&state, since: asked)
-        case let .beginTags(id):
+        case let .beginTags(id, inUse):
             guard !state.busy, let row = state.rows.first(where: { $0.id == id }), row.editable else { return state }
             if let editor = state.tagsEditor {
                 guard editor.id != id else { return state }
                 guard editor.pending == nil else { return state }
             }
-            state.tagsEditor = .init(id: id, draft: row.tags)
+            state.tagsEditor = .init(id: id, draft: row.tags, inUse: inUse)
         case let .editTags(draft):
-            state.tagsEditor?.draft = draft
+            guard var editor = state.tagsEditor else { return state }
+            editor.draft = draft
+            state.tagsEditor = completed(editor)
+        case let .typeTag(text):
+            guard var editor = state.tagsEditor else { return state }
+            editor.entry = text
+            state.tagsEditor = completed(editor)
+        case .completeTag:
+            guard var editor = state.tagsEditor, !editor.completion.isEmpty else { return state }
+            editor.entry += editor.completion
+            state.tagsEditor = completed(editor)
         case .cancelTags:
             guard state.tagsEditor?.pending == nil else { return state }
             state.tagsEditor = nil
@@ -243,14 +270,20 @@ public struct CallsListReducer: Sendable {
         return state
     }
 
-    /// Saves the draft under a new request id; an answer to an earlier one no longer applies.
-    /// Return always submits; a selection move submits only a draft not already pending.
+    /// Saves the draft with the entry under a new request id; an answer to an earlier one no
+    /// longer applies. Return always submits; a selection move submits only a draft not already pending.
     private func submitTags(_ state: inout CallsListMachineState, since asked: Int, moving: Bool = false) {
         guard let editor = state.tagsEditor, !moving || editor.pending == nil else { return }
         state.tagsRequest += 1
-        let tags = normalizeTags(editor.draft)
-        state.tagsEditor = .init(id: editor.id, draft: editor.draft, pending: state.tagsRequest)
+        let tags = normalizeTags(editor.draft + [editor.entry])
+        state.tagsEditor = .init(id: editor.id, draft: tags, pending: state.tagsRequest, inUse: editor.inUse)
         ask([.setTags(request: state.tagsRequest, id: editor.id, tags: tags)], &state, since: asked)
+    }
+
+    private func completed(_ editor: CallsListMachineState.TagsEditor) -> CallsListMachineState.TagsEditor {
+        var editor = editor
+        editor.completion = complete(editor.entry, editor.draft, editor.inUse)
+        return editor
     }
 
     private func filter(_ state: inout CallsListMachineState) {

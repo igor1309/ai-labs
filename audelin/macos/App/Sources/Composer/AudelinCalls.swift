@@ -51,7 +51,7 @@ public final class AudelinCalls {
     private let makeSummary: (String) -> Void
     private let cancelSummary: (String) async -> Void
     /// The list's selection and rename editing.
-    private let list = SyncModel<CallsListMachineState, CallsListMachineEvent>(initialState: .init(), reduce: CallsListReducer(splitQuery: { let query = CallTags.query($0); return (query.tags, query.text) }, tagKey: CallTags.key, normalizeTags: CallTags.normalized).reduce)
+    private let list = SyncModel<CallsListMachineState, CallsListMachineEvent>(initialState: .init(), reduce: CallsListReducer(splitQuery: { let query = CallTags.query($0); return (query.tags, query.text) }, tagKey: CallTags.key, normalizeTags: CallTags.normalized, complete: { CallTags.completion(of: $0, draft: $1, inUse: $2) }).reduce)
     private var withNotes: Set<String> = []
     /// Each call's gist, read with its notes.
     private var gists: [String: String] = [:]
@@ -74,7 +74,6 @@ public final class AudelinCalls {
     public private(set) var listText: CallsListText
     private let callText: (String) async throws -> Calls.Text
     /// The tag being typed in the detail's tags field; it joins the draft on Return.
-    private var tagEntry = ""
     private var tagsFollow: Task<Void, Never>?
     /// Each read call's transcript or notes match, nil when they hold none; a call
     /// not yet read is absent. Titles are matched afresh, so a rename shows at once.
@@ -269,20 +268,8 @@ public final class AudelinCalls {
         guard let editor = list.state.tagsEditor, editor.id == id else {
             return .shown(inputs.state().calls.first { $0.id == id }.map(knownTags) ?? [])
         }
-        return .editing(tags: editor.draft, entry: tagEntry, completion: tagCompletion(editor.draft),
+        return .editing(tags: editor.draft, entry: editor.entry, completion: editor.completion,
                         saving: editor.pending != nil, failure: editor.failure)
-    }
-
-    /// The rest of the first tag in use that the entry starts and the draft lacks.
-    private func tagCompletion(_ draft: [String]) -> String {
-        let typed = CallTags.key(tagEntry)
-        guard !typed.isEmpty else { return "" }
-        let taken = Set(draft.map(CallTags.key))
-        let tag = CallTags.inUse(inputs.state().calls.map(knownTags)).first {
-            let key = CallTags.key($0)
-            return key.hasPrefix(typed) && key != typed && !taken.contains(key)
-        }
-        return tag.map { String($0.dropFirst(tagEntry.count)) } ?? ""
     }
 
     /// Hands the list the rows as they are listed, so its actions see each call's state and tags.
@@ -295,23 +282,15 @@ public final class AudelinCalls {
     }
 
     private func sendTags(_ event: CallsDetailEvent, id: String) async {
-        let draft = list.state.tagsEditor?.draft ?? []
         switch event {
         case .editTags:
             _ = await syncRows()
-            tagEntry = ""
-            await sendList(.beginTags(id))
-        case let .typeTag(text): tagEntry = text
-        case .completeTag: tagEntry += tagCompletion(draft)
-        case let .removeTag(tag): await sendList(.editTags(draft.filter { $0 != tag }))
-        case .submitTags:
-            let entry = tagEntry.trimmingCharacters(in: .whitespaces)
-            if !entry.isEmpty { await sendList(.editTags(draft + [entry])) }
-            tagEntry = ""
-            await sendList(.submitTags)
-        case .cancelTags:
-            tagEntry = ""
-            await sendList(.cancelTags)
+            await sendList(.beginTags(id, inUse: CallTags.inUse(inputs.state().calls.map(knownTags))))
+        case let .typeTag(text): await sendList(.typeTag(text))
+        case .completeTag: await sendList(.completeTag)
+        case let .removeTag(tag): await sendList(.editTags((list.state.tagsEditor?.draft ?? []).filter { $0 != tag }))
+        case .submitTags: await sendList(.submitTags)
+        case .cancelTags: await sendList(.cancelTags)
         default: break
         }
     }
