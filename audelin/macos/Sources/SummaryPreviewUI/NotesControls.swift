@@ -85,7 +85,7 @@ public final class NotesMenuControl: NSButton {
         item.isEnabled = false; item.indentationLevel = 1
         let tokens = GlassLedger.for(effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? .dark : .light)
         item.attributedTitle = NSAttributedString(string: reason, attributes: [
-            .font: NSFont.systemFont(ofSize: tokens.typeCaption), .foregroundColor: NSColor(tokens.rec),
+            .font: tokens.nsUi(tokens.typeCaption), .foregroundColor: NSColor(tokens.rec),
         ])
         item.setAccessibilityIdentifier(identifier)
         item.setAccessibilityValue(reason)
