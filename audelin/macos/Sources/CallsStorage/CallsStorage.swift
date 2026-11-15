@@ -142,8 +142,16 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
         return result.sorted { $0.id > $1.id }
     }
     public func list() async throws -> [Calls.Call] {
+        try await list { call, _ in call }
+    }
+    /// The listed calls, each passed with its resolved folder, wherever its root, to `enrich`
+    /// within this storage's turn; `enrich` must not call back into storage.
+    public func list<Value: Sendable>(_ enrich: @Sendable (Calls.Call, URL) throws -> Value) async throws -> [Value] {
         try await perform { [self] in
-            try state.withLock { state in recover(&state); return try list(state) }
+            try state.withLock { state in
+                recover(&state)
+                return try list(state).map { try enrich($0, location(id: $0.id, state: state)) }
+            }
         }
     }
     public func rename(id: String, title: String) async throws {
@@ -168,14 +176,29 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
             }
         }
     }
+    /// Changes a call's tags: `write` gets the call's resolved folder within this storage's
+    /// turn. A call a folder move is still copying is not written.
+    public func writeTags(id: String, _ write: @Sendable (URL) throws -> Void) async throws {
+        try await perform { [self] in
+            try state.withLock { state in
+                recover(&state, id: id)
+                if let move = state.journal.moves[id], ![.source, .destination].contains(move.phase) {
+                    throw CocoaError(.fileWriteUnknown)
+                }
+                try write(location(id: id, state: state))
+            }
+        }
+    }
     /// A call's saved transcript as written, for a merge to read back.
     public func savedTranscript(id: String) async throws -> Data {
         try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).savedTranscript(id: id) } }
     }
-    /// Merges calls of the calls folder into one, the earliest part's, with the joined
-    /// transcript `write` puts in the folder it is given; returns the merged call's id.
+    /// Merges calls of the calls folder into one, the earliest part's, with what `write`
+    /// puts in the prepared folder it is given beside the parts' resolved folders, in the
+    /// order of `ids`, within this storage's turn; returns the merged call's id. A failing
+    /// `write` fails the merge with every part back in place.
     /// A call that a folder move holds or left in another folder is not merged.
-    public func merge(ids: [String], write: @Sendable (URL) throws -> Void) async throws -> String {
+    public func merge(ids: [String], write: @Sendable (_ prepared: URL, _ parts: [URL]) throws -> Void) async throws -> String {
         try await perform { [self] in
             try state.withLock { state in
                 for id in ids {

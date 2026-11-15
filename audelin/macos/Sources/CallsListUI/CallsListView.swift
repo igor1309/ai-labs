@@ -27,6 +27,7 @@ public struct CallsListView: View {
                              changed: { event(.search($0)) }, focusDetail: focusDetail)
                 .frame(height: tokens.space24)
                 .padding(.horizontal, tokens.space12).padding(.vertical, tokens.space8)
+            if !state.tagStrip.isEmpty { tagStrip }
             ScrollView {
                 LazyVStack(spacing: 0) {
                     ForEach(state.rows) { row in
@@ -103,10 +104,38 @@ public struct CallsListView: View {
         if !merge.running { event(.toggleMark(row.id)) }
     }
 
-    /// The duration, and in merge mode whether the row is marked.
+    /// The duration and tags, and in merge mode whether the row is marked.
     private func rowValue(_ row: CallsListState.Row) -> String {
-        guard let merge = state.merge else { return row.duration }
-        return row.duration + ", " + text(merge.marked.contains(row.id) ? .markOn : .markOff)
+        let value = ([row.duration] + row.tags.map { "#" + $0 }).joined(separator: ", ")
+        guard let merge = state.merge else { return value }
+        return value + ", " + text(merge.marked.contains(row.id) ? .markOn : .markOff)
+    }
+
+    /// The tags in use as chips under the search field; a chosen chip is filled.
+    private var tagStrip: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: tokens.space4) {
+                ForEach(state.tagStrip, id: \.name) { chip in
+                    Button { event(.toggleTag(chip.name)) } label: {
+                        Text(chip.name).font(tokens.ui(tokens.typeCaption))
+                            .foregroundStyle(chip.on ? Color.white : tokens.text)
+                            .padding(.vertical, tokens.space2).padding(.horizontal, tokens.space8)
+                            .background(chip.on ? tokens.me : tokens.chip, in: .rect(cornerRadius: tokens.radiusControl))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("calls.tag.\(chip.name)")
+                    .accessibilityValue(text(chip.on ? .tagOn : .tagOff))
+                    .accessibilityAddTraits(chip.on ? .isSelected : [])
+                }
+            }
+            .padding(.horizontal, tokens.space12).padding(.vertical, tokens.space6)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(tokens.side)
+        .overlay(alignment: .bottom) { Rectangle().fill(tokens.rule).frame(height: 1) }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(text(.tagStrip))
+        .accessibilityIdentifier("calls.tagStrip")
     }
 
     /// The row's actions, the same in its context menu and on its keys,
@@ -209,6 +238,11 @@ public struct CallsListView: View {
                     if let more = snippet.more { Text(more).foregroundStyle(tokens.gutter).fixedSize().allowsHitTesting(false) }
                 } else {
                     about(row).frame(maxWidth: .infinity, alignment: .leading).allowsHitTesting(false)
+                }
+                if !row.tags.isEmpty {
+                    Text(row.tags.map { "#" + $0 }.joined(separator: " ")).foregroundStyle(tokens.gutter)
+                        .fixedSize().allowsHitTesting(false)
+                        .accessibilityIdentifier("calls.tags.\(row.id)")
                 }
                 summary(row)
             }

@@ -60,6 +60,16 @@ public enum SummaryPreviews {
                              notes: .failed(english ? "Claude CLI exited with an error: request limit exceeded"
                                                     : "Claude CLI завершился с ошибкой: превышен лимит запросов"), canRetry: true)),
             ("no-summary", .init(title: "Zoom", date: "17.10 · 11:00", duration: minutes(28), notes: .none)),
+            ("tags", .init(title: "Zoom", date: "17.10 · 11:00", duration: minutes(28), notes: .none,
+                           tags: .shown(english ? ["client", "bank"] : ["клиент", "банк"]))),
+            ("tags-editing", .init(title: "Zoom", date: "17.10 · 11:00", duration: minutes(28), notes: .none,
+                                   tags: .editing(.init(tags: english ? ["client", "bank"] : ["клиент", "банк"],
+                                                        entry: english ? "hir" : "най", completion: english ? "ing" : "м")))),
+            ("tags-saving", .init(title: "Zoom", date: "17.10 · 11:00", duration: minutes(28), notes: .none,
+                                  tags: .editing(.init(tags: english ? ["client"] : ["клиент"], saving: true)))),
+            ("tags-failed", .init(title: "Zoom", date: "17.10 · 11:00", duration: minutes(28), notes: .none,
+                                  tags: .editing(.init(tags: english ? ["client"] : ["клиент"],
+                                                       failure: english ? "Couldn’t save the tags: disk is full" : "Не удалось сохранить теги: диск заполнен")))),
             ("no-selection", nil),
         ]
     }

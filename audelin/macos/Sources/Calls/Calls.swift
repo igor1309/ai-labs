@@ -141,13 +141,14 @@ public struct Calls: Sendable {
     }
 
     /// Merges calls into one call folder named as the earliest part, holding each part's
-    /// folder whole and the joined transcript `write` puts in the folder it is given.
+    /// folder whole and what `write` puts in the folder it is given, beside the parts'
+    /// folders in the order of `ids`, before any part moves.
     /// The folder is prepared under a name no listing shows, then renamed into place.
     /// Returns the merged call's id, the earliest part's. Every part needs a known
     /// length, checked before anything moves. A failure moves every part back out and
     /// removes the prepared folder, so a merge is whole or not at all.
     @discardableResult
-    public func merge(ids: [String], write: (URL) throws -> Void) throws -> String {
+    public func merge(ids: [String], write: (_ prepared: URL, _ parts: [URL]) throws -> Void) throws -> String {
         let parts = try ids.map { try location(id: $0) }
         guard parts.count > 1, let earliest = zip(ids, parts).min(by: { $0.0 < $1.0 }) else { throw POSIXError(.EINVAL) }
         for (id, part) in zip(ids, parts) {
@@ -158,7 +159,7 @@ public struct Calls: Sendable {
         try disk.makeFolder(prepared)
         var step = CallsFailure.MergeStep.writingTranscript
         do {
-            try write(prepared)
+            try write(prepared, parts)
             for part in parts {
                 step = .movingPart(folder: part.lastPathComponent)
                 try rename(part, prepared.appendingPathComponent(part.lastPathComponent, isDirectory: true))

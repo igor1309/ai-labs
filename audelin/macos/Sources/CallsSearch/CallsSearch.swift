@@ -1,7 +1,7 @@
 import Foundation
 
-/// Finds a query in one call's title, transcript and notes, for the calls list's search.
-/// Case and ё/е are ignored; the query is matched as one phrase.
+/// Finds a query in one call's title, tags, transcript and notes, for the calls list's search.
+/// Case and ё/е are ignored; the query is matched as one phrase, never across title and a tag.
 public enum CallsSearch {
 
     /// A transcript line: seconds from the call's start and what was said.
@@ -11,11 +11,13 @@ public enum CallsSearch {
         public init(start: TimeInterval, words: String) { self.start = start; self.words = words }
     }
 
-    /// Where a call matches. Ranges are character offsets into the given title or snippet text.
+    /// Where a call matches. Ranges are character offsets into the given title or snippet text;
+    /// `tags` are the positions of the given tags the query is found in.
     public struct Match: Equatable, Sendable {
         public let title: [Range<Int>]
+        public let tags: [Int]
         public let snippet: Snippet?
-        public init(title: [Range<Int>], snippet: Snippet?) { self.title = title; self.snippet = snippet }
+        public init(title: [Range<Int>], tags: [Int] = [], snippet: Snippet?) { self.title = title; self.tags = tags; self.snippet = snippet }
     }
 
     public struct Snippet: Equatable, Sendable {
@@ -36,10 +38,11 @@ public enum CallsSearch {
     static let tail = 120
 
     /// nil when the query is blank or the call does not contain it.
-    public static func match(_ query: String, title: String, transcript: [Line], notes: String?) -> Match? {
+    public static func match(_ query: String, title: String, tags: [String], transcript: [Line], notes: String?) -> Match? {
         let needle = folded(query.trimmingCharacters(in: .whitespacesAndNewlines))
         guard !needle.isEmpty else { return nil }
         let titleHits = hits(of: needle, in: Array(title))
+        let tagHits = tags.indices.filter { !hits(of: needle, in: Array(tags[$0])).isEmpty }
         var places: [(Snippet.Place, [Character], [Range<Int>])] = transcript.compactMap { line in
             let text = Array(line.words)
             let found = hits(of: needle, in: text)
@@ -50,11 +53,11 @@ public enum CallsSearch {
             let found = hits(of: needle, in: text)
             if !found.isEmpty { places.append((.notes, text, found)) }
         }
-        guard !titleHits.isEmpty || !places.isEmpty else { return nil }
+        guard !titleHits.isEmpty || !tagHits.isEmpty || !places.isEmpty else { return nil }
         let snippet = places.first.map { place, text, found in
             cut(text, around: found, place: place, more: places.reduce(0) { $0 + $1.2.count } - 1)
         }
-        return Match(title: titleHits, snippet: snippet)
+        return Match(title: titleHits, tags: tagHits, snippet: snippet)
     }
 
     private static func cut(_ text: [Character], around found: [Range<Int>], place: Snippet.Place, more: Int) -> Snippet {

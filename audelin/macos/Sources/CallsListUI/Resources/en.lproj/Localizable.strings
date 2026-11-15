@@ -49,3 +49,6 @@
 "merge.anyway" = "Merge anyway";
 "merge.back" = "Go back";
 "merge.warningBody" = "There are unmarked calls between “%@” and “%@”. They will stay separate.";
+"tags.chipOn" = "Chosen";
+"tags.chipOff" = "Not chosen";
+"tags.strip" = "Tags";
