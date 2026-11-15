@@ -3,7 +3,8 @@
 Tags in the calls window (LAB-1617). The owner picked this variation over
 chips in each row and a search-only design. Frames are the "Calls — …"
 tag screens in `visual-language.pen` (frame index); parts are Tag chip,
-Tag chip/On, Tag strip and Tags line on the "Calls window — components" board.
+Tag chip/On, Tag chip/Small, Tag strip and Tags line; the Two-line row has a
+hidden Tags slot on the "Calls window — components" board.
 
 ## Storage
 
@@ -35,7 +36,8 @@ Tag chip/On, Tag strip and Tags line on the "Calls window — components" board.
 - The detail header shows «Теги:» and the call's tags, then «Изменить».
   «Изменить» turns the line into a field, one chip per tag, with a
   `+ тег` entry that completes from tags in use. Return saves, Esc cancels.
-- Rows don't change: the gist line stays.
+- A row shows its tags as small chips (Tag chip/Small) at the end of the
+  gist line; the gist truncates before them. A call without tags shows none.
 
 ## States
 

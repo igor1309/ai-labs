@@ -52078,6 +52078,31 @@
                               "icon": "loader-circle",
                               "library": "lucide",
                               "fill": "$sub"
+                            },
+                            {
+                              "type": "frame",
+                              "id": "b9a24E",
+                              "x": 0,
+                              "y": 0,
+                              "name": "Tags",
+                              "enabled": false,
+                              "gap": "$space-4",
+                              "alignItems": "center",
+                              "children": [
+                                {
+                                  "id": "p8i6wy",
+                                  "type": "ref",
+                                  "ref": "tCLIY",
+                                  "name": "Tag 1"
+                                },
+                                {
+                                  "id": "K85Yq",
+                                  "type": "ref",
+                                  "ref": "tCLIY",
+                                  "name": "Tag 2",
+                                  "enabled": false
+                                }
+                              ]
                             }
                           ]
                         }
@@ -52639,6 +52664,18 @@
                   "fontWeight": "normal"
                 }
               ]
+            },
+            {
+              "id": "tCLIY",
+              "type": "ref",
+              "reusable": true,
+              "ref": "k5pk4",
+              "name": "Tag chip/Small",
+              "padding": [
+                0,
+                "$space-6"
+              ],
+              "cornerRadius": "$radius-bar"
             }
           ]
         },
@@ -69401,6 +69438,18 @@
                         },
                         "s027x": {
                           "content": "Идентификаторы и связка ответов"
+                        },
+                        "b9a24E": {
+                          "enabled": true
+                        },
+                        "p8i6wy/Z9d2h": {
+                          "content": "клиент"
+                        },
+                        "K85Yq": {
+                          "enabled": true
+                        },
+                        "K85Yq/Z9d2h": {
+                          "content": "банк"
                         }
                       }
                     },
@@ -69437,6 +69486,12 @@
                         },
                         "s027x": {
                           "content": "Сроки по пополнению и открытые вопросы"
+                        },
+                        "b9a24E": {
+                          "enabled": true
+                        },
+                        "p8i6wy/Z9d2h": {
+                          "content": "клиент"
                         }
                       }
                     },
@@ -69473,6 +69528,18 @@
                         },
                         "s027x": {
                           "content": "Разбор заявки 17820 и следующие шаги"
+                        },
+                        "b9a24E": {
+                          "enabled": true
+                        },
+                        "p8i6wy/Z9d2h": {
+                          "content": "клиент"
+                        },
+                        "K85Yq": {
+                          "enabled": true
+                        },
+                        "K85Yq/Z9d2h": {
+                          "content": "найм"
                         }
                       }
                     }
@@ -69787,6 +69854,18 @@
                         },
                         "s027x": {
                           "content": "Идентификаторы и связка ответов"
+                        },
+                        "b9a24E": {
+                          "enabled": true
+                        },
+                        "p8i6wy/Z9d2h": {
+                          "content": "клиент"
+                        },
+                        "K85Yq": {
+                          "enabled": true
+                        },
+                        "K85Yq/Z9d2h": {
+                          "content": "банк"
                         }
                       }
                     },
@@ -69823,6 +69902,12 @@
                         },
                         "s027x": {
                           "content": "Сроки по пополнению и открытые вопросы"
+                        },
+                        "b9a24E": {
+                          "enabled": true
+                        },
+                        "p8i6wy/Z9d2h": {
+                          "content": "клиент"
                         }
                       }
                     },
@@ -69859,6 +69944,18 @@
                         },
                         "s027x": {
                           "content": "Разбор заявки 17820 и следующие шаги"
+                        },
+                        "b9a24E": {
+                          "enabled": true
+                        },
+                        "p8i6wy/Z9d2h": {
+                          "content": "клиент"
+                        },
+                        "K85Yq": {
+                          "enabled": true
+                        },
+                        "K85Yq/Z9d2h": {
+                          "content": "найм"
                         }
                       }
                     }
@@ -70151,6 +70248,18 @@
                         },
                         "s027x": {
                           "content": "Идентификаторы и связка ответов"
+                        },
+                        "b9a24E": {
+                          "enabled": true
+                        },
+                        "p8i6wy/Z9d2h": {
+                          "content": "клиент"
+                        },
+                        "K85Yq": {
+                          "enabled": true
+                        },
+                        "K85Yq/Z9d2h": {
+                          "content": "банк"
                         }
                       }
                     },
@@ -70172,6 +70281,12 @@
                         },
                         "s027x": {
                           "content": "Статус задач и план релиза"
+                        },
+                        "b9a24E": {
+                          "enabled": true
+                        },
+                        "p8i6wy/Z9d2h": {
+                          "content": "команда"
                         }
                       }
                     },
@@ -70193,6 +70308,12 @@
                         },
                         "s027x": {
                           "content": "Подготовка итогов…"
+                        },
+                        "b9a24E": {
+                          "enabled": true
+                        },
+                        "p8i6wy/Z9d2h": {
+                          "content": "iOS"
                         }
                       }
                     },
@@ -70229,6 +70350,12 @@
                         },
                         "s027x": {
                           "content": "Передача задач и доступов перед отпуском"
+                        },
+                        "b9a24E": {
+                          "enabled": true
+                        },
+                        "p8i6wy/Z9d2h": {
+                          "content": "найм"
                         }
                       }
                     },
@@ -70250,6 +70377,18 @@
                         },
                         "s027x": {
                           "content": "Не удалось подготовить итоги"
+                        },
+                        "b9a24E": {
+                          "enabled": true
+                        },
+                        "p8i6wy/Z9d2h": {
+                          "content": "iOS"
+                        },
+                        "K85Yq": {
+                          "enabled": true
+                        },
+                        "K85Yq/Z9d2h": {
+                          "content": "Android"
                         }
                       }
                     },
@@ -70286,6 +70425,12 @@
                         },
                         "s027x": {
                           "content": "Сроки по пополнению и открытые вопросы"
+                        },
+                        "b9a24E": {
+                          "enabled": true
+                        },
+                        "p8i6wy/Z9d2h": {
+                          "content": "клиент"
                         }
                       }
                     },
@@ -70343,6 +70488,18 @@
                         },
                         "s027x": {
                           "content": "Разбор заявки 17820 и следующие шаги"
+                        },
+                        "b9a24E": {
+                          "enabled": true
+                        },
+                        "p8i6wy/Z9d2h": {
+                          "content": "клиент"
+                        },
+                        "K85Yq": {
+                          "enabled": true
+                        },
+                        "K85Yq/Z9d2h": {
+                          "content": "найм"
                         }
                       }
                     },
@@ -70364,6 +70521,12 @@
                         },
                         "s027x": {
                           "content": "Короткий синк по задачам спринта"
+                        },
+                        "b9a24E": {
+                          "enabled": true
+                        },
+                        "p8i6wy/Z9d2h": {
+                          "content": "iOS"
                         }
                       }
                     },
