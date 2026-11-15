@@ -6,12 +6,12 @@ Application Support; folder opening through a fake of its workspace binding.
 ## S-1 First listing makes the folder
 
 Drive: list the catalogue for a temp path that does not exist; read back the
-folder's files and the listed entries. Evidence: `TemplateFilesTests.firstListingWritesDefaultAndAnExistingFolderIsNeverReplenished` covers Default; Daily shipping remains Missing.
+folder's files and the listed entries. Evidence: `TemplateFilesTests.firstListingWritesDefaultAndDailyAndAnExistingFolderIsNeverReplenished` covers both shipped files.
 
 ## S-2 An existing folder is not replenished
 
-Drive: make the temp folder with only a Default file; list; read back that no
-Daily file was written and no Daily file entry is listed. Evidence: `TemplateFilesTests.anExistingFolderIsNotReplenished` and `firstListingWritesDefaultAndAnExistingFolderIsNeverReplenished`.
+Drive: make an empty temp folder or one with only a Default file; list; read back that no
+Daily file was written and no Daily file entry is listed. Evidence: `TemplateFilesTests.anExistingFolderIsNotReplenished` and `firstListingWritesDefaultAndDailyAndAnExistingFolderIsNeverReplenished`.
 
 ## S-4 An unusable file is left as it was
 
@@ -26,12 +26,12 @@ covers empty, dot, dot-dot and backslash names in a temporary folder.
 ## S-5 An edit is resolved
 
 Drive: resolve Daily, rewrite its file, resolve again; read back the second
-instructions equal the new file text. Evidence: `TemplateFilesTests.validFilesAndEditsResolveTheirWholeContract` covers edited Default and custom files; Daily content remains Missing.
+instructions equal the new file text. Evidence: `TemplateFilesTests.validFilesAndEditsResolveTheirWholeContract` covers edited Default, Daily and custom files; `shippedDailyResolvesTheHandoffContract` covers editing the shipped Daily instructions and headings.
 
 ## S-6 Built-in Default without usable files
 
 Drive: empty temp folder; resolve Default; read back the built-in
-instructions and the four required headings. Evidence: `TemplateFilesTests.firstListingWritesDefaultAndAnExistingFolderIsNeverReplenished`.
+instructions and the four required headings. Evidence: `TemplateFilesTests.firstListingWritesDefaultAndDailyAndAnExistingFolderIsNeverReplenished`.
 
 ## S-7 An unusable Default file stays visible
 
@@ -41,7 +41,7 @@ entry with its reason and a usable built-in Default. Evidence: `TemplateFilesTes
 ## S-8 A missing chosen template
 
 Drive: list, delete Daily's file, resolve Daily; read back a missing
-failure naming Daily, and no instructions. Evidence: `TemplateFilesTests.aMissingOrBrokenChosenTemplateNeverUsesDefault` covers a removed custom file; Daily content remains Missing.
+failure naming Daily, and no instructions. Evidence: `TemplateFilesTests.aMissingOrBrokenChosenTemplateNeverUsesDefault` covers removed and broken custom and shipped Daily files, and checks that deletion is preserved.
 
 ## S-9 A folder that cannot be read
 
@@ -62,13 +62,13 @@ Drive: fake workspace binding failing; read back its reason. Evidence: `Template
 Drive: resolve the shipped Daily from a fresh folder; read back that its
 instructions ask for continuation, owners, blockers, planned fixes and
 meetings, agreed versus suggested, unclear owners and fixes, and topics not
-discussed. Evidence: Missing.
+discussed. Evidence: `TemplateFilesTests.shippedDailyResolvesTheHandoffContract`.
 
 ## S-13 A valid file is resolved
 
 Drive: resolve each of the shipped Default and Daily and a fixture custom
 file; read back name, required and optional headings in their order, and
-instructions equal to the fixture's. Evidence: `TemplateFilesTests.validFilesAndEditsResolveTheirWholeContract` and `firstListingWritesDefaultAndAnExistingFolderIsNeverReplenished` cover Default and custom files; shipped Daily remains Missing.
+instructions equal to the fixture's. Evidence: `TemplateFilesTests.validFilesAndEditsResolveTheirWholeContract` and `firstListingWritesDefaultAndDailyAndAnExistingFolderIsNeverReplenished` cover Default, Daily and custom files; `TemplateFilesTests.shippedDailyResolvesTheHandoffContract` checks shipped Daily's name, headings in order and instructions.
 
 ## S-15 Unreadable metadata
 

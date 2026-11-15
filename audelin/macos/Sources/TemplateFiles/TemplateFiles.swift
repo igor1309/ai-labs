@@ -55,6 +55,7 @@ public struct Files: Sendable {
     private func prepare() throws {
         if try disk.createFolder(folder) {
             try disk.write(Self.encode(Self.builtInDefault), to: folder.appendingPathComponent("Default.md"))
+            try disk.write(Self.encode(Self.shippedDaily), to: folder.appendingPathComponent("Daily.md"))
         }
     }
     public func list() -> Catalogue {
