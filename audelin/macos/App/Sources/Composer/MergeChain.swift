@@ -45,7 +45,7 @@ func mergeCalls(ids: [String], storage: CallsStorage, binding: any TranscriptFil
     var format = TranscriptFormat()
     let chunks = try format.render(segments, speakers: joined.speakers).chunks
     let entries = summaryEntries(segments, speakerIDs: joined.speakers.map(\.id))
-    let id = try await storage.merge(ids: ids) { folder in
+    let id = try await storage.merge(ids: ids) { folder, _ in
         let url = folder.appendingPathComponent("transcript.md")
         let file = try binding.create(at: url)
         do {

@@ -28,14 +28,35 @@ struct CallsStorageMergeTests {
         try await withStorageFolder { root in
             try calls(in: root)
             let storage = makeStorage(folder: root)
-            let merged = try await storage.merge(ids: [second, first]) {
-                try Data("joined".utf8).write(to: $0.appendingPathComponent("transcript.md"))
+            let merged = try await storage.merge(ids: [second, first]) { prepared, _ in
+                try Data("joined".utf8).write(to: prepared.appendingPathComponent("transcript.md"))
             }
             #expect(merged == first)
             #expect(try await storage.list().map(\.id) == [first])
             let folder = try await storage.location(id: first)
             #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == "joined")
             #expect(FileManager.default.fileExists(atPath: folder.appendingPathComponent(second).appendingPathComponent("transcript.md").path))
+        }
+    }
+
+    @Test func theWriteStepGetsThePartsResolvedFoldersInTheOrderAsked() async throws {
+        try await withStorageFolder { temporaryRoot in
+            let root = temporaryRoot.resolvingSymlinksInPath()
+            try calls(in: root)
+            let storage = makeStorage(folder: root)
+            let seen = Seen()
+            _ = try await storage.merge(ids: [second, first]) { _, parts in seen.set(parts.map { $0.resolvingSymlinksInPath().path }) }
+            #expect(seen.value == [root.appendingPathComponent(second).path, root.appendingPathComponent(first).path])
+        }
+    }
+
+    @Test func aFailingWriteStepFailsTheMergeWithEveryPartBack() async throws {
+        try await withStorageFolder { root in
+            try calls(in: root)
+            let storage = makeStorage(folder: root)
+            await #expect(throws: (any Error).self) { _ = try await storage.merge(ids: [first, second]) { _, _ in throw ScriptFailure.failed } }
+            #expect(try await storage.list().map(\.id) == [second, first])
+            #expect(try FileManager.default.contentsOfDirectory(atPath: root.path).filter { $0.hasPrefix(".audelin-merge-") }.isEmpty)
         }
     }
 
@@ -47,7 +68,7 @@ struct CallsStorageMergeTests {
             try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: false)
             _ = try await storage.prepareMove(to: destination)
             _ = try await storage.move(id: second, to: destination)
-            await #expect(throws: (any Error).self) { _ = try await storage.merge(ids: [first, second]) { _ in } }
+            await #expect(throws: (any Error).self) { _ = try await storage.merge(ids: [first, second]) { _, _ in } }
             #expect(try await storage.list().map(\.id).sorted() == [first, second])
         }
     }
@@ -64,4 +85,11 @@ struct CallsStorageMergeTests {
             #expect(!FileManager.default.fileExists(atPath: prepared.path))
         }
     }
+}
+
+private final class Seen: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: [String] = []
+    var value: [String] { lock.withLock { stored } }
+    func set(_ value: [String]) { lock.withLock { stored = value } }
 }

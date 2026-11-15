@@ -180,10 +180,12 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
     public func savedTranscript(id: String) async throws -> Data {
         try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).savedTranscript(id: id) } }
     }
-    /// Merges calls of the calls folder into one, the earliest part's, with the joined
-    /// transcript `write` puts in the folder it is given; returns the merged call's id.
+    /// Merges calls of the calls folder into one, the earliest part's, with what `write`
+    /// puts in the prepared folder it is given beside the parts' resolved folders, in the
+    /// order of `ids`, within this storage's turn; returns the merged call's id. A failing
+    /// `write` fails the merge with every part back in place.
     /// A call that a folder move holds or left in another folder is not merged.
-    public func merge(ids: [String], write: @Sendable (URL) throws -> Void) async throws -> String {
+    public func merge(ids: [String], write: @Sendable (_ prepared: URL, _ parts: [URL]) throws -> Void) async throws -> String {
         try await perform { [self] in
             try state.withLock { state in
                 for id in ids {
