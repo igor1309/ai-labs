@@ -9,7 +9,7 @@ import sys
 import tempfile
 import unittest
 
-from test_nightly_report import LOG
+from test_nightly_report import LOG, rehearsal_log
 
 SCRIPTS = Path(__file__).resolve().parents[1]
 
@@ -27,6 +27,10 @@ class NightlyHistoryTests(unittest.TestCase):
             profile.mkdir(parents=True)
             (profile / "build.sh").write_text('#!/bin/bash\nexit 0\n')
             (profile / "build.sh").chmod(0o755)
+            composition = scripts / "profile-rehearsal.sh"
+            composition.write_text('#!/bin/bash\nwhile (($#)); do [[ $1 == --out ]] && out="$2"; shift; done\n'
+                                   'mkdir -p "$out"\nprintf "%s" "$STUB_REHEARSAL" > "$out/rehearsal.log"\n')
+            composition.chmod(0o755)
             speech = macos / "Benchmarks/speech-audio.sh"
             speech.write_text('#!/bin/bash\nmkdir -p "$1"\nprintf mine > "$1/mine.wav"\nprintf theirs > "$1/theirs.wav"\n')
             speech.chmod(0o755)
@@ -57,7 +61,7 @@ git() { echo stub-commit; }
 xcrun() { if [[ "$2" == record && "$CAPTURE_FAIL" == 1 ]]; then return 1; fi; }
 ''')
             log = root / "input.log"
-            env = dict(os.environ, HOME=str(root), BASH_ENV=str(shell_env), STUB_BIN=str(binary),
+            env = dict(os.environ, STUB_REHEARSAL=rehearsal_log(), HOME=str(root), BASH_ENV=str(shell_env), STUB_BIN=str(binary),
                        STUB_LOG=str(log), STUB_STATUS="0", CAPTURE_FAIL="0")
             # No real Swift, model, audio or profiler operation is reachable.
             history = root / "history"
