@@ -26,6 +26,15 @@ public enum SummaryPreviewPhrase: String, CaseIterable, Sendable {
     /// Takes when the summary was made.
     case made = "preview.made"
     case noSelection = "preview.noSelection"
+    case tags = "preview.tags"
+    case noTags = "preview.noTags"
+    case editTags = "preview.editTags"
+    case addTags = "preview.addTags"
+    case newTag = "preview.newTag"
+    case tagsHint = "preview.tagsHint"
+    case savingTags = "preview.savingTags"
+    /// Takes the tag's name.
+    case removeTag = "preview.removeTag"
     /// Takes the system's reason.
     case unreadable = "preview.unreadable"
 }

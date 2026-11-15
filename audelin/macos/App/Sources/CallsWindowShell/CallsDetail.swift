@@ -30,6 +30,7 @@ func detailEvent(_ event: SummaryPreviewEvent) -> CallsDetailEvent? {
     case .rename: .rename
     case .retrySummary: .retrySummary
     case .delete: .delete
+    case .editTags, .typeTag, .completeTag, .removeTag, .submitTags, .cancelTags: nil
     }
 }
 
