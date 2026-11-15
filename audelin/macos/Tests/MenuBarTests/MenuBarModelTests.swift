@@ -56,7 +56,7 @@ struct MenuBarModelTests {
                         let menu = MenuBarModel(text: russian, recording: recording, preferences: .init(automatic: true, liveText: liveText))
                         #expect(menu.item.stateLine == base + suffix)
                         #expect(menu.entries.first == .stateLine(base + suffix))
-                        #expect(menu.item.symbol == "record.circle.fill")
+                        #expect(menu.item.symbol == "text.alignleft")
                         #expect(menu.item.isRed == !ending)
                     }
                 }
@@ -102,7 +102,7 @@ struct MenuBarModelTests {
                     let menu = MenuBarModel(text: russian, recording: recording,
                                             preferences: MenuBarPreferences(automatic: true, liveText: liveText))
                     #expect(menu.item.title == "Запись")
-                    #expect(menu.item.symbol == "record.circle.fill")
+                    #expect(menu.item.symbol == "text.alignleft")
                     #expect(menu.item.stateLine == line)
                     #expect(menu.entries == [.stateLine(line), .divider]
                         + (recording == .ending(faults: []) ? [] : [.button("Остановить запись", .stop), .divider])
