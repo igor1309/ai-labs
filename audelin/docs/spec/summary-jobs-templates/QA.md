@@ -15,7 +15,8 @@ runtime requests and Default/Daily attribution.
 ## S-2 Make notes again after success
 
 Evidence: `MakeAgainTests.chosenTemplateStartsANewRun`,
-`selectionDeliversTheRequestedTemplateOrItsFailure`;
+`selectionDeliversTheRequestedTemplateOrItsFailure`,
+`claimEffectDispatchesTheAdmissionIntent`;
 `CallNotesWiringTests.aCompletedRunAcceptsAnotherChosenTemplateRun` and
 `chosenTemplateMakesNotesAgainWithTheCapturedKeepChoice`.
 
@@ -62,7 +63,9 @@ Evidence: `SummariesGenerationReducerTests.failedNotesAreSavedAsFailed`,
 `SummariesGenerationEffectHandlerTests.failedNotesDeliverNotesFailure`;
 `CallNotesWiringTests.unsuccessfulMakeAgainKeepsThePublishedPair` reads the
 unchanged pair after runtime failure. A failed terminal write restores the
-pair in `SummaryVersionsTests.aFailedTerminalSaveRestoresThePublishedPair`.
+pair in `SummaryVersionsTests.aFailedTerminalSaveRestoresThePublishedPair` and
+`terminalReadAndRollbackCheckFailuresRestoreThePublishedPair`;
+`terminalRollbackNeverOverwritesAnotherPublication` checks output ownership.
 
 ## S-9 Cancelling keeps the published notes
 
@@ -70,7 +73,9 @@ Evidence: `MakeAgainTests.cancellationWaitsForPreparationWithoutClaiming`;
 `SummariesCancelReducerTests.aResultAfterACancelDeliversDiscard` and
 `SummariesCancelEffectHandlerTests.discardRemovesTheJobAndDeliversDiscarded`;
 `CallNotesWiringTests.unsuccessfulMakeAgainKeepsThePublishedPair` reads the
-unchanged pair after cancellation.
+unchanged pair after cancellation;
+`SummaryVersionsTests.discardReadAndRollbackCheckFailuresKeepThePublishedPair`
+covers disk failures while discarding.
 
 ## S-10 A template that cannot be resolved
 

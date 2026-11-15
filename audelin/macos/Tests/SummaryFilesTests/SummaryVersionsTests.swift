@@ -196,6 +196,87 @@ import Testing
         }
     }
 
+    @Test(arguments: [Keeping.rotation, .replacement], ["record", "exists", "read"])
+    func terminalReadAndRollbackCheckFailuresRestoreThePublishedPair(keeping: Keeping, failure: String) async throws {
+        try await withVersionsFolder { folder, files in
+            try await publishVersion("A", files: files, folder: folder)
+            try await publishVersion("B", files: files, folder: folder)
+            let old = try await files.versions(call: "call")
+            let disk = VersionDisk()
+            let owner = Files(locations: VersionLocation(folder: folder), disk: disk, ownershipDirectory: folder.appendingPathComponent("leases"))
+            let record = versionRecord("candidate")
+            _ = try await owner.claim(record); #expect(try await owner.start(record))
+            try await owner.publish(record, notes: "C", template: .default, keeping: keeping)
+            disk.failTerminal.withLock { $0 = failure != "record" }
+            disk.readFailure.withLock { $0 = failure }
+            var terminal = record; terminal.phase = "succeeded"
+            await #expect(throws: (any Error).self) { try await owner.progress(terminal) }
+            #expect(try await files.versions(call: "call") == old)
+            #expect(try await files.load(call: "call")?.phase == "interrupted")
+        }
+    }
+
+    @Test(arguments: ["record", "exists", "read"])
+    func terminalRollbackNeverOverwritesAnotherPublication(failure: String) async throws {
+        try await withVersionsFolder { folder, files in
+            try await publishVersion("A", files: files, folder: folder)
+            try await publishVersion("B", files: files, folder: folder)
+            let disk = VersionDisk()
+            let owner = Files(locations: VersionLocation(folder: folder), disk: disk, ownershipDirectory: folder.appendingPathComponent("leases"))
+            let record = versionRecord("candidate")
+            _ = try await owner.claim(record); #expect(try await owner.start(record))
+            try await owner.publish(record, notes: "C", template: .default, keeping: .rotation)
+            let foreign = Data("someone else's notes".utf8)
+            try foreign.write(to: folder.appendingPathComponent("summary.md"))
+            disk.failTerminal.withLock { $0 = failure != "record" }
+            disk.readFailure.withLock { $0 = failure }
+            var terminal = record; terminal.phase = "succeeded"
+            await #expect(throws: (any Error).self) { try await owner.progress(terminal) }
+            #expect(try Data(contentsOf: folder.appendingPathComponent("summary.md")) == foreign)
+        }
+    }
+
+    @Test(arguments: [Keeping.rotation, .replacement], ["record", "exists", "read"])
+    func discardReadAndRollbackCheckFailuresKeepThePublishedPair(keeping: Keeping, failure: String) async throws {
+        try await withVersionsFolder { folder, files in
+            try await publishVersion("A", files: files, folder: folder)
+            try await publishVersion("B", files: files, folder: folder)
+            let old = try await files.versions(call: "call")
+            let disk = VersionDisk()
+            let owner = Files(locations: VersionLocation(folder: folder), disk: disk, ownershipDirectory: folder.appendingPathComponent("leases"))
+            let record = versionRecord("candidate")
+            _ = try await owner.claim(record); #expect(try await owner.start(record))
+            try await owner.publish(record, notes: "C", template: .default, keeping: keeping)
+            disk.readFailure.withLock { $0 = failure }
+            if failure == "record" {
+                await #expect(throws: (any Error).self) { try await owner.discard(record) }
+                await owner.release(job: record.job, call: record.call, input: record.input)
+                #expect(try await files.load(call: "call")?.phase == "interrupted")
+            } else {
+                try await owner.discard(record)
+                #expect(try await files.load(call: "call") == nil)
+            }
+            #expect(try await files.versions(call: "call") == old)
+        }
+    }
+
+    @Test(arguments: ["pending", "running", "succeeded", "failed", "interrupted"])
+    func aReplacementClaimIsAtomicAndPreservesActiveAttempts(phase: String) async throws {
+        try await withVersionsFolder { folder, files in
+            try await publishVersion("A", files: files, folder: folder)
+            try await publishVersion("B", files: files, folder: folder)
+            let pair = try await files.versions(call: "call")
+            var old = versionRecord("old"); old.phase = phase
+            _ = try await files.claim(old)
+            let next = versionRecord("new")
+            let result = try await files.claim(next, replacingInactive: true)
+            let inactive = ["succeeded", "failed", "interrupted"].contains(phase)
+            #expect(result.owned == inactive && result.record == (inactive ? next : old))
+            #expect(try await files.claim(versionRecord("observer")).record == result.record)
+            #expect(try await files.versions(call: "call") == pair)
+        }
+    }
+
     @Test(arguments: ["succeeded", "failed", "interrupted"])
     func replacingASettledAttemptKeepsThePairAndRejectsAStaleReplacement(phase: String) async throws {
         try await withVersionsFolder { folder, files in
@@ -302,11 +383,18 @@ private final class PublicationSnapshotDisk: Disk, Sendable {
     func remove(_ url: URL) throws { try observe("remove", at: url) { try base.remove(url) } }
 }
 private final class VersionDisk: Disk, Sendable {
+    let readFailure = Mutex<String?>(nil)
     let failTerminal = Mutex(false)
     let fail = Mutex(false)
     private let base = FileDisk()
-    func read(_ url: URL) throws -> Data { try base.read(url) }
-    func exists(_ url: URL) throws -> Bool { try base.exists(url) }
+    func read(_ url: URL) throws -> Data {
+        if readFailure.withLock({ $0 == (url.lastPathComponent == ".summary-job.json" ? "record" : "read") }) { throw CocoaError(.fileReadUnknown) }
+        return try base.read(url)
+    }
+    func exists(_ url: URL) throws -> Bool {
+        if url.lastPathComponent == "summary.md", readFailure.withLock({ $0 == "exists" }) { throw CocoaError(.fileReadUnknown) }
+        return try base.exists(url)
+    }
     func create(_ data: Data, at url: URL) throws -> Bool { try base.create(data, at: url) }
     func readStamped(_ url: URL) throws -> (data: Data, modified: Date) { try base.readStamped(url) }
     func restore(_ data: Data, at url: URL, modified: Date) throws { try base.restore(data, at: url, modified: modified) }

@@ -550,12 +550,15 @@ final class PreparationSpy: SummariesPreparation {
     func submission(call: String) async throws -> SummariesSubmission { read.withLock { $0.append(call) }; return try submission.get() }
 }
 final class ClaimsSpy: SummariesClaims {
+    private let intents = Mutex<[SummariesClaimIntent]>([])
+    var claimIntents: [SummariesClaimIntent] { intents.withLock { $0 } }
     private let recorded = Mutex<[Job]>([])
     private let result: Result<(Bool, SummariesSaved), SpyFailure>
     init(result: Result<(Bool, SummariesSaved), SpyFailure> = .success((true, .init(stage: .pending, job: makeJob())))) { self.result = result }
     var payloads: [Job] { recorded.withLock { $0 } }
-    func claim(_ job: Job) async throws -> (owned: Bool, saved: SummariesSaved) {
+    func claim(_ job: Job, intent: SummariesClaimIntent) async throws -> (owned: Bool, saved: SummariesSaved) {
         recorded.withLock { $0.append(job) }
+        intents.withLock { $0.append(intent) }
         let (owned, saved) = try result.get(); return (owned, saved)
     }
 }

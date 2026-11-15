@@ -1,5 +1,6 @@
 import Composer
 import Foundation
+import NotesGeneration
 import Synchronization
 import SummaryFiles
 import SummaryJobs
@@ -124,7 +125,7 @@ import Testing
     func capturedTemplateAndKeepingSurviveStorageAndDrivePublication(keeping: Bool) async throws {
         let files = FilesFake(), sut = makeSUT(files)
         var chosen = job
-        chosen.template = .init(name: "Daily", instructions: "saved instructions", headings: [[.init(name: "Day", required: false)]])
+        chosen.template = .init(id: "daily-id", name: "Daily", value: NotesGeneration.Template(name: "Daily", instructions: "saved instructions", headings: [[.init("Day", required: false)]]))
         chosen.keepPrevious = keeping; chosen.requested = true
         let saved = try await sut.claim(chosen).saved
         files.stored = try #require(files.claimed.first)
@@ -134,7 +135,7 @@ import Testing
             Issue.record("missing publication"); return
         }
         #expect(record.job == chosen.id && text == "daily notes")
-        #expect(template == Attribution(id: "Daily", name: "Daily"))
+        #expect(template == Attribution(id: "daily-id", name: "Daily"))
         #expect(policy == (keeping ? .rotation : .replacement))
     }
 
@@ -148,23 +149,27 @@ import Testing
         #expect(try await makeSUT(files).load(call: "call")?.job == job)
     }
 
-    @Test(arguments: ["succeeded", "failed", "interrupted"])
-    func anExplicitNewRunReplacesTheSettledAttempt(phase: String) async throws {
-        let files = FilesFake(), old = try await record(phase: phase)
-        files.claimAnswer = { _ in (false, old) }
-        var chosen = job; chosen.id = "new"; chosen.requested = true
-        let saved = try await makeSUT(files).claim(chosen)
-        #expect(saved.owned && saved.saved.job == chosen && saved.saved.stage == .pending)
-        #expect(files.writes == [.replaceAttempt(old, try #require(files.stored))])
+    @Test func olderTemplateSnapshotsKeepTheirResolvedValue() async throws {
+        let files = FilesFake(), sut = makeSUT(files)
+        var chosen = job
+        chosen.template = NotesGeneration.Template(name: "Daily", instructions: "captured", headings: [[.init("Day", required: false)]]).jobTemplate
+        _ = try await sut.claim(chosen)
+        var old = try #require(files.claimed.first)
+        var snapshot = try #require(try JSONSerialization.jsonObject(with: old.snapshot) as? [String: Any])
+        var template = try #require(snapshot["template"] as? [String: Any])
+        template["id"] = nil; snapshot["template"] = template
+        old.snapshot = try JSONSerialization.data(withJSONObject: snapshot)
+        files.stored = old
+        #expect(try await sut.load(call: "call")?.job == chosen)
     }
 
-    @Test func aNewRunDoesNotReplaceAnActiveAttempt() async throws {
-        let files = FilesFake(), active = try await record(phase: "running")
-        files.claimAnswer = { _ in (false, active) }
-        var chosen = job; chosen.id = "new"; chosen.requested = true
-        let saved = try await makeSUT(files).claim(chosen)
-        #expect(!saved.owned && saved.saved.job == job && saved.saved.stage == .observed)
-        #expect(files.writes.isEmpty)
+    @Test(arguments: [SummariesClaimIntent.ifAbsent, .newRun])
+    func claimTranslatesTheIntentWithoutChoosingAdmission(intent: SummariesClaimIntent) async throws {
+        let files = FilesFake()
+        var chosen = job; chosen.requested = intent == .ifAbsent
+        let result = try await makeSUT(files).claim(chosen, intent: intent)
+        #expect(result.owned && result.saved.job == chosen)
+        #expect(files.replacementIntents == [intent == .newRun])
     }
 
     /// A stored record of the job as the port writes it, in the given phase.
@@ -178,10 +183,11 @@ import Testing
 
 /// Answers the port's file calls from a stored record and records each call.
 final class FilesFake: SummariesFiles {
-    enum Write: Equatable { case replaceAttempt(SummaryFiles.Record, SummaryFiles.Record)
+    enum Write: Equatable {
         case start(SummaryFiles.Record), progress(SummaryFiles.Record), publish(SummaryFiles.Record, String, Attribution, Keeping),
                             discard(SummaryFiles.Record), release(job: String, call: String, input: String) }
     private struct Calls {
+        var replacementIntents: [Bool] = []
         var claimed: [SummaryFiles.Record] = []; var loaded: [String] = []; var retried: [(SummaryFiles.Record, String)] = []
         var writes: [Write] = []
     }
@@ -196,6 +202,7 @@ final class FilesFake: SummariesFiles {
         get { answers.withLock { $0.claim } }
         set { answers.withLock { $0.claim = newValue } }
     }
+    var replacementIntents: [Bool] { calls.withLock { $0.replacementIntents } }
     var claimed: [SummaryFiles.Record] { calls.withLock { $0.claimed } }
     var loaded: [String] { calls.withLock { $0.loaded } }
     var retried: [(SummaryFiles.Record, String)] { calls.withLock { $0.retried } }
@@ -217,14 +224,9 @@ final class FilesFake: SummariesFiles {
         calls.withLock { $0.writes.append(value) }
         if fails { throw CocoaError(.fileWriteUnknown) }
     }
-    func claim(_ record: SummaryFiles.Record) async throws -> (owned: Bool, record: SummaryFiles.Record) {
-        calls.withLock { $0.claimed.append(record) }
+    func claim(_ record: SummaryFiles.Record, replacingInactive: Bool) async throws -> (owned: Bool, record: SummaryFiles.Record) {
+        calls.withLock { $0.claimed.append(record); $0.replacementIntents.append(replacingInactive) }
         let (owned, value) = try claimAnswer(record); return (owned, value)
-    }
-    func replaceAttempt(_ record: SummaryFiles.Record, with next: SummaryFiles.Record) async throws -> SummaryFiles.Record {
-        try write(.replaceAttempt(record, next))
-        stored = next
-        return next
     }
     func load(call: String) async throws -> SummaryFiles.Record? { calls.withLock { $0.loaded.append(call) }; return stored }
     func retry(_ record: SummaryFiles.Record, job: String) async throws -> SummaryFiles.Record {

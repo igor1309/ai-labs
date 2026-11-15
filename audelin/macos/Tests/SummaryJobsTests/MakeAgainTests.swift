@@ -39,10 +39,10 @@ import Testing
         }
     }
 
-    @Test func selectedContentIsCapturedBeforeTheClaim() {
-        let state = makeState(calls: ["call": .init(stage: .selecting, requestedTemplate: "Daily", job: makeJob(), requested: true)])
-        var job = makeJob(); job.template = makeTemplate().jobTemplate; job.requested = true
-        assert(state, .templateSelected("call", makeTemplate()), delivers: .claim(job)) {
+    @Test(arguments: [true, false]) func selectedContentIsCapturedBeforeTheClaim(requested: Bool) {
+        let state = makeState(calls: ["call": .init(stage: .selecting, requestedTemplate: "Daily", job: makeJob(), requested: requested)])
+        var job = makeJob(); job.template = makeTemplate().jobTemplate; job.requested = requested
+        assert(state, .templateSelected("call", makeTemplate()), delivers: .claim(job, intent: requested ? .newRun : .ifAbsent)) {
             $0.calls["call"]?.job = job; $0.calls["call"]?.template = makeTemplate(); $0.calls["call"]?.stage = .claiming
             $0.calls["call"]?.status = "claiming:false"; $0.calls["call"]?.badge = .pending
         }
@@ -145,6 +145,17 @@ import Testing
             Issue.record("missing template must fail"); return
         }
         #expect(missing.names == ["Missing"])
+    }
+
+    @Test(arguments: [SummariesClaimIntent.ifAbsent, .newRun])
+    func claimEffectDispatchesTheAdmissionIntent(intent: SummariesClaimIntent) async {
+        let claims = ClaimsSpy()
+        let handler = SummariesEffectHandler(keeping: { true }, templates: TemplatesSpy(), preparation: PreparationSpy(),
+            claims: claims, records: RecordsSpy(), starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy())
+        var job = makeJob(); job.requested = intent == .ifAbsent
+        #expect(await handler.handle(.claim(job, intent: intent)) == .claimed("call", owned: true, .init(stage: .pending, job: makeJob())))
+        #expect(claims.payloads == [job])
+        #expect(claims.claimIntents == [intent])
     }
 
     private func assert(_ state: SummariesState, _ event: SummariesEvent, delivers effect: SummariesEffect?,

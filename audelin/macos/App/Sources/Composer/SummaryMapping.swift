@@ -1,5 +1,6 @@
 import CallsListUI
 import Foundation
+import NotesGeneration
 import Preferences
 import SummaryFiles
 import SummaryJobs
@@ -87,18 +88,20 @@ struct Snapshot: Codable {
     }
     struct Template: Codable {
         struct Heading: Codable { var name: String; var required: Bool }
+        var id: String?
         var name: String; var instructions: String; var headings: [[Heading]]
-        init(_ value: Job.Template) {
-            name = value.name; instructions = value.instructions
+        init(_ captured: Job.Template) throws {
+            guard let value = captured.value(as: NotesGeneration.Template.self) else { throw CocoaError(.fileReadCorruptFile) }
+            id = captured.id; name = captured.name; instructions = value.instructions
             headings = value.headings.map { $0.map { .init(name: $0.name, required: $0.required) } }
         }
         var value: Job.Template {
-            .init(name: name, instructions: instructions, headings: headings.map { $0.map { .init(name: $0.name, required: $0.required) } })
+            .init(id: id ?? name, name: name, value: NotesGeneration.Template(name: name, instructions: instructions, headings: headings.map { $0.map { .init($0.name, required: $0.required) } }))
         }
     }
     var template: Template?
     var keepPrevious: Bool?
     var requested: Bool?
     var entries: [Entry]; var speakers: Bool; var primary: Runtime; var fallback: Runtime?
-    init(_ job: Job) { template = job.template.map(Template.init); keepPrevious = job.keepPrevious; requested = job.requested; entries = job.entries.map(Entry.init); speakers = job.speakers; primary = .init(job.primary); fallback = job.fallback.map(Runtime.init) }
+    init(_ job: Job) throws { template = try job.template.map(Template.init); keepPrevious = job.keepPrevious; requested = job.requested; entries = job.entries.map(Entry.init); speakers = job.speakers; primary = .init(job.primary); fallback = job.fallback.map(Runtime.init) }
 }

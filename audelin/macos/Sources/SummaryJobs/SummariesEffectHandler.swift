@@ -6,9 +6,11 @@ public protocol SummariesPreparation: Sendable {
     func submission(call: String) async throws -> SummariesSubmission
 }
 
+public enum SummariesClaimIntent: Equatable, Sendable { case ifAbsent, newRun }
+
 /// Takes a job into storage, or finds the one already there.
 public protocol SummariesClaims: Sendable {
-    func claim(_ job: Job) async throws -> (owned: Bool, saved: SummariesSaved)
+    func claim(_ job: Job, intent: SummariesClaimIntent) async throws -> (owned: Bool, saved: SummariesSaved)
 }
 
 /// Reads a call's saved job.
@@ -120,9 +122,9 @@ public struct SummariesEffectHandler<Template: SummariesTemplate>: Sendable {
         case let .prepare(submission):
             let prepared = await preparation.job(for: submission)
             return .prepared(submission.call, prepared.job, notesOn: prepared.notesOn)
-        case let .claim(job):
+        case let .claim(job, intent):
             do {
-                let result = try await claims.claim(job)
+                let result = try await claims.claim(job, intent: intent)
                 return .claimed(job.call, owned: result.owned, result.saved)
             } catch { return .storageFailed(job.call) }
         }

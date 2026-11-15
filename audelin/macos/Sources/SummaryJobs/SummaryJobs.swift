@@ -1,20 +1,25 @@
 public protocol SummariesTemplate: Equatable, Sendable {
-    var jobTemplate: Job.Template { get }
-    init(jobTemplate: Job.Template)
+    var name: String { get }
+}
+
+extension SummariesTemplate {
+    public var jobTemplate: Job.Template { .init(id: name, name: name, value: self) }
 }
 
 public struct Job: Equatable, Sendable {
+    /// Generation owns the value's schema; jobs only keep its identity and pass it on.
     public struct Template: Equatable, Sendable {
-        public struct Heading: Equatable, Sendable {
-            public var name: String
-            public var required: Bool
-            public init(name: String, required: Bool) { self.name = name; self.required = required }
+        public let id: String
+        public let name: String
+        private let stored: any Sendable
+        private let matches: @Sendable (any Sendable) -> Bool
+        public init<Value: Equatable & Sendable>(id: String, name: String, value: Value) {
+            self.id = id; self.name = name; stored = value
+            matches = { ($0 as? Value) == value }
         }
-        public var name: String
-        public var instructions: String
-        public var headings: [[Heading]]
-        public init(name: String, instructions: String, headings: [[Heading]]) {
-            self.name = name; self.instructions = instructions; self.headings = headings
+        public func value<Value>(as type: Value.Type) -> Value? { stored as? Value }
+        public static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.id == rhs.id && lhs.name == rhs.name && lhs.matches(rhs.stored)
         }
     }
     public var template: Template?

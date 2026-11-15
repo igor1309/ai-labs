@@ -434,7 +434,7 @@ extension CallNotesWiringTests {
             var template = TemplateFiles.Files.builtInDefault
             template.name = "Daily"; template.instructions = "Saved Daily instructions"
             job.template = notesTemplate(template).jobTemplate; job.keepPrevious = false; job.requested = true
-            _ = try await SummariesFilesPort(files: files, makeID: { "unused" }).claim(job)
+            _ = try await SummariesFilesPort(files: files, makeID: { "unused" }).claim(job, intent: .newRun)
             template.instructions = "Changed Daily instructions"
             try TemplateFiles.Files.encode(template).write(to: root.appendingPathComponent("Templates/Daily.md"), atomically: true, encoding: .utf8)
             let http = NotesHTTP()

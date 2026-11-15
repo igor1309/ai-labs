@@ -5,8 +5,7 @@ import Testing
 struct Template: SummariesTemplate {
     let marker: Int
     init(marker: Int) { self.marker = marker }
-    var jobTemplate: Job.Template { .init(name: "Daily", instructions: String(marker), headings: []) }
-    init(jobTemplate: Job.Template) { marker = Int(jobTemplate.instructions)! }
+    var name: String { "Daily" }
 }
 func makeTemplate() -> Template { .init(marker: 17) }
 final class TemplatesSpy: SummariesTemplates {

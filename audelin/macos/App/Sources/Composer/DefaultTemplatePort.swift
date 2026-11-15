@@ -14,12 +14,4 @@ func notesTemplate(_ value: TemplateFiles.Template) -> NotesGeneration.Template 
           headings: value.headings.map { $0.map { .init($0.name, required: $0.required) } })
 }
 
-extension NotesGeneration.Template: SummariesTemplate {
-    public var jobTemplate: Job.Template {
-        .init(name: name, instructions: instructions, headings: headings.map { $0.map { .init(name: $0.name, required: $0.required) } })
-    }
-    public init(jobTemplate: Job.Template) {
-        self.init(name: jobTemplate.name, instructions: jobTemplate.instructions,
-                  headings: jobTemplate.headings.map { $0.map { .init($0.name, required: $0.required) } })
-    }
-}
+extension NotesGeneration.Template: SummariesTemplate {}
