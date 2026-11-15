@@ -5,6 +5,7 @@ import SummaryJobs
 /// The summary files calls the Summaries machine's storage ports make.
 public protocol SummariesFiles: Sendable {
     func claim(_ record: SummaryFiles.Record) async throws -> (owned: Bool, record: SummaryFiles.Record)
+    func replaceAttempt(_ record: SummaryFiles.Record, with next: SummaryFiles.Record) async throws -> SummaryFiles.Record
     func load(call: String) async throws -> SummaryFiles.Record?
     func retry(_ record: SummaryFiles.Record, job: String) async throws -> SummaryFiles.Record
     func start(_ record: SummaryFiles.Record) async throws -> Bool
@@ -25,6 +26,9 @@ public struct SummariesFilesPort: SummariesClaims, SummariesRecords, SummariesSt
     public func claim(_ job: Job) async throws -> (owned: Bool, saved: SummariesSaved) {
         let record = try Self.record(job, phase: "pending")
         var result = try await files.claim(record)
+        if !result.owned, job.requested, ["succeeded", "failed", "interrupted"].contains(result.record.phase) {
+            result = (true, try await files.replaceAttempt(result.record, with: record))
+        }
         // Notes deleted after they were made leave a finished record with nothing to show; a new job replaces it.
         if !result.owned, result.record.phase == "succeeded", try await files.notes(call: job.call) == nil {
             try await files.discard(result.record)
@@ -53,8 +57,9 @@ public struct SummariesFilesPort: SummariesClaims, SummariesRecords, SummariesSt
         value.checkpoint = try JSONSerialization.data(withJSONObject: identities.map { ["label": $0.label, "name": $0.name, "time": $0.time, "quote": $0.quote] })
         try await files.progress(value)
     }
-    public func publish(_ job: Job, notes: String, warning: Bool) async throws {
-        try await files.publish(try Self.record(job, phase: "running", warning: warning), notes: notes, template: .default, keeping: .replacement)
+    public func publish(_ job: Job, notes: String, warning: Bool, keeping: SummariesKeeping) async throws {
+        try await files.publish(try Self.record(job, phase: "running", warning: warning), notes: notes, template: job.template.map { .init(id: $0.name, name: $0.name) } ?? .default,
+                                keeping: keeping == .rotation ? .rotation : .replacement)
     }
     /// Saves the job's last stage; only a succeeded or failed job is saved.
     public func save(_ job: Job, stage: SummariesState.Call.Stage, warning: Bool) async throws {
@@ -73,7 +78,8 @@ public struct SummariesFilesPort: SummariesClaims, SummariesRecords, SummariesSt
     static func saved(_ record: SummaryFiles.Record) throws -> SummariesSaved {
         let snapshot = try JSONDecoder().decode(Snapshot.self, from: record.snapshot)
         let job = Job(id: record.job, call: record.call, input: record.input, entries: snapshot.entries.map(\.value),
-                      speakers: snapshot.speakers, primary: snapshot.primary.value, fallback: snapshot.fallback?.value)
+                      speakers: snapshot.speakers, primary: snapshot.primary.value, fallback: snapshot.fallback?.value, template: snapshot.template?.value,
+                      keepPrevious: snapshot.keepPrevious ?? true, requested: snapshot.requested ?? false)
         let stages: [String: SummariesState.Call.Stage] = ["pending": .pending, "running": .observed, "interrupted": .interrupted,
                                                            "succeeded": .succeeded, "failed": .failed]
         guard let stage = stages[record.phase] else { throw CocoaError(.fileReadCorruptFile) }

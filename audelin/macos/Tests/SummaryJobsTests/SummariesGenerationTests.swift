@@ -40,7 +40,7 @@ import Testing
         #expect(format.payloads == [.init(stage: .publishing, warning: false)])
     }
     @Test(arguments: [false, true]) func notesDeliverPublishWithTheWarning(warning: Bool) {
-        assert(make(.noting, warning: warning), .noted("call", "notes"), delivers: .publish(makeJob(), "notes", warning: warning))
+        assert(make(.noting, warning: warning), .noted("call", "notes"), delivers: .publish(makeJob(), "notes", warning: warning, keeping: .rotation))
     }
     @Test func failedNotesAreSavedAsFailed() {
         assert(make(.noting), .notesFailed("call")) {
@@ -149,22 +149,22 @@ import Testing
     }
     @Test func publishWritesAndDeliversPublished() async {
         let storage = StorageSpy()
-        let event = await makeSUT(storage).handle(.publish(makeJob(), "notes", warning: true))
-        #expect(event == .published("call") && storage.payloads == [.publish(makeJob(), "notes", true)])
+        let event = await makeSUT(storage).handle(.publish(makeJob(), "notes", warning: true, keeping: .rotation))
+        #expect(event == .published("call") && storage.payloads == [.publish(makeJob(), "notes", true, .rotation)])
     }
     @Test func saveWritesReleasesAndDeliversSaved() async {
         let storage = StorageSpy()
         let event = await makeSUT(storage).handle(.save(makeJob(), .succeeded, warning: true))
         #expect(event == .saved("call") && storage.payloads == [.save(makeJob(), .succeeded, true), .release(makeJob())])
     }
-    @Test(arguments: [SummariesEffect.checkpoint(makeJob(), [], warning: false), .publish(makeJob(), "n", warning: false),
+    @Test(arguments: [SummariesEffect.checkpoint(makeJob(), [], warning: false), .publish(makeJob(), "n", warning: false, keeping: .rotation),
                       .save(makeJob(), .failed, warning: false)])
     func aFailedWriteReleasesAndDeliversStorageFailure(effect: SummariesEffect) async {
         let storage = StorageSpy(fails: true)
         let event = await makeSUT(storage).handle(effect)
         #expect(event == .storageFailed("call") && storage.payloads.last == .release(makeJob()) && storage.payloads.count == 2)
     }
-    @Test(arguments: [SummariesEffect.checkpoint(makeJob(), [], warning: false), .publish(makeJob(), "n", warning: false),
+    @Test(arguments: [SummariesEffect.checkpoint(makeJob(), [], warning: false), .publish(makeJob(), "n", warning: false, keeping: .rotation),
                       .save(makeJob(), .failed, warning: false)])
     func writesDoNotGenerate(effect: SummariesEffect) async {
         let generation = GenerationsSpy()
@@ -179,7 +179,7 @@ import Testing
     }
 
     private func makeSUT(_ storage: StorageSpy = StorageSpy(), _ generation: GenerationsSpy = GenerationsSpy()) -> SummariesEffectHandler {
-        .init(templates: TemplatesSpy(), preparation: PreparationSpy(), claims: ClaimsSpy(), records: RecordsSpy(), starts: StartsSpy(),
+        .init(keeping: { true }, templates: TemplatesSpy(), preparation: PreparationSpy(), claims: ClaimsSpy(), records: RecordsSpy(), starts: StartsSpy(),
               storage: storage, generation: generation)
     }
     private func makeSUT(generation: GenerationsSpy) -> SummariesEffectHandler { makeSUT(StorageSpy(), generation) }
@@ -187,14 +187,14 @@ import Testing
 
 final class StorageSpy: SummariesStorage {
     enum Payload: Equatable, Sendable {
-        case checkpoint(Job, [Identity], Bool), publish(Job, String, Bool), save(Job, SummariesState.Call.Stage, Bool), discard(Job), release(Job)
+        case checkpoint(Job, [Identity], Bool), publish(Job, String, Bool, SummariesKeeping), save(Job, SummariesState.Call.Stage, Bool), discard(Job), release(Job)
     }
     private let recorded = Mutex<[Payload]>([])
     private let fails: Bool
     init(fails: Bool = false) { self.fails = fails }
     var payloads: [Payload] { recorded.withLock { $0 } }
     func checkpoint(_ job: Job, identities: [Identity], warning: Bool) async throws { try record(.checkpoint(job, identities, warning)) }
-    func publish(_ job: Job, notes: String, warning: Bool) async throws { try record(.publish(job, notes, warning)) }
+    func publish(_ job: Job, notes: String, warning: Bool, keeping: SummariesKeeping) async throws { try record(.publish(job, notes, warning, keeping)) }
     func save(_ job: Job, stage: SummariesState.Call.Stage, warning: Bool) async throws { try record(.save(job, stage, warning)) }
     func discard(_ job: Job) async throws { try record(.discard(job)) }
     func release(_ job: Job) async { recorded.withLock { $0.append(.release(job)) } }

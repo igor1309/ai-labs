@@ -25,6 +25,7 @@ struct RecordingsInputs {
 
 /// What the detail asks of the call it shows.
 public enum CallsDetailEvent: Equatable, Sendable {
+    case makeSummaryWithTemplate(String)
     case copy, open, rename, makeSummary, cancelSummary, retrySummary, delete
     /// The tags line: open the field, type, take the completion, remove a chip, save, cancel.
     case editTags, typeTag(String), completeTag, removeTag(String), submitTags, cancelTags
@@ -48,6 +49,11 @@ public final class AudelinCalls {
     /// The window is too narrow for the call beside the list.
     private var narrow = false
     private let notes: (String) async throws -> (text: String, made: String?)?
+    private let makeWithTemplate: (String, String) -> Void
+    private let saveKeeping: (Bool) throws -> Void
+    private let readKeeping: () -> Bool
+    public var keepPreviousNotes: Bool { readKeeping() }
+    public func setKeepPreviousNotes(_ keeping: Bool) throws { try saveKeeping(keeping) }
     private let makeSummary: (String) -> Void
     private let cancelSummary: (String) async -> Void
     /// The list's selection and rename editing.
@@ -88,6 +94,9 @@ public final class AudelinCalls {
          summaryBadges: @escaping () -> [String: CallsListState.Row.Summary] = { [:] },
          notes: @escaping (String) async throws -> (text: String, made: String?)? = { _ in nil },
          makeSummary: @escaping (String) -> Void = { _ in },
+         makeWithTemplate: @escaping (String, String) -> Void = { _, _ in },
+         readKeeping: @escaping () -> Bool = { true },
+         saveKeeping: @escaping (Bool) throws -> Void = { _ in },
          cancelSummary: @escaping (String) async -> Void = { _ in },
          copy: @escaping (String) -> Void = { _ in },
          readCall: @escaping () -> Void = {},
@@ -103,6 +112,7 @@ public final class AudelinCalls {
         self.retrySummary = retrySummary
         self.copy = copy
         self.readCall = readCall
+        self.makeWithTemplate = makeWithTemplate; self.readKeeping = readKeeping; self.saveKeeping = saveKeeping
         self.makeSummary = makeSummary; self.cancelSummary = cancelSummary
         self.summaryStatuses = summaryStatuses
         self.summaryBadges = summaryBadges
@@ -416,6 +426,7 @@ public final class AudelinCalls {
         case .copy: if case let .notes(source, _) = shown.content { copy(source) }
         case .open: await send(.open(shown.id))
         case .rename: await send(.beginRename(shown.id))
+        case let .makeSummaryWithTemplate(template): makeWithTemplate(shown.id, template)
         case .makeSummary: await send(.makeSummary(shown.id))
         case .cancelSummary: await cancelSummary(shown.id)
         case .retrySummary: await send(.retrySummary(shown.id))

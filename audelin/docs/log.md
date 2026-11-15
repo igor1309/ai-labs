@@ -2,6 +2,8 @@
 
 ## 2026-11-15
 
+- LAB-1627: Notes jobs accept a chosen template again, keep the global keep-previous choice per run, and preserve published notes on failure or cancellation. Pending runs retain their saved template instructions.
+
 - LAB-1631: Calls can carry tags, kept in `tags.txt` in each call's folder. The detail header shows and edits them, rows show them as `#tag`, a strip of chips under the search field filters the list by tag, a `#tag` in the search does the same, plain search matches tags, and merged calls keep every part's tags.
 - LAB-1626: Notes storage publishes Previous and Current together with saved template attribution; older notes read as Default, and search reads only Current.
 

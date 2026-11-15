@@ -1,4 +1,25 @@
+public protocol SummariesTemplate: Equatable, Sendable {
+    var jobTemplate: Job.Template { get }
+    init(jobTemplate: Job.Template)
+}
+
 public struct Job: Equatable, Sendable {
+    public struct Template: Equatable, Sendable {
+        public struct Heading: Equatable, Sendable {
+            public var name: String
+            public var required: Bool
+            public init(name: String, required: Bool) { self.name = name; self.required = required }
+        }
+        public var name: String
+        public var instructions: String
+        public var headings: [[Heading]]
+        public init(name: String, instructions: String, headings: [[Heading]]) {
+            self.name = name; self.instructions = instructions; self.headings = headings
+        }
+    }
+    public var template: Template?
+    public var keepPrevious: Bool
+    public var requested: Bool
     public struct Runtime: Equatable, Sendable {
         public var kind: String
         public var model: String
@@ -22,7 +43,8 @@ public struct Job: Equatable, Sendable {
     public var speakers: Bool
     public var primary: Runtime
     public var fallback: Runtime?
-    public init(id: String, call: String, input: String, entries: [Entry], speakers: Bool, primary: Runtime, fallback: Runtime? = nil) {
+    public init(id: String, call: String, input: String, entries: [Entry], speakers: Bool, primary: Runtime, fallback: Runtime? = nil, template: Template? = nil, keepPrevious: Bool = true, requested: Bool = false) {
+        self.template = template; self.keepPrevious = keepPrevious; self.requested = requested
         self.id = id; self.call = call; self.input = input; self.entries = entries
         self.speakers = speakers; self.primary = primary; self.fallback = fallback
     }

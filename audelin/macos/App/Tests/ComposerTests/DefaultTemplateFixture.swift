@@ -5,6 +5,7 @@ import TemplateFiles
 @testable import Composer
 
 struct TestDefaultTemplates: SummariesTemplates {
+    func resolve(_ name: String) async throws -> NotesGeneration.Template { defaultJobTemplate() }
     func resolveDefault() async -> NotesGeneration.Template { defaultJobTemplate() }
 }
 func defaultJobTemplate() -> NotesGeneration.Template { notesTemplate(TemplateFiles.Files.builtInDefault) }

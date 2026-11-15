@@ -177,6 +177,54 @@ import Testing
             #expect(recoveredOld && recoveredNew)
         }
     }
+    @Test(arguments: [Keeping.rotation, .replacement])
+    func aFailedTerminalSaveRestoresThePublishedPair(keeping: Keeping) async throws {
+        try await withVersionsFolder { folder, files in
+            try await publishVersion("A", files: files, folder: folder)
+            try await publishVersion("B", files: files, folder: folder)
+            let old = try await files.versions(call: "call")
+            let disk = VersionDisk()
+            let owner = Files(locations: VersionLocation(folder: folder), disk: disk, ownershipDirectory: folder.appendingPathComponent("leases"))
+            let record = versionRecord("candidate")
+            _ = try await owner.claim(record); #expect(try await owner.start(record))
+            try await owner.publish(record, notes: "C", template: .default, keeping: keeping)
+            disk.failTerminal.withLock { $0 = true }
+            var terminal = record; terminal.phase = "succeeded"
+            await #expect(throws: (any Error).self) { try await owner.progress(terminal) }
+            #expect(try await files.versions(call: "call") == old)
+            #expect(try await files.load(call: "call")?.phase == "interrupted")
+        }
+    }
+
+    @Test(arguments: ["succeeded", "failed", "interrupted"])
+    func replacingASettledAttemptKeepsThePairAndRejectsAStaleReplacement(phase: String) async throws {
+        try await withVersionsFolder { folder, files in
+            try await publishVersion("A", files: files, folder: folder)
+            try await publishVersion("B", files: files, folder: folder)
+            let pair = try await files.versions(call: "call")
+            var old = versionRecord("old"); old.phase = phase
+            _ = try await files.claim(old)
+            var next = versionRecord("next"); next.snapshot = Data("captured configuration".utf8)
+            #expect(try await files.replaceAttempt(old, with: next) == next)
+            #expect(try await files.load(call: "call") == next)
+            #expect(try await files.versions(call: "call") == pair)
+            await #expect(throws: (any Error).self) { try await files.replaceAttempt(old, with: versionRecord("stale")) }
+            #expect(try await files.load(call: "call") == next)
+        }
+    }
+
+    @Test(arguments: ["pending", "running"])
+    func replacingAnActiveAttemptIsRefused(phase: String) async throws {
+        try await withVersionsFolder { _, files in
+            var old = versionRecord("old"); old.phase = phase
+            _ = try await files.claim(old)
+            await #expect(throws: (any Error).self) { try await files.replaceAttempt(old, with: versionRecord("next")) }
+            // Read the durable record without recovery changing an abandoned running phase.
+            let found = try await files.claim(versionRecord("observer"))
+            #expect(!found.owned && found.record == old)
+        }
+    }
+
 }
 
 private func versionRecord(_ job: String) -> Record {
@@ -254,6 +302,7 @@ private final class PublicationSnapshotDisk: Disk, Sendable {
     func remove(_ url: URL) throws { try observe("remove", at: url) { try base.remove(url) } }
 }
 private final class VersionDisk: Disk, Sendable {
+    let failTerminal = Mutex(false)
     let fail = Mutex(false)
     private let base = FileDisk()
     func read(_ url: URL) throws -> Data { try base.read(url) }
@@ -263,6 +312,7 @@ private final class VersionDisk: Disk, Sendable {
     func restore(_ data: Data, at url: URL, modified: Date) throws { try base.restore(data, at: url, modified: modified) }
     func remove(_ url: URL) throws { try base.remove(url) }
     func replace(_ data: Data, at url: URL) throws {
+        if url.lastPathComponent == ".summary-job.json", failTerminal.withLock({ $0 }) { throw CocoaError(.fileWriteUnknown) }
         if url.lastPathComponent == "summary.md", fail.withLock({ $0 }) { throw CocoaError(.fileWriteUnknown) }
         try base.replace(data, at: url)
     }

@@ -37,7 +37,7 @@ import Testing
     }
     @Test(arguments: [false, true]) func theTransactionsEndDeliversItsPublish(warning: Bool) {
         assert(make(transaction: true, ["b": deferred("b"), "a": deferred("a", warning: warning)]), .transaction(running: false),
-               delivers: .publish(makeJob(call: "a"), "notes", warning: warning))
+               delivers: .publish(makeJob(call: "a"), "notes", warning: warning, keeping: .rotation))
     }
     @Test func aSaveAfterTheTransactionPublishesTheNextDeferredCall() {
         let state = make(["a": .init(stage: .saving, job: makeJob(call: "a"), terminal: .succeeded), "b": deferred("b")])
@@ -48,7 +48,7 @@ import Testing
     }
     @Test func aSaveAfterTheTransactionDeliversTheNextPublish() {
         let state = make(["a": .init(stage: .saving, job: makeJob(call: "a"), terminal: .succeeded), "b": deferred("b")])
-        assert(state, .saved("a"), delivers: .publish(makeJob(call: "b"), "notes", warning: false))
+        assert(state, .saved("a"), delivers: .publish(makeJob(call: "b"), "notes", warning: false, keeping: .rotation))
     }
     @Test func aDeferredCallWaitsWhileTheTransactionRuns() {
         let state = make(transaction: true, ["a": .init(stage: .saving, job: makeJob(call: "a"), terminal: .succeeded), "b": deferred("b")])

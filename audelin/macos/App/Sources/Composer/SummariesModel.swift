@@ -18,12 +18,12 @@ public final class SummariesModel {
     private let model: ObservableModel<SummariesState, SummariesEvent, SummariesEffect>
     private let reducer: SummariesReducer
     private var listText: CallsListText
-    public init(templates: any SummariesTemplates<NotesGeneration.Template>, text: @escaping @Sendable () -> CallsListText, preparation: any SummariesPreparation, files: SummariesFilesPort,
+    public init(keeping: @escaping @Sendable () async -> Bool, templates: any SummariesTemplates<NotesGeneration.Template>, text: @escaping @Sendable () -> CallsListText, preparation: any SummariesPreparation, files: SummariesFilesPort,
          generation: any SummariesGeneration<NotesGeneration.Template>) {
         listText = text()
         let reducer = SummariesReducer(format: { text().summariesStatus($0, $1) }, badge: summariesBadge)
         self.reducer = reducer
-        let handler = SummariesEffectHandler(templates: templates, preparation: preparation, claims: files, records: files, starts: files,
+        let handler = SummariesEffectHandler(keeping: keeping, templates: templates, preparation: preparation, claims: files, records: files, starts: files,
                                              storage: files, generation: generation)
         model = ObservableModel(initialState: .init(), reduce: reducer.reduce,
                                 handleEffect: { effect in oneEvent { await handler.handle(effect) } })
@@ -67,7 +67,7 @@ public final class SummariesModel {
     /// Shows a just-ended recording as waiting for its transcript while notes are on.
     public func waiting(call: String, notesOn: Bool) { model.event(.waiting(call, notesOn: notesOn)) }
     /// Makes notes the user asked for from the call's stored transcript, even when notes are off.
-    public func make(call: String) { model.event(.request(call)) }
+    public func make(call: String, template: String = "Default") { model.event(.generate(call, template: template)) }
     /// Stops the call's notes and returns once the attempt is discarded or has settled.
     public func cancel(call: String) async {
         model.event(.cancel(call))
@@ -125,7 +125,7 @@ extension CallsListText {
     /// A call's notes status as its calls list row shows it, from the Summaries machine's stage.
     func summariesStatus(_ stage: SummariesState.Call.Stage, _ warning: Bool) -> String {
         switch stage {
-        case .waiting, .recovering, .preparing: self(.summaryWaiting)
+        case .waiting, .recovering, .preparing, .choosing, .selecting: self(.summaryWaiting)
         case .claiming, .pending, .observed, .retrying, .discarding: self(.summaryPending)
         case .reading, .starting, .identifying, .checkpointing, .resolving, .noting, .deferred, .publishing, .saving: self(.summaryRunning)
         case .succeeded: warning ? self(.summaryReadyUnnamed) : self(.summaryReady)
