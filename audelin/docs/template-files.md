@@ -35,8 +35,11 @@ The instructions must be nonempty. Faithfulness rules are added separately
 to every request. Changing the instructions or headings in `Default.md`
 changes the next notes attempt; a running attempt keeps the value it read.
 
-An absent folder is created with `Default.md`. Existing folders are never
-replenished. A missing or broken Default uses the built-in Default. Broken
+An absent folder is created with `Default.md` and `Daily.md`. Daily asks for a
+handoff: work to continue, who does what, blockers and planned fixes, and planned
+meetings. It distinguishes agreements from suggestions, marks unstated owners,
+dates and fixes as unclear, and labels topics not raised as not discussed.
+Existing folders are never replenished. A missing or broken Default uses the built-in Default. Broken
 files remain untouched and are listed with their reason alongside that
 fallback. Other missing or broken templates fail resolution with their
 name and reason.

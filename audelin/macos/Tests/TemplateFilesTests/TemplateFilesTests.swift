@@ -22,14 +22,20 @@ import Testing
         #expect(opened.withLock { $0 } == [folder])
     }
 
-    @Test func firstListingWritesDefaultAndAnExistingFolderIsNeverReplenished() throws {
+    @Test func firstListingWritesDefaultAndDailyAndAnExistingFolderIsNeverReplenished() throws {
         try withFolder { root in
             let folder = root.appendingPathComponent("Templates")
             let sut = Files(folder: folder, disk: FileDisk(), openFolder: { _ in })
             let catalogue = sut.list()
-            #expect(catalogue == Catalogue(entries: [Entry(name: "Default", file: "Default.md", reason: nil)], folderReason: nil))
+            #expect(catalogue == Catalogue(entries: [
+                Entry(name: "Daily", file: "Daily.md", reason: nil),
+                Entry(name: "Default", file: "Default.md", reason: nil),
+            ], folderReason: nil))
+            #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted() == ["Daily.md", "Default.md"])
+            #expect(try sut.resolve("Daily") == Files.parse(String(contentsOf: folder.appendingPathComponent("Daily.md"), encoding: .utf8)))
             #expect(try Files.parse(String(contentsOf: folder.appendingPathComponent("Default.md"), encoding: .utf8)) == Files.builtInDefault)
             try FileManager.default.removeItem(at: folder.appendingPathComponent("Default.md"))
+            try FileManager.default.removeItem(at: folder.appendingPathComponent("Daily.md"))
             #expect(sut.list().entries == [Entry(name: "Default", file: nil, reason: nil)])
             #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path).isEmpty)
             #expect(try sut.resolve("Default") == Files.builtInDefault)
@@ -43,18 +49,20 @@ import Testing
             #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path).isEmpty)
         }
     }
-    @Test func anExistingFolderIsNotReplenished() throws {
+    @Test(arguments: [false, true]) func anExistingFolderIsNotReplenished(hasDefault: Bool) throws {
         try withFolder { root in
             let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
-            try Files.encode(Files.builtInDefault).write(to: root.appendingPathComponent("Default.md"), atomically: true, encoding: .utf8)
-            #expect(sut.list().entries.map(\.name) == ["Default"])
-            #expect(try FileManager.default.contentsOfDirectory(atPath: root.path) == ["Default.md"])
+            if hasDefault {
+                try Files.encode(Files.builtInDefault).write(to: root.appendingPathComponent("Default.md"), atomically: true, encoding: .utf8)
+            }
+            #expect(sut.list().entries == [Entry(name: "Default", file: hasDefault ? "Default.md" : nil, reason: nil)])
+            #expect(try FileManager.default.contentsOfDirectory(atPath: root.path) == (hasDefault ? ["Default.md"] : []))
         }
     }
     @Test func validFilesAndEditsResolveTheirWholeContract() throws {
         try withFolder { root in
             let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
-            for name in ["Default", "Custom"] {
+            for name in ["Default", "Daily", "Custom"] {
                 let template = Template(name: name, instructions: "Write the marker \(name)", headings: [[Heading("Topic"), Heading("Questions", required: false), Heading("Actions")]])
                 let file = root.appendingPathComponent(name + ".md")
                 try Files.encode(template).write(to: file, atomically: true, encoding: .utf8)
@@ -63,6 +71,42 @@ import Testing
                 try Files.encode(edited).write(to: file, atomically: true, encoding: .utf8)
                 #expect(try sut.resolve(name) == edited)
             }
+        }
+    }
+    @Test func shippedDailyResolvesTheHandoffContract() throws {
+        try withFolder { root in
+            let folder = root.appendingPathComponent("Templates")
+            let sut = Files(folder: folder, disk: FileDisk(), openFolder: { _ in })
+            let daily = try sut.resolve("Daily")
+            #expect(daily.name == "Daily")
+            #expect(daily.headings == [
+                [Heading("What to continue"), Heading("Who does what"), Heading("Blockers and planned fixes"), Heading("Planned meetings")],
+                [Heading("Что продолжить"), Heading("Кто что делает"), Heading("Блокеры и планируемые решения"), Heading("Запланированные встречи")],
+            ])
+            let instructions = daily.instructions.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+            for instruction in [
+                "Focus on what to pick up next, not a recap or a speaker-by-speaker account.",
+                "name the work to continue and its next steps",
+                "list each action with its explicitly stated owner, deadline or condition",
+                "pair each blocker with its planned fix and the explicitly stated owner of that fix",
+                "Distinguish a planned fix from a completed one",
+                "list the meetings planned, their purpose, participants and dates or times only as stated in the transcript",
+                "label agreed actions and meetings as agreed, and suggestions as suggested",
+                "never turn a suggestion into a commitment",
+                "If an action or fix has no stated owner, write \"owner unclear\"",
+                "If a blocker has no stated fix, write \"fix unclear\"",
+                "If a date or time is unstated, write \"date unclear\" or \"time unclear\"",
+                "For any topic not raised, explicitly write \"not discussed\", never \"none\"",
+                "blockers not mentioned must read \"blockers not discussed\"",
+                "Translate these labels into the transcript's language",
+            ] {
+                #expect(instructions.contains(instruction), "Missing Daily instruction: \(instruction)")
+            }
+            var edited = daily
+            edited.instructions = "Use my daily handoff instructions"
+            edited.headings = [[Heading("Next steps"), Heading("Questions", required: false)]]
+            try Files.encode(edited).write(to: folder.appendingPathComponent("Daily.md"), atomically: true, encoding: .utf8)
+            #expect(try sut.resolve("Daily") == edited)
         }
     }
     @Test(arguments: [
@@ -105,18 +149,25 @@ import Testing
             #expect(try String(contentsOf: file, encoding: .utf8) == text)
         }
     }
-    @Test func aMissingOrBrokenChosenTemplateNeverUsesDefault() throws {
+    @Test(arguments: ["Custom", "Daily"]) func aMissingOrBrokenChosenTemplateNeverUsesDefault(name: String) throws {
         try withFolder { root in
-            let file = root.appendingPathComponent("Custom.md")
-            let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
-            let template = Template(name: "Custom", instructions: "Custom instructions", headings: [[Heading("Topic")]])
-            try Files.encode(template).write(to: file, atomically: true, encoding: .utf8)
-            #expect(sut.list().entries.contains(Entry(name: "Custom", file: "Custom.md", reason: nil)))
+            let folder = root.appendingPathComponent("Templates")
+            let file = folder.appendingPathComponent(name + ".md")
+            let sut = Files(folder: folder, disk: FileDisk(), openFolder: { _ in })
+            _ = sut.list()
+            if name == "Custom" {
+                let template = Template(name: name, instructions: "Custom instructions", headings: [[Heading("Topic")]])
+                try Files.encode(template).write(to: file, atomically: true, encoding: .utf8)
+            }
+            #expect(sut.list().entries.contains(Entry(name: name, file: name + ".md", reason: nil)))
             try FileManager.default.removeItem(at: file)
-            do { _ = try sut.resolve("Custom"); Issue.record("Missing template resolved") }
-            catch { #expect(String(describing: error).contains("Custom")) }
+            do { _ = try sut.resolve(name); Issue.record("Missing template resolved") }
+            catch { #expect(String(describing: error).contains(name)) }
+            #expect(!sut.list().entries.contains(where: { $0.name == name }))
+            #expect(!FileManager.default.fileExists(atPath: file.path))
             try "broken".write(to: file, atomically: true, encoding: .utf8)
-            #expect(throws: Failure.self) { try sut.resolve("Custom") }
+            #expect(throws: Failure.self) { try sut.resolve(name) }
+            #expect(try String(contentsOf: file, encoding: .utf8) == "broken")
         }
     }
     @Test func unreadableFolderReportsItsReasonAndOffersDefault() throws {

@@ -2,6 +2,8 @@
 
 ## 2026-11-15
 
+- LAB-1630: New templates folders include Daily for next-meeting handoffs: continuation, owners, blockers and planned fixes, and meetings, with agreements, suggestions and gaps stated explicitly. Existing folders keep their edits and deletions.
+
 - LAB-1629: Broken templates stay visible with their reasons; built-in Default stays usable, and the notes menu opens the templates folder and reports opening failures.
 
 - LAB-1628: The notes menu chooses an available template and saves the keep-previous choice. Notes show their template, switch between Previous and Current, and stay readable beside regeneration progress, cancellation and failures.
