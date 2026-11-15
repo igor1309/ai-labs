@@ -13,6 +13,9 @@ participant and drives none.
 - **A relaunch holds the calls-folder claim,** so no recording or folder
   move starts behind the decision to restart. Lifecycle takes the claim
   itself, keeps its token, and starts the new instance only once granted.
+- **Transcript finalization blocks a relaunch** until every opened transcript
+  has finished processing and saving and its final form has reached consumers,
+  including when a write fails.
 - **What blocks a relaunch arrives whenever it changes,** its first value
   included, and Lifecycle keeps it. An update check asks for a relaunch; it
   goes ahead only while running with nothing blocking.
