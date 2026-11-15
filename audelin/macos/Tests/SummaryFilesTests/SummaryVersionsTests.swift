@@ -141,22 +141,40 @@ import Testing
         }
     }
 
-    @Test(arguments: [false, true])
-    func recoveryAgreesWithTheAtomicCommit(committed: Bool) async throws {
+    @Test(arguments: [Keeping.rotation, .replacement])
+    func recoveryAgreesWithTheAtomicCommit(keeping: Keeping) async throws {
         try await withVersionsFolder { folder, files in
             // Previous text makes the receipt larger than a small fixed read buffer.
+            try await publishVersion("older", files: files, folder: folder)
             try await publishVersion(String(repeating: "A", count: 8_192), files: files, folder: folder)
             let old = try #require(try await files.versions(call: "call"))
+            let disk = PublicationSnapshotDisk(folder: folder)
+            let owner = Files(locations: VersionLocation(folder: folder), disk: disk, ownershipDirectory: folder.appendingPathComponent("leases"))
             let attempt = versionRecord("interrupted")
-            _ = try await files.claim(attempt); #expect(try await files.start(attempt))
-            if committed { try await files.publish(attempt, notes: "B", template: .default, keeping: .rotation) }
-            await files.release(job: attempt.job, call: attempt.call, input: attempt.input)
-            let reopened = Files(locations: VersionLocation(folder: folder), disk: FileDisk(), ownershipDirectory: folder.appendingPathComponent("leases"))
-            let record = try #require(try await reopened.load(call: "call"))
-            let pair = try #require(try await reopened.versions(call: "call"))
-            #expect(record.phase == (committed ? "succeeded" : "interrupted"))
-            if committed { #expect(pair.previous == old.current && pair.current.text == "B") }
-            else { #expect(pair == old) }
+            _ = try await owner.claim(attempt); #expect(try await owner.start(attempt))
+            disk.startCapturing()
+            let template = Attribution(id: "id-B", name: "B")
+            try await owner.publish(attempt, notes: "B", template: template, keeping: keeping)
+            let snapshots = disk.stopCapturing()
+            await owner.release(job: attempt.job, call: attempt.call, input: attempt.input)
+            let new = try #require(try await files.versions(call: "call"))
+            #expect(new.previous == (keeping == .rotation ? old.current : nil))
+            #expect(new.current.text == "B" && new.current.template == template)
+            var recoveredOld = false, recoveredNew = false
+            for snapshot in snapshots {
+                try await withVersionsFolder { recoveryFolder, reopened in
+                    try snapshot.restore(to: recoveryFolder)
+                    let record = try #require(try await reopened.load(call: "call"))
+                    let pair = try #require(try await reopened.versions(call: "call"))
+                    #expect(pair == old || pair == new, "\(snapshot.boundary)")
+                    var expected = attempt
+                    expected.phase = pair == new ? "succeeded" : "interrupted"
+                    #expect(record == expected, "\(snapshot.boundary)")
+                    recoveredOld = recoveredOld || pair == old
+                    recoveredNew = recoveredNew || pair == new
+                }
+            }
+            #expect(recoveredOld && recoveredNew)
         }
     }
 }
@@ -185,6 +203,55 @@ private func withVersionsFolder(_ body: (URL, Files) async throws -> Void) async
 private struct VersionLocation: Locations {
     let folder: URL
     func withFolder<Value: Sendable>(call: String, _ operation: @Sendable (URL) throws -> Value) async throws -> Value { try operation(folder) }
+}
+private final class PublicationSnapshotDisk: Disk, Sendable {
+    struct Snapshot: Sendable {
+        let boundary: String
+        let files: [String: (data: Data, modified: Date)]
+        func restore(to folder: URL) throws {
+            for (path, file) in files {
+                let url = folder.appendingPathComponent(path)
+                try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try FileDisk().restore(file.data, at: url, modified: file.modified)
+            }
+        }
+    }
+    private let folder: URL
+    private let base = FileDisk()
+    private let snapshots = Mutex<[Snapshot]?>(nil)
+    init(folder: URL) { self.folder = folder }
+    func startCapturing() { snapshots.withLock { $0 = [] } }
+    func stopCapturing() -> [Snapshot] {
+        snapshots.withLock { value in
+            defer { value = nil }
+            return value ?? []
+        }
+    }
+    private func capture(_ boundary: String) throws {
+        guard snapshots.withLock({ $0 != nil }) else { return }
+        var files: [String: (data: Data, modified: Date)] = [:]
+        for path in try FileManager.default.subpathsOfDirectory(atPath: folder.path) {
+            let url = folder.appendingPathComponent(path)
+            if try url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile == true {
+                files[path] = try base.readStamped(url)
+            }
+        }
+        let snapshot = Snapshot(boundary: boundary, files: files)
+        snapshots.withLock { $0?.append(snapshot) }
+    }
+    private func observe<Value>(_ operation: String, at url: URL, _ body: () throws -> Value) throws -> Value {
+        try capture("before \(operation) \(url.lastPathComponent)")
+        let value = try body()
+        try capture("after \(operation) \(url.lastPathComponent)")
+        return value
+    }
+    func read(_ url: URL) throws -> Data { try observe("read", at: url) { try base.read(url) } }
+    func exists(_ url: URL) throws -> Bool { try observe("exists", at: url) { try base.exists(url) } }
+    func create(_ data: Data, at url: URL) throws -> Bool { try observe("create", at: url) { try base.create(data, at: url) } }
+    func replace(_ data: Data, at url: URL) throws { try observe("replace", at: url) { try base.replace(data, at: url) } }
+    func readStamped(_ url: URL) throws -> (data: Data, modified: Date) { try observe("readStamped", at: url) { try base.readStamped(url) } }
+    func restore(_ data: Data, at url: URL, modified: Date) throws { try observe("restore", at: url) { try base.restore(data, at: url, modified: modified) } }
+    func remove(_ url: URL) throws { try observe("remove", at: url) { try base.remove(url) } }
 }
 private final class VersionDisk: Disk, Sendable {
     let fail = Mutex(false)

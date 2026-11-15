@@ -50,6 +50,7 @@ pair whole. Evidence: `SummaryVersionsTests.readersSeeAWholePairAcrossTheCommit`
 
 ## S-10 Recovery after an interrupted publication
 
-Drive: abandon the owner before or after the atomic notes replacement,
-build a new adapter on the folder; read back a whole pair and the attempt's
-matching outcome. Evidence: `SummaryVersionsTests.recoveryAgreesWithTheAtomicCommit`.
+Drive: publish with rotation and replacement, stopping at each gated step
+through the disk binding; build a new adapter on each captured folder state.
+Read back the complete old or new pair, including dates and attribution, and
+the attempt's matching outcome. Evidence: `SummaryVersionsTests.recoveryAgreesWithTheAtomicCommit`.
