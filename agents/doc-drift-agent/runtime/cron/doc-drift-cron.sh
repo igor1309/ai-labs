@@ -62,23 +62,98 @@ if [[ -n "$last" && "$last" != "null" ]]; then
   fi
 fi
 
-{
-  echo "=== ${now_iso} refreshing ${REPO_PATH} ==="
-  cd "$REPO_PATH"
-  git fetch --quiet origin trunk
-  git checkout --quiet trunk
-  git pull --ff-only --quiet
-  echo "head: $(git log --oneline -1)"
-} >> "$LOG_FILE" 2>&1
+fail_run() {
+  logger -t openclaw-doc-drift "ERROR: $1"
+  printf '%s ERROR: %s\n' "$now_iso" "$1" >> "$LOG_FILE"
+  tg "[doc-drift] ⚠ run FAILED — $1
+
+Run: scheduled · ${now_human}
+See ${LOG_FILE} on VPS."
+  exit 1
+}
+
+# Never stash, reset or clean the shared checkout. Refuse staged, unstaged and
+# untracked changes before switching branches; any refresh failure stops the run.
+refresh_source() {
+  local status
+  cd "$REPO_PATH" || return 1
+  status=$(git status --porcelain --untracked-files=all) || return 1
+  if [[ -n "$status" ]]; then
+    echo "source refresh refused: checkout has local changes; preserved unchanged"
+    return 1
+  fi
+  git fetch --quiet origin trunk || return 1
+  git checkout --quiet trunk || return 1
+  git merge --ff-only --quiet origin/trunk || return 1
+  printf 'head: '
+  git log --oneline -1
+}
+if ! refresh_source >> "$LOG_FILE" 2>&1; then
+  fail_run "source refresh failed; agent not started"
+fi
+
+# Keep the existing 900 MB limit; an unreadable sample is not safe headroom.
+read_swap() {
+  local sample
+  sample=$(free -m) || return 1
+  awk '/^Swap:/ && $3 ~ /^[0-9]+$/ {print $3; found=1}
+       END {if (!found) exit 1}' <<< "$sample"
+}
+_sw=$(read_swap) || fail_run "swap check failed; agent not started"
+if (( _sw > 900 )); then
+  fail_run "SWAP-GUARD swap=${_sw}M > 900; agent not started"
+fi
 
 logger -t openclaw-doc-drift "running scheduled drift check"
-
 export PATH=/home/openclaw/.npm-global/bin:$PATH
-output_file=$(mktemp)
-trap 'rm -f "$output_file"' EXIT
+run_dir=$(mktemp -d) || fail_run "cannot create run directory"
+output_file="$run_dir/output"
+guard_reason="$run_dir/guard-reason"
+_guard=""
+cleanup() {
+  if [[ -n "$_guard" ]]; then
+    kill "$_guard" 2>/dev/null || true
+    wait "$_guard" 2>/dev/null || true
+  fi
+  rm -rf -- "$run_dir"
+}
+trap cleanup EXIT
 
-openclaw agent --agent doc-drift-agent --message "/doc-drift-review --scheduled" > "$output_file" 2>&1
+# --local runs the agent EMBEDDED (one-shot, on the existing Codex OAuth — no API key)
+# instead of via the gateway, whose execution path spawns a Codex openclaw-hooks swarm on
+# heavy reviews that swap-thrashes this 2.4 GB host. The embedded path does not.
+# Why + verification numbers: vps/OpenClaw/gotchas.md #28 (RESOLVED 2026-06-30).
+# --timeout 1200 covers the heaviest pass (the full README pass nears the 600 s default).
+# Swap-guard: kill the embedded run if swap exceeds 900 MB — cheap insurance; --local does
+# not swarm, but swap exhaustion is the failure mode that started all this.
+# --session-key: a new session per run. A reused session carried a Codex thread whose
+# last turn ran on gpt-5.5; after that model's retirement every pre-turn compaction asked
+# for gpt-5.5 and failed (400), so the run never reached the model (2026-10-15..22).
+( for _g in $(seq 1 420); do
+    reason=""
+    if ! _sw=$(read_swap); then
+      reason="SWAP-GUARD swap check failed"
+    elif (( _sw > 900 )); then
+      reason="SWAP-GUARD swap=${_sw}M > 900"
+    fi
+    if [[ -n "$reason" ]]; then
+      printf '%s\n' "$reason" > "$guard_reason"
+      logger -t openclaw-doc-drift "$reason -> killing embedded run"
+      pkill -f "agent --local.*doc-drift-agent"
+      break
+    fi
+    sleep 3
+  done ) &
+_guard=$!
+openclaw agent --local --agent doc-drift-agent --session-key "scheduled-$(date -u +%Y%m%dT%H%M%SZ)" --timeout 1200 --message "/doc-drift-review --scheduled" > "$output_file" 2>&1
 rc=$?
+kill "$_guard" 2>/dev/null || true
+wait "$_guard" 2>/dev/null || true
+_guard=""
+if [[ -s "$guard_reason" ]]; then
+  cat "$guard_reason" >> "$LOG_FILE"
+  fail_run "$(cat "$guard_reason"); agent run aborted"
+fi
 end_iso=$(date -u +%FT%TZ)
 
 { echo "=== ${now_iso} scheduled run starting (rc=${rc}) ==="
@@ -91,13 +166,26 @@ end_iso=$(date -u +%FT%TZ)
 # report; without this guard `findings` would default to 0 and a failed run would
 # be indistinguishable from a clean (silent) one. Alert instead — and post only a
 # bounded tail, never the whole captured file.
+# Degraded success: the agent sometimes replies with the compact Telegram message
+# instead of the report (2026-10-23, 11-09, 11-15). If it exited 0 and that message
+# names PR URLs, forward it as drift (marked) rather than raising a false FAILED.
+if (( rc == 0 )) && ! grep -qE "^- Findings: " "$output_file" \
+   && grep -qE '^\[doc-drift\] Drift found' "$output_file" \
+   && grep -qE 'https://github\.com/[^ |)]+/pull/[0-9]+' "$output_file"; then
+  logger -t openclaw-doc-drift "WARN: report missing; agent replied in notification format"
+  tg "$(sed -n '/^\[doc-drift\] Drift found/,/^Do not auto-merge/p' "$output_file" | head -c 3000)
+
+(report format missing — agent replied in notification format; details in ${LOG_FILE} on VPS)"
+  exit 0
+fi
+
 if (( rc != 0 )) || ! grep -qE "^- Findings: " "$output_file"; then
   logger -t openclaw-doc-drift "ERROR: agent run failed (rc=${rc}, report $(grep -qE '^- Findings: ' "$output_file" && echo present || echo missing))"
   tg "[doc-drift] ⚠ run FAILED — no valid report
 
 Run: scheduled · ${now_human}
 Exit: ${rc} · report: $(grep -qE '^- Findings: ' "$output_file" && echo present || echo missing)
-Likely the model/auth was unavailable or a tool crashed. Check the gateway and ${LOG_FILE} on VPS.
+Check agent output in ${LOG_FILE} on VPS for the failure cause.
 
 $(tail -c 1000 "$output_file")"
   exit 1

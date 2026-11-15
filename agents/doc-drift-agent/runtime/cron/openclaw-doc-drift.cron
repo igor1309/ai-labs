@@ -1,7 +1,12 @@
 # OpenClaw doc-drift-agent: daily scheduled README drift review.
-# Cron is UTC; runs at 01:00 UTC daily. The wrapper enforces the 12h
-# manual-run suppression gate before invoking the agent, which reviews the
-# whole README set in one pass.
+# Cron is UTC; runs at 01:00 UTC daily — 1h after maestro (00:00), 1h before
+# dashboard-sync (02:00). The wrapper enforces the 12h manual-run suppression gate,
+# runs the agent via `--local` (embedded one-shot, on the existing Codex OAuth — NOT
+# the gateway), and reviews the whole README set in one pass.
 #
 # Deployed to: /etc/cron.d/openclaw-doc-drift (root:root, mode 644).
 0 1 * * * openclaw /home/openclaw/.openclaw/scripts/doc-drift-cron.sh
+#
+# ENABLED 2026-06-30. The wrapper runs the agent `--local` (embedded, existing OAuth) to
+# avoid the gateway hook swarm — why + verification in gotchas.md #28 (RESOLVED). Same
+# pattern as maestro-review (validated end-to-end). To disable: comment the schedule line above.
