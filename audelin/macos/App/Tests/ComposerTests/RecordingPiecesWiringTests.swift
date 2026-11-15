@@ -33,6 +33,7 @@ struct RecordingPiecesWiringTests {
             #expect(rig.waiting.all.isEmpty)
             await rig.stop()
             #expect(rig.waiting.all.count == 1)
+            #expect(recording.callID != nil)
             #expect(rig.waiting.all.map(\.lastPathComponent).compactMap { Calls.id(in: $0, timeZone: .gmt) } == [recording.callID].compactMap { $0 })
         }
     }
@@ -59,6 +60,26 @@ struct RecordingPiecesWiringTests {
             let failed = await rig.wait { $0.faults == [.microphone, .callAudio] }
             #expect(failed.cannotRecord == "no track can record")
             _ = await rig.wait { $0.phase == .idle }
+        }
+    }
+
+    /// Audio windows change only the pieces: Recording's log and its own-state feed pass over them.
+    @Test func audioWindowsReachNeitherRecordingsLogNorItsOwnStates() async throws {
+
+        try await withPieces { rig in
+            let recording = await rig.record()
+            let id = recording.session!.id
+            var own = await rig.recording.ownStates().makeAsyncIterator()
+            _ = await own.next()
+            let logged = rig.log.entries.all.filter { $0.category == .recording }.count
+            for start in 0..<5 {
+                await rig.recording.send(.session(id: id, .microphoneLevel(start: Double(start), end: Double(start) + 1, rms: 0.1)))
+            }
+            await rig.recording.send(.automaticChanged(!recording.automatic))
+            #expect(await own.next()?.automatic == !recording.automatic)
+            #expect(rig.log.entries.all.filter { $0.category == .recording }.count == logged + 1)
+            #expect(await rig.recording.state().pieces?.audioObservation != recording.pieces?.audioObservation)
+            await rig.stop()
         }
     }
 

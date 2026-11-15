@@ -339,7 +339,7 @@ func stopEffect(_ piece: SessionState.Piece) -> SessionEffect {
 // MARK: - Any values
 
 func anyError() -> String { "any error" }
-func anyFolder() -> SessionCallFolder { .init(id: "any folder") }
+func anyFolder() -> SessionCallFolder { .init(id: "any folder", callID: "any call") }
 func anySelection() -> SessionProcessSelection { .init(id: "any selection") }
 func anyRequestID() -> UInt64 { 42 }
 

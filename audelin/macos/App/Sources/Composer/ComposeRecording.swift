@@ -19,7 +19,12 @@ func composeRecording(
         guard let recording = destination.withLock({ $0 }) else { return }
         await recording.send(event)
     }, panel: panel, finalization: finalization, finalizationResources: finalizationResources, summaries: summaries)
-    let log = { @Sendable state in StateLog(sink: sink).recording(state) }
+    let logged = Mutex<RecordingState?>(nil)
+    let log = { @Sendable (state: RecordingState) in
+        let own = recordingOwnState(state)
+        guard logged.withLock({ let changed = $0 != own; $0 = own; return changed }) else { return }
+        StateLog(sink: sink).recording(state)
+    }
     log(initial)
     let model = await makeRecording(initial: initial, log: log, callAudioReady: {
         guard await access.refresh() else { return false }
@@ -40,4 +45,11 @@ func composeRecording(
     let connected = recording
     destination.withLock { $0 = connected }
     return recording
+}
+
+/// Recording's state without its pieces, which change with every audio window.
+func recordingOwnState(_ state: RecordingState) -> RecordingState {
+    var own = state
+    own.pieces = nil
+    return own
 }

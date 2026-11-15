@@ -98,7 +98,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
 
         let made = try folder.make(title: folderTitle)
         self.made = made
-        return SessionCallFolder(id: made.url.path)
+        return SessionCallFolder(id: made.url.path, callID: made.id)
     }
 
     func select() async throws -> SessionProcessSelection {

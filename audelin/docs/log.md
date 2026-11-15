@@ -2,6 +2,7 @@
 
 ## 2026-11-15
 
+- LAB-1601: Recording a call uses as much CPU as before LAB-1577 again; audio no longer re-reads the call folder name or redraws the menu.
 - LAB-1577: One state machine runs each recording, from getting call audio through bringing its pieces up and down to releasing call audio; there is no longer a separate session machine per recording. Behaviour is unchanged.
 
 ## 2026-11-14
