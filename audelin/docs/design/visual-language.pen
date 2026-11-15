@@ -53128,7 +53128,7 @@
                 {
                   "type": "frame",
                   "id": "reQzx",
-                  "name": "Готово",
+                  "name": "Отменить",
                   "fill": "$btn",
                   "cornerRadius": "$radius-control",
                   "padding": [
@@ -53142,7 +53142,7 @@
                       "id": "o0fJb",
                       "name": "Label",
                       "fill": "$text",
-                      "content": "Готово",
+                      "content": "Отменить",
                       "fontFamily": "$font-ui",
                       "fontSize": "$type-caption",
                       "fontWeight": "600"
@@ -61480,7 +61480,7 @@
       "name": "Note merge mode",
       "width": 520,
       "height": 420,
-      "content": "Merge mode\n\nEntered from «Объединить звонки…» (combine icon), leading the list bar's actions. The list bar becomes the Merge bar: «Объединение», «Готово» to leave (Escape too) and «Объединить N», which counts the marked calls.\n\nEvery row shows a mark before its time: an empty circle in `gutter`, or a checked circle in `me` when marked. A click marks or unmarks the row; it does not change the selection, so the detail keeps the call it showed.\n\nWith fewer than two marked the merge button is disabled (`dis`, `disText`) and still counts. Narrow (below 700 pt) the bar and marks are the same over the full-width list.\n\nOpen: whether the row actions stay visible, disabled, in merge mode."
+      "content": "Merge mode\n\nEntered from «Объединить звонки…» (combine icon), leading the list bar's actions. The list bar becomes the Merge bar: «Объединение», «Отменить» to leave (Escape too) and «Объединить N», which counts the marked calls.\n\nEvery row shows a mark before its time: an empty circle in `gutter`, or a checked circle in `me` when marked. A click marks or unmarks the row; it does not change the selection, so the detail keeps the call it showed.\n\nWith fewer than two marked the merge button is disabled (`dis`, `disText`) and still counts. Narrow (below 700 pt) the bar and marks are the same over the full-width list.\n\nOpen: whether the row actions stay visible, disabled, in merge mode."
     },
     {
       "type": "frame",
@@ -63800,7 +63800,7 @@
       "name": "Note merge outcomes",
       "width": 520,
       "height": 420,
-      "content": "Merge outcomes\n\nFar apart: when an unselected call lies between selected ones, a sheet asks again. «Объединить всё равно» merges; «Назад» returns to merge mode with the selection kept.\n\nBusy: entering merge mode or confirming while Audelin records, transcribes or summarises shows the error banner at the foot of the list with the busy sentence. On entry the list stays in its normal bar; on confirm merge mode and the selection stay.\n\nMerging: the merge bar shows «Объединяю…» disabled and hides «Готово»; rows take no clicks. When it ends the list returns with the merged call selected.\n\nFailed: merge mode stays with the selection, and the banner names the reason. The calls are left as they were."
+      "content": "Merge outcomes\n\nFar apart: when an unselected call lies between selected ones, a sheet asks again. «Объединить всё равно» merges; «Назад» returns to merge mode with the selection kept.\n\nBusy: entering merge mode or confirming while Audelin records, transcribes or summarises shows the error banner at the foot of the list with the busy sentence. On entry the list stays in its normal bar; on confirm merge mode and the selection stay.\n\nMerging: the merge bar shows «Объединяю…» disabled and hides «Отменить»; rows take no clicks. When it ends the list returns with the merged call selected.\n\nFailed: merge mode stays with the selection, and the banner names the reason. The calls are left as they were."
     },
     {
       "type": "frame",
