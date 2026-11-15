@@ -47,8 +47,8 @@ platform; anything else breaks rule 1. The lanes of
 | Kind | May import | Targets |
 |---|---|---|
 | Machine | nothing | Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, NotesMenu, CallsList, TranscriptFinalization, RecordingConditions, CallNames |
-| Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, LatestText, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch |
-| Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, TemplateFiles, NotesGeneration, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, Calls, CallsStorage, Preferences |
+| Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, LatestText, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch, CallTags |
+| Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, TemplateFiles, NotesGeneration, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, TagsFile, Calls, CallsStorage, Preferences |
 | Shared helper | nothing | SplitRows, CallFolderName, AudioConversion, ModelLoading |
 | UI | GlassLedger, NotesMarkdown, other UI | PanelUI, SettingsUI, MenuBar, CallsListUI, CallsWindowUI, SummaryPreviewUI, NotesMarkdown, GlassLedger |
 | Composition | anything | Composer, LiveAudio, RecordedCapture, CallsWindowShell, Audelin |
@@ -425,6 +425,48 @@ shown.
 The root constructs Transcript join and the merge port's chain with the
 rest of the calls window's composition, and holds them as long as it holds
 Recordings.
+
+## Call tags
+
+The user tags calls by hand and finds them by tags (LAB-1617,
+`docs/spec/call-tags/`). Five responsibilities are new: the tags file,
+the tag rules, changing a call's tags, editing them, and keeping parts'
+tags on a merge.
+
+**TagsFile** is the only reader and writer of a call's `tags.txt`; outward
+it speaks a call's tags as words. It writes through CallsStorage's
+location and transaction port, as SummaryFiles does, so a tag write never
+lands in a moving folder. Calls keeps listing folders without reading it.
+
+**CallTags** is a plain operator holding the tag rules: folding case and
+ё/е, trimming and deduplicating, taking `#tag` words out of a query,
+keeping calls that have every chosen tag, and the tags in use, most used
+first. It keeps its own folding; CallsSearch never learns of tags, since
+the composition passes a call's tags to it as more title text.
+
+**Recordings owns changing a call's tags,** through one new port: set this
+call's tags, reporting set or why not. A tag write changes a listed call,
+as rename does, and must exclude a move or a merge, which one state
+already holds. It reloads its list after the write.
+
+**CallsList holds the tags being edited,** as it holds the inline rename:
+its reducer commits the draft when the selection moves, drops it on
+cancel, and publishes a set-tags request the composer routes to
+Recordings, sending the outcome back as an event.
+
+The calls composition holds the chosen filter tags beside the search
+query, and both reset when the calls window opens. On each change it asks
+CallTags to split the query, filter the listed calls and list the strip's
+tags. It supplies each row's and the detail's tags from TagsFile alongside
+the list, as it supplies gists from SummaryFiles.
+
+**A merge keeps its parts' tags** through a decorator at the root over
+Recordings' merge port: it reads the parts' tags through TagsFile before
+the merge and writes their union to the merged call after it. Neither
+Recordings nor Calls learns of tags.
+
+CallsListUI draws row tags and the filter strip; the detail header draws
+the tags line and its editing field. They render state and send events.
 
 ## Transcript pipeline
 
