@@ -209,9 +209,10 @@ private func withPieces(folderFails: Bool = false, consumeTranscript: Bool = tru
             await recording.send(.conditionChanged(condition, available: true))
         }
         try await body(PiecesRig(recording: recording, resources: resources, panel: panel, microphones: microphones, calls: calls, waiting: waiting, log: log))
+        await finalization.send(.shutdown)
         await recording.end()
         await delivery?.value
-        if delivery == nil { await finalization.send(.shutdown) }
+        if delivery == nil { await finalization.send(.inputEnded) }
         await finalization.settled()
         await processes.stop()
     }

@@ -117,7 +117,10 @@ struct TranscriptFinalizationEntriesTests {
 
     @Test func noEntriesAreMadeBeforeTheFinalForm() {
         let (sut, spy) = makeSUT()
-        for (state, event) in [(makeState(), Event.wrote(call: callID, "a")), (makeState(makeCall()), .closed(call: callID, names: "names")),
+        for (state, event) in [(makeState(), Event.inputEnded), (makeState(), .shutdown),
+                               (makeState(shuttingDown: true), .opened(call: callID)),
+                               (makeState(shuttingDown: true), .wrote(call: callID, "saved")),
+                               (makeState(), Event.wrote(call: callID, "a")), (makeState(makeCall()), .closed(call: callID, names: "names")),
                                (makeState(makeCall(.diarizing)), .diarized(call: callID, "far")),
                                (makeState(makeCall(.cleaning)), .cleaned(call: callID, "heard"))] + outOfStage {
             _ = sut.reduce(state, event)

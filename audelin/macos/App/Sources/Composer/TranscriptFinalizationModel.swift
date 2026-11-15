@@ -40,7 +40,7 @@ final class TranscriptFinalizationModel {
     func send(_ event: Event) { model.event(event) }
     func states() -> AsyncStream<State> { feed.subscribe(from: model.state) }
 
-    /// Returns once the machine publishes settled; its shutdown comes from Recording's transcript output.
+    /// Returns once shutdown, the end of transcript input and every final publication have settled.
     func settled() async {
         for await state in Observations({ self.model.state }) where state.settled { return }
     }

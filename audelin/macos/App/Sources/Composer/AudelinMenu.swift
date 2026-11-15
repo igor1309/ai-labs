@@ -317,6 +317,7 @@ public final class AudelinMenu {
     private func shutDown(application: MenuApplication?, finalization: TranscriptFinalizationModel) {
 
         let termination = termination
+        finalization.send(.shutdown)
         if let application {
             Task {
                 await application.stopDelivery()
@@ -326,7 +327,7 @@ public final class AudelinMenu {
             }
         } else {
             // Without Recording no transcript output ends, so finalization is told directly.
-            finalization.send(.shutdown)
+            finalization.send(.inputEnded)
         }
         if let calls {
             Task { await calls.drainMove(); termination.event(.settled(.storage)) }

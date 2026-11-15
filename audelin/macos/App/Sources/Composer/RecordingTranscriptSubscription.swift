@@ -3,7 +3,7 @@ import Recording
 
 typealias RecordingTranscript = RecordingTranscriptOutput<CallState, CallNamesState>
 
-/// Sends finalization each transcript outcome in order, and its shutdown once the output ends:
+/// Sends finalization each transcript outcome in order, and input ended once the output ends:
 /// Recording's transcript output ends only when Recording settles, after its last close.
 func subscribeTranscriptFinalization(
     _ output: AsyncStream<RecordingTranscript>,
@@ -19,6 +19,6 @@ func subscribeTranscriptFinalization(
             }
             await send(event)
         }
-        await send(.shutdown)
+        await send(.inputEnded)
     }
 }
