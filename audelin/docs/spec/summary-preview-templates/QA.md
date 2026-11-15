@@ -21,6 +21,8 @@ and each newer answer presents exactly once per opening, including reopening. Ev
 
 Drive: fixture with Daily unusable; read back Daily disabled with its
 reason, and pressing it records no interaction. Evidence: `BrokenTemplatesMenuTests.unusableFilesDrawReasonsAndOnlyUsableChoicesSendEvents` (Russian and English, with and without usable files).
+The same test checks the visible files-reason row's plain and attributed text,
+disabled state and indentation, and its absence when no files reason is supplied.
 
 ## S-4 The keep check item
 

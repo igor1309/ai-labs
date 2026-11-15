@@ -67,3 +67,7 @@ The catalogue and folder connection is covered by
 broken file reasons and built-in Default reach the menu, opening targets the
 templates folder, success and failure reach the menu, and a repaired file is
 usable on reopening.
+
+`NotesMenuCompositionTests.catalogueMappingPreservesFolderReasons` checks that
+distinct folder-read failure reasons reach the menu catalogue unchanged, and
+successful empty, file-backed and built-in catalogues keep no folder reason.

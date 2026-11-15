@@ -9,6 +9,20 @@ import Testing
 
 @MainActor @Suite(.timeLimit(.minutes(1)))
 struct NotesMenuCompositionTests {
+    @Test(arguments: [
+        Catalogue(entries: [Entry(name: "Default", file: nil, reason: nil)], folderReason: "Permission denied"),
+        Catalogue(entries: [Entry(name: "Default", file: nil, reason: nil)], folderReason: "Not a directory"),
+        Catalogue(entries: [], folderReason: nil),
+        Catalogue(entries: [Entry(name: "Review", file: "Review.md", reason: nil)], folderReason: nil),
+        Catalogue(entries: [Entry(name: "Default", file: nil, reason: nil)], folderReason: nil),
+    ])
+    nonisolated func catalogueMappingPreservesFolderReasons(catalogue: Catalogue) {
+        let mapped = notesCatalogue(catalogue)
+        #expect(mapped.folderReason == catalogue.folderReason)
+        #expect(mapped.templates.map(\.name) == catalogue.entries.map(\.name))
+        #expect(mapped.templates.map(\.isFile) == catalogue.entries.map { $0.file != nil })
+    }
+
     @Test(arguments: [false, true]) func brokenFilesAndFolderOutcomesReachThePresentedMenu(opens: Bool) async throws {
         try await withComposeFolder { root in
             let folder = root.appendingPathComponent("Templates")

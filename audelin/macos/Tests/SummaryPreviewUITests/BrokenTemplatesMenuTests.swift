@@ -36,9 +36,15 @@ struct BrokenTemplatesMenuTests {
         #expect(reason.title == state.templates[1].reason && !reason.isEnabled && reason.indentationLevel == 1)
         #expect(items.first { $0.accessibilityIdentifier() == "preview.template.Default" }?.isEnabled == true)
         #expect(items.first { $0.accessibilityIdentifier() == "preview.templateFiles" }?.title == (noUsableFiles ? text(.templateFiles) : nil))
+        let filesReason = items.first { $0.accessibilityIdentifier() == "preview.templateFilesReason" }
         if noUsableFiles {
             let files = try #require(items.first { $0.accessibilityIdentifier() == "preview.templateFiles" })
             #expect(!files.isEnabled && files.accessibilityValue() as? String == state.filesReason)
+            let explanation = try #require(filesReason)
+            #expect(explanation.title == state.filesReason && explanation.attributedTitle?.string == state.filesReason)
+            #expect(!explanation.isEnabled && explanation.indentationLevel == 1)
+        } else {
+            #expect(filesReason == nil)
         }
         _ = (broken.target as? NSObject)?.perform(broken.action, with: broken)
         #expect(events.isEmpty)

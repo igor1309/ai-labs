@@ -18,6 +18,11 @@ Daily file was written and no Daily file entry is listed. Evidence: `TemplateFil
 Drive: write an unusable file, list, then compare the file's bytes and modification date with
 those written. Evidence: `TemplateFilesTests.brokenFilesAreVisibleUnchangedAndDefaultStillResolves`.
 
+Names rejected by resolution are listed with the same reason, with the file
+unchanged and built-in Default available:
+`TemplateFilesTests.rejectedNamesAreListedWithTheirReasonAndBuiltInDefault`
+covers empty, dot, dot-dot and backslash names in a temporary folder.
+
 ## S-5 An edit is resolved
 
 Drive: resolve Daily, rewrite its file, resolve again; read back the second

@@ -130,7 +130,25 @@ import Testing
             #expect(try sut.resolve("Default") == Files.builtInDefault)
         }
     }
-    @Test(arguments: ["../Other", "/tmp/Other", "", "..", "Other\\File"])
+    @Test(arguments: ["", ".", "..", "Weekly\\Review"])
+    func rejectedNamesAreListedWithTheirReasonAndBuiltInDefault(name: String) throws {
+        try withFolder { root in
+            let template = Template(name: name, instructions: "Write notes", headings: [[Heading("Topic")]])
+            let text = try Files.encode(template)
+            let file = root.appendingPathComponent(name + ".md")
+            try text.write(to: file, atomically: true, encoding: .utf8)
+            let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
+            let reason = "Invalid template name: \(name)"
+            #expect(sut.list() == Catalogue(entries: [
+                Entry(name: name, file: name + ".md", reason: reason),
+                Entry(name: "Default", file: nil, reason: nil),
+            ], folderReason: nil))
+            #expect(throws: Failure(reason)) { try sut.resolve(name) }
+            #expect(try sut.resolve("Default") == Files.builtInDefault)
+            #expect(try String(contentsOf: file, encoding: .utf8) == text)
+        }
+    }
+    @Test(arguments: ["../Other", "/tmp/Other", "", ".", "..", "Other\\File"])
     func resolutionRejectsPaths(name: String) throws {
         try withFolder { root in
             #expect(throws: Failure.self) { try Files(folder: root, disk: FileDisk(), openFolder: { _ in }).resolve(name) }
