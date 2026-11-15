@@ -51,7 +51,7 @@ On every run, in order:
 
 8. **Propose each uncovered fix as a new pull request.** One PR per cohesive uncovered finding (or per cohesive group of uncovered findings on the same README). Use `fix-pr-template.md` for the title and body. Each PR is opened against `trunk` from a dedicated branch following the convention `doc-drift/<slug>` where `<slug>` is a short kebab-case label derived from the finding (e.g. `doc-drift/components-table-missing-row`, `doc-drift/notio-release-tag-mismatch`). The PR body restates the finding, attaches the evidence, declares the scope-of-change checklist, and includes a "do not auto-merge" reminder. Tag the corresponding row in the Fix PRs table with `new` status.
 
-9. **Hand the report and the PR list back to the runtime** so OpenClaw can post the Telegram notification per `notification-spec.md`.
+9. **Your final reply is the report, verbatim, per `report-format.md`** — starting with `# Doc Drift Report` and its `- Field: value` header lines, PR URLs in the Fix PRs table. Never write the Telegram message (`[doc-drift] Drift found — …`) yourself: the runtime builds it from your report per `notification-spec.md`. A reply without the `- Findings:` line is treated as a failed run.
 
 10. **Persist the manual-run timestamp.** If, and only if, the trigger message is a manual run (the message body does NOT contain the literal token `--scheduled`), use the `write` tool to overwrite `/home/openclaw/.openclaw/agents/doc-drift-agent/state.json` with exactly:
 

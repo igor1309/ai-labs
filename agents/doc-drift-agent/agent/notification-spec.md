@@ -8,6 +8,8 @@ description: "Telegram notification format for the doc-drift-agent: the compact 
 
 The cron wrapper (`runtime/cron/doc-drift-cron.sh` for scheduled runs, or the OpenClaw Telegram listener for manual runs) posts one Telegram message per agent run. The format is fixed so the maintainer can scan it on a phone in two seconds. The wrapper builds the message from the drift report (`report-format.md`); it does not forward the report.
 
+**Not for the agent.** The agent never writes this message; its final reply is always the report per `report-format.md`. A reply in this format instead of the report is read as a failed run.
+
 ## When a notification is posted
 
 | Run mode | Findings | Telegram message |
