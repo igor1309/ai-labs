@@ -238,6 +238,7 @@ private struct Fixture {
         }
         application.terminate()
         _ = try driver.wait("app termination") { application.isRunning ? nil : true }
+        guard !FileManager.default.fileExists(atPath: fixture.calls.appendingPathComponent("AGENTS.md").path) else { throw LiveFailure("AGENTS.md appeared in the calls folder; only the Settings button may write it") }
     }
 
     /// One marked call: Merge is disabled and says why. A call whose transcript failed is
