@@ -34,7 +34,10 @@ designing, specifying or building anything.
    fixed order, keeps nothing between runs and is observed by no one is a
    plain component. One line of work is one machine: its state holds every
    stage, and its stages are collaborators behind its effect handler, never
-   machines that drive each other.
+   machines that drive each other. State is what Audelin keeps; what an
+   adapter can read again (a file's presence, a folder's contents) is the
+   outside world's, not a machine's, and one kept last outcome is a value,
+   not a machine.
 6. **Cross-cutting concerns are decorators at the root.** Logging, metrics
    and retries wrap interfaces in the composition root. No component logs.
 
