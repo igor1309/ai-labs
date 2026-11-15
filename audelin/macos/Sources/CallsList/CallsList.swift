@@ -1,4 +1,5 @@
-/// Owns the calls list's selection, inline rename editing, summary retries and opening a call's folder.
+/// Owns the calls list's selection, inline rename editing, summary retries, opening a call's folder,
+/// and the search query with the tags chosen to filter by.
 public struct CallsListMachineState: Equatable, Sendable {
     public struct Row: Equatable, Sendable {
         public var id: String
@@ -6,9 +7,10 @@ public struct CallsListMachineState: Equatable, Sendable {
         public var editable: Bool
         /// The call's failed summary can be made again.
         public var canRetry: Bool
+        public var tags: [String]
 
-        public init(id: String, title: String, editable: Bool, canRetry: Bool = false) {
-            self.id = id; self.title = title; self.editable = editable; self.canRetry = canRetry
+        public init(id: String, title: String, editable: Bool, canRetry: Bool = false, tags: [String] = []) {
+            self.id = id; self.title = title; self.editable = editable; self.canRetry = canRetry; self.tags = tags
         }
     }
 
@@ -60,12 +62,22 @@ public struct CallsListMachineState: Equatable, Sendable {
     public var requests: [Request]
     /// How many events have made requests; new requests are sent when it grows.
     public var asked: Int
+    /// The search field's text, as typed.
+    public var query: String
+    /// The tags chosen in the filter strip, in the order chosen.
+    public var chosenTags: [String]
+    /// The tags a call must all have to be listed: the chosen ones and the query's `#tag` words.
+    public var filterTags: [String]
+    /// The query without its `#tag` words, searched for in titles, tags, transcripts and notes.
+    public var searchText: String
 
     public init(rows: [Row] = [], busy: Bool = false, selectedID: String? = nil, editing: Editing? = nil,
                 retrying: Set<String> = [], failure: Failure? = nil, opening: Bool = false,
-                requests: [Request] = [], asked: Int = 0) {
+                requests: [Request] = [], asked: Int = 0, query: String = "", chosenTags: [String] = [],
+                filterTags: [String] = [], searchText: String = "") {
         self.rows = rows; self.busy = busy; self.selectedID = selectedID; self.editing = editing
         self.retrying = retrying; self.failure = failure; self.opening = opening; self.requests = requests; self.asked = asked
+        self.query = query; self.chosenTags = chosenTags; self.filterTags = filterTags; self.searchText = searchText
     }
 }
 
@@ -85,10 +97,21 @@ public enum CallsListMachineEvent: Equatable, Sendable {
     case shown
     case open(String)
     case openFinished(String, CallsListMachineState.OpenOutcome)
+    case search(String)
+    /// A chip of the filter strip was clicked: its tag is chosen, or no longer.
+    case toggleTag(String)
 }
 
 public struct CallsListReducer: Sendable {
-    public init() {}
+    private let splitQuery: @Sendable (String) -> (tags: [String], text: String)
+    private let tagKey: @Sendable (String) -> String
+
+    /// `splitQuery` takes a query's `#tag` words out of its text; `tagKey` is the form two tags
+    /// are compared in.
+    public init(splitQuery: @escaping @Sendable (String) -> (tags: [String], text: String),
+                tagKey: @escaping @Sendable (String) -> String) {
+        self.splitQuery = splitQuery; self.tagKey = tagKey
+    }
 
     public func reduce(_ state: CallsListMachineState, _ event: CallsListMachineEvent) -> CallsListMachineState {
         var state = state
@@ -112,6 +135,21 @@ public struct CallsListReducer: Sendable {
         case .shown:
             state.editing = nil
             state.failure = nil
+            state.query = ""
+            state.chosenTags = []
+            state.filterTags = []
+            state.searchText = ""
+        case let .search(query):
+            state.query = query
+            filter(&state)
+        case let .toggleTag(tag):
+            let key = tagKey(tag)
+            if let index = state.chosenTags.firstIndex(where: { tagKey($0) == key }) {
+                state.chosenTags.remove(at: index)
+            } else {
+                state.chosenTags.append(tag)
+            }
+            filter(&state)
         case .submitRename: commitRename(&state)
         case let .select(id):
             if state.editing?.id != id { commitRename(&state) }
@@ -149,6 +187,13 @@ public struct CallsListReducer: Sendable {
             if !succeeded { state.failure = .retryFailed }
         }
         return state
+    }
+
+    private func filter(_ state: inout CallsListMachineState) {
+        let split = splitQuery(state.query)
+        var keys = Set<String>()
+        state.filterTags = (state.chosenTags + split.tags).filter { keys.insert(tagKey($0)).inserted }
+        state.searchText = split.text
     }
 
     private func commitRename(_ state: inout CallsListMachineState) {

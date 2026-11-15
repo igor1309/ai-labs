@@ -5,6 +5,7 @@ import Calls
 import CallsList
 import CallsListUI
 import CallsSearch
+import CallTags
 import Foundation
 import NotesMarkdown
 import Observation
@@ -38,7 +39,7 @@ public final class AudelinCalls {
     private let makeSummary: (String) -> Void
     private let cancelSummary: (String) async -> Void
     /// The list's selection and rename editing.
-    private let list = SyncModel<CallsListMachineState, CallsListMachineEvent>(initialState: .init(), reduce: CallsListReducer().reduce)
+    private let list = SyncModel<CallsListMachineState, CallsListMachineEvent>(initialState: .init(), reduce: CallsListReducer(splitQuery: { let query = CallTags.query($0); return (query.tags, query.text) }, tagKey: CallTags.key).reduce)
     private var withNotes: Set<String> = []
     /// Each call's gist, read with its notes.
     private var gists: [String: String] = [:]
