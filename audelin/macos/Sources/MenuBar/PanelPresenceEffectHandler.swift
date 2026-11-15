@@ -16,24 +16,33 @@ public final class PanelPresenceEffectHandler {
         self.sleep = sleep
     }
 
-    /// Handles one effect; a delay that elapses uncancelled sends `.delayElapsed` through `send`.
-    public func handle(_ effect: PanelPresence.Effect, send: @escaping (PanelPresence.Event) -> Void) {
-        switch effect {
-        case let .show(reason): present(true, reason)
-        case let .hide(reason): present(false, reason)
-        case .showCalls: showCalls()
-        case .cancelDelay: cancel()
-        case let .hideAfter(seconds, generation):
-            delay?.cancel()
-            delay = Task { [sleep] in
-                do { try await sleep(.seconds(seconds)) } catch { return }
-                guard !Task.isCancelled else { return }
-                send(.delayElapsed(generation))
+    /// Carries out one reduction's effects in order. The stream delivers `.delayElapsed` when a
+    /// delay elapses uncancelled, and finishes with no event otherwise.
+    public func handle(_ effects: [PanelPresence.Effect]) -> AsyncStream<PanelPresence.Event> {
+        let (events, output) = AsyncStream.makeStream(of: PanelPresence.Event.self)
+        var waiting = false
+        for effect in effects {
+            switch effect {
+            case let .show(reason): present(true, reason)
+            case let .hide(reason): present(false, reason)
+            case .showCalls: showCalls()
+            case .cancelDelay: cancel()
+            case let .hideAfter(seconds, generation):
+                delay?.cancel()
+                waiting = true
+                delay = Task { [sleep] in
+                    defer { output.finish() }
+                    do { try await sleep(.seconds(seconds)) } catch { return }
+                    guard !Task.isCancelled else { return }
+                    output.yield(.delayElapsed(generation))
+                }
             }
         }
+        if !waiting { output.finish() }
+        return events
     }
 
-    /// Drops the pending delay, if any, without sending its event.
+    /// Drops the pending delay, if any, without delivering its event.
     public func cancel() {
         delay?.cancel()
         delay = nil

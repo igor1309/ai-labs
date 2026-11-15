@@ -4,86 +4,69 @@ import Testing
 @MainActor
 struct PanelPresenceEffectHandlerTests {
 
-    @Test func showAndHideReachThePanelWithTheirReasons() {
+    @Test func initDoesNotCallCollaborators() {
 
-        let rig = Rig()
-        rig.handler.handle(.show(.recordingBegan), send: rig.send)
-        rig.handler.handle(.hide(.userClosed), send: rig.send)
-        rig.handler.handle(.show(.appReopen), send: rig.send)
-        #expect(rig.presented == [Presented(true, .recordingBegan), Presented(false, .userClosed), Presented(true, .appReopen)])
-        #expect(rig.calls == 0 && rig.events.isEmpty)
+        let (_, spy) = makeSUT()
+        #expect(spy.presented.isEmpty && spy.calls == 0 && spy.sleeps.durations.isEmpty)
     }
 
-    @Test func showCallsOpensTheCallsList() {
+    @Test func showAndHideReachThePanelWithTheirReasonsAndDeliverNothing() async {
 
-        let rig = Rig()
-        rig.handler.handle(.showCalls, send: rig.send)
-        #expect(rig.calls == 1 && rig.presented.isEmpty)
+        let (sut, spy) = makeSUT()
+        await expect(sut, with: [.show(.recordingBegan), .hide(.userClosed), .show(.appReopen)], toDeliver: nil)
+        #expect(spy.presented == [Presented(true, .recordingBegan), Presented(false, .userClosed), Presented(true, .appReopen)])
+        #expect(spy.calls == 0 && spy.sleeps.durations.isEmpty)
     }
 
-    @Test func hideAfterSleepsItsSecondsThenSendsItsGeneration() async {
+    @Test func showCallsOpensTheCallsListAndDeliversNothing() async {
 
-        let rig = Rig()
-        rig.handler.handle(.hideAfter(seconds: 3, generation: 6), send: rig.send)
-        await rig.sleeps.waitForSleepers(1)
-        #expect(rig.sleeps.durations == [.seconds(3)])
-        #expect(rig.events.isEmpty)
-        rig.sleeps.wake()
-        await rig.settle { !rig.events.isEmpty }
-        #expect(rig.events == [.delayElapsed(6)])
+        let (sut, spy) = makeSUT()
+        await expect(sut, with: [.showCalls], toDeliver: nil)
+        #expect(spy.calls == 1 && spy.presented.isEmpty)
+    }
+
+    @Test func cancelDelayAloneDeliversNothing() async {
+
+        let (sut, spy) = makeSUT()
+        await expect(sut, with: [.cancelDelay], toDeliver: nil)
+        #expect(spy.sleeps.durations.isEmpty)
+    }
+
+    @Test func hideAfterSleepsItsSecondsThenDeliversItsGeneration() async {
+
+        let (sut, spy) = makeSUT()
+        await expect(sut, with: [.cancelDelay, .hideAfter(seconds: 3, generation: 6)], toDeliver: .delayElapsed(6),
+                     on: { await spy.sleeps.waitForSleepers(1); spy.sleeps.wake() })
+        #expect(spy.sleeps.durations == [.seconds(3)])
     }
 
     @Test func cancelDelayDropsThePendingDelay() async {
 
-        let rig = Rig()
-        rig.handler.handle(.hideAfter(seconds: 3, generation: 6), send: rig.send)
-        await rig.sleeps.waitForSleepers(1)
-        rig.handler.handle(.cancelDelay, send: rig.send)
-        rig.sleeps.wake()
-        await rig.settle { false }
-        #expect(rig.events.isEmpty)
+        let (sut, spy) = makeSUT()
+        let pending = sut.handle([.hideAfter(seconds: 3, generation: 6)])
+        await spy.sleeps.waitForSleepers(1)
+        await expect(sut, with: [.cancelDelay], toDeliver: nil)
+        spy.sleeps.wake()
+        #expect(await pending.collect() == [])
     }
 
     @Test func aNewDelayReplacesThePendingOne() async {
 
-        let rig = Rig()
-        rig.handler.handle(.hideAfter(seconds: 3, generation: 6), send: rig.send)
-        await rig.sleeps.waitForSleepers(1)
-        rig.handler.handle(.hideAfter(seconds: 3, generation: 8), send: rig.send)
-        await rig.sleeps.waitForSleepers(2)
-        rig.sleeps.wake()
-        await rig.settle { rig.events.count > 1 }
-        #expect(rig.events == [.delayElapsed(8)])
+        let (sut, spy) = makeSUT()
+        let first = sut.handle([.hideAfter(seconds: 3, generation: 6)])
+        await spy.sleeps.waitForSleepers(1)
+        let second = sut.handle([.hideAfter(seconds: 3, generation: 8)])
+        await spy.sleeps.waitForSleepers(2)
+        spy.sleeps.wake()
+        #expect(await first.collect() == [])
+        #expect(await second.collect() == [.delayElapsed(8)])
     }
 
-    @Test func aFailedSleepSendsNothing() async {
+    @Test func aFailedSleepDeliversNothing() async {
 
-        let rig = Rig()
-        rig.handler.handle(.hideAfter(seconds: 3, generation: 6), send: rig.send)
-        await rig.sleeps.waitForSleepers(1)
-        rig.sleeps.fail()
-        await rig.settle { false }
-        #expect(rig.events.isEmpty)
-    }
-
-    /// Reducer and handler together: an ended recording hides the panel once the delay elapses.
-    @Test func endedRecordingHidesThePanelAfterTheDelay() async {
-
-        let rig = Rig()
-        var state = PanelPresence()
-        func receive(_ event: PanelPresence.Event) {
-            let (next, effects) = PanelPresence.reduce(state, event)
-            state = next
-            for effect in effects { rig.handler.handle(effect) { receive($0) } }
-        }
-        receive(.recordingChanged(1))
-        receive(.recordingChanged(nil))
-        await rig.sleeps.waitForSleepers(1)
-        #expect(state.visible)
-        rig.sleeps.wake()
-        await rig.settle { !state.visible }
-        #expect(!state.visible)
-        #expect(rig.presented == [Presented(true, .recordingBegan), Presented(false, .recordingEnded)])
+        let (sut, spy) = makeSUT()
+        await expect(sut, with: [.hideAfter(seconds: 3, generation: 6)], toDeliver: nil,
+                     on: { await spy.sleeps.waitForSleepers(1); spy.sleeps.fail() })
     }
 }
 
@@ -93,27 +76,34 @@ private struct Presented: Equatable {
 }
 
 @MainActor
-private final class Rig {
-
+private final class Spy {
     var presented: [Presented] = []
     var calls = 0
-    var events: [PanelPresence.Event] = []
     let sleeps = Sleeps()
-    private(set) var handler: PanelPresenceEffectHandler!
+}
 
-    init() {
-        let sleeps = sleeps
-        handler = PanelPresenceEffectHandler(
-            present: { [unowned self] in presented.append(Presented($0, $1)) },
-            showCalls: { [unowned self] in calls += 1 },
-            sleep: { try await sleeps.sleep($0) })
-    }
+@MainActor
+private func makeSUT() -> (PanelPresenceEffectHandler, Spy) {
+    let spy = Spy()
+    let sleeps = spy.sleeps
+    let sut = PanelPresenceEffectHandler(
+        present: { spy.presented.append(Presented($0, $1)) },
+        showCalls: { spy.calls += 1 },
+        sleep: { try await sleeps.sleep($0) })
+    return (sut, spy)
+}
 
-    var send: (PanelPresence.Event) -> Void { { [unowned self] in events.append($0) } }
+@MainActor
+private func expect(_ sut: PanelPresenceEffectHandler, with effects: [PanelPresence.Effect],
+                    toDeliver expected: PanelPresence.Event?, on action: () async -> Void = {},
+                    sourceLocation: SourceLocation = #_sourceLocation) async {
+    let events = sut.handle(effects)
+    await action()
+    #expect(await events.collect() == (expected.map { [$0] } ?? []), sourceLocation: sourceLocation)
+}
 
-    func settle(until done: () -> Bool) async {
-        for _ in 0..<200 where !done() { await Task.yield() }
-    }
+private extension AsyncStream {
+    func collect() async -> [Element] { var all: [Element] = []; for await e in self { all.append(e) }; return all }
 }
 
 /// A sleep the test ends: `wake` returns every pending sleep, `fail` throws from it.

@@ -39,7 +39,8 @@ public final class AudelinMenu {
     public private(set) var quitting = false
     public private(set) var panelState = PanelState(recording: .off, log: .empty)
     /// The panel's presence, composed once the menu can show the calls list.
-    @ObservationIgnored private var presence: PanelPresenceModel!
+    @ObservationIgnored private var presence: ObservableModel<PanelPresence, PanelPresence.Event, [PanelPresence.Effect]>!
+    @ObservationIgnored private var presenceHandler: PanelPresenceEffectHandler?
     var panelPresence: PanelPresence { presence.state }
     public private(set) var summarySettings: AudelinSettings?
     private var chooseFolder: () async throws -> URL? = { nil }
@@ -179,13 +180,15 @@ public final class AudelinMenu {
             unsettled: application == nil ? [.finalization, .summaries, .storage] : Set(TerminationParticipant.allCases),
             terminate: { [end = application?.end] in await end?(); await terminate() })
         self.termination = termination
-        presence = PanelPresenceModel(handler: PanelPresenceEffectHandler(
+        let presenceHandler = PanelPresenceEffectHandler(
             present: { visible, reason in
                 presentPanel(visible)
                 sink.write(.init(category: .panel, message: "\(visible ? "shown" : "hidden") reason=\(reason.rawValue)"))
             },
             showCalls: { [weak self] in self?.calls?.show() },
-            sleep: sleep))
+            sleep: sleep)
+        self.presenceHandler = presenceHandler
+        presence = makePanelPresence(handler: presenceHandler)
         // What blocks a relaunch reaches Lifecycle first as it is and then on each change.
         blockerObservation = Task { [weak self] in
             for await blockers in Observations({ [weak self] in self?.relaunchBlockers ?? [] }) {
@@ -213,7 +216,7 @@ public final class AudelinMenu {
                     guard let self else { return }
                     self.state = state
                     self.calls?.recordingChanged(state)
-                    self.presence.recordingChanged(panelRecordingID(state))
+                    self.presence.event(.recordingChanged(panelRecordingID(state)))
                     sink.write(.init(category: .menu, message: "item symbol=\(self.menu.item.symbol) red=\(self.menu.item.isRed)"))
                 }
             }
@@ -440,6 +443,7 @@ public final class AudelinMenu {
     isolated deinit {
 
         for subscription in finalizationSubscriptions { subscription.cancel() }
+        presenceHandler?.cancel()
         panelObservation?.cancel()
         observation?.cancel()
         detectionObservation?.cancel()
