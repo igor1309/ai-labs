@@ -52090,15 +52090,15 @@
                               "alignItems": "center",
                               "children": [
                                 {
-                                  "id": "p8i6wy",
+                                  "id": "WSF0W",
                                   "type": "ref",
-                                  "ref": "tCLIY",
+                                  "ref": "S2vm4f",
                                   "name": "Tag 1"
                                 },
                                 {
-                                  "id": "K85Yq",
+                                  "id": "doHFD",
                                   "type": "ref",
-                                  "ref": "tCLIY",
+                                  "ref": "S2vm4f",
                                   "name": "Tag 2",
                                   "enabled": false
                                 }
@@ -52666,16 +52666,32 @@
               ]
             },
             {
-              "id": "tCLIY",
-              "type": "ref",
-              "reusable": true,
-              "ref": "k5pk4",
+              "type": "frame",
+              "id": "S2vm4f",
               "name": "Tag chip/Small",
+              "reusable": true,
+              "height": 16,
+              "fill": "$chip",
+              "cornerRadius": "$radius-bar",
               "padding": [
                 0,
                 "$space-6"
               ],
-              "cornerRadius": "$radius-bar"
+              "justifyContent": "center",
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "cIIeN",
+                  "name": "Label",
+                  "fill": "$sub",
+                  "content": "клиент",
+                  "lineHeight": 1,
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-caption",
+                  "fontWeight": "normal"
+                }
+              ]
             }
           ]
         },
@@ -69442,13 +69458,13 @@
                         "b9a24E": {
                           "enabled": true
                         },
-                        "p8i6wy/Z9d2h": {
+                        "WSF0W/cIIeN": {
                           "content": "клиент"
                         },
-                        "K85Yq": {
+                        "doHFD": {
                           "enabled": true
                         },
-                        "K85Yq/Z9d2h": {
+                        "doHFD/cIIeN": {
                           "content": "банк"
                         }
                       }
@@ -69490,7 +69506,7 @@
                         "b9a24E": {
                           "enabled": true
                         },
-                        "p8i6wy/Z9d2h": {
+                        "WSF0W/cIIeN": {
                           "content": "клиент"
                         }
                       }
@@ -69532,13 +69548,13 @@
                         "b9a24E": {
                           "enabled": true
                         },
-                        "p8i6wy/Z9d2h": {
+                        "WSF0W/cIIeN": {
                           "content": "клиент"
                         },
-                        "K85Yq": {
+                        "doHFD": {
                           "enabled": true
                         },
-                        "K85Yq/Z9d2h": {
+                        "doHFD/cIIeN": {
                           "content": "найм"
                         }
                       }
@@ -69858,13 +69874,13 @@
                         "b9a24E": {
                           "enabled": true
                         },
-                        "p8i6wy/Z9d2h": {
+                        "WSF0W/cIIeN": {
                           "content": "клиент"
                         },
-                        "K85Yq": {
+                        "doHFD": {
                           "enabled": true
                         },
-                        "K85Yq/Z9d2h": {
+                        "doHFD/cIIeN": {
                           "content": "банк"
                         }
                       }
@@ -69906,7 +69922,7 @@
                         "b9a24E": {
                           "enabled": true
                         },
-                        "p8i6wy/Z9d2h": {
+                        "WSF0W/cIIeN": {
                           "content": "клиент"
                         }
                       }
@@ -69948,13 +69964,13 @@
                         "b9a24E": {
                           "enabled": true
                         },
-                        "p8i6wy/Z9d2h": {
+                        "WSF0W/cIIeN": {
                           "content": "клиент"
                         },
-                        "K85Yq": {
+                        "doHFD": {
                           "enabled": true
                         },
-                        "K85Yq/Z9d2h": {
+                        "doHFD/cIIeN": {
                           "content": "найм"
                         }
                       }
@@ -70252,13 +70268,13 @@
                         "b9a24E": {
                           "enabled": true
                         },
-                        "p8i6wy/Z9d2h": {
+                        "WSF0W/cIIeN": {
                           "content": "клиент"
                         },
-                        "K85Yq": {
+                        "doHFD": {
                           "enabled": true
                         },
-                        "K85Yq/Z9d2h": {
+                        "doHFD/cIIeN": {
                           "content": "банк"
                         }
                       }
@@ -70285,7 +70301,7 @@
                         "b9a24E": {
                           "enabled": true
                         },
-                        "p8i6wy/Z9d2h": {
+                        "WSF0W/cIIeN": {
                           "content": "команда"
                         }
                       }
@@ -70312,7 +70328,7 @@
                         "b9a24E": {
                           "enabled": true
                         },
-                        "p8i6wy/Z9d2h": {
+                        "WSF0W/cIIeN": {
                           "content": "iOS"
                         }
                       }
@@ -70354,7 +70370,7 @@
                         "b9a24E": {
                           "enabled": true
                         },
-                        "p8i6wy/Z9d2h": {
+                        "WSF0W/cIIeN": {
                           "content": "найм"
                         }
                       }
@@ -70381,13 +70397,13 @@
                         "b9a24E": {
                           "enabled": true
                         },
-                        "p8i6wy/Z9d2h": {
+                        "WSF0W/cIIeN": {
                           "content": "iOS"
                         },
-                        "K85Yq": {
+                        "doHFD": {
                           "enabled": true
                         },
-                        "K85Yq/Z9d2h": {
+                        "doHFD/cIIeN": {
                           "content": "Android"
                         }
                       }
@@ -70429,7 +70445,7 @@
                         "b9a24E": {
                           "enabled": true
                         },
-                        "p8i6wy/Z9d2h": {
+                        "WSF0W/cIIeN": {
                           "content": "клиент"
                         }
                       }
@@ -70492,13 +70508,13 @@
                         "b9a24E": {
                           "enabled": true
                         },
-                        "p8i6wy/Z9d2h": {
+                        "WSF0W/cIIeN": {
                           "content": "клиент"
                         },
-                        "K85Yq": {
+                        "doHFD": {
                           "enabled": true
                         },
-                        "K85Yq/Z9d2h": {
+                        "doHFD/cIIeN": {
                           "content": "найм"
                         }
                       }
@@ -70525,7 +70541,7 @@
                         "b9a24E": {
                           "enabled": true
                         },
-                        "p8i6wy/Z9d2h": {
+                        "WSF0W/cIIeN": {
                           "content": "iOS"
                         }
                       }
