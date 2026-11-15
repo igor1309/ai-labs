@@ -52086,7 +52086,7 @@
                               "y": 0,
                               "name": "Tags",
                               "enabled": false,
-                              "gap": "$space-4",
+                              "gap": "$space-6",
                               "alignItems": "center",
                               "children": [
                                 {
@@ -52668,15 +52668,10 @@
             {
               "type": "frame",
               "id": "S2vm4f",
-              "name": "Tag chip/Small",
+              "name": "Row tag",
               "reusable": true,
               "height": 16,
-              "fill": "$chip",
-              "cornerRadius": "$radius-bar",
-              "padding": [
-                0,
-                "$space-6"
-              ],
+              "fill": "#00000000",
               "justifyContent": "center",
               "alignItems": "center",
               "children": [
@@ -52684,11 +52679,11 @@
                   "type": "text",
                   "id": "cIIeN",
                   "name": "Label",
-                  "fill": "$sub",
-                  "content": "клиент",
-                  "lineHeight": 1,
+                  "fill": "$gutter",
+                  "content": "#клиент",
+                  "lineHeight": 1.23,
                   "fontFamily": "$font-ui",
-                  "fontSize": "$type-caption",
+                  "fontSize": "$type-small",
                   "fontWeight": "normal"
                 }
               ]
@@ -69459,13 +69454,13 @@
                           "enabled": true
                         },
                         "WSF0W/cIIeN": {
-                          "content": "клиент"
+                          "content": "#клиент"
                         },
                         "doHFD": {
                           "enabled": true
                         },
                         "doHFD/cIIeN": {
-                          "content": "банк"
+                          "content": "#банк"
                         }
                       }
                     },
@@ -69507,7 +69502,7 @@
                           "enabled": true
                         },
                         "WSF0W/cIIeN": {
-                          "content": "клиент"
+                          "content": "#клиент"
                         }
                       }
                     },
@@ -69549,13 +69544,13 @@
                           "enabled": true
                         },
                         "WSF0W/cIIeN": {
-                          "content": "клиент"
+                          "content": "#клиент"
                         },
                         "doHFD": {
                           "enabled": true
                         },
                         "doHFD/cIIeN": {
-                          "content": "найм"
+                          "content": "#найм"
                         }
                       }
                     }
@@ -69875,13 +69870,13 @@
                           "enabled": true
                         },
                         "WSF0W/cIIeN": {
-                          "content": "клиент"
+                          "content": "#клиент"
                         },
                         "doHFD": {
                           "enabled": true
                         },
                         "doHFD/cIIeN": {
-                          "content": "банк"
+                          "content": "#банк"
                         }
                       }
                     },
@@ -69923,7 +69918,7 @@
                           "enabled": true
                         },
                         "WSF0W/cIIeN": {
-                          "content": "клиент"
+                          "content": "#клиент"
                         }
                       }
                     },
@@ -69965,13 +69960,13 @@
                           "enabled": true
                         },
                         "WSF0W/cIIeN": {
-                          "content": "клиент"
+                          "content": "#клиент"
                         },
                         "doHFD": {
                           "enabled": true
                         },
                         "doHFD/cIIeN": {
-                          "content": "найм"
+                          "content": "#найм"
                         }
                       }
                     }
@@ -70269,13 +70264,13 @@
                           "enabled": true
                         },
                         "WSF0W/cIIeN": {
-                          "content": "клиент"
+                          "content": "#клиент"
                         },
                         "doHFD": {
                           "enabled": true
                         },
                         "doHFD/cIIeN": {
-                          "content": "банк"
+                          "content": "#банк"
                         }
                       }
                     },
@@ -70302,7 +70297,7 @@
                           "enabled": true
                         },
                         "WSF0W/cIIeN": {
-                          "content": "команда"
+                          "content": "#команда"
                         }
                       }
                     },
@@ -70329,7 +70324,7 @@
                           "enabled": true
                         },
                         "WSF0W/cIIeN": {
-                          "content": "iOS"
+                          "content": "#iOS"
                         }
                       }
                     },
@@ -70371,7 +70366,7 @@
                           "enabled": true
                         },
                         "WSF0W/cIIeN": {
-                          "content": "найм"
+                          "content": "#найм"
                         }
                       }
                     },
@@ -70398,13 +70393,13 @@
                           "enabled": true
                         },
                         "WSF0W/cIIeN": {
-                          "content": "iOS"
+                          "content": "#iOS"
                         },
                         "doHFD": {
                           "enabled": true
                         },
                         "doHFD/cIIeN": {
-                          "content": "Android"
+                          "content": "#Android"
                         }
                       }
                     },
@@ -70446,7 +70441,7 @@
                           "enabled": true
                         },
                         "WSF0W/cIIeN": {
-                          "content": "клиент"
+                          "content": "#клиент"
                         }
                       }
                     },
@@ -70509,13 +70504,13 @@
                           "enabled": true
                         },
                         "WSF0W/cIIeN": {
-                          "content": "клиент"
+                          "content": "#клиент"
                         },
                         "doHFD": {
                           "enabled": true
                         },
                         "doHFD/cIIeN": {
-                          "content": "найм"
+                          "content": "#найм"
                         }
                       }
                     },
@@ -70542,7 +70537,7 @@
                           "enabled": true
                         },
                         "WSF0W/cIIeN": {
-                          "content": "iOS"
+                          "content": "#iOS"
                         }
                       }
                     },
