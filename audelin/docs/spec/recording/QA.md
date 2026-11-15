@@ -135,3 +135,57 @@ Evidence: `RecordingTests.sessionFaultsStayNamedUntilTheNextRecording(_:)`.
 A fault reported with an id other than the running Session's leaves the
 state as it was.
 Evidence: `RecordingReducerTests.faultsFollowTheCurrentSession(_:)`.
+
+## Calls-folder claim (S-18 to S-28)
+
+Reducer rows build the given state with `makeState`, each `_state` test
+paired with an `_effect` test for the same state and event; effect handler
+rows drive a spy of the claim port and read the delivered event.
+
+## S-18 A start claims the calls folder before call audio
+
+Missing.
+
+## S-19 A start refused by a relaunch begins nothing
+
+Missing.
+
+## S-20 A start refused by a move begins after it
+
+Missing.
+
+## S-21 A start refused by a move that has already ended claims again
+
+Missing.
+
+## S-22 A start while the folder moves begins after the move
+
+Missing.
+
+## S-23 A stop drops a start waiting for a move
+
+Missing.
+
+## S-24 A call's end drops its start waiting for a move
+
+Missing.
+
+## S-25 A start by hand outlasts a call's end while waiting
+
+Missing.
+
+## S-26 Late news of a move does not end a recording
+
+Missing.
+
+## S-27 The claim is released last
+
+Missing.
+
+## S-28 A stop during the take releases a late grant
+
+Missing.
+
+## S-29 Automatic recording turned off drops only a call's waiting start
+
+Missing.

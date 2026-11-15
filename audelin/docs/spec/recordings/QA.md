@@ -63,14 +63,18 @@ Moving with 31 moved, a call failed with a reason: failed, naming 31 of
 Failed, retry: moving from 31, effect move the next call left. The calls
 moved before are not moved again.
 
-## S-11 No move during a recording
+## S-11 No move while a recording or a relaunch has the folder
 
 Recording, folder picked: refused while recording, no effect. The
-recording ends: idle.
+recording ends: idle. A confirmed move refused the claim by a relaunch:
+refused, no call moves. The relaunch case is Missing.
 
 ## S-12 No recording during a move
 
-Compose: while Recordings is moving, the calls
-folder condition reads not available, and it reads available again when
-the move ends or fails; a call start during the move begins no recording
-until then.
+Reducer: the move publishes that it holds the folder only once its claim
+is granted, and stops publishing it when the release is answered, after a
+moved, failed or stopped move. Compose: while a move holds the folder, the
+calls folder condition reads moving, and reads the disk again when the
+move ends; a call start during the move begins no recording until then.
+Missing.
+
