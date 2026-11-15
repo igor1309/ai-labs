@@ -121,6 +121,79 @@ struct RecordingsTests {
         }
     }
 
+    @Test func S1_settingTagsSavesThemAndReloadsTheList() async {
+        let idle = makeState { $0.listRequest = 2 }
+        assert(idle, .setTags(request: 7, id: "A", tags: ["клиент", "банк"]), delivers: .setTags(request: 7, id: "A", tags: ["клиент", "банк"])) {
+            $0.tagsSave = .init(request: 7, id: "A", tags: ["клиент", "банк"])
+        }
+        let saving = makeState { $0.listRequest = 2; $0.tagsSave = .init(request: 7, id: "A", tags: ["клиент"]) }
+        assert(saving, .tagsSet(request: 7, id: "A"), delivers: .list(request: 3)) {
+            $0.tagsSave = nil
+            $0.tagsOutcome = .init(request: 7, id: "A", result: .saved)
+            $0.isListing = true; $0.listRequest = 3
+        }
+        for failed in [false, true] {
+            let spy = CallsSpy()
+            await expect(RecordingsEffectHandler(calls: spy, reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { _ in "disk" }),
+                         with: .setTags(request: 7, id: "A", tags: ["клиент"]),
+                         toDeliver: failed ? .tagsSetFailed(request: 7, id: "A", reason: "disk") : .tagsSet(request: 7, id: "A"),
+                         on: { await spy.complete(failed ? .failure(DiskFailure()) : .success([])) })
+            #expect(await spy.received == [.setTags(request: 0, id: "A", tags: ["клиент"])])
+        }
+    }
+
+    @Test func aFailedTagsSaveIsReportedWithItsRequest() {
+        let saving = makeState { $0.tagsSave = .init(request: 7, id: "A", tags: ["клиент"]) }
+        assert(saving, .tagsSetFailed(request: 7, id: "A", reason: "disk"), delivers: nil) {
+            $0.tagsSave = nil
+            $0.tagsOutcome = .init(request: 7, id: "A", result: .failed("disk"))
+        }
+    }
+
+    @Test func anOutcomeOfAnotherRequestIsIgnored() {
+        let saving = makeState { $0.tagsSave = .init(request: 7, id: "A", tags: ["клиент"]) }
+        assert(saving, .tagsSet(request: 6, id: "A"), delivers: nil)
+        assert(saving, .tagsSetFailed(request: 6, id: "A", reason: "disk"), delivers: nil)
+    }
+
+    @Test func aListRequestedBeforeASavedTagsWriteNeverApplies() {
+        let call = RecordedCall(id: "A", title: "", start: .distantPast, duration: nil, tags: .known([]))
+        let listingBeforeSave = makeState { $0.isListing = true; $0.listRequest = 2; $0.tagsSave = .init(request: 7, id: "A", tags: ["клиент"]) }
+        assert(listingBeforeSave, .tagsSet(request: 7, id: "A"), delivers: .list(request: 3)) {
+            $0.tagsSave = nil
+            $0.tagsOutcome = .init(request: 7, id: "A", result: .saved)
+            $0.listRequest = 3
+        }
+        let listingAfterSave = makeState { $0.isListing = true; $0.listRequest = 3; $0.tagsOutcome = .init(request: 7, id: "A", result: .saved) }
+        assert(listingAfterSave, .listed(request: 2, [call]), delivers: nil)
+    }
+
+    @Test func tagsAreRefusedWhileAMoveOrMergeHoldsTheCallsOrAnotherSaveRuns() {
+        let held: [RecordingsState] = [
+            makeState { $0.phase = .moving; $0.moveToken = 1; $0.callsFolderAvailable = false },
+            makeState { $0.callsFolderAvailable = false },
+            makeState { $0.phase = .runningMerge },
+            makeState { $0.stopping = true; $0.stopped = true },
+            makeState { $0.tagsSave = .init(request: 1, id: "B", tags: []) },
+        ]
+        for state in held {
+            assert(state, .setTags(request: 7, id: "A", tags: ["клиент"]), delivers: nil) {
+                $0.tagsOutcome = .init(request: 7, id: "A", result: .failed("busy"))
+            }
+        }
+    }
+
+    @Test func stoppingWaitsForThePendingTagsSave() {
+        let saving = makeState { $0.tagsSave = .init(request: 7, id: "A", tags: []) }
+        assert(saving, .stopActions, delivers: nil) { $0.stopping = true }
+        let stoppingSaving = makeState { $0.stopping = true; $0.tagsSave = .init(request: 7, id: "A", tags: []) }
+        assert(stoppingSaving, .tagsSetFailed(request: 7, id: "A", reason: "disk"), delivers: nil) {
+            $0.tagsSave = nil
+            $0.tagsOutcome = .init(request: 7, id: "A", result: .failed("disk"))
+            $0.stopped = true
+        }
+    }
+
     @Test func failureStaysAcrossTheReloadAndClearsAtTheNextAction() {
         let failed = makeState { $0.failure = .init(id: "A", reason: "disk") }
         let refreshing = makeState { $0.failure = .init(id: "A", reason: "disk"); $0.isListing = true }
@@ -334,6 +407,7 @@ private actor CallsSpy: RecordingsCalls {
     func move(id: String, to destination: URL) async throws -> Int64 { _ = try await call(.moveCall(id: id, to: destination)); return 0 }
     /// Answers with the first listed call's id as the merged call.
     func merge(ids: [String]) async throws -> String { try await call(.merge(ids)).first?.id ?? "" }
+    func setTags(id: String, tags: [String]) async throws { _ = try await call(.setTags(request: 0, id: id, tags: tags)) }
 }
 
 /// Move text that names every value it is given, so a test sees which move it came from.

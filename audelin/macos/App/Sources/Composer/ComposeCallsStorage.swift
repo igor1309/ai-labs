@@ -4,6 +4,7 @@ import Foundation
 import Recording
 import Recordings
 import SummaryJobs
+import TagsFile
 import TrackFile
 import TranscriptFile
 import TranscriptFormat
@@ -89,5 +90,8 @@ struct SummaryCalls: RecordingsCalls {
         let merged = try await mergeCalls(ids: ids, storage: storage, binding: binding)
         await self.merged(merged.id, ids, merged.entries)
         return merged.id
+    }
+    func setTags(id: String, tags: [String]) async throws {
+        try await storage.writeTags(id: id) { try TagsFile.write(tags, in: $0) }
     }
 }

@@ -10,6 +10,8 @@ public protocol RecordingsCalls: Sendable {
     func move(id: String, to: URL) async throws -> Int64
     /// Merges the calls into one and returns the merged call's id, or throws why not.
     func merge(ids: [String]) async throws -> String
+    /// Replaces a call's tags.
+    func setTags(id: String, tags: [String]) async throws
 }
 
 public struct RecordedCall: Equatable, Sendable {
@@ -68,14 +70,35 @@ public struct RecordingsState: Equatable, Sendable {
     public var mergedCallID: String?
     /// Audelin is idle enough to merge, as compose last said; not until it says so.
     public var mergeAvailable = false
+    /// The tags save under way, one at a time.
+    public var tagsSave: TagsSave?
+    /// How the last tags request ended, echoing its request id, for the list to apply.
+    public var tagsOutcome: TagsOutcome?
+
+    public struct TagsSave: Equatable, Sendable {
+        public let request: Int
+        public let id: String
+        public let tags: [String]
+        public init(request: Int, id: String, tags: [String]) { self.request = request; self.id = id; self.tags = tags }
+    }
+
+    public struct TagsOutcome: Equatable, Sendable {
+        public enum Result: Equatable, Sendable { case saved, failed(String) }
+        public let request: Int
+        public let id: String
+        public let result: Result
+        public init(request: Int, id: String, result: Result) { self.request = request; self.id = id; self.result = result }
+    }
 
     public init(calls: [RecordedCall] = [], isListing: Bool = false, listRequest: Int = 0, phase: Phase = .idle,
                 recordingID: String? = nil, failure: Failure? = nil, callsFolder: URL? = nil,
                 callsFolderAvailable: Bool = true, moveToken: UInt64? = nil, stopping: Bool = false, stopped: Bool = false, move: CallsFolderMove? = nil,
-                mergeSelection: Set<String> = [], mergedCallID: String? = nil, mergeAvailable: Bool = false) {
+                mergeSelection: Set<String> = [], mergedCallID: String? = nil, mergeAvailable: Bool = false,
+                tagsSave: TagsSave? = nil, tagsOutcome: TagsOutcome? = nil) {
         self.calls = calls; self.isListing = isListing; self.listRequest = listRequest; self.phase = phase; self.recordingID = recordingID
         self.failure = failure; self.callsFolder = callsFolder; self.callsFolderAvailable = callsFolderAvailable; self.moveToken = moveToken; self.stopping = stopping; self.stopped = stopped; self.move = move
         self.mergeSelection = mergeSelection; self.mergedCallID = mergedCallID; self.mergeAvailable = mergeAvailable
+        self.tagsSave = tagsSave; self.tagsOutcome = tagsOutcome
     }
 }
 
@@ -95,6 +118,9 @@ public enum RecordingsEvent: Equatable, Sendable {
     case confirmMerge, mergeAnyway, goBackFromWarning, merged(String), mergeFailed(String)
     /// Whether Audelin is idle enough to merge, sent whenever it changes.
     case mergeAvailability(Bool)
+    /// Sets a call's tags under the caller's request id, which the outcome echoes.
+    case setTags(request: Int, id: String, tags: [String])
+    case tagsSet(request: Int, id: String), tagsSetFailed(request: Int, id: String, reason: String)
 }
 
 public enum RecordingsEffect: Equatable, Sendable {
@@ -103,6 +129,7 @@ public enum RecordingsEffect: Equatable, Sendable {
     case list(request: Int), rename(id: String, title: String), delete(String)
     /// The calls to merge, in list order.
     case merge([String])
+    case setTags(request: Int, id: String, tags: [String])
 }
 
 public struct RecordingsReducer: Sendable {
@@ -111,7 +138,7 @@ public struct RecordingsReducer: Sendable {
     let moveText: @Sendable (CallsFolderMove) -> MoveText
     private let busyMessage: @Sendable () -> String
 
-    /// `busyMessage` says Audelin is not idle enough to merge.
+    /// `busyMessage` says Audelin is not idle enough to merge, or that a move or merge holds the calls.
     public init(failureMessage: @escaping @Sendable (String, String) -> String, moveText: @escaping @Sendable (CallsFolderMove) -> MoveText,
                 busyMessage: @escaping @Sendable () -> String) {
         self.failureMessage = failureMessage
@@ -121,7 +148,7 @@ public struct RecordingsReducer: Sendable {
 
     public func reduce(_ state: RecordingsState, _ event: RecordingsEvent) -> (RecordingsState, RecordingsEffect?) {
         var (next, effect) = reduceEvent(state, event)
-        if next.stopping, next.moveToken == nil, ![.reservingMove, .releasingMove, .runningMerge].contains(next.phase) { next.stopped = true }
+        if next.stopping, next.moveToken == nil, next.tagsSave == nil, ![.reservingMove, .releasingMove, .runningMerge].contains(next.phase) { next.stopped = true }
         return (next, effect)
     }
 
@@ -238,6 +265,25 @@ public struct RecordingsReducer: Sendable {
             state.mergedCallID = id
             let list = Self.requestList(&state)
             return (state, list)
+        case let .setTags(request, id, tags):
+            guard Self.admitsTags(state) else {
+                state.tagsOutcome = .init(request: request, id: id, result: .failed(busyMessage()))
+                return (state, nil)
+            }
+            state.tagsSave = .init(request: request, id: id, tags: tags)
+            state.tagsOutcome = nil
+            return (state, .setTags(request: request, id: id, tags: tags))
+        case let .tagsSet(request, id):
+            guard state.tagsSave?.request == request else { return (state, nil) }
+            state.tagsSave = nil
+            state.tagsOutcome = .init(request: request, id: id, result: .saved)
+            // A list requested before the save can hold the old tags: only a fresh one applies.
+            let list = Self.requestList(&state)
+            return (state, list)
+        case let .tagsSetFailed(request, id, reason):
+            guard state.tagsSave?.request == request else { return (state, nil) }
+            state.tagsSave = nil
+            state.tagsOutcome = .init(request: request, id: id, result: .failed(reason))
         case let .mergeFailed(reason):
             guard state.phase == .runningMerge else { return (state, nil) }
             state.phase = .merging
@@ -271,6 +317,15 @@ public struct RecordingsReducer: Sendable {
         state.isListing = true
         state.listRequest += 1
         return .list(request: state.listRequest)
+    }
+
+    /// A tags write is admitted while no move or merge holds the calls and no other save runs.
+    static func admitsTags(_ state: RecordingsState) -> Bool {
+        guard !state.stopping, state.tagsSave == nil, state.moveToken == nil, state.callsFolderAvailable else { return false }
+        switch state.phase {
+        case .idle, .askingDelete, .renaming, .deleting, .merging, .warnedFarApart: return true
+        default: return false
+        }
     }
 
     static func acceptsAction(_ state: RecordingsState) -> Bool {
@@ -331,6 +386,9 @@ public struct RecordingsEffectHandler: Sendable {
         case let .merge(ids):
             do { return .merged(try await calls.merge(ids: ids)) }
             catch { return .mergeFailed(describe(error)) }
+        case let .setTags(request, id, tags):
+            do { try await calls.setTags(id: id, tags: tags); return .tagsSet(request: request, id: id) }
+            catch { return .tagsSetFailed(request: request, id: id, reason: describe(error)) }
         }
     }
 }

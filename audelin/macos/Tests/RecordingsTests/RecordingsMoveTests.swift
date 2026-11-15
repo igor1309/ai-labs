@@ -250,6 +250,7 @@ private actor MoveSpy: RecordingsCalls {
     func rename(id: String, title: String) async throws { throw MoveError() }
     func delete(id: String) async throws { throw MoveError() }
     func merge(ids: [String]) async throws -> String { throw MoveError() }
+    func setTags(id: String, tags: [String]) async throws { throw MoveError() }
 }
 private func expect(_ sut: RecordingsEffectHandler, with effect: RecordingsEffect, toDeliver expected: RecordingsEvent,
                     on action: @escaping @Sendable () async -> Void, sourceLocation: SourceLocation = #_sourceLocation) async {
