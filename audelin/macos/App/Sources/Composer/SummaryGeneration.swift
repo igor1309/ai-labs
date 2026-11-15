@@ -18,11 +18,11 @@ struct SummaryGeneration: SummariesGeneration {
             }
         } }
     }
-    func notes(_ job: Job, identities: [SummaryJobs.Identity], template: SummaryJobs.Template) async throws -> String {
+    func notes(_ job: Job, identities: [SummaryJobs.Identity], template: NotesGeneration.Template) async throws -> String {
         try await running.run(job.id) { try await fallback(job) { configuration in
             let mapping = identities.map { "\($0.label): \($0.name) (\($0.time): \($0.quote))" }.joined(separator: "\n")
             let generator = NotesGeneration.Generator(text: RuntimeTextAttempt(runtime: runtime, configuration: configuration))
-            return try await generator.notes(transcript: transcript(job), evidence: mapping, template: notesTemplate(template))
+            return try await generator.notes(transcript: transcript(job), evidence: mapping, template: template)
         } }
     }
     /// Stops the job's running call and returns once it has ended; the call then throws a cancellation.
@@ -58,8 +58,4 @@ struct RuntimeTextAttempt: NotesGeneration.TextAttempt {
     let runtime: SummaryRuntime.Runtime
     let configuration: SummaryRuntime.Configuration
     func generate(_ request: String) async throws -> String { try await runtime.generate(configuration, prompt: request) }
-}
-func notesTemplate(_ template: SummaryJobs.Template) -> NotesGeneration.Template {
-    .init(name: template.name, instructions: template.instructions,
-          headings: template.headings.map { $0.map { .init($0.name, required: $0.required) } })
 }

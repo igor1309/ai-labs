@@ -5,10 +5,16 @@ import TemplateFiles
 @testable import Composer
 
 struct TestDefaultTemplates: SummariesTemplates {
-    func resolveDefault() async -> SummaryJobs.Template { defaultJobTemplate() }
+    func resolveDefault() async -> NotesGeneration.Template { defaultJobTemplate() }
 }
-func defaultJobTemplate() -> SummaryJobs.Template { jobTemplate(TemplateFiles.Files.builtInDefault) }
+func defaultJobTemplate() -> NotesGeneration.Template { notesTemplate(TemplateFiles.Files.builtInDefault) }
 func defaultNotesPrompt() -> String {
-    let request = NotesGeneration.Generator.request(transcript: "", evidence: "", template: notesTemplate(defaultJobTemplate()))
+    let request = NotesGeneration.Generator.request(transcript: "", evidence: "", template: defaultJobTemplate())
     return String(request.dropLast("\nACCEPTED EVIDENCE:\n\nTRANSCRIPT DATA:\n".count))
 }
+
+typealias SummariesState = Composer.SummariesState
+typealias SummariesEvent = Composer.SummariesEvent
+typealias SummariesEffect = Composer.SummariesEffect
+typealias SummariesReducer = Composer.SummariesReducer
+typealias SummariesEffectHandler = Composer.SummariesEffectHandler

@@ -4,6 +4,13 @@ import CallsListUI
 import IMRxObservation
 import Observation
 import SummaryJobs
+import NotesGeneration
+
+public typealias SummariesState = SummaryJobs.SummariesState<NotesGeneration.Template>
+public typealias SummariesEvent = SummaryJobs.SummariesEvent<NotesGeneration.Template>
+public typealias SummariesEffect = SummaryJobs.SummariesEffect<NotesGeneration.Template>
+public typealias SummariesReducer = SummaryJobs.SummariesReducer<NotesGeneration.Template>
+public typealias SummariesEffectHandler = SummaryJobs.SummariesEffectHandler<NotesGeneration.Template>
 
 /// The Summaries machine, assembled from its reducer, its effect handler and the ports over files and the runtime.
 @MainActor @Observable
@@ -11,8 +18,8 @@ public final class SummariesModel {
     private let model: ObservableModel<SummariesState, SummariesEvent, SummariesEffect>
     private let reducer: SummariesReducer
     private var listText: CallsListText
-    public init(templates: any SummariesTemplates, text: @escaping @Sendable () -> CallsListText, preparation: any SummariesPreparation, files: SummariesFilesPort,
-         generation: any SummariesGeneration) {
+    public init(templates: any SummariesTemplates<NotesGeneration.Template>, text: @escaping @Sendable () -> CallsListText, preparation: any SummariesPreparation, files: SummariesFilesPort,
+         generation: any SummariesGeneration<NotesGeneration.Template>) {
         listText = text()
         let reducer = SummariesReducer(format: { text().summariesStatus($0, $1) }, badge: summariesBadge)
         self.reducer = reducer

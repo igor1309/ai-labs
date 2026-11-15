@@ -107,8 +107,8 @@ public struct Files: Sendable {
         guard !metadata.headings.isEmpty, metadata.headings.allSatisfy({ $0.contains(where: \.required) }) else { throw Failure("Metadata needs required headings in every heading set") }
         for headings in metadata.headings {
             let names = headings.map(\.name)
-            guard names.allSatisfy({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !$0.contains("\n") }),
-                  Set(names).count == names.count else { throw Failure("Metadata headings must be nonempty and unique") }
+            guard names.allSatisfy({ !$0.isEmpty && $0 == $0.trimmingCharacters(in: .whitespacesAndNewlines) && $0.rangeOfCharacter(from: .newlines) == nil }),
+                  Set(names).count == names.count else { throw Failure("Metadata headings must be nonempty, unique, single-line and have no surrounding whitespace") }
         }
         let body = lines[(end + 1)...].joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
         guard !body.isEmpty else { throw Failure("Instructions are empty") }

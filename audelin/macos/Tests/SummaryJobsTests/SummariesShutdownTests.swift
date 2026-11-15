@@ -3,7 +3,7 @@ import Testing
 
 @Suite struct SummariesShutdownReducerTests {
     let format = FormatSpy()
-    static let interrupted: [SummariesState.Call.Stage] = [.starting, .identifying, .checkpointing, .noting, .publishing, .saving, .discarding]
+    static let interrupted: [SummariesState.Call.Stage] = [.starting, .identifying, .checkpointing, .noting, .publishing, .saving]
 
     @Test(arguments: interrupted) func shutdownInterruptsRunningCallsAndDrains(stage: SummariesState.Call.Stage) {
         var state = make(["call": stage, "other": .pending])
@@ -13,6 +13,37 @@ import Testing
             $0.calls["call"]?.stage = .interrupted; $0.calls["call"]?.status = "interrupted:true"; $0.calls["call"]?.retryable = true
         }
         #expect(format.payloads == [.init(stage: .interrupted, warning: true)])
+    }
+    @Test(arguments: SummariesCancelReducerTests.answers)
+    func acceptedCancellationDrainsThroughTheResultAndDiscard(stage: SummariesState.Call.Stage, event: SummariesEvent) {
+        let reducer = SummariesReducer(format: format.call, badge: { _ in .none })
+        let initial = make(["call": stage])
+        let cancelled = reducer.reduce(initial, .cancel("call")).0
+        let draining = reducer.reduce(cancelled, .shutdown)
+        var expected = cancelled; expected.lifecycle = .draining; expected.dispatch = false
+        #expect(draining.0 == expected)
+        #expect(draining.1 == nil)
+        let result = reducer.reduce(draining.0, event)
+        expected.calls["call"]?.stage = .discarding; expected.calls["call"]?.status = "discarding:false"
+        #expect(result.0 == expected)
+        #expect(result.1 == .discard(makeJob()))
+        let discarded = reducer.reduce(result.0, .discarded("call"))
+        expected.calls["call"] = nil; expected.lifecycle = .settled
+        #expect(discarded.0 == expected)
+        #expect(discarded.1 == nil)
+    }
+    @Test func shutdownWaitsForAnAlreadyRunningDiscard() {
+        let state = make(["call": .discarding])
+        assert(state, .shutdown) { $0.lifecycle = .draining; $0.dispatch = false }
+        assert(state, .shutdown, delivers: nil)
+    }
+    @Test func discardFailureEndsTheDrainWithAFailure() {
+        let state = make(["call": .discarding], lifecycle: .draining, dispatch: false)
+        assert(state, .storageFailed("call")) {
+            $0.lifecycle = .settled; $0.calls["call"]?.stage = .failed
+            $0.calls["call"]?.status = "failed:false"; $0.calls["call"]?.retryable = true
+        }
+        assert(state, .storageFailed("call"), delivers: nil)
     }
     @Test func shutdownDeliversOneReleaseOfEveryRunningJob() {
         assert(make(["a": .noting, "b": .saving, "c": .pending, "d": .succeeded]), .shutdown,

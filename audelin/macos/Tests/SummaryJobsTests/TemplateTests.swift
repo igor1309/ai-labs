@@ -2,9 +2,8 @@ import SummaryJobs
 import Synchronization
 import Testing
 
-func makeTemplate() -> Template {
-    .init(name: "Default", instructions: "Write the requested notes", headings: [[.init("Topic"), .init("Questions", required: false)]])
-}
+struct Template: Equatable, Sendable { let marker: Int }
+func makeTemplate() -> Template { .init(marker: 17) }
 final class TemplatesSpy: SummariesTemplates {
     private let recorded = Mutex(0)
     let template: Template
@@ -12,6 +11,12 @@ final class TemplatesSpy: SummariesTemplates {
     var calls: Int { recorded.withLock { $0 } }
     func resolveDefault() async -> Template { recorded.withLock { $0 += 1 }; return template }
 }
+typealias SummariesState = SummaryJobs.SummariesState<Template>
+typealias SummariesEvent = SummaryJobs.SummariesEvent<Template>
+typealias SummariesEffect = SummaryJobs.SummariesEffect<Template>
+typealias SummariesReducer = SummaryJobs.SummariesReducer<Template>
+typealias SummariesEffectHandler = SummaryJobs.SummariesEffectHandler<Template>
+
 @Suite struct TemplateResolutionTests {
     let format = FormatSpy()
     func assert(_ state: SummariesState, _ event: SummariesEvent, _ mutation: (inout SummariesState) -> Void = { _ in }) {
@@ -45,10 +50,9 @@ final class TemplatesSpy: SummariesTemplates {
         #expect(reducer.reduce(state, .shutdown).0 == expected)
         #expect(reducer.reduce(state, .shutdown).1 == .release([makeJob()]))
     }
-    @Test(arguments: [false, true])
-    func resolutionDuringShutdownEndsWithoutGenerating(cancelling: Bool) {
+    @Test func resolutionDuringShutdownEndsWithoutGenerating() {
         let state = makeState(lifecycle: .draining, dispatch: false,
-                              calls: ["call": .init(stage: .resolving, job: makeJob(), cancelling: cancelling)])
+                              calls: ["call": .init(stage: .resolving, job: makeJob())])
         var expected = state
         expected.calls["call"]?.stage = .interrupted; expected.calls["call"]?.status = "interrupted:false"
         expected.calls["call"]?.badge = .pending; expected.calls["call"]?.retryable = true; expected.lifecycle = .settled

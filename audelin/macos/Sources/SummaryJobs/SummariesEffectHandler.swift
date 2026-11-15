@@ -29,7 +29,7 @@ public protocol SummariesStarts: Sendable {
 public protocol SummariesStorage: Sendable {
     func checkpoint(_ job: Job, identities: [Identity], warning: Bool) async throws
     func publish(_ job: Job, notes: String, warning: Bool) async throws
-    func save(_ job: Job, stage: SummariesState.Call.Stage, warning: Bool) async throws
+    func save(_ job: Job, stage: SummariesStage, warning: Bool) async throws
     /// Removes the job's record and releases this process's lease on it.
     func discard(_ job: Job) async throws
     /// Releases this process's lease on the job.
@@ -37,34 +37,36 @@ public protocol SummariesStorage: Sendable {
 }
 
 /// Makes a job's speaker names and notes; each answer is already validated.
-public protocol SummariesGeneration: Sendable {
+public protocol SummariesGeneration<Template>: Sendable {
+    associatedtype Template: Equatable & Sendable
     func identify(_ job: Job) async throws -> [Identity]
     func notes(_ job: Job, identities: [Identity], template: Template) async throws -> String
     /// Stops the job's running call and returns once it has ended; the call throws. Does nothing when none runs.
     func cancel(_ job: Job) async
 }
 
-public protocol SummariesTemplates: Sendable {
+public protocol SummariesTemplates<Template>: Sendable {
+    associatedtype Template: Equatable & Sendable
     /// Always answers, using built-in Default when its file cannot be used.
     func resolveDefault() async -> Template
 }
 
 /// Hands each effect to its collaborator and answers with the event its result means; it keeps nothing.
-public struct SummariesEffectHandler: Sendable {
-    private let templates: any SummariesTemplates
+public struct SummariesEffectHandler<Template: Equatable & Sendable>: Sendable {
+    private let templates: any SummariesTemplates<Template>
     private let preparation: any SummariesPreparation
     private let claims: any SummariesClaims
     private let records: any SummariesRecords
     private let starts: any SummariesStarts
     private let storage: any SummariesStorage
-    private let generation: any SummariesGeneration
-    public init(templates: any SummariesTemplates, preparation: any SummariesPreparation, claims: any SummariesClaims, records: any SummariesRecords,
-                starts: any SummariesStarts, storage: any SummariesStorage, generation: any SummariesGeneration) {
+    private let generation: any SummariesGeneration<Template>
+    public init(templates: any SummariesTemplates<Template>, preparation: any SummariesPreparation, claims: any SummariesClaims, records: any SummariesRecords,
+                starts: any SummariesStarts, storage: any SummariesStorage, generation: any SummariesGeneration<Template>) {
         self.templates = templates
         self.preparation = preparation; self.claims = claims; self.records = records; self.starts = starts
         self.storage = storage; self.generation = generation
     }
-    public func handle(_ effect: SummariesEffect) async -> SummariesEvent {
+    public func handle(_ effect: SummariesEffect<Template>) async -> SummariesEvent<Template> {
         switch effect {
         case let .read(call):
             do { return .submit(try await preparation.submission(call: call)) }
@@ -119,7 +121,7 @@ public struct SummariesEffectHandler: Sendable {
         }
     }
     /// Answers `done` after the write, or releases the job and answers a storage failure.
-    private func stored(_ job: Job, _ done: SummariesEvent, _ write: () async throws -> Void) async -> SummariesEvent {
+    private func stored(_ job: Job, _ done: SummariesEvent<Template>, _ write: () async throws -> Void) async -> SummariesEvent<Template> {
         do { try await write(); return done }
         catch { await storage.release(job); return .storageFailed(job.call) }
     }

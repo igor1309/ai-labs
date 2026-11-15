@@ -6,6 +6,7 @@ import Foundation
 import Preferences
 import SummaryFiles
 import SummaryJobs
+import NotesGeneration
 import Testing
 
 @MainActor @Suite struct SummariesModelTests {
@@ -161,6 +162,6 @@ import Testing
 
 private struct GenerationStub: SummariesGeneration {
     func identify(_ job: Job) async throws -> [Identity] { [] }
-    func notes(_ job: Job, identities: [Identity], template: SummaryJobs.Template) async throws -> String { "notes" }
+    func notes(_ job: Job, identities: [Identity], template: NotesGeneration.Template) async throws -> String { "notes" }
     func cancel(_ job: Job) async {}
 }

@@ -69,6 +69,23 @@ import Testing
             #expect(try file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate == before)
         }
     }
+    @Test(arguments: [" Topic", "Topic ", "\tTopic", "Topic\t", "Topic\r", "Topic\n", "Top\ric", "Top\nic", "\u{00a0}Topic", "Topic\u{00a0}"])
+    func unpreservableHeadingsAreUnusableAndDefaultFallsBack(heading: String) throws {
+        try withFolder { root in
+            let template = Template(name: "Default", instructions: "Write notes", headings: [[Heading(heading)]])
+            let text = try Files.encode(template)
+            let file = root.appendingPathComponent("Default.md")
+            try text.write(to: file, atomically: true, encoding: .utf8)
+            let sut = Files(folder: root, disk: FileDisk())
+            let entries = sut.list().entries
+            #expect(entries.count == 2)
+            #expect(entries.first?.file == "Default.md")
+            #expect(entries.first?.reason?.contains("headings") == true)
+            #expect(entries.last == Entry(name: "Default", file: nil, reason: nil))
+            #expect(sut.resolveDefault() == Files.builtInDefault)
+            #expect(try String(contentsOf: file, encoding: .utf8) == text)
+        }
+    }
     @Test func aMissingOrBrokenChosenTemplateNeverUsesDefault() throws {
         try withFolder { root in
             let file = root.appendingPathComponent("Custom.md")

@@ -25,7 +25,7 @@ import Testing
     }
     @Test func theSummariesPortFallsBackAsTheJobAsks() async throws {
         let transport = AttemptHTTP(outputs: ["malformed", speakers, russianNotes])
-        let generation: any SummariesGeneration = SummaryGeneration(runtime: runtime(transport), sink: SilentLog())
+        let generation: any SummariesGeneration<NotesGeneration.Template> = SummaryGeneration(runtime: runtime(transport), sink: SilentLog())
         let identities = try await generation.identify(fixtureJob())
         let notes = try await generation.notes(fixtureJob(), identities: identities, template: defaultJobTemplate())
         #expect(identities.map(\.name) == ["Анна"] && notes.contains("API"))
