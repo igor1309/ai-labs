@@ -41,7 +41,7 @@
 "merge.marked" = "Отмечен";
 "merge.unmarked" = "Не отмечен";
 "merge.title" = "Объединение";
-"merge.done" = "Готово";
+"merge.cancel" = "Отменить";
 "merge.confirm" = "Объединить %d";
 "merge.running" = "Объединяю…";
 "merge.needsTwo" = "Отметьте хотя бы два звонка";

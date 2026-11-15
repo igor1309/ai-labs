@@ -141,7 +141,7 @@ cannot bind `space-8`) and 640–300 wide, time 40, duration 48, icons 14 and
 
 - «Объединить звонки…» (combine icon) leads the list bar's actions, before
   Открыть and Переименовать. It turns the list bar into the Merge bar:
-  «Объединение», «Готово», which leaves merge mode (Escape too), and
+  «Объединение», «Отменить», which leaves merge mode (Escape too), and
   «Объединить N», which counts the marked calls.
 - Every row shows a mark before its time: an empty circle in `gutter`, or a
   checked circle in `me` when marked (Row/Unmarked and Row/Marked; a
@@ -164,7 +164,7 @@ cannot bind `space-8`) and 640–300 wide, time 40, duration 48, icons 14 and
   with the busy sentence. On entry the list keeps its normal bar; on
   confirm, merge mode and the selection stay.
 - **Merging.** The merge bar shows «Объединяю…» disabled and hides
-  «Готово»; rows take no clicks. When it ends, the list returns with the
+  «Отменить»; rows take no clicks. When it ends, the list returns with the
   merged call selected.
 - **Failed.** Merge mode stays with the selection, and the banner names the
   reason. The calls are left as they were.

@@ -13,4 +13,4 @@
 "preview.noSelection" = "Звонок не выбран";
 "preview.notesLabel" = "Итоги";
 "preview.mergeCalls" = "Объединить звонки…";
-"preview.mergeDone" = "Готово";
+"preview.mergeCancel" = "Отменить";

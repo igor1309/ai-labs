@@ -59,7 +59,7 @@ public enum CallsListPhrase: String, CaseIterable, Sendable {
     case markOn = "merge.marked"
     case markOff = "merge.unmarked"
     case mergeTitle = "merge.title"
-    case mergeDone = "merge.done"
+    case mergeCancel = "merge.cancel"
     /// Takes the number of marked calls.
     case mergeConfirm = "merge.confirm"
     case mergeRunning = "merge.running"

@@ -13,4 +13,4 @@
 "preview.noSelection" = "No call selected";
 "preview.notesLabel" = "Notes";
 "preview.mergeCalls" = "Merge calls…";
-"preview.mergeDone" = "Done";
+"preview.mergeCancel" = "Cancel";
