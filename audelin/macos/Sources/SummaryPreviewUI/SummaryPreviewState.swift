@@ -32,8 +32,11 @@ public struct SummaryPreviewState: Equatable, Sendable {
         public var offersFolder: Bool
         public var openingFolder: Bool
         public var folderFailure: String?
+        /// The menu button opens the menu; false when every item in it is disabled.
+        public var opens: Bool
         public init(section: String, templates: [Template], keeping: Bool?, saving: Bool = false, failure: String? = nil, catalogueRevision: Int = 0,
-                    filesReason: String? = nil, offersFolder: Bool = false, openingFolder: Bool = false, folderFailure: String? = nil) {
+                    filesReason: String? = nil, offersFolder: Bool = false, openingFolder: Bool = false, folderFailure: String? = nil, opens: Bool = true) {
+            self.opens = opens
             self.filesReason = filesReason; self.offersFolder = offersFolder; self.openingFolder = openingFolder; self.folderFailure = folderFailure
             self.catalogueRevision = catalogueRevision; self.section = section; self.templates = templates; self.keeping = keeping; self.saving = saving; self.failure = failure
         }

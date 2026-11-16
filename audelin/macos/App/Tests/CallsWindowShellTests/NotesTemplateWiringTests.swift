@@ -24,12 +24,12 @@ struct NotesTemplateWiringTests {
         let detail = CallsDetail(id: "call", title: "Title", date: "Date", duration: "1:00", content: .notes("old", made: "yesterday"),
                                  pair: pair, version: .previous, template: "Default", progress: "making Daily")
         let menu = NotesMenuState(section: "MAKE AGAIN", templates: [.init(id: "daily", name: "Daily", enabled: false, reason: "Bad metadata")],
-                                  keeping: false, offersKeeping: true, saving: true, saveFailure: "read only", filesReason: "No files", offersFolder: true, openingFolder: true, folderFailure: "Finder unavailable", catalogueRevision: 12)
+                                  keeping: false, offersKeeping: true, saving: true, saveFailure: "read only", filesReason: "No files", offersFolder: true, openingFolder: true, folderFailure: "Finder unavailable", catalogueRevision: 12, opens: false)
         let state = try #require(detailState(detail, menu: menu, text: .init(language: .english)))
         #expect(state.notes == .markdown("old", made: "yesterday"))
         #expect(state.version == .previous && state.templateName == "Default" && state.progress == "making Daily")
         #expect(state.menu == .init(section: "MAKE AGAIN", templates: [.init(id: "daily", name: "Daily", enabled: false, reason: "Bad metadata")],
-                                    keeping: false, saving: true, failure: "read only", catalogueRevision: 12, filesReason: "No files", offersFolder: true, openingFolder: true, folderFailure: "Finder unavailable"))
+                                    keeping: false, saving: true, failure: "read only", catalogueRevision: 12, filesReason: "No files", offersFolder: true, openingFolder: true, folderFailure: "Finder unavailable", opens: false))
         var changed = detail
         changed.version = .current; changed.content = .notes("new", made: "today"); changed.template = "Daily"
         changed.progress = nil; changed.failure = "failed"

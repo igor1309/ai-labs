@@ -2,6 +2,8 @@
 
 ## 2026-11-16
 
+- LAB-1661: The detail's summary menu button is disabled while nothing in its menu can be used, such as while a summary is being made.
+
 - LAB-1655: Daily's content checked with the real notes model on recorded call transcripts; daily-notes S-1 to S-5 hold. `macos/scripts/daily-content.sh` reruns the check.
 
 ## 2026-11-15
