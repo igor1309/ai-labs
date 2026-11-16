@@ -35,7 +35,7 @@ struct MergeChainTests {
             #expect(joined.speakers == [.init(id: "2.s1", name: "Ann", state: "named")])
             let notes = try #require(handed.withLock { $0 }.first)
             #expect(notes.0 == first && notes.1 == [second, first])
-            #expect(notes.2 == [.init(label: "Me", time: "1.0", text: "hello"), .init(label: "Them", time: "62.0", text: "hi")])
+            #expect(notes.2 == [.init(label: "Me", time: "1.0", text: "hello"), .init(label: "Them (Ann)", time: "62.0", text: "hi")])
         }
     }
 

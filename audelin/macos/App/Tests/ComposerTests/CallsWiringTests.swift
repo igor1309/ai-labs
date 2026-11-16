@@ -23,6 +23,12 @@ struct CallsWiringTests {
         ])
     }
 
+    @Test func aNamedSpeakersLinesCarryItsName() {
+        let markdown = "# Transcript\n\n**Them 2** 00:00:05\nДа\n\n## Speakers\n\n- Them 1: unknown\n- Them 2: Анна\n\n"
+            + #"<!-- audelin-speakers {"revision":1,"schemaVersion":1,"speakers":[{"id":"a","state":"diarized"},{"id":"b","name":"Анна","state":"confirmed"}]} -->"# + "\n"
+        #expect(transcriptLines(markdown).map(\.label) == ["Them 2 (Анна)"])
+    }
+
     @Test func mappingNamesTheFailedCallAndProtectsOnlyTheRecording() {
         var state = RecordingsState()
         state.calls = [call("A"), call("B")]

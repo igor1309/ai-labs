@@ -159,6 +159,31 @@ public struct TranscriptFormat: Sendable {
         Self.label(segment, speakerIDs: speakers.map(\.id))
     }
 
+    /// A row's label for notes: the speaker label, followed by the speaker's name in
+    /// parentheses when the transcript has one, as in `Them 1 (Анна)`.
+    public static func namedLabel(_ segment: Segment, speakers: [Speaker]) -> String {
+
+        let label = label(segment, speakerIDs: speakers.map(\.id))
+        guard segment.side == .theirs, let id = segment.speaker,
+              let name = speakers.first(where: { $0.id == id })?.name?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !name.isEmpty else { return label }
+        return "\(label) (\(name))"
+    }
+
+    /// A saved transcript's parts with words, each labelled with its speaker's name as `namedLabel` does.
+    public static func namedEntries(_ markdown: String) -> [Entry] {
+
+        let (parts, speakers) = parts(markdown)
+        return parts.filter { $0.gap == nil }.map { part in
+            let index = part.label == "Them" ? (speakers.count == 1 ? 0 : nil)
+                : part.label.hasPrefix("Them ") ? Int(part.label.dropFirst("Them ".count)).map { $0 - 1 } : nil
+            let name = index.flatMap { speakers.indices.contains($0) ? speakers[$0].name : nil }?
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let label = name.map { $0.isEmpty ? part.label : "\(part.label) (\($0))" } ?? part.label
+            return Entry(label: label, start: part.start, words: part.words)
+        }
+    }
+
     /// A row's speaker label, shared with every other text that names speakers. A remote
     /// speaker reads as `Them N`, N being its place in the speaker list, which only grows, so
     /// N never changes. An unlisted or absent speaker, or the only listed one, reads as `Them`;

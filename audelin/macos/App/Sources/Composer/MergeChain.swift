@@ -47,7 +47,7 @@ func mergeCalls(ids: [String], storage: CallsStorage, binding: any TranscriptFil
     }
     var format = TranscriptFormat()
     let chunks = try format.render(segments, speakers: joined.speakers).chunks
-    let entries = summaryEntries(segments, speakerIDs: joined.speakers.map(\.id))
+    let entries = summaryEntries(segments, speakers: joined.speakers)
     let id = try await storage.merge(ids: ids) { folder, partFolders in
         // Earliest part first: a call folder is named by its start.
         let ordered = partFolders.sorted { $0.lastPathComponent < $1.lastPathComponent }

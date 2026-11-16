@@ -2,6 +2,8 @@
 
 ## 2026-11-16
 
+- LAB-1670: Notes name the far side. They use the names the call app gave (Zoom tiles, the Telemost extension), and name a speaker from the conversation when someone addresses them by name and they answer, or when they introduce themselves; such names read as inferred. Notes no longer refuse to use names.
+
 - LAB-1669: Audelin logs what the Telemost extension sends during a call, under the browser category: connections, participant counts and speaking starts and stops, never names.
 
 - LAB-1668: Telemost names also come through when a call is opened from another Telemost page, such as starting a meeting from the home page.
