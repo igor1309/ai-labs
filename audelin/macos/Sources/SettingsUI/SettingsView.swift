@@ -117,44 +117,14 @@ extension SettingsView {
         fill: Bool = true
     ) -> some View {
 
-        HStack(spacing: tokens.space2) {
-
-            ForEach(titles.indices, id: \.self) { index in
-
-                let isSelected = index == selected
-                let color = enabled[index] ? tokens.text : tokens.disText
-                let label = titles[index]
-
-                Group {
-                    if data {
-                        dataText(label, tokens.typeSmall, color, isSelected ? .medium : .regular)
-                    } else {
-                        uiText(label, tokens.typeSmall, color, isSelected ? .medium : .regular)
-                    }
-                }
-                .lineLimit(1)
-                .padding(.vertical, tokens.space2)
-                .padding(.horizontal, tokens.space12)
-                .frame(maxWidth: fill ? .infinity : nil)
-                .background {
-                    if isSelected {
-                        RoundedRectangle(cornerRadius: tokens.radiusThumb)
-                            .fill(tokens.segThumb)
-                            .shadow(color: tokens.segShadow, radius: 1, y: 1)
-                    }
-                }
-                .overlay {
-                    if index == ring {
-                        RoundedRectangle(cornerRadius: tokens.radiusThumb + tokens.space2)
-                            .strokeBorder(tokens.me, lineWidth: 2)
-                            .padding(-tokens.space2)
-                    }
-                }
+        SegmentTrack(count: titles.count, selected: selected, ring: ring, fill: fill, tokens: tokens) { index, isSelected in
+            let color = enabled[index] ? tokens.text : tokens.disText
+            if data {
+                dataText(titles[index], tokens.typeSmall, color, isSelected ? .medium : .regular)
+            } else {
+                uiText(titles[index], tokens.typeSmall, color, isSelected ? .medium : .regular)
             }
         }
-        .padding(tokens.space2)
-        .background(tokens.segTrack, in: .rect(cornerRadius: tokens.radiusControl))
-        .accessibilityHidden(true)
     }
 
     /// AppKit target over a segment track: focus, clicks, arrow keys and the
@@ -168,7 +138,7 @@ extension SettingsView {
         select: @escaping (Int) -> Void
     ) -> some View {
 
-        SettingsSegmentsTarget(
+        SegmentsTarget(
             titles: titles, enabled: enabled, selected: selected, identifier: id,
             segmentIdentifiers: segmentIDs, select: select,
             focusChanged: { focusChanged(id, $0) })

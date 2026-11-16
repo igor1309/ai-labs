@@ -1,4 +1,5 @@
 import AppKit
+import GlassLedger
 import RenderedText
 import SummaryPreviewUI
 import SwiftUI
@@ -89,12 +90,12 @@ struct NotesTemplatePreviewTests {
         let state = try #require(SummaryPreviews.state("templates-current"))
         let host = Offscreen.host(SummaryPreviewView(state: state, event: { events.append($0) }, render: markdown), size: size)
         defer { host.window?.isReleasedWhenClosed = false; host.window?.close() }
-        let control = try #require(descendants(host).compactMap { $0 as? NSSegmentedControl }.first)
+        let control = try #require(descendants(host).compactMap { $0 as? SegmentsView }.first)
         #expect(control.accessibilityIdentifier() == "preview.versions")
-        #expect(control.selectedSegment == 1)
-        #expect([control.label(forSegment: 0), control.label(forSegment: 1)] == ["Предыдущие", "Текущие"])
-        control.selectedSegment = 0
-        _ = (control.target as? NSObject)?.perform(control.action, with: control)
+        let segments = try #require(control.accessibilityChildren() as? [NSAccessibilityElement])
+        #expect(segments.map { $0.accessibilityLabel() } == ["Предыдущие", "Текущие"])
+        #expect(segments.map { ($0.accessibilityValue() as? NSNumber)?.boolValue } == [false, true])
+        #expect(segments[0].accessibilityPerformPress())
         #expect(events == [.chooseVersion(.previous)])
         let previous = Offscreen.host(view("templates-previous"), size: size)
         defer { previous.window?.isReleasedWhenClosed = false; previous.window?.close() }
@@ -105,7 +106,7 @@ struct NotesTemplatePreviewTests {
     @Test(arguments: [CGFloat(320), 440, 700]) func theSwitchFitsBothNarrowAndWideDetails(width: CGFloat) throws {
         let host = Offscreen.host(view("templates-current"), size: CGSize(width: width, height: size.height))
         defer { host.window?.isReleasedWhenClosed = false; host.window?.close() }
-        let control = try #require(descendants(host).compactMap { $0 as? NSSegmentedControl }.first)
+        let control = try #require(descendants(host).compactMap { $0 as? SegmentsView }.first)
         let frame = control.convert(control.bounds, to: host)
         #expect(frame.minX >= 0 && frame.maxX <= width)
     }
@@ -113,7 +114,7 @@ struct NotesTemplatePreviewTests {
     @Test func aSingleVersionHasNoSwitchAndRepeatsItsTemplateInTheFooter() throws {
         let host = Offscreen.host(view("templates-single"), size: size)
         defer { host.window?.isReleasedWhenClosed = false; host.window?.close() }
-        #expect(!descendants(host).contains { $0 is NSSegmentedControl })
+        #expect(!descendants(host).contains { $0 is SegmentsView })
         #expect(Offscreen.textView(in: host)?.string.hasSuffix("Сделано 17.10, 11:42 · Шаблон: Default") == true)
     }
 

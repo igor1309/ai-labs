@@ -110,7 +110,8 @@ public struct SummaryPreviewView: View {
                 .textSelection(.enabled)
             metaLine(state).padding(.top, tokens.space8)
             if let version = state.version {
-                NotesVersionControl(version: version, previous: text(.previous), current: text(.current), event: event)
+                NotesVersionControl(version: version, previous: text(.previous), current: text(.current),
+                                    tokens: tokens, event: event)
                     .fixedSize()
                     .padding(.top, tokens.space8)
             }
