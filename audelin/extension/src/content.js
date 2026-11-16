@@ -18,6 +18,21 @@ const observe = createCallObserver({
   },
 });
 
+// Hold the worker's link to the app while this call page is open. The
+// browser drops the port when it stops the worker; holding again restarts it.
+function holdLink() {
+  if (!callId) return;
+  try {
+    chrome.runtime.connect({ name: "telemost-call" }).onDisconnect.addListener(() => {
+      void chrome.runtime.lastError;
+      setTimeout(holdLink, 1000);
+    });
+  } catch {
+    // The extension was reloaded; this page's script is orphaned.
+  }
+}
+holdLink();
+
 // Many mutations arrive together; one read follows each burst.
 let scheduled = false;
 function schedule() {
