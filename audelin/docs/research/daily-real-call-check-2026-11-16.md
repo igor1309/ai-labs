@@ -43,3 +43,28 @@ All seven requests passed structural validation on the first attempt, with Russi
   smoke result on 11-10. Each run is one sample.
 
 These are single runs judged by hand against machine text. They are not a blinded evaluation or audio-grounded truth.
+
+## Real calls in the app
+
+Next, I remade the notes with Daily on three real "iOS daily" calls in the installed Audelin
+(build 3a0e620f3, the `opus` primary model, Keep previous on). It ran the way a user does:
+select the call, open Make again, check that Keep previous is on, choose Daily. The
+`sh macos/scripts/live/run-driver.sh macos/scripts/live/real-daily-remake.swift <call id>...`
+driver does those steps through accessibility in the running app. It writes nothing to the
+calls folder itself. Before the run I copied each call's `summary.md` aside. Afterwards I decoded
+the receipt and compared it with that copy.
+
+| Call | Before | Previous after | Current after | S-1 | S-2 | S-3 | S-4 | S-5 |
+|---|---|---|---|---|---|---|---|---|
+| 2026.11.11-1000 | Default notes, no template recorded | Byte-identical to the original body, attributed to Default | Daily, Russian headings | Holds | Holds | Holds | Holds | n/a |
+| 2026.11.12-0959 | Same | Byte-identical, Default | Daily | Holds | Holds | Holds | Holds | n/a |
+| 2026.11.13-0959 | Same | Byte-identical, Default | Daily | Holds | Holds | Holds | Holds | n/a |
+
+In all three calls the original notes survived untouched as Previous, and Current is attributed to Daily.
+- S-2: items are labelled Согласовано / Предложено (11-12) or agreed / suggested (11-11, 11-13). For example, the proposed post-daily OTP call is kept as suggested, and the frontend workaround as agreed.
+- S-3: "Owner unclear" appears, for example, on checking the iOS landing's documents block (11-11) and the backend dispute API (11-12).
+- S-4: "Fix unclear" appears, for example, on Misha's missed urgent message (11-11) and P2P OPE testing (11-12).
+- S-5: each of these calls raises blockers, so the "blockers not discussed" case cannot occur. No output writes "none"/"нет" for a topic. S-5's positive evidence remains the no-blockers cut above.
+
+The English-label leak noted above shows up here too (11-13: **Agreed** / **Suggested**).
+The notes stay in the user's calls folder and are not copied into the repository.
