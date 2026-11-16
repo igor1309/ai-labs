@@ -198,7 +198,8 @@ deletion, merges and folder moves; it does not interpret notes or template
 metadata.
 
 **Preferences** owns persistence and missing-value defaults for the one
-global keep choice, initially on. It offers reading, updating only that
+global keep choice, initially on, and for the user's Zoom name, initially
+unknown, which the Zoom observer reads and updates. It offers reading, updating only that
 choice and observing successful changes through its settings-storage
 binding. Other preference updates preserve it. Toggling it does not prune
 saved notes; it affects subsequent runs. The menu edits it through
@@ -677,9 +678,22 @@ watched. The reducer names a row through an injected matcher
 rule (`AfterCallNames.names`), both in SpeakerNaming.
 
 Its effect handler watches and closes the call-app sources. Two adapters in
-the composer answer that port: the Zoom observer reports the Talking
-indicator from Zoom's accessibility tree, and the browser observer reports
-the extension's events and connections. The root subscribes Recording's
+the composer answer that port: the Zoom observer reports who speaks on
+Zoom's side, and the browser observer reports the extension's events and
+connections.
+
+**ZoomAccessibility** reads Zoom's meeting windows: the Talking label Zoom
+shows in Speaker view, each participant tile's name and audio state, and the
+user's own name where Zoom shows it. It also decides, as a pure rule, which
+far-side participant a reading shows as speaking: the Talking label; else
+the only other participant; else the only other unmuted one; else nobody.
+The user's tile is told apart by the user's Zoom name, and without that name
+the rule names nobody. Its reason to change is what Zoom exposes. The Zoom
+observer polls it, reports each change of that speaker to CallNames, and
+takes the user's Zoom name through two closures, one that reads the
+remembered name and one that remembers a name Zoom showed; the root plugs
+both into Preferences. CallNames is unchanged: tile names reach it as
+speaker evidence, tentative until the after-call pass confirms them. The root subscribes Recording's
 output to it: a recording's start and end start and stop the watch for
 that call; its names stay after it.
 
