@@ -32,11 +32,11 @@ Daily writes is [../spec/daily-notes/SPEC.md](../spec/daily-notes/SPEC.md).
 
 ## Which template, and Previous / Current
 
-- A line above the summary reads «Шаблон: <name>» (`gutter`,
-  `type-caption`); the date line under the notes repeats it. Notes made
-  before templates read Default.
-- When a previous set is kept, the line leads with a Предыдущие / Текущие
-  segmented control that picks which set the summary shows; Текущие is
+- The template opens the detail header's meta line, before the tags:
+  «Шаблон: <name> · Теги: …» (see the call tags brief). The date line
+  under the notes repeats it. Notes made before templates read Default.
+- When a previous set is kept, a Предыдущие / Текущие segmented control
+  above the summary that picks which set the summary shows; Текущие is
   selected after new notes. The template line and the date line follow the
   shown set.
 

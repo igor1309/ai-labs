@@ -17,7 +17,7 @@ struct BrowserNamesWiringTests {
     @Test func aConnectedExtensionNamesTheRemoteRow() async throws {
         let clock = FixtureClock(), channel = FakeBrowserChannel()
         let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals,
-                                 browser: { channel.open() }, sleep: { try await Task.sleep(for: $0 * 10_000) })
+                                 browser: { channel.open() }, sleep: { try await Task.sleep(for: $0 * 10_000) }, zoomName: unknownZoomName)
         let text = AsyncStream<CallState>.makeStream()
         let reading = await panel.begin(id: 1, text: text.stream, enableLiveText: {})
         reading.sessionChanged(SessionState(phase: .recording))
@@ -53,7 +53,7 @@ struct BrowserNamesWiringTests {
     @Test func withoutTheChannelTheRemoteRowStaysUnnamed() async throws {
         let clock = FixtureClock()
         let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals,
-                                 browser: { nil }, sleep: { _ in })
+                                 browser: { nil }, sleep: { _ in }, zoomName: unknownZoomName)
         let text = AsyncStream<CallState>.makeStream()
         let reading = await panel.begin(id: 1, text: text.stream, enableLiveText: {})
         reading.sessionChanged(SessionState(phase: .recording))

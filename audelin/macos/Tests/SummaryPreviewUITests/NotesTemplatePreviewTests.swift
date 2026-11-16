@@ -10,7 +10,8 @@ struct NotesTemplatePreviewTests {
         var events: [SummaryPreviewEvent] = []
         let control = NotesMenuControl(text: .init(language: .russian), presentMenu: { _, _ in }, event: { events.append($0) })
         control.show(.init(section: "СДЕЛАТЬ ЗАНОВО", templates: templates(enabled: true), keeping: keeping), text: .init(language: .russian))
-        control.performClick(nil)
+        #expect(control.isEnabled)
+        _ = (control.target as? NSObject)?.perform(control.action, with: control)
         let items = control.templateMenu.items
         #expect(items.map(\.title) == ["СДЕЛАТЬ ЗАНОВО", "Default", "Daily", "", "Сохранять прежние итоги"])
         #expect(items[1].state == .off && items[2].state == .off)
@@ -35,6 +36,15 @@ struct NotesTemplatePreviewTests {
             #expect(!item.isEnabled)
             _ = (item.target as? NSObject)?.perform(item.action, with: item)
         }
+        #expect(events == [])
+    }
+
+    @Test func aMenuThatDoesNotOpenDisablesItsButton() {
+        var events: [SummaryPreviewEvent] = []
+        let control = NotesMenuControl(text: .init(language: .russian), presentMenu: { _, _ in }, event: { events.append($0) })
+        control.show(.init(section: "СДЕЛАТЬ", templates: templates(enabled: false), keeping: nil, opens: false), text: .init(language: .russian))
+        #expect(!control.isEnabled)
+        control.performClick(nil)
         #expect(events == [])
     }
 

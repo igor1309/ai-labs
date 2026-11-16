@@ -27,6 +27,8 @@ for the life of the page.
    while Audelin records. Names appear on their side's rows once a remote
    participant speaks.
 
+The extension starts the helper only while a Telemost call page is open.
+
 A browser installed after Audelin's last launch gets the helper at the next
 launch. After `npm run build`, press the reload button on the extension's
 card for the browser to load the new `dist/`.

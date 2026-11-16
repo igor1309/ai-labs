@@ -33,7 +33,11 @@ hidden Tags slot on the "Calls window — components" board.
 
 ## Editing
 
-- The detail header shows «Теги:» and the call's tags, then «Изменить».
+- The detail header has one meta line under the date: «Шаблон: <name>»,
+  a `·` divider, then «Теги:», the call's tags and «Изменить». Labels are
+  `sub`, the template name is `text`, so it reads a step above its label;
+  both share `type-small`. The template comes first, so its place does not
+  move as tags grow (Template and tags line).
   «Изменить» turns the line into a field, one chip per tag, with a
   `+ тег` entry that completes from tags in use. Return saves, Esc cancels.
 - A row shows its tags as `#tag` text (Row tag: `type-small`, `gutter`,
@@ -46,5 +50,5 @@ hidden Tags slot on the "Calls window — components" board.
 |---|---|
 | Calls — tags filter | Strip with one chip on, list filtered |
 | Calls — #tag search | `#клиент` in the field, its chip on |
-| Calls — editing tags | Detail header tags line as a field |
-| Calls — no tags | No strip; detail shows «Теги: нет · Добавить» |
+| Calls — editing tags | Template stays; the tags part of the line becomes a field |
+| Calls — no tags | No strip; detail shows «Шаблон: Default · Теги: нет · Добавить» |

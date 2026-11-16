@@ -69,6 +69,11 @@ In all three calls the original notes survived untouched as Previous, and Curren
 The English-label leak noted above shows up here too (11-13: **Agreed** / **Suggested**).
 The notes stay in the user's calls folder and are not copied into the repository.
 
+The driver now backs up each call's notes files before it acts, checks the receipt's Previous
+against that backup and prints a restore command (LAB-1658). On 2026.11.13-0959 it reported
+the Daily notes preserved as Previous, and `restore-live-backup.sh` put `summary.md` and
+`.summary-job.json` back byte-identical (`shasum` equal before the run and after the restore).
+
 ## Automated check (LAB-1657)
 
 `audelin-daily-content.yml` reruns the script check on the self-hosted Mac when a pull request changes

@@ -60,7 +60,7 @@ struct CallsListNotesTests {
         shown.type("r", code: 15)
 
         let id = state.rows[0].id
-        #expect(shown.sent == [.open(id), .beginRename(id), .askDelete(id)])
+        #expect(shown.sent == [.beginRename(id), .open(id), .askDelete(id)])
     }
 
     @Test func inANarrowWindowReturnAndSpaceReadTheCall() throws {
@@ -87,7 +87,7 @@ struct CallsListNotesTests {
         defer { shown.close() }
 
         shown.type(" ", code: 49)
-        shown.type("r", code: 15, modifiers: .command)
+        shown.type("\r", code: 36)
         shown.type("\u{7F}", code: 51, modifiers: .command)
 
         #expect(shown.sent.isEmpty)

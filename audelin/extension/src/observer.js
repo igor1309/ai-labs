@@ -15,7 +15,7 @@ export function createCallObserver({ readRoster, now, emit }) {
 
     if (!read.inCall) {
       if (participants === null) return;
-      for (const id of speaking) emit({ type: "speakingStopped", at, id });
+      for (const id of speaking) emit({ type: "speakingStopped", at, participantId: id });
       emit({ type: "callEnded", at });
       participants = null;
       speaking = new Set();
@@ -24,14 +24,14 @@ export function createCallObserver({ readRoster, now, emit }) {
 
     const nowSpeaking = new Set(read.speakingIds);
     for (const id of speaking) {
-      if (!nowSpeaking.has(id)) emit({ type: "speakingStopped", at, id });
+      if (!nowSpeaking.has(id)) emit({ type: "speakingStopped", at, participantId: id });
     }
     if (participants === null || !sameRoster(participants, read.participants)) {
       participants = read.participants;
       emit({ type: "roster", at, participants });
     }
     for (const id of nowSpeaking) {
-      if (!speaking.has(id)) emit({ type: "speakingStarted", at, id });
+      if (!speaking.has(id)) emit({ type: "speakingStarted", at, participantId: id });
     }
     speaking = nowSpeaking;
   };

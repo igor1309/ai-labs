@@ -63,13 +63,17 @@ gh_failed() {
     fi
     sleep "$interval"
 }
+# The limit is checked only after a first poll: time is in whole seconds, so
+# a start just before a second boundary could otherwise end the watch unseen.
+polled=0
 while true; do
     now=$(date +%s)
-    if ((now - started >= limit)); then
+    if ((polled && now - started >= limit)); then
         echo "still pending after ${limit}s: $waiting_on" >&2
         finish 4
     fi
 
+    polled=1
     view=$(gh pr view "$pr" --json state,mergeable,headRefOid 2>&1) || { gh_failed "$view"; continue; }
     pr_state=$(jq -r .state <<< "$view")
     mergeable=$(jq -r .mergeable <<< "$view")

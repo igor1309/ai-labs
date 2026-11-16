@@ -2,6 +2,16 @@
 
 ## 2026-11-16
 
+- LAB-1668: Telemost names also come through when a call is opened from another Telemost page, such as starting a meeting from the home page.
+
+- LAB-1663: Zoom calls name the far side in Gallery view too, where Zoom shows no Talking label: a call with one other participant is named after them, and a larger call after the only other unmuted participant, tentatively until the after-call pass. Audelin remembers the user's Zoom name whenever Zoom shows it, to tell the user's tile from the others.
+
+- The call detail shows the template and the tags on one line under the date, template first: «Шаблон: Default · Теги: …».
+
+- LAB-1662: Browser names fixed: speaking events from the Telemost extension were dropped for using the wrong field, and the roster sent on joining was lost when it reached the app before the browser clock. The extension now starts its helper only while a Telemost call page is open, without the "Native host has exited" errors.
+
+- LAB-1661: The detail's summary menu button is disabled while nothing in its menu can be used, such as while a summary is being made.
+
 - LAB-1655: Daily's content checked with the real notes model on recorded call transcripts; daily-notes S-1 to S-5 hold. `macos/scripts/daily-content.sh` reruns the check.
 
 ## 2026-11-15
@@ -21,7 +31,7 @@
 - LAB-1625: Notes use the editable Default template file, including its headings; missing or broken Default files use the built-in template without overwriting edits.
 
 - LAB-1579: A recording, a calls-folder move and an update relaunch each hold the calls folder through one claim, so none starts behind another; a start during a move waits and begins once the move ends, a quit during a move or a relaunch lets the folder go first, and a relaunch still works when call watching failed to start.
-- LAB-1616: While recording, the menu-bar icon is the normal Audelin icon with a slowly pulsing red dot instead of a solid red record disc.
+- LAB-1616: While recording, the menu-bar icon is the normal Audelin icon with a steady 7 pt red dot instead of a solid red record disc.
 - LAB-1614: The nightly report finds its own comparison night, warns on a slow climb across a week, skips loaded nights, says what changed when it cannot compare, and names the functions that grew; one command gives the daily review its verdict.
 - LAB-1613: The nightly also runs a ten-minute composition rehearsal and compares its CPU with the last identical night, so a regression in the app's own wiring shows the next morning with the frames that cost it.
 - LAB-1601: Recording a call uses as much CPU as before LAB-1577 again; audio no longer re-reads the call folder name or redraws the menu.
