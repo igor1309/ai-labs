@@ -97,3 +97,4 @@ Optional post-call notes are owned by `call-summaries/SPEC.md`; recording and no
 The calls window is owned by `calls-window/SPEC.md`, choosing a call in it by `calls-list/SPEC.md`, reading it beside the list by `summary-preview/SPEC.md`, making its notes on request by `call-notes/SPEC.md`, choosing how they are written by `notes-templates/SPEC.md`, Daily notes by `daily-notes/SPEC.md`.
 Installed-update notification and call-safe restart are owned by `installed-update/SPEC.md`.
 Merging calls is owned by `merge-calls/SPEC.md`.
+Naming the far side from what is said in the call is owned by `conversation-names/SPEC.md`.
