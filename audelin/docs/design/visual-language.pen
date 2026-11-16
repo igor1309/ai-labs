@@ -47767,7 +47767,7 @@
           "name": "Segmented control",
           "width": "fill_container",
           "height": 0,
-          "content": "One segmented control for every segmented choice in Settings: tabs, Language, Appearance, debug chunk size. Track: segTrack, radius-control, 2 pt padding. Selected: segThumb with segShadow, radius-thumb, medium label. All labels use text. No outlines. Focus: 2 pt accent ring outside the selected segment, never around the control."
+          "content": "One segmented control for every segmented choice in the app: Settings tabs, Language, Appearance, debug chunk size, and the notes' Предыдущие / Текущие switch. Track: segTrack, radius-control, 2 pt padding. Selected: segThumb with segShadow, radius-thumb, medium label; never an accent fill. All labels use text. No outlines. Focus: 2 pt accent ring outside the selected segment, never around the control."
         },
         {
           "type": "frame",

@@ -111,32 +111,27 @@ public final class NotesMenuControl: NSButton {
     }
 }
 
-struct NotesVersionControl: NSViewRepresentable {
+/// The previous/current switch: the design's segmented control, drawn by
+/// SwiftUI over an AppKit target that owns focus, clicks, keys and accessibility.
+struct NotesVersionControl: View {
     let version: SummaryPreviewState.Version
     let previous: String
     let current: String
+    let tokens: GlassLedger
     let event: (SummaryPreviewEvent) -> Void
+    @State private var focused = false
 
-    func makeCoordinator() -> Coordinator { Coordinator(event: event) }
-    func makeNSView(context: Context) -> NSSegmentedControl {
-        let control = NSSegmentedControl(labels: [previous, current], trackingMode: .selectOne,
-                                         target: context.coordinator, action: #selector(Coordinator.choose(_:)))
-        control.segmentStyle = .rounded
-        control.setAccessibilityIdentifier("preview.versions")
-        return control
-    }
-    func updateNSView(_ control: NSSegmentedControl, context: Context) {
-        context.coordinator.event = event
-        control.setLabel(previous, forSegment: 0); control.setLabel(current, forSegment: 1)
-        control.selectedSegment = version == .previous ? 0 : 1
-        control.setAccessibilityLabel(previous + " / " + current)
-        control.setAccessibilityValue(version == .previous ? previous : current)
-    }
-    @MainActor final class Coordinator: NSObject {
-        var event: (SummaryPreviewEvent) -> Void
-        init(event: @escaping (SummaryPreviewEvent) -> Void) { self.event = event }
-        @objc func choose(_ control: NSSegmentedControl) {
-            event(.chooseVersion(control.selectedSegment == 0 ? .previous : .current))
+    var body: some View {
+        let titles = [previous, current]
+        let selected = version == .previous ? 0 : 1
+        SegmentTrack(count: 2, selected: selected, ring: focused ? selected : nil, fill: false, tokens: tokens) { index, isSelected in
+            Text(titles[index]).font(tokens.ui(tokens.typeSmall, isSelected ? .medium : .regular)).foregroundStyle(tokens.text)
+        }
+        .overlay {
+            SegmentsTarget(titles: titles, enabled: [true, true], selected: selected, identifier: "preview.versions",
+                           segmentIdentifiers: ["preview.versions.previous", "preview.versions.current"],
+                           select: { event(.chooseVersion($0 == 0 ? .previous : .current)) },
+                           focusChanged: { focused = $0 })
         }
     }
 }
