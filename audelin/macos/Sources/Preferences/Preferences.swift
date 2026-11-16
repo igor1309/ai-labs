@@ -25,6 +25,8 @@ public struct Preferences: Codable, Equatable, Sendable {
     public var callsFolder: URL
     public var language: Language
     public var appearance: Appearance
+    /// The user's own name as Zoom shows it, nil until Zoom has shown it.
+    public var zoomName: String?
 
     public init(
         notes: NotesPreferences = .init(),
@@ -34,7 +36,8 @@ public struct Preferences: Codable, Equatable, Sendable {
         callsFolder: URL = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent("Recordings/Audelin", isDirectory: true),
         language: Language = .system,
-        appearance: Appearance = .system
+        appearance: Appearance = .system,
+        zoomName: String? = nil
     ) {
 
         self.keepPreviousNotes = keepPreviousNotes
@@ -44,11 +47,12 @@ public struct Preferences: Codable, Equatable, Sendable {
         self.callsFolder = callsFolder
         self.language = language
         self.appearance = appearance
+        self.zoomName = zoomName
     }
 
     private enum CodingKeys: String, CodingKey {
 
-        case keepPreviousNotes, automaticRecording, liveText, callsFolder, notes, language, appearance
+        case keepPreviousNotes, automaticRecording, liveText, callsFolder, notes, language, appearance, zoomName
     }
 
     public init(from decoder: any Decoder) throws {
@@ -66,5 +70,6 @@ public struct Preferences: Codable, Equatable, Sendable {
             ?? defaults.language
         appearance = (try? values.decodeIfPresent(String.self, forKey: .appearance)).flatMap { $0 }.flatMap(Appearance.init(rawValue:))
             ?? defaults.appearance
+        zoomName = try? values.decodeIfPresent(String.self, forKey: .zoomName)
     }
 }

@@ -181,6 +181,13 @@ it('stops when checks are still pending at the overall limit', () => {
   });
 });
 
+it('polls once before the overall limit can stop it', () => {
+  withFakeGh([polled([check('core', 'pending', 'IN_PROGRESS')])], { WATCH_PR_LIMIT: '0', WATCH_PR_INTERVAL: '0.2' }, (result, calls) => {
+    assert.equal(result.status, 4);
+    assert.ok(calls.length >= 1);
+  });
+});
+
 const TIMED_OUT = { exit: 1, stderr: 'Post "https://api.github.com/graphql": context deadline exceeded' };
 
 it('keeps watching through a gh call that times out', () => {
