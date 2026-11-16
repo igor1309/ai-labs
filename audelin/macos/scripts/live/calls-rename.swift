@@ -191,7 +191,7 @@ extension Driver {
         }
     }
 
-    /// Opens the rename field on a row with ⌘R, waits for it focused, types the title.
+    /// Opens the rename field on a row with Return, waits for it focused, types the title.
     func beginRename(_ id: String, title: String) throws {
         try press("calls.select.\(id)")
         _ = try wait("\(id) selected") { selected(id) ? true : nil }
@@ -202,9 +202,8 @@ extension Driver {
         }
         let row = try element("calls.select.\(id)")
         _ = AXUIElementSetAttributeValue(row, kAXFocusedAttribute as CFString, kCFBooleanTrue)
-        guard let down = CGEvent(keyboardEventSource: nil, virtualKey: 15, keyDown: true),
-              let up = CGEvent(keyboardEventSource: nil, virtualKey: 15, keyDown: false) else { throw LiveFailure("⌘R event") }
-        down.flags = .maskCommand; up.flags = .maskCommand
+        guard let down = CGEvent(keyboardEventSource: nil, virtualKey: 36, keyDown: true),
+              let up = CGEvent(keyboardEventSource: nil, virtualKey: 36, keyDown: false) else { throw LiveFailure("Return event") }
         down.postToPid(process.processIdentifier); up.postToPid(process.processIdentifier)
         let field = try wait("calls.rename") { focusedField() }
         _ = try wait("calls.rename focused") { (attribute(field, kAXFocusedAttribute) as? Bool) == true ? true : nil }

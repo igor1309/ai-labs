@@ -93,7 +93,7 @@ transcript.
 ## Renaming calls
 
 `live-calls-rename.sh` starts each scenario from a fresh `--seed merge` folder and
-renames A from its row's ⌘R. The rename field is `calls.rename`; while it is open
+renames A from its row's Return. The rename field is `calls.rename`; while it is open
 its row (`calls.select.<id>`) is not a button, so the field is reachable through
 accessibility.
 

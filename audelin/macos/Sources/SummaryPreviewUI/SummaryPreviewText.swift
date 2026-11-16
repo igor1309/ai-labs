@@ -31,6 +31,7 @@ public enum SummaryPreviewPhrase: String, CaseIterable, Sendable {
     case previous = "preview.previous"
     case current = "preview.current"
     case templateLine = "preview.templateLine"
+    case templateCaption = "preview.templateCaption"
     case remaking = "preview.remaking"
     case remakeFailed = "preview.remakeFailed"
     case notes = "preview.notesLabel"
