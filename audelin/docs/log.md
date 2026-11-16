@@ -2,6 +2,8 @@
 
 ## 2026-11-16
 
+- LAB-1672: Zoom's stand-in for a participant without a name ("Zoom user", "Пользователь Zoom" and its other languages) no longer names a speaker, so that speaker can still be named from the conversation.
+
 - LAB-1671: Deleting a call writes a line to Audelin's log, under calls: `deleted call=<start> to Trash`, or `delete failed call=<start>`. The call's title is left out, since it can name people.
 
 - LAB-1670: Notes name the far side. They use the names the call app gave (Zoom tiles, the Telemost extension), and name a speaker from the conversation when someone addresses them by name and they answer, or when they introduce themselves; such names read as inferred. Notes no longer refuse to use names.

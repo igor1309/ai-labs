@@ -36,6 +36,12 @@ import ZoomAccessibility
         let reading = gallery([("Me", true), ("Anna", true), ("Boris", false), ("Vera", false)])
         #expect(ZoomReading.speaker(in: reading, known: "Me") == "Anna")
     }
+    @Test(arguments: ["Пользователь Zoom", "Zoom user", " ZOOM USER "])
+    func zoomsStandInForANamelessParticipantNamesNobody(placeholder: String) {
+        #expect(ZoomReading.speaker(in: gallery([("Me", true), (placeholder, true)]), known: "Me") == nil)
+        #expect(ZoomReading.speaker(in: Reading(inMeeting: true, talking: placeholder, participantCount: 2), known: nil) == nil)
+        #expect(ZoomReading.speaker(in: gallery([("Me", true), ("Anna", true)]), known: "Me") == "Anna")
+    }
     @Test func severalUnmutedOthersNameNobody() {
         let reading = gallery([("Me", false), ("Anna", true), ("Boris", true)])
         #expect(ZoomReading.speaker(in: reading, known: "Me") == nil)
