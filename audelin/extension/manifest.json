@@ -13,8 +13,8 @@
   "content_scripts": [
     {
       "matches": [
-        "https://telemost.yandex.ru/j/*",
-        "https://telemost.360.yandex.ru/j/*"
+        "https://telemost.yandex.ru/*",
+        "https://telemost.360.yandex.ru/*"
       ],
       "js": [
         "src/content.js"

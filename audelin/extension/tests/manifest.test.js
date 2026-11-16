@@ -21,8 +21,14 @@ test("contentScript_shouldRun_onTelemostCallPages", () => {
   assert.equal(contentScriptRuns("https://telemost.360.yandex.ru/j/12345678901234"), true);
 });
 
-test("contentScript_shouldNotRun_offTelemostCallPages", () => {
-  assert.equal(contentScriptRuns("https://telemost.yandex.ru/"), false);
+// Telemost reaches a call from its other pages without loading a new
+// document, so the script runs on all of them and finds the room itself.
+test("contentScript_shouldRun_onTelemostPagesACallIsReachedFrom", () => {
+  assert.equal(contentScriptRuns("https://telemost.yandex.ru/"), true);
+  assert.equal(contentScriptRuns("https://telemost.360.yandex.ru/chats"), true);
+});
+
+test("contentScript_shouldNotRun_offTelemost", () => {
   assert.equal(contentScriptRuns("https://yandex.ru/j/12345678901234"), false);
 });
 
