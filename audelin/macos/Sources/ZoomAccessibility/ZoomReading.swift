@@ -72,7 +72,22 @@ public enum ZoomReading {
     /// The far-side participant a reading shows as speaking: the Talking label; else the only
     /// tile other than the user's; else the only other unmuted tile; else nobody. The user's
     /// tile is found by the name Zoom shows, else by `known`; without either only the label names.
+    /// Zoom's stand-in for a participant without a name, such as `Zoom user`, names nobody.
     public static func speaker(in reading: Reading, known: String?) -> String? {
+        anyone(in: reading, known: known).flatMap { isPlaceholder($0) ? nil : $0 }
+    }
+
+    /// Zoom's name for a participant who set none, in the languages Zoom ships.
+    static let placeholders: Set<String> = [
+        "zoom user", "пользователь zoom", "zoom-benutzer", "utilisateur zoom", "usuario de zoom",
+        "utente zoom", "usuário do zoom", "zoom ユーザー", "zoom 用户", "zoom 사용자", "zoom kullanıcısı", "користувач zoom",
+    ]
+
+    static func isPlaceholder(_ name: String) -> Bool {
+        placeholders.contains(name.trimmingCharacters(in: .whitespaces).lowercased())
+    }
+
+    private static func anyone(in reading: Reading, known: String?) -> String? {
         guard reading.inMeeting else { return nil }
         let own = reading.ownName ?? known
         if let talking = reading.talking { return talking == own ? nil : talking }
