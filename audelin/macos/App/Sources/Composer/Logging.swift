@@ -7,7 +7,7 @@ public struct LogEntry: Sendable, Equatable {
     public enum Level: Sendable { case debug, notice }
 
     public enum Category: String, CaseIterable, Sendable {
-        case calls, recording, session, capture, conditions, model, menu, reading, panel
+        case calls, recording, session, capture, conditions, model, menu, reading, panel, browser
     }
 
     public let category: Category

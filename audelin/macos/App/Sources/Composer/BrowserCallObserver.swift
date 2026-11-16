@@ -1,5 +1,6 @@
 import BrowserBridge
 import CallNames
+import CallObservation
 import Synchronization
 
 /// The local socket the Audelin browser extension's native host connects to,
@@ -23,6 +24,7 @@ final class BrowserCallObserver: CallAppObserver {
     private let clock: @Sendable () async -> Double?
     private let monotonic: @Sendable () -> Double
     private let sleep: @Sendable (Duration) async throws -> Void
+    private let log: any LogSink
     /// The open channel and its stream, held only so stop can close them.
     /// The most messages held for one connection before they can be placed; the oldest go first.
     static let heldLimit = 1000
@@ -31,13 +33,16 @@ final class BrowserCallObserver: CallAppObserver {
     /// `clock` gives call time in seconds, or nil before recording starts; `monotonic`
     /// is the clock in seconds browser round trips are timed by; `sleep` spaces the pings.
     init(openBrowser: @escaping @Sendable () -> BrowserChannel?, clock: @escaping @Sendable () async -> Double?,
-         monotonic: @escaping @Sendable () -> Double, sleep: @escaping @Sendable (Duration) async throws -> Void) {
-        self.openBrowser = openBrowser; self.clock = clock; self.monotonic = monotonic; self.sleep = sleep
+         monotonic: @escaping @Sendable () -> Double, sleep: @escaping @Sendable (Duration) async throws -> Void,
+         log: any LogSink) {
+        self.openBrowser = openBrowser; self.clock = clock; self.monotonic = monotonic; self.sleep = sleep; self.log = log
     }
 
     func observe() -> AsyncStream<CallNamesEvent> {
         let (stream, output) = AsyncStream.makeStream(of: CallNamesEvent.self)
+        let log = log
         guard let opened = openBrowser() else {
+            log.write(.init(category: .browser, message: "channel unavailable"))
             output.finish()
             return stream
         }
@@ -60,6 +65,7 @@ final class BrowserCallObserver: CallAppObserver {
                         browserClock.callTime(ofBrowser: milliseconds).map { max(0, $0.time - start) }
                     }
                     guard let placed else { return Array(messages[index...]) }
+                    log.write(.init(category: .browser, message: Self.describe(placed)))
                     output.yield(.browser(placed))
                 }
                 return []
@@ -67,11 +73,19 @@ final class BrowserCallObserver: CallAppObserver {
             for await event in receiver.events {
                 switch event {
                 case let .clock(connection, browserClock):
-                    if clocks.updateValue(browserClock, forKey: connection) == nil { output.yield(.browserConnected(connection)) }
+                    if clocks.updateValue(browserClock, forKey: connection) == nil {
+                        log.write(.init(category: .browser, message: "connection=\(connection) clocked held=\(held[connection]?.count ?? 0)"))
+                        output.yield(.browserConnected(connection))
+                    }
                     if let waiting = held[connection], !waiting.isEmpty {
                         held[connection] = await place(waiting, connection: connection)
                     }
                 case let .disconnected(connection), let .rejected(connection, _):
+                    if case let .rejected(_, reason) = event {
+                        log.write(.init(category: .browser, message: "connection=\(connection) rejected", error: reason))
+                    } else {
+                        log.write(.init(category: .browser, message: "connection=\(connection) disconnected"))
+                    }
                     held[connection] = nil
                     if clocks.removeValue(forKey: connection) != nil { output.yield(.browserDisconnected(connection)) }
                 case let .message(connection, message):
@@ -85,6 +99,19 @@ final class BrowserCallObserver: CallAppObserver {
         }
         output.onTermination = { _ in listening.cancel() }
         return stream
+    }
+
+    /// One placed browser event for the log: its kind, time and counts, never a name.
+    static func describe(_ event: Event) -> String {
+        let head = "connection=\(event.epoch) sequence=\(event.sequence) time=\(String(format: "%.1f", event.time))"
+        switch event.kind {
+        case let .roster(members):
+            return "\(head) roster members=\(members.count) local=\(members.filter(\.isLocal).count)"
+        case let .speaking(memberID, speaking):
+            return "\(head) speaking=\(speaking) member=\(memberID)"
+        case .heartbeat:
+            return "\(head) heartbeat"
+        }
     }
 
     func stop() async {
