@@ -28,6 +28,7 @@
 "preview.keepPrevious" = "Сохранять прежние итоги";
 "preview.previous" = "Предыдущие";
 "preview.current" = "Текущие";
+"preview.templateCaption" = "Шаблон:";
 "preview.templateLine" = "Шаблон: %@";
 "preview.remaking" = "Делаю заново · %@…";
 "preview.remakeFailed" = "Не удалось сделать итоги заново";

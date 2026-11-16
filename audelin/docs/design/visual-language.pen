@@ -52859,7 +52859,7 @@
             {
               "type": "frame",
               "id": "XAjmx",
-              "name": "Tags line",
+              "name": "Template and tags line",
               "reusable": true,
               "width": 760,
               "fill": "$surface",
@@ -52872,6 +52872,36 @@
               ],
               "alignItems": "center",
               "children": [
+                {
+                  "type": "text",
+                  "id": "KNvE0",
+                  "name": "Template caption",
+                  "fill": "$sub",
+                  "content": "Шаблон:",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "ySpnd",
+                  "name": "Template name",
+                  "fill": "$text",
+                  "content": "Default",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "text",
+                  "id": "aYlvb",
+                  "name": "Divider",
+                  "fill": "$gutter",
+                  "content": "·",
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                },
                 {
                   "type": "text",
                   "id": "Dj17R",
@@ -65003,33 +65033,6 @@
               "children": [
                 {
                   "type": "frame",
-                  "id": "z8ECnB",
-                  "name": "Notes bar",
-                  "reusable": true,
-                  "width": 760,
-                  "gap": "$space-12",
-                  "padding": [
-                    "$space-8",
-                    "$space-28",
-                    0,
-                    "$space-28"
-                  ],
-                  "alignItems": "center",
-                  "children": [
-                    {
-                      "type": "text",
-                      "id": "Ov6yT",
-                      "name": "Template",
-                      "fill": "$gutter",
-                      "content": "Шаблон: Default",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-caption",
-                      "fontWeight": "normal"
-                    }
-                  ]
-                },
-                {
-                  "type": "frame",
                   "id": "ryjqu",
                   "name": "Notes bar/Kept",
                   "reusable": true,
@@ -65060,16 +65063,6 @@
                           "enabled": false
                         }
                       }
-                    },
-                    {
-                      "type": "text",
-                      "id": "ihj0M",
-                      "name": "Template",
-                      "fill": "$gutter",
-                      "content": "Шаблон: Daily",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-caption",
-                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -65147,16 +65140,6 @@
                           "enabled": false
                         }
                       }
-                    },
-                    {
-                      "type": "text",
-                      "id": "z6mS7Z",
-                      "name": "Template",
-                      "fill": "$gutter",
-                      "content": "Шаблон: Default",
-                      "fontFamily": "$font-ui",
-                      "fontSize": "$type-caption",
-                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -65543,6 +65526,18 @@
                   }
                 },
                 {
+                  "id": "iwi6u",
+                  "type": "ref",
+                  "ref": "XAjmx",
+                  "name": "Template and tags line",
+                  "width": "fill_container",
+                  "descendants": {
+                    "ySpnd": {
+                      "content": "Default"
+                    }
+                  }
+                },
+                {
                   "type": "frame",
                   "id": "ixtqR",
                   "name": "Scroll",
@@ -65558,13 +65553,6 @@
                     0
                   ],
                   "children": [
-                    {
-                      "id": "T3YJlz",
-                      "type": "ref",
-                      "ref": "z8ECnB",
-                      "name": "Notes bar",
-                      "width": "fill_container"
-                    },
                     {
                       "id": "Fh8Vg",
                       "type": "ref",
@@ -66540,6 +66528,18 @@
                   }
                 },
                 {
+                  "id": "IGMtm",
+                  "type": "ref",
+                  "ref": "XAjmx",
+                  "name": "Template and tags line",
+                  "width": "fill_container",
+                  "descendants": {
+                    "ySpnd": {
+                      "content": "Default"
+                    }
+                  }
+                },
+                {
                   "type": "frame",
                   "id": "Oeljp",
                   "name": "Scroll",
@@ -66555,13 +66555,6 @@
                     0
                   ],
                   "children": [
-                    {
-                      "id": "TrghA",
-                      "type": "ref",
-                      "ref": "z8ECnB",
-                      "name": "Notes bar",
-                      "width": "fill_container"
-                    },
                     {
                       "id": "juArP",
                       "type": "ref",
@@ -67097,6 +67090,18 @@
                   }
                 },
                 {
+                  "id": "q1eBl",
+                  "type": "ref",
+                  "ref": "XAjmx",
+                  "name": "Template and tags line",
+                  "width": "fill_container",
+                  "descendants": {
+                    "ySpnd": {
+                      "content": "Default"
+                    }
+                  }
+                },
+                {
                   "type": "frame",
                   "id": "S10qf9",
                   "name": "Scroll",
@@ -67112,13 +67117,6 @@
                     0
                   ],
                   "children": [
-                    {
-                      "id": "UaPu3",
-                      "type": "ref",
-                      "ref": "z8ECnB",
-                      "name": "Notes bar",
-                      "width": "fill_container"
-                    },
                     {
                       "id": "HmtII",
                       "type": "ref",
@@ -67650,6 +67648,18 @@
                     },
                     "s032x": {
                       "content": "Сегодня, 12:58 · 41:11"
+                    }
+                  }
+                },
+                {
+                  "id": "crsBp",
+                  "type": "ref",
+                  "ref": "XAjmx",
+                  "name": "Template and tags line",
+                  "width": "fill_container",
+                  "descendants": {
+                    "ySpnd": {
+                      "content": "Daily"
                     }
                   }
                 },
@@ -68202,6 +68212,18 @@
                   }
                 },
                 {
+                  "id": "CRedM",
+                  "type": "ref",
+                  "ref": "XAjmx",
+                  "name": "Template and tags line",
+                  "width": "fill_container",
+                  "descendants": {
+                    "ySpnd": {
+                      "content": "Default"
+                    }
+                  }
+                },
+                {
                   "type": "frame",
                   "id": "J9mGU4",
                   "name": "Scroll",
@@ -68750,6 +68772,18 @@
                   }
                 },
                 {
+                  "id": "b2A7R",
+                  "type": "ref",
+                  "ref": "XAjmx",
+                  "name": "Template and tags line",
+                  "width": "fill_container",
+                  "descendants": {
+                    "ySpnd": {
+                      "content": "Default"
+                    }
+                  }
+                },
+                {
                   "type": "frame",
                   "id": "r7KurL",
                   "name": "Scroll",
@@ -68770,13 +68804,6 @@
                       "type": "ref",
                       "ref": "MpssT",
                       "name": "Remaking",
-                      "width": "fill_container"
-                    },
-                    {
-                      "id": "jLytJ",
-                      "type": "ref",
-                      "ref": "z8ECnB",
-                      "name": "Notes bar",
                       "width": "fill_container"
                     },
                     {
@@ -69316,6 +69343,18 @@
                   }
                 },
                 {
+                  "id": "vFNdu",
+                  "type": "ref",
+                  "ref": "XAjmx",
+                  "name": "Template and tags line",
+                  "width": "fill_container",
+                  "descendants": {
+                    "ySpnd": {
+                      "content": "Default"
+                    }
+                  }
+                },
+                {
                   "type": "frame",
                   "id": "OO0rG",
                   "name": "Scroll",
@@ -69336,13 +69375,6 @@
                       "type": "ref",
                       "ref": "U1Gso",
                       "name": "Failed",
-                      "width": "fill_container"
-                    },
-                    {
-                      "id": "H8VRQQ",
-                      "type": "ref",
-                      "ref": "z8ECnB",
-                      "name": "Notes bar",
                       "width": "fill_container"
                     },
                     {
@@ -70858,7 +70890,7 @@
                 {
                   "type": "frame",
                   "id": "ieeF7",
-                  "name": "Tags line — editing",
+                  "name": "Template and tags line — editing",
                   "width": "fill_container",
                   "fill": "$surface",
                   "gap": "$space-6",
@@ -70870,6 +70902,36 @@
                   ],
                   "alignItems": "center",
                   "children": [
+                    {
+                      "type": "text",
+                      "id": "gOEKB",
+                      "name": "Template caption",
+                      "fill": "$sub",
+                      "content": "Шаблон:",
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "eeypW",
+                      "name": "Template name",
+                      "fill": "$text",
+                      "content": "Default",
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
+                    },
+                    {
+                      "type": "text",
+                      "id": "oqg1d",
+                      "name": "Divider",
+                      "fill": "$gutter",
+                      "content": "·",
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
+                    },
                     {
                       "type": "text",
                       "id": "Zvueg",

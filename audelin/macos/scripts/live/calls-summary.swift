@@ -121,6 +121,12 @@ private func descendants(_ root: AXUIElement) -> [AXUIElement] {
         guard error == .success else { throw LiveFailure("Press \(identifier): \(error.rawValue)") }
     }
 
+    /// The press enters AppKit's menu tracking and can report a failure for a press it acted on; the menu's section
+    /// appearing is the check.
+    func pressNotesMenu() throws {
+        _ = AXUIElementPerformAction(try element("preview.notesMenu"), kAXPressAction as CFString)
+    }
+
     func screenshot(_ name: String, into folder: URL) throws {
         let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] ?? []
         guard let window = windows.first(where: {
@@ -214,7 +220,8 @@ private func descendants(_ root: AXUIElement) -> [AXUIElement] {
                     try Data().write(to: control.appendingPathComponent("fail-3"))
                     _ = try driver.element("preview.remakeFailure", value: { $0 == "Квота сервиса исчерпана." })
                 } else {
-                    try driver.press("preview.cancel")
+                    // The banner is rebuilt as the press cancels, so the press can report a failure; the cancel file is the check.
+                    _ = AXUIElementPerformAction(try driver.element("preview.cancel"), kAXPressAction as CFString)
                     _ = try driver.wait("cancelled regeneration") { FileManager.default.fileExists(atPath: control.appendingPathComponent("cancelled-4").path) ? true : nil }
                 }
                 _ = try driver.wait("regeneration settled") {
@@ -320,7 +327,7 @@ private func descendants(_ root: AXUIElement) -> [AXUIElement] {
     }
 
     @MainActor private static func openTemplateMenu(_ driver: Driver, keeping: Bool) throws {
-        try driver.press("preview.notesMenu")
+        try driver.pressNotesMenu()
         let heading = try driver.element("preview.menuSection")
         guard string(heading, kAXTitleAttribute) == "СДЕЛАТЬ ЗАНОВО" else { throw LiveFailure("Wrong menu section") }
         _ = try driver.wait("keeping check \(keeping)") {
@@ -345,7 +352,8 @@ private func descendants(_ root: AXUIElement) -> [AXUIElement] {
         let segment: AXUIElement = try driver.wait("version \(title)") {
             descendants(control).first { string($0, kAXTitleAttribute) == title || string($0, kAXDescriptionAttribute) == title }
         }
-        guard AXUIElementPerformAction(segment, kAXPressAction as CFString) == .success else { throw LiveFailure("Cannot choose \(title)") }
+        // The segment can report a failure for a press it acted on; the notes it shows are the check.
+        _ = AXUIElementPerformAction(segment, kAXPressAction as CFString)
         try shown(driver, topic: topic)
     }
 
@@ -396,7 +404,7 @@ private func descendants(_ root: AXUIElement) -> [AXUIElement] {
         _ = try driver.element("preview.empty", value: { $0 == "Нет итогов" })
         if cancel { try driver.press("preview.make") }
         else {
-            try driver.press("preview.notesMenu")
+            try driver.pressNotesMenu()
             let section = try driver.element("preview.menuSection")
             guard string(section, kAXTitleAttribute) == "СДЕЛАТЬ" else { throw LiveFailure("A call without notes has the wrong menu section") }
             try driver.press("preview.template.Default")
@@ -433,3 +441,4 @@ private func descendants(_ root: AXUIElement) -> [AXUIElement] {
         }
     }
 }
+
