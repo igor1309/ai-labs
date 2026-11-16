@@ -77,6 +77,8 @@ makes notes with the default notes model from `~/Library/Application Support/Aud
 and `macos/scripts/daily-content-check.py` checks them against that folder's `expect.json`: the four Daily
 headings (S-1), an agreed or suggested label (S-2), "owner unclear" (S-3) and "fix unclear" (S-4) where the
 call leaves them open, "not discussed" in Blockers on the no-blockers cut, and no bare "none"/"нет" for a
-topic (S-5). Translated labels count. Each failure names the call and the row. A model-as-judge score for
+topic (S-5). Translated labels and Russian paraphrases count. S-3 and S-4 depend on how one model sample words its
+labels, so they are reported but never gate; S-1, S-2 and S-5 gate, and a call that fails them gets one new sample
+before the check fails. Each failure names the call and the row. A model-as-judge score for
 agreed vs suggested is added to the report and never gates. The in-app remake stays manual, because it
 writes to the real calls folder.

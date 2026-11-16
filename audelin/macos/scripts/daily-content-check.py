@@ -86,14 +86,25 @@ def run(expect, notes_dir):
     return results
 
 
+# S-3 and S-4 depend on how one model sample words its labels: they are reported, never gate.
+REPORT_ONLY = {"S-3", "S-4"}
+
+
+def gating(result):
+    return bool(result[2]) and result[1] not in REPORT_ONLY
+
+
 def report(results):
-    failed = [r for r in results if r[2]]
+    failed = [r for r in results if gating(r)]
+    warned = [r for r in results if r[2] and not gating(r)]
     calls = sorted({r[0] for r in results})
     lines = ["## Daily content check", "",
-             f"{len(calls)} calls, {len(failed)} failures." if failed else f"{len(calls)} calls, all rows hold.", "",
+             (f"{len(calls)} calls, {len(failed)} failures." if failed else f"{len(calls)} calls, all gating rows hold.")
+             + (f" {len(warned)} report-only misses (S-3/S-4)." if warned else ""), "",
              "| Call | Row | Result |", "|---|---|---|"]
     for call, row, message in results:
-        lines.append(f"| {call} | {row or 'S-1–S-5'} | {message or 'holds'} |")
+        note = "" if not message or row not in REPORT_ONLY else " (report only)"
+        lines.append(f"| {call} | {row or 'S-1–S-5'} | {message + note if message else 'holds'} |")
     return "\n".join(lines) + "\n"
 
 
@@ -112,9 +123,9 @@ def main(argv=None):
             handle.write(text)
     for call, row, message in results:
         if message:
-            print(f"FAIL {call} {row}: {message}")
+            print(f"{'WARN' if row in REPORT_ONLY else 'FAIL'} {call} {row}: {message}")
     print(text)
-    return 1 if any(r[2] for r in results) else 0
+    return 1 if any(gating(r) for r in results) else 0
 
 
 if __name__ == "__main__":

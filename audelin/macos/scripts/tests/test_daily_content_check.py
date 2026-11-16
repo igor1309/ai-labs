@@ -82,6 +82,9 @@ class RunTests(unittest.TestCase):
                 f.write(GOOD.replace("fix unclear", "ждём"))
             expect = os.path.join(d, "expect.json")
             with open(expect, "w", encoding="utf-8") as f:
+                json.dump({"call-1": {"fix_unclear": True}}, f)
+            self.assertEqual(dcc.main([expect, d]), 0, "S-4 is report-only")
+            with open(expect, "w", encoding="utf-8") as f:
                 json.dump({"call-1": {"fix_unclear": True}, "call-2": {}}, f)
             report = os.path.join(d, "report.md")
             self.assertEqual(dcc.main([expect, d, "--report", report]), 1)
