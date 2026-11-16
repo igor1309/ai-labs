@@ -107,13 +107,13 @@ actor AudelinPanel {
     /// The call app's sources for one recording, timed by its call clock.
     private func callAppSources() -> @Sendable (@escaping @Sendable () async -> Double?) -> [any CallAppObserver] {
 
-        let browser = browser, now = now, sleep = sleep, zoomName = zoomName
+        let browser = browser, now = now, sleep = sleep, zoomName = zoomName, sink = sink
         return { clock in
             let windows = ZoomWindows()
             return [
                 ZoomCallObserver(isPermitted: { windows.isPermitted }, windows: { windows.windows() }, clock: clock,
                                  sleep: { try await Task.sleep(for: $0) }, knownName: zoomName.read, rememberName: zoomName.remember),
-                BrowserCallObserver(openBrowser: browser, clock: clock, monotonic: now, sleep: sleep),
+                BrowserCallObserver(openBrowser: browser, clock: clock, monotonic: now, sleep: sleep, log: sink),
             ]
         }
     }
