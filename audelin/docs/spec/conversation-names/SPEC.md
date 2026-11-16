@@ -18,8 +18,9 @@ Observer: the user, reading a recorded call's transcript and notes.
 - A name the call app showed (Zoom's tiles, the Telemost extension) wins
   over a name from the conversation. The conversation names only speakers
   the call app left unnamed.
-- A name from the conversation is a suggestion. The transcript shows it as
-  inferred from the conversation, distinct from a name the call app showed.
+- A name from the conversation is a suggestion. The notes mark it as
+  inferred, distinct from a name the call app showed; the transcript file
+  keeps only call-app names.
 - Calendar invitees are not used.
 - The notes use every name the transcript carries, from the call app and
   from the conversation, and write people mentioned by name in the
@@ -36,12 +37,12 @@ Feature: Name the far side from the conversation
   Scenario: S-2 A speaker addressed by name is named
     Given a far-side speaker is addressed by name and answers
     When the call's notes are made
-    Then I can read that speaker's name in the transcript and the notes
+    Then I can read that speaker's name in the notes
 
   Scenario: S-3 A speaker who introduces themselves is named
     Given a far-side speaker says who they are
     When the call's notes are made
-    Then I can read that speaker's name in the transcript and the notes
+    Then I can read that speaker's name in the notes
 
   Scenario: S-4 A name only mentioned names nobody
     Given a name is mentioned but nobody answers to it
@@ -61,7 +62,7 @@ Feature: Name the far side from the conversation
 
   Scenario: S-7 A name from the conversation reads as inferred
     Given a far-side speaker was named from the conversation
-    When I read the transcript
+    When I read the call's notes
     Then I can tell that name was inferred from the conversation
 
   Scenario: S-8 People mentioned in the notes keep their names

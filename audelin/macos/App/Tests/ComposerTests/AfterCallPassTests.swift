@@ -76,7 +76,7 @@ struct AfterCallPassTests {
             let anna = try #require(text.firstMatch(of: /- Them (\d): Anna/)?.1)
             let boris = try #require(text.firstMatch(of: /- Them (\d): Boris/)?.1)
             let offered = summaryEntries(.init(status: .finished, entries: [], finalCount: 0), attributed: returned)
-            #expect(offered.map(\.label) == ["Them \(anna)", "Them \(boris)", "Them \(anna)"])
+            #expect(offered.map(\.label) == ["Them \(anna) (Anna)", "Them \(boris) (Boris)", "Them \(anna) (Anna)"])
             #expect(text.contains("**Them \(anna)** 00:00:00\nfar1\n\n**Them \(boris)** 00:00:04\nfar2\n\n**Them \(anna)** 00:00:08\nfar3\n"))
             #expect(text.contains("\"state\":\"confirmed\""))
             #expect(!text.contains("tentative"))

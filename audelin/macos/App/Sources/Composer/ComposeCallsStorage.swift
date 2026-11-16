@@ -67,7 +67,7 @@ struct RelaunchFolderClaim: Sendable {
 
 /// A saved transcript's lines, read by the format's one reader.
 func transcriptLines(_ markdown: String) -> [Calls.Text.Line] {
-    TranscriptFormat.entries(markdown).map { .init(start: $0.start, words: $0.words, label: $0.label) }
+    TranscriptFormat.namedEntries(markdown).map { .init(start: $0.start, words: $0.words, label: $0.label) }
 }
 
 struct SummaryCalls: RecordingsCalls {

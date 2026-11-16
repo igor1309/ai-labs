@@ -17,13 +17,21 @@ struct SummaryEntriesTests {
 
     @Test func remoteSpeakersReadAsInTheTranscript() {
 
-        #expect(summaryEntries(rows, speakerIDs: ["z1", "z2"]).map(\.label) == ["Me", "Them 2", "Them 1", "Them"])
+        #expect(summaryEntries(rows, speakers: speakers(["z1", "z2"])).map(\.label) == ["Me", "Them 2", "Them 1", "Them"])
     }
 
     @Test(arguments: [[String](), ["z2"]]) func aLoneOrUnlistedFarSideReadsAsThem(speakerIDs: [String]) {
 
-        #expect(summaryEntries(rows, speakerIDs: speakerIDs).map(\.label) == ["Me", "Them", "Them", "Them"])
+        #expect(summaryEntries(rows, speakers: speakers(speakerIDs)).map(\.label) == ["Me", "Them", "Them", "Them"])
     }
+
+    @Test func aNamedSpeakerReadsWithItsName() {
+
+        let named: [TranscriptFormat.Speaker] = [.init(id: "z1", name: "Анна", state: "confirmed"), .init(id: "z2", name: nil, state: "diarized")]
+        #expect(summaryEntries(rows, speakers: named).map(\.label) == ["Me", "Them 2", "Them 1 (Анна)", "Them"])
+    }
+
+    private func speakers(_ ids: [String]) -> [TranscriptFormat.Speaker] { ids.map { .init(id: $0, name: nil, state: "diarized") } }
 }
 
 @Suite(.timeLimit(.minutes(1)))
@@ -48,7 +56,7 @@ struct AttributedSummaryEntriesTests {
     @Test func theFarSideReadsAsItsDiarizedSpeakers() async throws {
 
         let entries = summaryEntries(try await call(), attributed: far)
-        #expect(entries.map(\.label) == ["Me", "Them 1", "Them 2"])
+        #expect(entries.map(\.label) == ["Me", "Them 1", "Them 2 (Anna)"])
         #expect(entries.map(\.text) == ["hello", "first", "second"])
     }
 
@@ -56,7 +64,7 @@ struct AttributedSummaryEntriesTests {
 
         let heard = [TranscriptSegment(id: 9, start: 2, end: 2.5, words: [.init("cleaned", start: 2, end: 2.5)], settledCount: 1)]
         let entries = summaryEntries(try await call(), heard: heard, attributed: far)
-        #expect(entries.map(\.label) == ["Them 1", "Me", "Them 2"])
+        #expect(entries.map(\.label) == ["Them 1", "Me", "Them 2 (Anna)"])
         #expect(entries.map(\.text) == ["first", "cleaned", "second"])
     }
 

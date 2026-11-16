@@ -17,7 +17,10 @@ public struct Identity: Equatable, Sendable {
 }
 public enum Failure: Error { case invalidResponse }
 
-/// Verifies attribution and explicit self-introduction syntax, not semantic truth.
+/// Verifies that each name is anchored in the transcript, not that it is true. A label is named by
+/// its own self-introduction, or by being addressed by name in another speaker's line and answering
+/// next. A label that already carries a name in parentheses keeps it; a name claimed by two labels,
+/// or conflicting self-introductions, names nobody.
 public struct Validator: Sendable {
     public init() {}
     public func validate(_ data: Data, entries: [Entry]) throws -> [Identity] {
@@ -27,16 +30,38 @@ public struct Validator: Sendable {
               response.speakers.count == labels.count else { throw Failure.invalidResponse }
         var accepted: [Identity] = []
         for speaker in response.speakers {
-            guard let name = speaker.name, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            guard !speaker.label.contains("("),
+                  let name = speaker.name, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   let time = speaker.time, let quote = speaker.quote,
-                  entries.contains(where: { $0.label == speaker.label && $0.time == time && $0.text == quote }),
-                  selfIntroduction(quote, name: name) else { continue }
+                  let index = entries.firstIndex(where: { $0.time == time && $0.text == quote }) else { continue }
+            let said = entries[index]
+            let evidence = said.label == speaker.label
+                ? selfIntroduction(quote, name: name)
+                : addressed(quote, name: name) && answered(after: index, by: speaker.label, entries: entries)
+            guard evidence else { continue }
             // Conflicting explicit self-introductions must not be resolved by selecting one.
             let introductions = entries.filter { $0.label == speaker.label }.compactMap { introductionName($0.text) }
-            guard Set(introductions.map { $0.lowercased() }).count == 1 else { continue }
+            guard Set(introductions.map { $0.lowercased() }).count <= 1,
+                  introductions.allSatisfy({ $0.caseInsensitiveCompare(name) == .orderedSame }) else { continue }
             accepted.append(.init(label: speaker.label, name: name, time: time, quote: quote))
         }
-        return accepted
+        let counts = Dictionary(accepted.map { ($0.name.lowercased(), 1) }, uniquingKeysWith: +)
+        return accepted.filter { counts[$0.name.lowercased()] == 1 }
+    }
+    /// The quote calls someone by the name: a word of it shares its first three letters with a
+    /// word of the name, so "Андрюха" addresses Андрей. A self-introduction addresses nobody.
+    private func addressed(_ quote: String, name: String) -> Bool {
+        guard introductionName(quote) == nil else { return false }
+        func words(_ text: String) -> [String] {
+            text.lowercased().split(whereSeparator: { !$0.isLetter }).map(String.init).filter { $0.count >= 3 }
+        }
+        let said = words(quote)
+        return words(name).contains { part in said.contains { $0.prefix(3) == part.prefix(3) } }
+    }
+    /// The next line by anyone other than the addresser is this label's.
+    private func answered(after index: Int, by label: String, entries: [Entry]) -> Bool {
+        let addresser = entries[index].label
+        return entries[(index + 1)...].first(where: { $0.label != addresser })?.label == label
     }
     private func selfIntroduction(_ quote: String, name: String) -> Bool {
         introductionName(quote)?.caseInsensitiveCompare(name) == .orderedSame

@@ -11,15 +11,15 @@ func summaryEntries(_ raw: CallState, heard: [TranscriptSegment]? = nil, attribu
     }
     let microphone = heard.map { $0.map { TranscriptFormat.Segment(side: .mine, start: $0.start, settled: $0.settledText, pending: $0.pendingText) } }
         ?? raw.entries.filter { $0.speaker == .mine }.map { Transcript.segment(from: $0) }
-    return summaryEntries(Transcript.merging(microphone, with: attributed.far), speakerIDs: attributed.speakers.map(\.id))
+    return summaryEntries(Transcript.merging(microphone, with: attributed.far), speakers: attributed.speakers)
 }
 
-/// `speakerIDs` is the transcript's speaker list, so each remote speaker reads as in the file.
-func summaryEntries(_ segments: [TranscriptFormat.Segment], speakerIDs: [String] = []) -> [Job.Entry] {
+/// `speakers` is the transcript's speaker list, so each remote speaker reads as in the file, with its name when it has one.
+func summaryEntries(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker] = []) -> [Job.Entry] {
     segments.compactMap { segment in
         let words = [segment.settled, segment.pending].filter { !$0.isEmpty }.joined(separator: " ")
         guard !words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
-        return .init(label: TranscriptFormat.label(segment, speakerIDs: speakerIDs), time: String(segment.start), text: words)
+        return .init(label: TranscriptFormat.namedLabel(segment, speakers: speakers), time: String(segment.start), text: words)
     }
 }
 
