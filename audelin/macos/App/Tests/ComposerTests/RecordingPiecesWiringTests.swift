@@ -217,7 +217,7 @@ private func withPieces(folderFails: Bool = false, consumeTranscript: Bool = tru
         let processes = CoreAudioProcesses(binding: BoundaryProcesses(base: boundary.processes), clock: BoundaryCallClock(time: boundary.time))
         let app = RecordingCallApp()
         app.started("us.zoom.xos")
-        let panel = await AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: log, intervals: testIntervals, browser: { nil }, sleep: { _ in })
+        let panel = await AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: log, intervals: testIntervals, browser: { nil }, sleep: { _ in }, zoomName: unknownZoomName)
         let resources = await FinalizationResources()
         let finalization = await TranscriptFinalizationModel(diarizing: FinalizationDiarizing(resources: resources),
             cleanup: FinalizationCleanup(resources: resources), replacement: FinalizationReplacement(resources: resources),

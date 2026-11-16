@@ -22,6 +22,12 @@ struct ReadingInputs: Sendable {
     }
 }
 
+/// The user's Zoom name: the one remembered, and remembering one Zoom showed.
+struct ZoomName: Sendable {
+    var read: @Sendable () -> String?
+    var remember: @Sendable (String) -> Void
+}
+
 /// The current recording's panel state and its reading actions.
 actor AudelinPanel {
 
@@ -31,6 +37,7 @@ actor AudelinPanel {
     private let sink: any LogSink
     private let browser: @Sendable () -> BrowserChannel?
     private let sleep: @Sendable (Duration) async throws -> Void
+    private let zoomName: ZoomName
     private var current: (id: UInt64, reading: ReadingInputs, enableLiveText: @Sendable () async -> Void)?
     private var subscription: (id: UInt64, value: ReadingSubscription)?
     /// The finished call's subscription, kept until the next recording so names confirmed
@@ -47,9 +54,10 @@ actor AudelinPanel {
     init(
         now: @escaping @Sendable () -> Double, ticks: @escaping @Sendable () -> AsyncStream<Void>, sink: any LogSink,
         intervals: ProfileIntervals, browser: @escaping @Sendable () -> BrowserChannel?,
-        sleep: @escaping @Sendable (Duration) async throws -> Void
+        sleep: @escaping @Sendable (Duration) async throws -> Void, zoomName: ZoomName
     ) {
 
+        self.zoomName = zoomName
         self.browser = browser
         self.sleep = sleep
         self.now = now
@@ -99,12 +107,12 @@ actor AudelinPanel {
     /// The call app's sources for one recording, timed by its call clock.
     private func callAppSources() -> @Sendable (@escaping @Sendable () async -> Double?) -> [any CallAppObserver] {
 
-        let browser = browser, now = now, sleep = sleep
+        let browser = browser, now = now, sleep = sleep, zoomName = zoomName
         return { clock in
             let windows = ZoomWindows()
             return [
                 ZoomCallObserver(isPermitted: { windows.isPermitted }, windows: { windows.windows() }, clock: clock,
-                                 sleep: { try await Task.sleep(for: $0) }),
+                                 sleep: { try await Task.sleep(for: $0) }, knownName: zoomName.read, rememberName: zoomName.remember),
                 BrowserCallObserver(openBrowser: browser, clock: clock, monotonic: now, sleep: sleep),
             ]
         }

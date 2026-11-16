@@ -18,7 +18,7 @@ struct AfterCallNamesWiringTests {
     @Test func diarizedTurnsConfirmTheRowNameWhileReading() async throws {
         let clock = FixtureClock(), channel = FakeBrowserChannel(), names = RecordingNames()
         let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals,
-                                 browser: { channel.open() }, sleep: { try await Task.sleep(for: $0 * 10_000) })
+                                 browser: { channel.open() }, sleep: { try await Task.sleep(for: $0 * 10_000) }, zoomName: unknownZoomName)
         let text = AsyncStream<CallState>.makeStream()
         let reading = await panel.begin(id: 1, text: text.stream, names: names, enableLiveText: {})
         reading.sessionChanged(SessionState(phase: .recording))
@@ -49,7 +49,7 @@ struct AfterCallNamesWiringTests {
     @Test func diarizedTurnsAfterTheCallEndsConfirmTheFinishedCall() async throws {
         let clock = FixtureClock(), channel = FakeBrowserChannel(), names = RecordingNames()
         let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals,
-                                 browser: { channel.open() }, sleep: { try await Task.sleep(for: $0 * 10_000) })
+                                 browser: { channel.open() }, sleep: { try await Task.sleep(for: $0 * 10_000) }, zoomName: unknownZoomName)
         let text = AsyncStream<CallState>.makeStream()
         let reading = await panel.begin(id: 1, text: text.stream, names: names, enableLiveText: {})
         reading.sessionChanged(SessionState(phase: .recording))

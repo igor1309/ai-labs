@@ -2,6 +2,7 @@
 
 ## 2026-11-16
 
+- LAB-1663: Zoom calls name the far side in Gallery view too, where Zoom shows no Talking label: a call with one other participant is named after them, and a larger call after the only other unmuted participant, tentatively until the after-call pass. Audelin remembers the user's Zoom name whenever Zoom shows it, to tell the user's tile from the others.
 - LAB-1662: Browser names fixed: speaking events from the Telemost extension were dropped for using the wrong field, and the roster sent on joining was lost when it reached the app before the browser clock. The extension now starts its helper only while a Telemost call page is open, without the "Native host has exited" errors.
 
 - LAB-1661: The detail's summary menu button is disabled while nothing in its menu can be used, such as while a summary is being made.
