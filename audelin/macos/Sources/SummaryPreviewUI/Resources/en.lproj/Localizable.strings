@@ -28,6 +28,7 @@
 "preview.keepPrevious" = "Keep previous notes";
 "preview.previous" = "Previous";
 "preview.current" = "Current";
+"preview.templateCaption" = "Template:";
 "preview.templateLine" = "Template: %@";
 "preview.remaking" = "Making again · %@…";
 "preview.remakeFailed" = "Couldn’t make the notes again";

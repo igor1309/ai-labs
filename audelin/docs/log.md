@@ -2,6 +2,8 @@
 
 ## 2026-11-16
 
+- The call detail shows the template and the tags on one line under the date, template first: «Шаблон: Default · Теги: …».
+
 - LAB-1662: Browser names fixed: speaking events from the Telemost extension were dropped for using the wrong field, and the roster sent on joining was lost when it reached the app before the browser clock. The extension now starts its helper only while a Telemost call page is open, without the "Native host has exited" errors.
 
 - LAB-1661: The detail's summary menu button is disabled while nothing in its menu can be used, such as while a summary is being made.

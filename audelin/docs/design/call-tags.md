@@ -51,4 +51,4 @@ hidden Tags slot on the "Calls window — components" board.
 | Calls — tags filter | Strip with one chip on, list filtered |
 | Calls — #tag search | `#клиент` in the field, its chip on |
 | Calls — editing tags | Template stays; the tags part of the line becomes a field |
-| Calls — no tags | No strip; detail shows «Шаблон: Default · Теги: нет Добавить» |
+| Calls — no tags | No strip; detail shows «Шаблон: Default · Теги: нет · Добавить» |

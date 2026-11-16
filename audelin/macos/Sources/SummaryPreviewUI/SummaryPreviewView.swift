@@ -108,13 +108,11 @@ public struct SummaryPreviewView: View {
                 .textSelection(.enabled)
             Text("\(state.date) · \(state.duration)").font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.sub)
                 .textSelection(.enabled)
-            tagsLine(state.tags).padding(.top, tokens.space8)
-            if state.version != nil || state.templateName != nil {
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: tokens.space12) { versionAndTemplate(state) }
-                    VStack(alignment: .leading, spacing: tokens.space8) { versionAndTemplate(state) }
-                }
-                .padding(.top, tokens.space8)
+            metaLine(state).padding(.top, tokens.space8)
+            if let version = state.version {
+                NotesVersionControl(version: version, previous: text(.previous), current: text(.current), event: event)
+                    .fixedSize()
+                    .padding(.top, tokens.space8)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -122,18 +120,25 @@ public struct SummaryPreviewView: View {
         .padding(.bottom, tokens.space12)
     }
 
-    @ViewBuilder private func versionAndTemplate(_ state: SummaryPreviewState) -> some View {
-        if let version = state.version {
-            NotesVersionControl(version: version, previous: text(.previous), current: text(.current), event: event)
+    /// The template the notes were made with, then the tags: «Шаблон: Default · Теги: …». The template leads so its
+    /// place does not move as tags grow; its name is `text` against `sub` labels.
+    private func metaLine(_ state: SummaryPreviewState) -> some View {
+        HStack(spacing: tokens.space8) {
+            if let template = state.templateName {
+                HStack(spacing: tokens.space8) {
+                    Text(text(.templateCaption)).foregroundStyle(tokens.sub).accessibilityHidden(true)
+                    // The name carries the identifier: a container's value does not reach accessibility clients.
+                    Text(template).foregroundStyle(tokens.text).lineLimit(1)
+                        .accessibilityIdentifier("preview.template")
+                        .accessibilityLabel(text(.templateCaption))
+                        .accessibilityValue(template)
+                }
                 .fixedSize()
+                Text("·").foregroundStyle(tokens.gutter).accessibilityHidden(true)
+            }
+            tagsLine(state.tags)
         }
-        if let template = state.templateName {
-            Text(text(.templateLine, template)).font(tokens.ui(tokens.typeCaption)).foregroundStyle(tokens.gutter)
-                .fixedSize(horizontal: true, vertical: false)
-                .accessibilityIdentifier("preview.template")
-                .accessibilityLabel(text(.templateLine, template))
-                .accessibilityValue(text(.templateLine, template))
-        }
+        .font(tokens.ui(tokens.typeSmall))
     }
 
     /// «Теги:» and the call's tags with «Изменить», or the field editing them with its hint.
@@ -240,15 +245,15 @@ public struct SummaryPreviewView: View {
     private func remakeFailure(_ failure: String) -> some View {
         VStack(alignment: .leading, spacing: tokens.space4) {
             Text(text(.remakeFailed)).fontWeight(.semibold)
+            // The reason itself carries the identifier: a container's value does not reach accessibility clients.
             Text(failure).textSelection(.enabled)
+                .accessibilityIdentifier("preview.remakeFailure")
+                .accessibilityLabel(text(.remakeFailed))
+                .accessibilityValue(failure)
         }
         .font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.rec)
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(tokens.space12).background(tokens.errBg)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("preview.remakeFailure")
-        .accessibilityLabel(text(.remakeFailed))
-        .accessibilityValue(failure)
         .padding(.horizontal, tokens.space28).padding(.bottom, tokens.space12)
     }
 
