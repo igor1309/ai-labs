@@ -37,7 +37,7 @@ struct BrowserCallObserverTests {
         #expect(channel.stops == 1)
     }
 
-    @Test func aMessageBeforeRecordingStartsIsDropped() async {
+    @Test func aMessageBeforeRecordingStartsIsHeldAndPlacedOnceItStarts() async {
         let channel = FakeChannel()
         let times = Mutex<[Double?]>([nil, 20])
         let sut = BrowserCallObserver(openBrowser: { channel.open() }, clock: { times.withLock { $0.count > 1 ? $0.removeFirst() : $0[0] } },
@@ -50,7 +50,27 @@ struct BrowserCallObserverTests {
         #expect(await events.next() == .browserConnected(0))
         peer.send(message(0, #"{"type":"speakingStarted","at":89000,"participantId":"t1"}"#))
         peer.send(message(1, #"{"type":"speakingStopped","at":90000,"participantId":"t1"}"#))
+        #expect(await events.next() == .browser(.init(epoch: 0, sequence: 0, time: 9, kind: .speaking(memberID: "t1", true))))
         #expect(await events.next() == .browser(.init(epoch: 0, sequence: 1, time: 10, kind: .speaking(memberID: "t1", false))))
+        await sut.stop()
+    }
+
+    @Test func messagesBeforeTheFirstClockReplyAreHeldAndPlacedInOrderOnceItComes() async {
+        let channel = FakeChannel()
+        let sut = BrowserCallObserver(openBrowser: { channel.open() }, clock: { 20 }, monotonic: { 50 },
+                                      sleep: { _ in try await Task.sleep(for: .seconds(3600)) })
+        var events = sut.observe().makeAsyncIterator()
+        let peer = channel.connect()
+        var sent = peer.sent.makeAsyncIterator()
+        #expect(await sent.next() == BrowserClockReply.ping(0))
+        // The extension flushes what it buffered at once, before answering the ping.
+        peer.send(message(0, #"{"type":"roster","at":5000,"participants":[{"id":"t1","name":"Анна","isSelf":false}]}"#))
+        peer.send(message(1, #"{"type":"speakingStarted","at":89000,"participantId":"t1"}"#))
+        peer.send(#"{"version":1,"ping":0,"at":100000}"#)
+        #expect(await events.next() == .browserConnected(0))
+        #expect(await events.next() == .browser(.init(epoch: 0, sequence: 0, time: 0,
+                                                      kind: .roster([.init(id: "t1", name: "Анна", isLocal: false)]))))
+        #expect(await events.next() == .browser(.init(epoch: 0, sequence: 1, time: 9, kind: .speaking(memberID: "t1", true))))
         await sut.stop()
     }
 

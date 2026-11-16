@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { JSDOM } from "jsdom";
+import { checkMessage } from "../src/message.js";
 import { createCallObserver } from "../src/observer.js";
 import { createRosterReader } from "../src/roster.js";
 import { fixtureAfterStyle } from "./after-style.js";
@@ -70,10 +71,10 @@ test("observe_shouldEmitStartAndStop_asARemoteSpeaks", () => {
   sut.at(1000);
 
   setSpeaking(sut.doc, "Boris Ivanov", true);
-  assert.deepEqual(sut.at(1500), [{ type: "speakingStarted", at: 1500, id: "tile-2" }]);
+  assert.deepEqual(sut.at(1500), [{ type: "speakingStarted", at: 1500, participantId: "tile-2" }]);
   assert.deepEqual(sut.at(1750), []);
   setSpeaking(sut.doc, "Boris Ivanov", false);
-  assert.deepEqual(sut.at(2400), [{ type: "speakingStopped", at: 2400, id: "tile-2" }]);
+  assert.deepEqual(sut.at(2400), [{ type: "speakingStopped", at: 2400, participantId: "tile-2" }]);
 });
 
 test("observe_shouldEmitOverlappingIntervals_whenTwoSpeakAtOnce", () => {
@@ -83,9 +84,9 @@ test("observe_shouldEmitOverlappingIntervals_whenTwoSpeakAtOnce", () => {
   setSpeaking(sut.doc, "Boris Ivanov", true);
   sut.at(1100);
   setSpeaking(sut.doc, "Chen Wei", true);
-  assert.deepEqual(sut.at(1200), [{ type: "speakingStarted", at: 1200, id: "tile-3" }]);
+  assert.deepEqual(sut.at(1200), [{ type: "speakingStarted", at: 1200, participantId: "tile-3" }]);
   setSpeaking(sut.doc, "Boris Ivanov", false);
-  assert.deepEqual(sut.at(1300), [{ type: "speakingStopped", at: 1300, id: "tile-2" }]);
+  assert.deepEqual(sut.at(1300), [{ type: "speakingStopped", at: 1300, participantId: "tile-2" }]);
 });
 
 test("observe_shouldEmitTheSpeakerWithTheRoster_whenAlreadySpeakingAtFirstRead", () => {
@@ -93,8 +94,8 @@ test("observe_shouldEmitTheSpeakerWithTheRoster_whenAlreadySpeakingAtFirstRead",
 
   assert.deepEqual(sut.at(1000), [
     { type: "roster", at: 1000, participants: roster },
-    { type: "speakingStarted", at: 1000, id: "tile-2" },
-    { type: "speakingStarted", at: 1000, id: "tile-3" },
+    { type: "speakingStarted", at: 1000, participantId: "tile-2" },
+    { type: "speakingStarted", at: 1000, participantId: "tile-3" },
   ]);
 });
 
@@ -104,7 +105,7 @@ test("observe_shouldStopASpeaker_beforeTheRosterThatDropsThem", () => {
 
   sut.doc.querySelectorAll(".tile")[2].remove();
   assert.deepEqual(sut.at(2000), [
-    { type: "speakingStopped", at: 2000, id: "tile-3" },
+    { type: "speakingStopped", at: 2000, participantId: "tile-3" },
     { type: "roster", at: 2000, participants: roster.slice(0, 2) },
   ]);
 });
@@ -138,8 +139,8 @@ test("observe_shouldStopSpeakersAndEndTheCall_whenThePageLeavesTheCall", () => {
 
   sut.show("not-a-call");
   assert.deepEqual(sut.at(3000), [
-    { type: "speakingStopped", at: 3000, id: "tile-2" },
-    { type: "speakingStopped", at: 3000, id: "tile-3" },
+    { type: "speakingStopped", at: 3000, participantId: "tile-2" },
+    { type: "speakingStopped", at: 3000, participantId: "tile-3" },
     { type: "callEnded", at: 3000 },
   ]);
   assert.deepEqual(sut.at(3500), []);
@@ -163,4 +164,16 @@ test("observe_shouldStartAFreshRoster_whenACallIsJoinedAgain", () => {
       ],
     },
   ]);
+});
+
+test("observe_shouldEmitOnlyEventsTheWireFormatAccepts", () => {
+  const sut = makeSUT("speaking-two");
+  const events = [...sut.at(1000)];
+  sut.doc.querySelectorAll(".tile")[2].remove();
+  events.push(...sut.at(2000));
+  sut.show("not-a-call");
+  events.push(...sut.at(3000));
+
+  assert.deepEqual([...new Set(events.map((event) => event.type))].sort(), ["callEnded", "roster", "speakingStarted", "speakingStopped"]);
+  for (const event of events) checkMessage({ version: 1, callId: "12345678901234", sequence: 0, event });
 });

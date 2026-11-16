@@ -24,6 +24,8 @@ final class BrowserCallObserver: CallAppObserver {
     private let monotonic: @Sendable () -> Double
     private let sleep: @Sendable (Duration) async throws -> Void
     /// The open channel and its stream, held only so stop can close them.
+    /// The most messages held for one connection before they can be placed; the oldest go first.
+    static let heldLimit = 1000
     private let open = Mutex<(channel: BrowserChannel, output: AsyncStream<CallNamesEvent>.Continuation)?>(nil)
 
     /// `clock` gives call time in seconds, or nil before recording starts; `monotonic`
@@ -45,21 +47,38 @@ final class BrowserCallObserver: CallAppObserver {
         let listening = Task {
             // Each connection's clock, used only to place its messages on the call clock.
             var clocks: [Int: BrowserClock] = [:]
+            // Messages that came before their connection's clock or before recording started,
+            // held in order until they can be placed. A connection flushes what it buffered
+            // as soon as it connects, before its first clock reply, and that holds the roster.
+            var held: [Int: [BrowserMessage]] = [:]
+            func place(_ messages: [BrowserMessage], connection: Int) async -> [BrowserMessage] {
+                guard let browserClock = clocks[connection], let now = await clock() else { return messages }
+                // Round trips are timed on the monotonic clock; the call started this far into it.
+                let start = monotonic() - now
+                for (index, message) in messages.enumerated() {
+                    let placed = BrowserObservation.event(message, connection: connection) { milliseconds in
+                        browserClock.callTime(ofBrowser: milliseconds).map { max(0, $0.time - start) }
+                    }
+                    guard let placed else { return Array(messages[index...]) }
+                    output.yield(.browser(placed))
+                }
+                return []
+            }
             for await event in receiver.events {
                 switch event {
                 case let .clock(connection, browserClock):
                     if clocks.updateValue(browserClock, forKey: connection) == nil { output.yield(.browserConnected(connection)) }
+                    if let waiting = held[connection], !waiting.isEmpty {
+                        held[connection] = await place(waiting, connection: connection)
+                    }
                 case let .disconnected(connection), let .rejected(connection, _):
+                    held[connection] = nil
                     if clocks.removeValue(forKey: connection) != nil { output.yield(.browserDisconnected(connection)) }
                 case let .message(connection, message):
-                    guard let now = await clock() else { continue }
-                    // Round trips are timed on the monotonic clock; the call started this far into it.
-                    let start = monotonic() - now
-                    let browserClock = clocks[connection]
-                    let placed = BrowserObservation.event(message, connection: connection) { milliseconds in
-                        browserClock?.callTime(ofBrowser: milliseconds).map { max(0, $0.time - start) }
-                    }
-                    if let placed { output.yield(.browser(placed)) }
+                    var waiting = held[connection] ?? []
+                    waiting.append(message)
+                    if waiting.count > Self.heldLimit { waiting.removeFirst(waiting.count - Self.heldLimit) }
+                    held[connection] = await place(waiting, connection: connection)
                 }
             }
             output.finish()
