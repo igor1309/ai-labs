@@ -20,10 +20,10 @@ HEADINGS = {
     "ru": ["Что продолжить", "Кто что делает", "Блокеры и планируемые решения", "Запланированные встречи"],
 }
 BLOCKERS = {HEADINGS["en"][2], HEADINGS["ru"][2]}
-AGREED = re.compile(r"\b(agreed|suggested)\b|согласован|предложен", re.I)
+AGREED = re.compile(r"\b(agreed|suggested)\b|согласова|предлож|договор", re.I)
 # The template asks for translated labels; Russian notes write them either way.
-UNCLEAR = r"(?:\s+и\s+\w+)?\s+не\s?(?:ясе?н|понят|определ)"
-OWNER_UNCLEAR = re.compile(r"owner unclear|(?:ответственн|владел|исполнител)\w*" + UNCLEAR, re.I)
+UNCLEAR = r"(?:\s+и\s+\w+)?\s+(?:unclear|не\s?(?:ясе?н|понят|определ|назван|указан)|под вопросом)"
+OWNER_UNCLEAR = re.compile(r"owner unclear|(?:кто|чья)\b[^.\n]{0,40}\bне\s?(?:ясн|понятн|назван)|(?:ответственн|владел|исполнител)\w*" + UNCLEAR, re.I)
 FIX_UNCLEAR = re.compile(r"fix unclear|(?:решени|фикс)\w*" + UNCLEAR, re.I)
 NOT_DISCUSSED = re.compile(r"not discussed|не\s+обсужда", re.I)
 # A bullet or paragraph that is only "none"/"нет" stands in for a topic nobody raised.

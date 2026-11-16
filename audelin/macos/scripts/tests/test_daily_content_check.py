@@ -53,6 +53,13 @@ class CheckTests(unittest.TestCase):
         notes = GOOD.replace("owner unclear", "").replace("fix unclear", "владелец и решение неясны")
         self.assertEqual(self.rows(notes, owner_unclear=True, fix_unclear=True), [])
 
+    def test_russian_paraphrases_count(self):
+        notes = GOOD.replace("agreed", "договорились").replace("suggested", "").replace("owner unclear", "владелец не назван").replace("fix unclear", "решение не названо")
+        self.assertEqual(self.rows(notes, owner_unclear=True, fix_unclear=True), [])
+        self.assertEqual(self.rows(GOOD.replace("owner unclear", "владелец unclear"), owner_unclear=True), [])
+        notes = GOOD.replace("owner unclear", "кто именно будет собирать, неясно")
+        self.assertEqual(self.rows(notes, owner_unclear=True), [])
+
     def test_no_blockers_needs_not_discussed(self):
         notes = GOOD.replace("- Тестировщики молчат: fix unclear.", "- Прочие блокеры не обсуждались.")
         self.assertEqual(self.rows(notes, no_blockers=True), [])

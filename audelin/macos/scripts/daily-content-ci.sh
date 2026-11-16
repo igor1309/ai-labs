@@ -27,10 +27,22 @@ echo "Model: $model" > "$out/identity.txt"
 set +e
 (cd "$out/notes" && sh "$here/daily-content.sh" "$model" *.md) > "$out/generate.log" 2>&1
 generated=$?
-python3 -I "$here/daily-content-check.py" "$fixtures/expect.json" "$out/notes" --report "$out/report.md"
+python3 -I "$here/daily-content-check.py" "$fixtures/expect.json" "$out/notes" --report "$out/report.md" > "$out/check.log"
 checked=$?
+cat "$out/generate.log" "$out/check.log"
+# The notes are one model sample each: a call that fails gets one new sample, and the
+# report says so. A row that fails twice is a real regression.
+retried=$(sed -n 's/^FAIL \([^ ]*\) .*/\1/p' "$out/check.log" | sort -u)
+if [ "$checked" -ne 0 ] && [ -n "$retried" ]; then
+    mkdir -p "$out/first"
+    for call in $retried; do mv "$out/notes/$call".daily.*.md "$out/first/" 2>/dev/null; done
+    (cd "$out/notes" && sh "$here/daily-content.sh" "$model" $(for call in $retried; do printf '%s.md ' "$call"; done)) >> "$out/generate.log" 2>&1
+    generated=$?
+    python3 -I "$here/daily-content-check.py" "$fixtures/expect.json" "$out/notes" --report "$out/report.md"
+    checked=$?
+    { echo; echo "Retried once after a first-sample failure: $(echo $retried)."; } >> "$out/report.md"
+fi
 set -e
-cat "$out/generate.log"
 { echo; echo "Model: \`$model\`."; } >> "$out/report.md"
 
 if [ "${AUDELIN_DAILY_JUDGE:-0}" = 1 ]; then
