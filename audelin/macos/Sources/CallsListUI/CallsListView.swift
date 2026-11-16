@@ -84,7 +84,7 @@ public struct CallsListView: View {
         .onAppear { GlassLedger.registerFonts(); editing = state.editing != nil }
     }
 
-    /// The whole row is a button that selects it. Renaming starts only from the menu or ⌘R.
+    /// The whole row is a button that selects it. Renaming starts only from the menu or Return.
     /// In merge mode a click marks the row instead, and the row has no menu or double-click.
     /// A row being renamed is not a button: a button hides its label from accessibility, and the
     /// rename field must be reachable there. Its row stays one element holding the field.
@@ -156,9 +156,9 @@ public struct CallsListView: View {
     /// each shown with its key.
     private func menu(_ row: CallsListState.Row) -> [RowMenuItem?] {
         var items: [RowMenuItem?] = [
-            RowMenuItem(title: text(.open), key: "\r", isEnabled: !state.busy) { event(.open(row.id)) },
+            RowMenuItem(title: text(.open), key: "r", modifiers: .command, isEnabled: !state.busy) { event(.open(row.id)) },
         ]
-        items.append(RowMenuItem(title: text(.rename), key: "r", modifiers: .command, isEnabled: row.editable && !state.busy) {
+        items.append(RowMenuItem(title: text(.rename), key: "\r", isEnabled: row.editable && !state.busy) {
             event(.beginRename(row.id))
         })
         if row.canMakeSummary {
@@ -174,13 +174,13 @@ public struct CallsListView: View {
         return items
     }
 
-    /// Return opens the folder in a wide window; in a narrow one Return and Space read the call. ⌘R renames and ⌘⌫ asks to delete the selected call.
+    /// Return renames in a wide window; in a narrow one Return and Space read the call. ⌘R shows the folder in Finder and ⌘⌫ asks to delete the selected call.
     private func keyAction(_ press: KeyPress, _ row: CallsListState.Row) -> CallsListEvent? {
         let command = press.modifiers.contains(.command)
         switch press.key {
         case .return where !command && state.narrow, .space where !command && state.narrow: return .read(row.id)
-        case .return where !command && !state.busy: return .open(row.id)
-        case "r" where command && row.editable && !state.busy: return .beginRename(row.id)
+        case .return where !command && row.editable && !state.busy: return .beginRename(row.id)
+        case "r" where command && !state.busy: return .open(row.id)
         case .delete where command && row.editable && !state.busy, .backspace where command && row.editable && !state.busy: return .askDelete(row.id)
         default: return nil
         }
