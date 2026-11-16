@@ -52032,7 +52032,7 @@
                           "id": "yQmbg",
                           "name": "Key",
                           "fill": "$gutter",
-                          "content": "↩",
+                          "content": "⌘R",
                           "fontFamily": "$font-data",
                           "fontSize": "$type-caption",
                           "fontWeight": "normal"
@@ -52067,7 +52067,7 @@
                           "id": "unvnl",
                           "name": "Key",
                           "fill": "$gutter",
-                          "content": "⌘R",
+                          "content": "↩",
                           "fontFamily": "$font-data",
                           "fontSize": "$type-caption",
                           "fontWeight": "normal"

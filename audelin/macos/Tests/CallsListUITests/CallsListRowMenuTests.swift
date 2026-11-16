@@ -25,8 +25,8 @@ struct CallsListRowMenuTests {
         let menu = try #require(try target("2026.10.20-1600", in: host).menu(for: rightClick()))
 
         let items = menu.items.filter { !$0.isSeparatorItem }
-        #expect(items.map(\.keyEquivalent) == ["\r", "r", "", "\u{8}"])
-        #expect(items.map(\.keyEquivalentModifierMask) == [[], .command, [], .command])
+        #expect(items.map(\.keyEquivalent) == ["r", "\r", "", "\u{8}"])
+        #expect(items.map(\.keyEquivalentModifierMask) == [.command, [], [], .command])
     }
 
     @Test func menuItemsActOnTheRightClickedRow() throws {

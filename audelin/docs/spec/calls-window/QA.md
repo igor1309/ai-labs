@@ -30,9 +30,9 @@ The fake window is given the same divider autosave name on each creation.
 Missing trial: move the divider, quit and reopen Audelin; it opens where
 it was.
 
-## S-6 Return in a wide window opens the folder
+## S-6 ⌘R opens the folder
 
-At wide width, Return on a call; the fake Finder is asked to show that
+At wide width, ⌘R on a call; the fake Finder is asked to show that
 call's folder, and no summary window is ordered front.
 
 ## S-7 A double-click opens the folder

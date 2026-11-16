@@ -12,8 +12,8 @@ Oracle: the design brief `../../design/calls-list.md`.
   opens it in its own window: the list keeps 340 pt and the call needs
   about 360 to read.
 - **Open shows the call's folder in Finder,** in a wide window as in a
-  narrow one by the row menu; Return and a double-click are its shortcuts
-  while the call is already readable beside the list.
+  narrow one by the row menu; ⌘R and a double-click are its shortcuts.
+  In a wide window Return renames the call.
 
 ```gherkin
 Feature: Working in the calls window
@@ -43,9 +43,9 @@ Feature: Working in the calls window
     When I restart Audelin and open the calls window
     Then I find the divider where I left it
 
-  Scenario: S-6 Return in a wide window opens the folder
+  Scenario: S-6 ⌘R opens the folder
     Given the calls window is wide
-    When I press Return on a call
+    When I press ⌘R on a call
     Then I can see that call's folder in Finder
 
   Scenario: S-7 A double-click opens the folder

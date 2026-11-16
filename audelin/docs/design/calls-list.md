@@ -85,7 +85,7 @@ that state's overrides to Row/Selected.
   when there is none), Повторить итоги (only when the summary failed),
   Удалить…. Открыть shows the call's folder in
   Finder.
-- Keys: ↑↓ select, Return opens, ⌘R renames, ⌘⌫ asks to delete, Tab moves
+- Keys: ↑↓ select, Return renames, ⌘R shows the folder in Finder, ⌘⌫ asks to delete, Tab moves
   focus between the list and the detail. Double-click opens.
 
 ## Search
