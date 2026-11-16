@@ -28,6 +28,27 @@ accessibility tree at the failed wait, and a screenshot of the window then. Driv
 wait on accessibility and file notifications, never sleep, and use no screen
 coordinates or OCR.
 
+## Drivers on real calls
+
+`real-daily-remake.swift` drives the installed Audelin on the user's own calls
+(`sh macos/scripts/live/run-driver.sh macos/scripts/live/real-daily-remake.swift <call id>...`
+from `audelin`). Any driver that can change real data follows these rules:
+
+1. Before it acts on a call, it copies that call's notes files (`summary*.md`,
+   `.summary-job.json`) to `~/.audelin/live-backups/<run>/<call folder>/`, outside
+   the calls folder, with the calls folder's path in `<run>/calls-folder`. Audio and
+   transcripts are left out because drivers never write them.
+2. It checks every copy byte for byte, and stops with an error before acting if the
+   backup failed or missed a file.
+3. It prints `Backup: <run>` and a `Restore:` line;
+   `sh macos/scripts/live/restore-live-backup.sh <run>` puts the run's files back
+   exactly, removing notes files the run added, and compares each with its backup.
+4. After the run it prints `PRESERVED:` or `LOST:` per call, comparing what the
+   app kept (for notes, the receipt's Previous) with the backup, and fails on a loss.
+5. It knows the app finished from the call's files, not from the window: a new job
+   in `.summary-job.json` that is no longer running. Notes already made with the same
+   template look the same in the window before and after.
+
 ## Calls fixtures
 
 `CallsRehearsal` shows the app's calls window with no audio devices. It takes
