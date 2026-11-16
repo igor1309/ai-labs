@@ -68,3 +68,15 @@ In all three calls the original notes survived untouched as Previous, and Curren
 
 The English-label leak noted above shows up here too (11-13: **Agreed** / **Suggested**).
 The notes stay in the user's calls folder and are not copied into the repository.
+
+## Automated check (LAB-1657)
+
+`audelin-daily-content.yml` reruns the script check on the self-hosted Mac when a pull request changes
+`TemplateFiles`, `NotesGeneration` or `NotesPreferences.swift`, and weekly. `macos/scripts/daily-content-ci.sh`
+makes notes with the default notes model from `~/Library/Application Support/Audelin Daily Content/calls`
+and `macos/scripts/daily-content-check.py` checks them against that folder's `expect.json`: the four Daily
+headings (S-1), an agreed or suggested label (S-2), "owner unclear" (S-3) and "fix unclear" (S-4) where the
+call leaves them open, "not discussed" in Blockers on the no-blockers cut, and no bare "none"/"нет" for a
+topic (S-5). Translated labels count. Each failure names the call and the row. A model-as-judge score for
+agreed vs suggested is added to the report and never gates. The in-app remake stays manual, because it
+writes to the real calls folder.

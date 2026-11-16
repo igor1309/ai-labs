@@ -531,3 +531,24 @@ test("ciPullRequestChecks_shouldNeverRunTheLongProfiledRuns", () => {
     assert.doesNotMatch(text.get(file), long, `${file} runs a long profiled run`);
   }
 });
+
+// The Daily content check (LAB-1657) runs on the self-hosted Mac only when the
+// Daily template, the notes generation or the default notes model changes.
+test("ciPathFilters_shouldRunDailyContent_onlyOnDailyChanges", () => {
+  for (const file of [
+    "audelin/macos/Sources/TemplateFiles/Daily.swift",
+    "audelin/macos/Sources/NotesGeneration/Generator.swift",
+    "audelin/macos/Sources/Preferences/NotesPreferences.swift",
+    "audelin/macos/scripts/daily-content-check.py",
+    ".github/workflows/audelin-daily-content.yml",
+  ]) {
+    assert.equal(jobRuns("audelin-daily-content", [file]), true, `${file} does not run audelin-daily-content`);
+  }
+  for (const file of ["audelin/macos/Sources/Preferences/AudioPreferences.swift", "audelin/macos/Sources/SummaryRuntime/Runtime.swift"]) {
+    assert.equal(jobRuns("audelin-daily-content", [file]), false, `${file} runs audelin-daily-content`);
+  }
+  const daily = readFileSync(new URL(".github/workflows/audelin-daily-content.yml", repoRoot), "utf8");
+  assert.match(daily, /^    runs-on: \[self-hosted, local-mac\]$/m);
+  assert.match(daily, /^    - cron: "\d+ \d+ \* \* \d"/m);
+  assert.doesNotMatch(daily, /notes\/|\.daily\./, "the notes are meeting text and must not be uploaded");
+});
