@@ -75,6 +75,8 @@ struct SummaryCalls: RecordingsCalls {
     let deleted: @Sendable (String) async -> Void
     /// Hands the notes side the merged call, its parts and the joined transcript's entries.
     var merged: @Sendable (String, [String], [Job.Entry]) async -> Void = { _, _, _ in }
+    /// Records each delete, by the call's start only: the title can name people.
+    var log: (any LogSink)? = nil
     /// Writes a merged call's joined transcript.
     var binding: any TranscriptFileBinding = DiskTranscriptBinding()
     /// Each call with its tags as first written; a tags file that cannot be read marks the call's tags unreadable.
@@ -86,7 +88,10 @@ struct SummaryCalls: RecordingsCalls {
     }
     func rename(id: String, title: String) async throws { try await storage.rename(id: id, title: title) }
     func delete(id: String) async throws {
-        try await storage.delete(id: id)
+        let call = String(id.prefix("yyyy.MM.dd-HHmm".count))
+        do { try await storage.delete(id: id) }
+        catch { log?.write(.init(category: .calls, message: "delete failed call=\(call)", error: String(describing: error))); throw error }
+        log?.write(.init(category: .calls, message: "deleted call=\(call) to Trash"))
         await deleted(id)
     }
     func prepareMove(to destination: URL) async throws -> [MoveCall] { try await storage.prepareMove(to: destination) }
