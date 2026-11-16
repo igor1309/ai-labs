@@ -35,6 +35,23 @@ struct SummaryCallsTagsTests {
         }
     }
 
+    @Test func aDeleteIsLoggedByTheCallsStartWithoutItsTitle() async throws {
+        try await withComposeFolder { root in
+            let titled = "1970.01.01-1000 Встреча с Анной"
+            try call(titled, in: root)
+            let log = FixtureLog()
+            var sut = SummaryCalls(storage: storage(root), deleted: { _ in })
+            sut.log = log
+
+            let id = try #require(try await sut.list().first?.id)
+            try await sut.delete(id: id)
+            await #expect(throws: (any Error).self) { try await sut.delete(id: id) }
+
+            #expect(log.entries.all.map(\.message) == ["deleted call=1970.01.01-1000 to Trash", "delete failed call=1970.01.01-1000"])
+            #expect(!log.entries.all.contains { $0.message.contains("Анн") })
+        }
+    }
+
     private func call(_ id: String, in root: URL) throws {
         let folder = root.appendingPathComponent(id)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: false)
