@@ -94,7 +94,7 @@ struct NotesMenuTests {
     @Test(arguments: [false, true]) func sectionAndKeepFollowTheShownCall(hasNotes: Bool) {
         let facts = makeFacts(hasNotes: hasNotes)
         assert(.init(), .factsChanged(facts)) {
-            $0.facts = facts; $0.section = hasNotes ? "again" : "make"; $0.offersKeeping = hasNotes
+            $0.facts = facts; $0.section = hasNotes ? "again" : "make"; $0.offersKeeping = hasNotes; $0.opens = true
         }
         assert(.init(), .factsChanged(facts), delivers: nil)
     }
@@ -150,6 +150,38 @@ struct NotesMenuTests {
             for index in $0.templates.indices { $0.templates[index].enabled = false }
         }
         assert(read, .catalogue(2, templates()), delivers: nil)
+    }
+
+    @Test func busyMenuWithEveryItemDisabledDoesNotOpen() {
+        let facts = makeFacts(hasNotes: false, busy: true)
+        let state = makeState()
+        assert(state, .factsChanged(facts)) {
+            $0.facts = facts; $0.section = "make"; $0.offersKeeping = false; $0.opens = false
+            for index in $0.templates.indices { $0.templates[index].enabled = false }
+        }
+        assert(state, .factsChanged(facts), delivers: nil)
+        let closed = makeState {
+            $0.facts = facts; $0.offersKeeping = false; $0.opens = false
+            for index in $0.templates.indices { $0.templates[index].enabled = false }
+        }
+        assert(closed, .opened)
+        assert(closed, .opened, delivers: nil)
+        assert(closed, .factsChanged(makeFacts(hasNotes: false))) {
+            $0.facts = makeFacts(hasNotes: false); $0.section = "make"; $0.opens = true
+            for index in $0.templates.indices { $0.templates[index].enabled = true }
+        }
+        assert(closed, .factsChanged(makeFacts(hasNotes: false)), delivers: nil)
+    }
+
+    @Test func busyMenuOpensWhileItsKeepToggleOrFolderItemCanBeUsed() {
+        let busy = makeState { $0.facts = makeFacts(busy: true) }
+        #expect(busy.opens)
+        assert(busy, .toggleKeeping) { $0.saving = true; $0.opens = false }
+        assert(busy, .toggleKeeping, delivers: .saveKeeping(false))
+        let folder = makeState { $0.facts = makeFacts(busy: true); $0.offersKeeping = false; $0.offersFolder = true }
+        #expect(folder.opens)
+        assert(folder, .openFolder) { $0.openingFolder = true; $0.opens = false }
+        assert(folder, .openFolder, delivers: .openFolder)
     }
 
     @Test func stoppingReenablesUsableTemplatesOnly() {

@@ -38,6 +38,15 @@ struct NotesTemplatePreviewTests {
         #expect(events == [])
     }
 
+    @Test func aMenuThatDoesNotOpenDisablesItsButton() {
+        var events: [SummaryPreviewEvent] = []
+        let control = NotesMenuControl(text: .init(language: .russian), presentMenu: { _, _ in }, event: { events.append($0) })
+        control.show(.init(section: "СДЕЛАТЬ", templates: templates(enabled: false), keeping: nil, opens: false), text: .init(language: .russian))
+        #expect(!control.isEnabled)
+        control.performClick(nil)
+        #expect(events == [])
+    }
+
     @Test func eachOpeningPresentsOnlyOneRefreshedCatalogue() {
         let text = SummaryPreviewText(language: .russian)
         var events: [SummaryPreviewEvent] = []

@@ -27,7 +27,7 @@ public final class NotesMenuControl: NSButton {
 
     public func show(_ state: SummaryPreviewState.Menu?, text: SummaryPreviewText) {
         presentation = state
-        isEnabled = state != nil
+        isEnabled = state?.opens == true
         toolTip = text(.notesMenu)
         setAccessibilityLabel(text(.notesMenu))
         setAccessibilityValue(state?.section ?? "")
@@ -96,7 +96,7 @@ public final class NotesMenuControl: NSButton {
         event(.openTemplatesFolder)
     }
     @objc private func openMenu() {
-        guard let presentation else { return }
+        guard let presentation, presentation.opens else { return }
         // Finish the asynchronous refresh before entering AppKit's menu tracking loop.
         awaitingCatalogue = presentation.catalogueRevision
         event(.openNotesMenu)

@@ -51,15 +51,24 @@ public struct NotesMenuState: Equatable, Sendable {
     public var reading: Int
     public var intention: Intention?
     public var intentions: Int
+    /// The menu button opens the menu: some item in it can be used.
+    public var opens: Bool
     public init(facts: Facts? = nil, section: String = "", templates: [Template] = [], keeping: Bool = true,
                 offersKeeping: Bool = false, saving: Bool = false, saveFailure: String? = nil,
                 filesReason: String? = nil, offersFolder: Bool = false, openingFolder: Bool = false, folderOpened: Bool = false, folderFailure: String? = nil,
-                reading: Int = 0, catalogueRevision: Int = 0, intention: Intention? = nil, intentions: Int = 0) {
+                reading: Int = 0, catalogueRevision: Int = 0, intention: Intention? = nil, intentions: Int = 0, opens: Bool? = nil) {
         self.facts = facts; self.section = section; self.templates = templates; self.keeping = keeping
         self.offersKeeping = offersKeeping; self.saving = saving; self.saveFailure = saveFailure
         self.filesReason = filesReason; self.offersFolder = offersFolder; self.openingFolder = openingFolder
         self.folderOpened = folderOpened; self.folderFailure = folderFailure
         self.catalogueRevision = catalogueRevision; self.reading = reading; self.intention = intention; self.intentions = intentions
+        self.opens = opens ?? Self.opens(facts: facts, offersKeeping: offersKeeping, saving: saving,
+                                         offersFolder: offersFolder, openingFolder: openingFolder)
+    }
+    /// Templates are usable only when the call is not busy; otherwise the keep toggle or the folder item must be.
+    static func opens(facts: Facts?, offersKeeping: Bool, saving: Bool, offersFolder: Bool, openingFolder: Bool) -> Bool {
+        guard let facts else { return false }
+        return !facts.busy || (offersKeeping && !saving) || (offersFolder && !openingFolder)
     }
 }
 public enum NotesMenuEvent: Equatable, Sendable {
@@ -85,6 +94,12 @@ public struct NotesMenuReducer: Sendable {
         self.section = section; self.noUsableFiles = noUsableFiles
     }
     public func reduce(_ state: NotesMenuState, _ event: NotesMenuEvent) -> (NotesMenuState, NotesMenuEffect?) {
+        var (next, effect) = step(state, event)
+        next.opens = NotesMenuState.opens(facts: next.facts, offersKeeping: next.offersKeeping, saving: next.saving,
+                                          offersFolder: next.offersFolder, openingFolder: next.openingFolder)
+        return (next, effect)
+    }
+    private func step(_ state: NotesMenuState, _ event: NotesMenuEvent) -> (NotesMenuState, NotesMenuEffect?) {
         var state = state
         switch event {
         case let .factsChanged(facts):
@@ -94,7 +109,7 @@ public struct NotesMenuReducer: Sendable {
             state.offersKeeping = facts?.hasNotes == true
             for index in state.templates.indices { state.templates[index].enabled = state.templates[index].usable && facts != nil && facts?.busy == false }
         case .opened:
-            guard let facts = state.facts else { return (state, nil) }
+            guard state.opens, let facts = state.facts else { return (state, nil) }
             state.section = section(facts.hasNotes)
             state.reading += 1
             return (state, .catalogue(state.reading))
