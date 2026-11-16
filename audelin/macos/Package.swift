@@ -386,7 +386,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SettingsUITests",
-            dependencies: ["SettingsUI", "RenderedText"]
+            dependencies: ["SettingsUI", "GlassLedger", "RenderedText"]
         ),
         .testTarget(
             name: "SideTextTests",

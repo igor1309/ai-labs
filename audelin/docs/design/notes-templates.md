@@ -37,7 +37,9 @@ Daily writes is [../spec/daily-notes/SPEC.md](../spec/daily-notes/SPEC.md).
   under the notes repeats it. Notes made before templates read Default.
 - When a previous set is kept, a Предыдущие / Текущие segmented control
   above the summary that picks which set the summary shows; Текущие is
-  selected after new notes. The template line and the date line follow the
+  selected after new notes. It is the app's one segmented control
+  (Segmented/First, /Second): the selected set on the neutral `segThumb`,
+  never an accent fill, and an accent ring on it only under keyboard focus. The template line and the date line follow the
   shown set.
 
 ## Making notes again

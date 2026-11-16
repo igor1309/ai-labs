@@ -5,26 +5,33 @@ import SwiftUI
 /// accessibility while SwiftUI draws its segments: Tab reaches the control,
 /// the arrow keys move to the next enabled segment, and each segment is a
 /// radio button to assistive apps.
-struct SettingsSegmentsTarget: NSViewRepresentable {
-    var titles: [String]
-    var enabled: [Bool]
-    var selected: Int?
-    var identifier: String
-    var segmentIdentifiers: [String]
-    var select: (Int) -> Void
+public struct SegmentsTarget: NSViewRepresentable {
+    public var titles: [String]
+    public var enabled: [Bool]
+    public var selected: Int?
+    public var identifier: String
+    public var segmentIdentifiers: [String]
+    public var select: (Int) -> Void
     /// Told when the control gains or loses keyboard focus; SwiftUI rings the selected segment.
-    var focusChanged: (Bool) -> Void
+    public var focusChanged: (Bool) -> Void
 
-    func makeNSView(context: Context) -> SegmentsView { SegmentsView() }
+    public init(titles: [String], enabled: [Bool], selected: Int?, identifier: String,
+                segmentIdentifiers: [String], select: @escaping (Int) -> Void,
+                focusChanged: @escaping (Bool) -> Void) {
+        self.titles = titles; self.enabled = enabled; self.selected = selected; self.identifier = identifier
+        self.segmentIdentifiers = segmentIdentifiers; self.select = select; self.focusChanged = focusChanged
+    }
 
-    func updateNSView(_ view: SegmentsView, context: Context) {
+    public func makeNSView(context: Context) -> SegmentsView { SegmentsView() }
+
+    public func updateNSView(_ view: SegmentsView, context: Context) {
         view.update(titles: titles, enabled: enabled, selected: selected, identifier: identifier,
                     segmentIdentifiers: segmentIdentifiers, select: select)
         view.focusChanged = focusChanged
     }
 }
 
-final class SegmentsView: NSView {
+public final class SegmentsView: NSView {
     private var enabled: [Bool] = []
     private var selected: Int?
     private var select: (Int) -> Void = { _ in }
@@ -53,33 +60,33 @@ final class SegmentsView: NSView {
     }
 
     /// Picks a segment, unless it is disabled or already picked.
-    func pick(_ index: Int) {
+    public func pick(_ index: Int) {
         guard enabled.indices.contains(index), enabled[index], index != selected else { return }
         select(index)
     }
 
-    override var acceptsFirstResponder: Bool { enabled.contains(true) }
-    override var canBecomeKeyView: Bool { enabled.contains(true) }
+    override public var acceptsFirstResponder: Bool { enabled.contains(true) }
+    override public var canBecomeKeyView: Bool { enabled.contains(true) }
 
-    override func becomeFirstResponder() -> Bool {
+    override public func becomeFirstResponder() -> Bool {
         let became = super.becomeFirstResponder()
         if became { focusChanged(true) }
         return became
     }
 
-    override func resignFirstResponder() -> Bool {
+    override public func resignFirstResponder() -> Bool {
         let resigned = super.resignFirstResponder()
         if resigned { focusChanged(false) }
         return resigned
     }
 
-    override func mouseDown(with event: NSEvent) {
+    override public func mouseDown(with event: NSEvent) {
         guard !segments.isEmpty, bounds.width > 0 else { return }
         let x = convert(event.locationInWindow, from: nil).x
         pick(min(segments.count - 1, max(0, Int(x / (bounds.width / CGFloat(segments.count))))))
     }
 
-    override func keyDown(with event: NSEvent) {
+    override public func keyDown(with event: NSEvent) {
         switch event.specialKey {
         case .leftArrow?: step(-1)
         case .rightArrow?: step(1)
