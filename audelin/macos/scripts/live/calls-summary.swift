@@ -220,7 +220,8 @@ private func descendants(_ root: AXUIElement) -> [AXUIElement] {
                     try Data().write(to: control.appendingPathComponent("fail-3"))
                     _ = try driver.element("preview.remakeFailure", value: { $0 == "Квота сервиса исчерпана." })
                 } else {
-                    try driver.press("preview.cancel")
+                    // The banner is rebuilt as the press cancels, so the press can report a failure; the cancel file is the check.
+                    _ = AXUIElementPerformAction(try driver.element("preview.cancel"), kAXPressAction as CFString)
                     _ = try driver.wait("cancelled regeneration") { FileManager.default.fileExists(atPath: control.appendingPathComponent("cancelled-4").path) ? true : nil }
                 }
                 _ = try driver.wait("regeneration settled") {
@@ -440,3 +441,4 @@ private func descendants(_ root: AXUIElement) -> [AXUIElement] {
         }
     }
 }
+
