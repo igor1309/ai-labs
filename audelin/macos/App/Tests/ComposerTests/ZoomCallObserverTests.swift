@@ -10,7 +10,7 @@ struct ZoomCallObserverTests {
     @Test func withoutPermissionNothingIsReadAndTheStreamEnds() async {
         let reads = Mutex(0)
         let sut = ZoomCallObserver(isPermitted: { false }, windows: { reads.withLock { $0 += 1 }; return [] },
-                                   clock: { 1 }, sleep: { _ in }, knownName: { nil }, rememberName: { _ in })
+                                   clock: { 1 }, sleep: { _ in await Task.yield() }, knownName: { nil }, rememberName: { _ in })
         var events: [CallNamesEvent] = []
         for await event in sut.observe() { events.append(event) }
         #expect(events.isEmpty)
@@ -21,7 +21,7 @@ struct ZoomCallObserverTests {
         let readings = Mutex([meeting(talking: "Anna"), meeting(talking: "Boris"), []])
         let times = Mutex([2.0, 2.5, 3.0])
         let sut = ZoomCallObserver(isPermitted: { true }, windows: { readings.withLock { $0.next() } },
-                                   clock: { times.withLock { $0.next() } }, sleep: { _ in }, knownName: { nil }, rememberName: { _ in })
+                                   clock: { times.withLock { $0.next() } }, sleep: { _ in await Task.yield() }, knownName: { nil }, rememberName: { _ in })
         var events: [CallNamesEvent] = []
         for await event in sut.observe() {
             events.append(event)
@@ -37,7 +37,7 @@ struct ZoomCallObserverTests {
     @Test func beforeRecordingStartsAPollReportsNothing() async {
         let times = Mutex<[Double?]>([nil, 4])
         let sut = ZoomCallObserver(isPermitted: { true }, windows: { meeting(talking: nil) },
-                                   clock: { times.withLock { $0.next() } }, sleep: { _ in }, knownName: { nil }, rememberName: { _ in })
+                                   clock: { times.withLock { $0.next() } }, sleep: { _ in await Task.yield() }, knownName: { nil }, rememberName: { _ in })
         var events: [CallNamesEvent] = []
         for await event in sut.observe() {
             events.append(event)
@@ -71,7 +71,7 @@ struct ZoomCallObserverTests {
         let times = Mutex([1.0, 2.0, 3.0])
         let remembered = Mutex<[String]>([])
         let sut = ZoomCallObserver(isPermitted: { true }, windows: { readings.withLock { $0.next() } },
-                                   clock: { times.withLock { $0.next() } }, sleep: { _ in },
+                                   clock: { times.withLock { $0.next() } }, sleep: { _ in await Task.yield() },
                                    knownName: { nil }, rememberName: { name in remembered.withLock { $0.append(name) } })
         var events: [CallNamesEvent] = []
         for await event in sut.observe() {
@@ -85,7 +85,7 @@ struct ZoomCallObserverTests {
     @Test func aRememberedNameNamesTheOtherTileFromTheFirstPoll() async {
         let remembered = Mutex<[String]>([])
         let sut = ZoomCallObserver(isPermitted: { true }, windows: { gallery(["Me", "Anna"], account: nil) }, clock: { 1 },
-                                   sleep: { _ in }, knownName: { "Me" }, rememberName: { name in remembered.withLock { $0.append(name) } })
+                                   sleep: { _ in await Task.yield() }, knownName: { "Me" }, rememberName: { name in remembered.withLock { $0.append(name) } })
         var events: [CallNamesEvent] = []
         for await event in sut.observe() {
             events.append(event)
