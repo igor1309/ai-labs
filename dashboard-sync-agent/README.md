@@ -1,7 +1,7 @@
 ---
 date: 2026-09-05
 model: gpt-6-astra
-description: "dashboard-sync-agent project README — sibling OpenClaw agent that keeps scripts/loc-dashboard.sh, docs/products.html, and the docs/loc-dashboard.html data array in sync with repo state on a daily 02:00 UTC cron"
+description: "dashboard-sync-agent project README — sibling OpenClaw agent that keeps scripts/loc-dashboard.sh, docs/products.html, and the docs/loc-dashboard.html data array in sync with repo state on a daily 01:30 UTC cron"
 ---
 
 # dashboard-sync-agent
