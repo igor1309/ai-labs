@@ -1,7 +1,7 @@
 repo = "igor1309/foliotell"
 description = "An offline iPhone app that reads Markdown and plain-text files aloud, built with SwiftUI."
 homepage = "https://foliotell.pages.dev"
-topics = ["swift", "swiftui", "ios", "text-to-speech", "ai-assisted"]
+topics = ["swift", "swiftui", "ios", "text-to-speech"]
 check = "cd ios && swift build && swift test"
 
 # The iOS app only. Config/, scripts/ and release.toml are TestFlight
