@@ -16,6 +16,7 @@ include = [
   "vite.config.ts",
   ".gitignore",
   "scripts/test.sh",
+  "patches/*.patch",
   "scripts/cut-skeleton.py",
   "scripts/dig-cells.ts",
   "scripts/dig-preview.ts",
@@ -29,6 +30,7 @@ include = [
   "prototypes/careSounds.ts",
   "prototypes/careHatch.css",
   "prototypes/care-hatch.html",
+  "prototypes/coloring.html",
 ]
 exclude = [
   "tests/catalogueSources.test.ts",
