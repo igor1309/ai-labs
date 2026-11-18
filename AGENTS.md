@@ -249,6 +249,12 @@ modules are machines; an app composes them.
 
 ## Writing docs and comments
 
+- Public copy (profile, showcase READMEs, landing pages, posts) is about the
+  product and the engineering. Agents are a tool like a compiler: no "built
+  with AI agents" lines and no agent-centred bio. Mention them only where they
+  are the product or the topic; the [publication checklist](research/showcase/blog-publication.md)
+  says how.
+
 - For blog posts and showcase articles, use the [publication checklist](research/showcase/blog-publication.md)
   before drafting and before claiming publication readiness. Record the target
   channel, language, evidence, visual review and unresolved checks with the draft.

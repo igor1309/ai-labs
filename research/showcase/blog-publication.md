@@ -25,6 +25,12 @@ editorial checks performed by a reviewer; they are not an automated CI gate.
   limit substitutes for the audience and channel.
 - First-person claims must reflect the author's documented work. Do not invent
   personal experience, results, quotes or motivations to make the post lively.
+- Write about the product and the engineering, not the tools that wrote the
+  code. Coding agents are as ordinary as compilers: do not credit them in a
+  project description ("built with AI agents") or make them the subject of a
+  bio. Name them only where they are the product (a tool that runs agents) or
+  the post's actual topic. Disclose AI-generated content a reader sees, such as
+  artwork, with where it came from.
 
 ## Check the claims and links
 
