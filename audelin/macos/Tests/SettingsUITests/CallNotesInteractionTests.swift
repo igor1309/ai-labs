@@ -34,15 +34,16 @@ struct CallNotesInteractionTests {
             ("notes-validate", .notesAction(.validate)),
             ("notes-save", .notesAction(.save)),
         ] {
-            let control = try button(id, in: host)
+            let control: NSControl = ["notes-automatic", "notes-speakers"].contains(id)
+                ? try toggle(id, in: host) : try button(id, in: host)
             #expect(control.isAccessibilityElement())
             #expect(control.acceptsFirstResponder)
             control.performClick(nil)
             #expect(events.last == expected)
         }
         #expect(events.count == 4)
-        #expect(try button("notes-automatic", in: host).state == .off)
-        #expect(try button("notes-speakers", in: host).state == .off)
+        #expect(try toggle("notes-automatic", in: host).state == .off)
+        #expect(try toggle("notes-speakers", in: host).state == .off)
     }
 
     @Test func aNewStateUpdatesNativeValuesActionsAndAvailability() throws {
@@ -52,9 +53,9 @@ struct CallNotesInteractionTests {
         _ = try #require(Offscreen.snapshot(host))
         host.rootView = SettingsView(state: try preview("on"), event: { newEvents.append($0) })
         _ = try #require(Offscreen.snapshot(host))
-        #expect(try button("notes-automatic", in: host).state == .on)
-        #expect(try button("notes-speakers", in: host).state == .on)
-        try button("notes-speakers", in: host).performClick(nil)
+        #expect(try toggle("notes-automatic", in: host).state == .on)
+        #expect(try toggle("notes-speakers", in: host).state == .on)
+        try toggle("notes-speakers", in: host).performClick(nil)
         #expect(oldEvents.isEmpty)
         #expect(newEvents == [.setIdentifySpeakers(false)])
         host.rootView = SettingsView(state: try preview("saving"), event: { newEvents.append($0) })
@@ -67,8 +68,8 @@ struct CallNotesInteractionTests {
     @Test func checkedControlsSendFalse() throws {
         var events: [SettingsEvent] = []
         let host = try host("on") { events.append($0) }
-        try button("notes-automatic", in: host).performClick(nil)
-        try button("notes-speakers", in: host).performClick(nil)
+        try toggle("notes-automatic", in: host).performClick(nil)
+        try toggle("notes-speakers", in: host).performClick(nil)
         #expect(events == [.setAutomaticNotes(false), .setIdentifySpeakers(false)])
     }
 
@@ -170,6 +171,10 @@ struct CallNotesInteractionTests {
         _ = try #require(Offscreen.snapshot(host))
         host.layoutSubtreeIfNeeded()
         return host
+    }
+
+    private func toggle(_ id: String, in host: NSView) throws -> NSSwitch {
+        try #require(descendants(host, of: NSSwitch.self).first { $0.accessibilityIdentifier() == id }, "Missing \(id)")
     }
 
     private func button(_ id: String, in host: NSView) throws -> NSButton {

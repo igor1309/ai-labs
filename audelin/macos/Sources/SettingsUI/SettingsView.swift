@@ -68,7 +68,7 @@ extension SettingsView {
     }
 
     var generalPage: some View {
-        VStack(alignment: .leading, spacing: tokens.space24) {
+        VStack(alignment: .leading, spacing: tokens.space20) {
 
             row(text(.languageRow)) { segmented(state.general.language, id: "language") { event(.selectLanguage($0)) } }
             row(text(.appearanceRow)) { segmented(state.general.appearance, id: "appearance") { event(.selectAppearance($0)) } }
@@ -81,7 +81,6 @@ extension SettingsView {
     func agentsOffer(_ agents: SettingsState.General.Agents) -> some View {
 
         uiText(text(.agentsMissing), tokens.typeBody, tokens.text, .semibold)
-            .padding(.top, tokens.space6)
         uiText(agents.hint, tokens.typeSmall, tokens.gutter)
             .fixedSize(horizontal: false, vertical: true)
             .accessibilityIdentifier("agents-hint")
@@ -150,7 +149,7 @@ extension SettingsView {
     }
 
     var recordingPage: some View {
-        VStack(alignment: .leading, spacing: tokens.space24) {
+        VStack(alignment: .leading, spacing: tokens.space20) {
 
             row(text(.recordingRow)) { recording }
             row(text(.folderRow)) { folder }
@@ -213,16 +212,17 @@ extension SettingsView {
         text(string, tokens.data(size, weight), tokens.fontData, size, color)
     }
 
+    /// A Settings section: its name as a header, its controls below at full width.
     func row(
         _ name: String,
         @ViewBuilder control: () -> some View
     ) -> some View {
 
-        HStack(alignment: .top, spacing: tokens.space16) {
+        VStack(alignment: .leading, spacing: tokens.space8) {
 
-            uiText(name, tokens.typeBody, tokens.sub)
-                .padding(.top, tokens.space6)
-                .frame(width: config.labelWidth, alignment: .leading)
+            uiText(name, tokens.typeSmall, tokens.sub, .semibold)
+                .padding(.horizontal, tokens.space4)
+                .accessibilityAddTraits(.isHeader)
 
             VStack(alignment: .leading, spacing: tokens.space6) {
 
@@ -230,6 +230,24 @@ extension SettingsView {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    /// A grouped card of System Settings rows, with a rule between rows.
+    func group(@ViewBuilder rows: () -> some View) -> some View {
+
+        VStack(alignment: .leading, spacing: tokens.space12) {
+
+            rows()
+        }
+        .padding(tokens.space12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(tokens.surface, in: .rect(cornerRadius: tokens.radiusCard))
+        .overlay(RoundedRectangle(cornerRadius: tokens.radiusCard).strokeBorder(tokens.rule, lineWidth: 1))
+    }
+
+    var groupRule: some View {
+
+        Rectangle().fill(tokens.rule).frame(height: 1)
     }
 }
 
@@ -240,22 +258,15 @@ extension SettingsView {
     @ViewBuilder
     var recording: some View {
 
-        checkbox(text(.recordsCalls), isOn: state.recordsCalls) {
-            event(.setRecordsCalls($0))
+        group {
+            toggle(text(.recordsCalls), note: text(.recordsCallsNote), isOn: state.recordsCalls, id: "records-calls") {
+                event(.setRecordsCalls($0))
+            }
+            groupRule
+            toggle(text(.liveText), note: text(.liveTextNote), isOn: state.liveText, id: "live-text") {
+                event(.setLiveText($0))
+            }
         }
-        uiText(
-            text(.recordsCallsNote),
-            tokens.typeSmall,
-            tokens.gutter
-        )
-        checkbox(text(.liveText), isOn: state.liveText) {
-            event(.setLiveText($0))
-        }
-        uiText(
-            text(.liveTextNote),
-            tokens.typeSmall,
-            tokens.gutter
-        )
     }
 
     @ViewBuilder
@@ -383,44 +394,27 @@ extension SettingsView {
 
 extension SettingsView {
 
-    func checkbox(
+    /// A System Settings row: the title and its note on the left, the native switch on the right.
+    func toggle(
         _ label: String,
+        note: String? = nil,
         isOn: Bool,
-        id: String? = nil,
+        id: String,
         set: @escaping (Bool) -> Void
     ) -> some View {
 
-        let content = HStack(spacing: tokens.space8) {
+        HStack(alignment: .top, spacing: tokens.space12) {
 
-            ZStack {
+            VStack(alignment: .leading, spacing: tokens.space2) {
 
-                RoundedRectangle(cornerRadius: tokens.radiusBar)
-                    .fill(isOn ? tokens.selBg : tokens.surface)
-
-                if isOn {
-
-                    Text("✓")
-                        .font(tokens.ui(tokens.typeSmall, .semibold))
-                        .foregroundStyle(tokens.selText)
-                } else {
-
-                    RoundedRectangle(cornerRadius: tokens.radiusBar)
-                        .strokeBorder(tokens.sub, lineWidth: 1)
-                }
+                uiText(label, tokens.typeBody, tokens.text)
+                if let note { uiText(note, tokens.typeSmall, tokens.gutter) }
             }
-            .frame(width: 16, height: 16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityHidden(true)
 
-            uiText(label, tokens.typeBody, tokens.text)
-        }
-        return Group {
-            if let id {
-                content.accessibilityHidden(true).overlay {
-                    SettingsPressTarget(title: label, identifier: id, isEnabled: true, checked: isOn) { set(!isOn) }
-                }
-            } else {
-                Button { set(!isOn) } label: { content.contentShape(.rect) }
-                    .buttonStyle(.plain)
-            }
+            SettingsSwitch(title: label, identifier: id, isOn: isOn, set: set)
+                .fixedSize()
         }
     }
 
