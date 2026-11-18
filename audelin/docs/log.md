@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-19
+
+- Settings use native macOS switches, grouped in cards as in System Settings, and the window is narrower: 508 pt on every tab.
+
 ## 2026-11-16
 
 - LAB-1672: Zoom's stand-in for a participant without a name ("Zoom user", "Пользователь Zoom" and its other languages) no longer names a speaker, so that speaker can still be named from the conversation.

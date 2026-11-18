@@ -13069,7 +13069,7 @@
               "id": "ET6LO",
               "name": "Label",
               "fill": "#666666",
-              "content": "Call header · settings fields · checkbox",
+              "content": "Call header · settings fields · switch",
               "fontFamily": "Inter",
               "fontSize": 13,
               "fontWeight": "600"
@@ -13295,18 +13295,17 @@
                   "name": "Settings row",
                   "reusable": true,
                   "width": 576,
-                  "gap": "$space-16",
+                  "layout": "vertical",
+                  "gap": "$space-8",
                   "children": [
                     {
                       "type": "frame",
                       "id": "UIU03",
                       "name": "Label",
-                      "width": 172,
+                      "width": "fill_container",
                       "padding": [
-                        "$space-6",
                         0,
-                        0,
-                        0
+                        "$space-4"
                       ],
                       "children": [
                         {
@@ -13317,8 +13316,8 @@
                           "content": "Аудио",
                           "lineHeight": 1.45,
                           "fontFamily": "$font-ui",
-                          "fontSize": "$type-body",
-                          "fontWeight": "normal"
+                          "fontSize": "$type-small",
+                          "fontWeight": "600"
                         }
                       ]
                     },
@@ -13492,93 +13491,92 @@
                 {
                   "type": "frame",
                   "id": "ufHXu",
-                  "name": "Checkbox/On",
+                  "name": "Switch/On",
                   "reusable": true,
-                  "gap": "$space-8",
-                  "alignItems": "center",
+                  "width": 320,
+                  "gap": "$space-12",
                   "children": [
-                    {
-                      "type": "frame",
-                      "id": "obHoR",
-                      "name": "Box",
-                      "width": 16,
-                      "height": 16,
-                      "fill": "$selBg",
-                      "cornerRadius": "$radius-bar",
-                      "justifyContent": "center",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "N9zeLT",
-                          "name": "Tick",
-                          "fill": "$selText",
-                          "content": "✓",
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "600"
-                        }
-                      ]
-                    },
                     {
                       "type": "text",
                       "id": "eTs8B",
                       "name": "Label",
                       "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
                       "content": "Записывать звонки автоматически",
                       "lineHeight": 1.45,
                       "fontFamily": "$font-ui",
                       "fontSize": "$type-body",
                       "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "obHoR",
+                      "name": "Switch",
+                      "width": 32,
+                      "height": 18,
+                      "fill": "$selBg",
+                      "cornerRadius": "$radius-switch",
+                      "padding": "$space-2",
+                      "justifyContent": "end",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "N9zeLT",
+                          "name": "Knob",
+                          "width": 14,
+                          "height": 14,
+                          "fill": "$knob",
+                          "cornerRadius": "$radius-switch"
+                        }
+                      ]
                     }
                   ]
                 },
                 {
                   "type": "frame",
                   "id": "zhXsW",
-                  "name": "Checkbox/Off",
+                  "name": "Switch/Off",
                   "reusable": true,
-                  "gap": "$space-8",
-                  "alignItems": "center",
+                  "width": 320,
+                  "gap": "$space-12",
                   "children": [
-                    {
-                      "type": "frame",
-                      "id": "MJNbM",
-                      "name": "Box",
-                      "width": 16,
-                      "height": 16,
-                      "fill": "$surface",
-                      "cornerRadius": "$radius-bar",
-                      "stroke": "$sub",
-                      "strokeWidth": 1,
-                      "justifyContent": "center",
-                      "alignItems": "center",
-                      "children": [
-                        {
-                          "type": "text",
-                          "id": "FJITh",
-                          "x": 0,
-                          "y": 0,
-                          "name": "Tick",
-                          "enabled": false,
-                          "fill": "$selText",
-                          "content": "✓",
-                          "fontFamily": "$font-ui",
-                          "fontSize": "$type-small",
-                          "fontWeight": "600"
-                        }
-                      ]
-                    },
                     {
                       "type": "text",
                       "id": "YTQFN",
                       "name": "Label",
                       "fill": "$text",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
                       "content": "Записывать звонки автоматически",
                       "lineHeight": 1.45,
                       "fontFamily": "$font-ui",
                       "fontSize": "$type-body",
                       "fontWeight": "normal"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "MJNbM",
+                      "name": "Switch",
+                      "width": 32,
+                      "height": 18,
+                      "fill": "$chip",
+                      "cornerRadius": "$radius-switch",
+                      "stroke": "$sub",
+                      "padding": "$space-2",
+                      "alignItems": "center",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "FJITh",
+                          "name": "Knob",
+                          "width": 14,
+                          "height": 14,
+                          "fill": "$knob",
+                          "cornerRadius": "$radius-switch"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -13832,13 +13830,15 @@
                   "id": "BhzGS",
                   "type": "ref",
                   "ref": "ufHXu",
-                  "name": "checkOn"
+                  "name": "checkOn",
+                  "width": 246
                 },
                 {
                   "id": "sXJBA",
                   "type": "ref",
                   "ref": "zhXsW",
-                  "name": "checkOff"
+                  "name": "checkOff",
+                  "width": 246
                 }
               ]
             },
@@ -28175,7 +28175,7 @@
               "fill": "#444444",
               "textGrowth": "fixed-width",
               "width": "fill_container",
-              "content": "One page, label column on the left: recording (record calls automatically; live text — the same switches as in the menu), the calls folder (visible, default ~/Recordings/Audelin; settings and logs stay in ~/.audelin), the final-pass engine (required), audio cleanup stated rather than set (7 days, pin to keep), the explain hotkey; chunk size only in debug builds. Changing the folder asks once with the count and size, then moves every call one by one (copy, check, delete the source): only Move or Cancel. No recording starts during a move and no move starts during a recording. A failed move names the count moved, the call that failed and why, offers Повторить, and keeps the old folder until every call has moved.",
+              "content": "One page of sections, each named by a header above its controls, in a 460 pt-wide window: recording (record calls automatically; live text — the same switches as in the menu), the calls folder (visible, default ~/Recordings/Audelin; settings and logs stay in ~/.audelin), the final-pass engine (required), audio cleanup stated rather than set (7 days, pin to keep), the explain hotkey; chunk size only in debug builds. Changing the folder asks once with the count and size, then moves every call one by one (copy, check, delete the source): only Move or Cancel. No recording starts during a move and no move starts during a recording. A failed move names the count moved, the call that failed and why, offers Повторить, and keeps the old folder until every call has moved.",
               "lineHeight": 1.5,
               "fontFamily": "Inter",
               "fontSize": 15,
@@ -28226,7 +28226,7 @@
                   "type": "frame",
                   "id": "f1xpM2",
                   "name": "Release build",
-                  "width": 668,
+                  "width": 556,
                   "layout": "vertical",
                   "gap": 12,
                   "children": [
@@ -28265,7 +28265,7 @@
                           "id": "qBRu8",
                           "name": "Window",
                           "clip": true,
-                          "width": 620,
+                          "width": 508,
                           "fill": "$win",
                           "cornerRadius": "$radius-card",
                           "stroke": "$rule",
@@ -28352,14 +28352,20 @@
                                       "id": "iki9P",
                                       "name": "Control",
                                       "width": "fill_container",
+                                      "fill": "$surface",
+                                      "cornerRadius": "$radius-card",
+                                      "stroke": "$rule",
+                                      "strokeWidth": 1,
                                       "layout": "vertical",
                                       "gap": "$space-6",
+                                      "padding": "$space-12",
                                       "children": [
                                         {
                                           "id": "c0VoI",
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Auto",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Записывать звонки автоматически"
@@ -28384,6 +28390,7 @@
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Live",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Живой текст"
@@ -28633,7 +28640,7 @@
                   "type": "frame",
                   "id": "SvAey",
                   "name": "Debug build",
-                  "width": 668,
+                  "width": 556,
                   "layout": "vertical",
                   "gap": 12,
                   "children": [
@@ -28672,7 +28679,7 @@
                           "id": "fAXH3",
                           "name": "Window",
                           "clip": true,
-                          "width": 620,
+                          "width": 508,
                           "fill": "$win",
                           "cornerRadius": "$radius-card",
                           "stroke": "$rule",
@@ -28759,14 +28766,20 @@
                                       "id": "PjxO7",
                                       "name": "Control",
                                       "width": "fill_container",
+                                      "fill": "$surface",
+                                      "cornerRadius": "$radius-card",
+                                      "stroke": "$rule",
+                                      "strokeWidth": 1,
                                       "layout": "vertical",
                                       "gap": "$space-6",
+                                      "padding": "$space-12",
                                       "children": [
                                         {
                                           "id": "MuteK",
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Auto",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Записывать звонки автоматически"
@@ -28791,6 +28804,7 @@
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Live",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Живой текст"
@@ -29182,7 +29196,7 @@
                   "type": "frame",
                   "id": "RJ3G6",
                   "name": "Confirm",
-                  "width": 668,
+                  "width": 556,
                   "layout": "vertical",
                   "gap": 12,
                   "children": [
@@ -29212,8 +29226,8 @@
                       "type": "frame",
                       "id": "k418P9",
                       "name": "Desktop",
-                      "width": 668,
-                      "height": 629,
+                      "width": 556,
+                      "height": 835,
                       "fill": "$back",
                       "cornerRadius": "$radius-card",
                       "layout": "none",
@@ -29225,7 +29239,7 @@
                           "y": 24,
                           "name": "Window",
                           "clip": true,
-                          "width": 620,
+                          "width": 508,
                           "fill": "$win",
                           "cornerRadius": "$radius-card",
                           "stroke": "$rule",
@@ -29312,14 +29326,20 @@
                                       "id": "c6Mrb",
                                       "name": "Control",
                                       "width": "fill_container",
+                                      "fill": "$surface",
+                                      "cornerRadius": "$radius-card",
+                                      "stroke": "$rule",
+                                      "strokeWidth": 1,
                                       "layout": "vertical",
                                       "gap": "$space-6",
+                                      "padding": "$space-12",
                                       "children": [
                                         {
                                           "id": "HmaPJ",
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Auto",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Записывать звонки автоматически"
@@ -29344,6 +29364,7 @@
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Live",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Живой текст"
@@ -29592,8 +29613,8 @@
                           "name": "Sheet",
                           "x": 24,
                           "y": 52,
-                          "width": 620,
-                          "height": 553,
+                          "width": 508,
+                          "height": 759,
                           "descendants": {
                             "HMOgX": {
                               "name": "Move confirm"
@@ -29626,7 +29647,7 @@
                   "type": "frame",
                   "id": "BUBhd",
                   "name": "Moving",
-                  "width": 668,
+                  "width": 556,
                   "layout": "vertical",
                   "gap": 12,
                   "children": [
@@ -29665,7 +29686,7 @@
                           "id": "OoymB",
                           "name": "Window",
                           "clip": true,
-                          "width": 620,
+                          "width": 508,
                           "fill": "$win",
                           "cornerRadius": "$radius-card",
                           "stroke": "$rule",
@@ -29752,14 +29773,20 @@
                                       "id": "OwXwN",
                                       "name": "Control",
                                       "width": "fill_container",
+                                      "fill": "$surface",
+                                      "cornerRadius": "$radius-card",
+                                      "stroke": "$rule",
+                                      "strokeWidth": 1,
                                       "layout": "vertical",
                                       "gap": "$space-6",
+                                      "padding": "$space-12",
                                       "children": [
                                         {
                                           "id": "x3DHnW",
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Auto",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Записывать звонки автоматически"
@@ -29784,6 +29811,7 @@
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Live",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Живой текст"
@@ -30053,7 +30081,7 @@
                   "type": "frame",
                   "id": "Iudye",
                   "name": "Move failed",
-                  "width": 668,
+                  "width": 556,
                   "layout": "vertical",
                   "gap": 12,
                   "children": [
@@ -30092,7 +30120,7 @@
                           "id": "efTnv",
                           "name": "Window",
                           "clip": true,
-                          "width": 620,
+                          "width": 508,
                           "fill": "$win",
                           "cornerRadius": "$radius-card",
                           "stroke": "$rule",
@@ -30179,14 +30207,20 @@
                                       "id": "GrVjM",
                                       "name": "Control",
                                       "width": "fill_container",
+                                      "fill": "$surface",
+                                      "cornerRadius": "$radius-card",
+                                      "stroke": "$rule",
+                                      "strokeWidth": 1,
                                       "layout": "vertical",
                                       "gap": "$space-6",
+                                      "padding": "$space-12",
                                       "children": [
                                         {
                                           "id": "eRZC3",
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Auto",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Записывать звонки автоматически"
@@ -30211,6 +30245,7 @@
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Live",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Живой текст"
@@ -30484,7 +30519,7 @@
                   "type": "frame",
                   "id": "r2Vafe",
                   "name": "During a recording",
-                  "width": 668,
+                  "width": 556,
                   "layout": "vertical",
                   "gap": 12,
                   "children": [
@@ -30523,7 +30558,7 @@
                           "id": "WkBFy",
                           "name": "Window",
                           "clip": true,
-                          "width": 620,
+                          "width": 508,
                           "fill": "$win",
                           "cornerRadius": "$radius-card",
                           "stroke": "$rule",
@@ -30610,14 +30645,20 @@
                                       "id": "RB9UG",
                                       "name": "Control",
                                       "width": "fill_container",
+                                      "fill": "$surface",
+                                      "cornerRadius": "$radius-card",
+                                      "stroke": "$rule",
+                                      "strokeWidth": 1,
                                       "layout": "vertical",
                                       "gap": "$space-6",
+                                      "padding": "$space-12",
                                       "children": [
                                         {
                                           "id": "H943ag",
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Auto",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Записывать звонки автоматически"
@@ -30642,6 +30683,7 @@
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Live",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Живой текст"
@@ -30919,7 +30961,7 @@
                   "type": "frame",
                   "id": "M02Xqs",
                   "name": "Release build",
-                  "width": 668,
+                  "width": 556,
                   "layout": "vertical",
                   "gap": 12,
                   "children": [
@@ -30958,7 +31000,7 @@
                           "id": "vuVod",
                           "name": "Window",
                           "clip": true,
-                          "width": 620,
+                          "width": 508,
                           "fill": "$win",
                           "cornerRadius": "$radius-card",
                           "stroke": "$rule",
@@ -31045,14 +31087,20 @@
                                       "id": "D05zc",
                                       "name": "Control",
                                       "width": "fill_container",
+                                      "fill": "$surface",
+                                      "cornerRadius": "$radius-card",
+                                      "stroke": "$rule",
+                                      "strokeWidth": 1,
                                       "layout": "vertical",
                                       "gap": "$space-6",
+                                      "padding": "$space-12",
                                       "children": [
                                         {
                                           "id": "EP204",
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Auto",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Записывать звонки автоматически"
@@ -31077,6 +31125,7 @@
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Live",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Живой текст"
@@ -31326,7 +31375,7 @@
                   "type": "frame",
                   "id": "CkiK3",
                   "name": "Debug build",
-                  "width": 668,
+                  "width": 556,
                   "layout": "vertical",
                   "gap": 12,
                   "children": [
@@ -31365,7 +31414,7 @@
                           "id": "zqajc",
                           "name": "Window",
                           "clip": true,
-                          "width": 620,
+                          "width": 508,
                           "fill": "$win",
                           "cornerRadius": "$radius-card",
                           "stroke": "$rule",
@@ -31452,14 +31501,20 @@
                                       "id": "r5TrL5",
                                       "name": "Control",
                                       "width": "fill_container",
+                                      "fill": "$surface",
+                                      "cornerRadius": "$radius-card",
+                                      "stroke": "$rule",
+                                      "strokeWidth": 1,
                                       "layout": "vertical",
                                       "gap": "$space-6",
+                                      "padding": "$space-12",
                                       "children": [
                                         {
                                           "id": "nZCwm",
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Auto",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Записывать звонки автоматически"
@@ -31484,6 +31539,7 @@
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Live",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Живой текст"
@@ -31875,7 +31931,7 @@
                   "type": "frame",
                   "id": "K9Z2CD",
                   "name": "Confirm",
-                  "width": 668,
+                  "width": 556,
                   "layout": "vertical",
                   "gap": 12,
                   "children": [
@@ -31905,8 +31961,8 @@
                       "type": "frame",
                       "id": "GnYhx",
                       "name": "Desktop",
-                      "width": 668,
-                      "height": 629,
+                      "width": 556,
+                      "height": 835,
                       "fill": "$back",
                       "cornerRadius": "$radius-card",
                       "layout": "none",
@@ -31918,7 +31974,7 @@
                           "y": 24,
                           "name": "Window",
                           "clip": true,
-                          "width": 620,
+                          "width": 508,
                           "fill": "$win",
                           "cornerRadius": "$radius-card",
                           "stroke": "$rule",
@@ -32005,14 +32061,20 @@
                                       "id": "F8r54",
                                       "name": "Control",
                                       "width": "fill_container",
+                                      "fill": "$surface",
+                                      "cornerRadius": "$radius-card",
+                                      "stroke": "$rule",
+                                      "strokeWidth": 1,
                                       "layout": "vertical",
                                       "gap": "$space-6",
+                                      "padding": "$space-12",
                                       "children": [
                                         {
                                           "id": "Rh5xF",
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Auto",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Записывать звонки автоматически"
@@ -32037,6 +32099,7 @@
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Live",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Живой текст"
@@ -32285,8 +32348,8 @@
                           "name": "Sheet",
                           "x": 24,
                           "y": 52,
-                          "width": 620,
-                          "height": 553,
+                          "width": 508,
+                          "height": 759,
                           "descendants": {
                             "HMOgX": {
                               "name": "Move confirm"
@@ -32319,7 +32382,7 @@
                   "type": "frame",
                   "id": "moOuJ",
                   "name": "Moving",
-                  "width": 668,
+                  "width": 556,
                   "layout": "vertical",
                   "gap": 12,
                   "children": [
@@ -32358,7 +32421,7 @@
                           "id": "jpuss",
                           "name": "Window",
                           "clip": true,
-                          "width": 620,
+                          "width": 508,
                           "fill": "$win",
                           "cornerRadius": "$radius-card",
                           "stroke": "$rule",
@@ -32445,14 +32508,20 @@
                                       "id": "EXuQo",
                                       "name": "Control",
                                       "width": "fill_container",
+                                      "fill": "$surface",
+                                      "cornerRadius": "$radius-card",
+                                      "stroke": "$rule",
+                                      "strokeWidth": 1,
                                       "layout": "vertical",
                                       "gap": "$space-6",
+                                      "padding": "$space-12",
                                       "children": [
                                         {
                                           "id": "kfBuN",
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Auto",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Записывать звонки автоматически"
@@ -32477,6 +32546,7 @@
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Live",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Живой текст"
@@ -32746,7 +32816,7 @@
                   "type": "frame",
                   "id": "G9Ec3",
                   "name": "Move failed",
-                  "width": 668,
+                  "width": 556,
                   "layout": "vertical",
                   "gap": 12,
                   "children": [
@@ -32785,7 +32855,7 @@
                           "id": "gulBg",
                           "name": "Window",
                           "clip": true,
-                          "width": 620,
+                          "width": 508,
                           "fill": "$win",
                           "cornerRadius": "$radius-card",
                           "stroke": "$rule",
@@ -32872,14 +32942,20 @@
                                       "id": "RH0Vj",
                                       "name": "Control",
                                       "width": "fill_container",
+                                      "fill": "$surface",
+                                      "cornerRadius": "$radius-card",
+                                      "stroke": "$rule",
+                                      "strokeWidth": 1,
                                       "layout": "vertical",
                                       "gap": "$space-6",
+                                      "padding": "$space-12",
                                       "children": [
                                         {
                                           "id": "uk4Fk",
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Auto",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Записывать звонки автоматически"
@@ -32904,6 +32980,7 @@
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Live",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Живой текст"
@@ -33177,7 +33254,7 @@
                   "type": "frame",
                   "id": "gzPxL",
                   "name": "During a recording",
-                  "width": 668,
+                  "width": 556,
                   "layout": "vertical",
                   "gap": 12,
                   "children": [
@@ -33216,7 +33293,7 @@
                           "id": "QSHwC",
                           "name": "Window",
                           "clip": true,
-                          "width": 620,
+                          "width": 508,
                           "fill": "$win",
                           "cornerRadius": "$radius-card",
                           "stroke": "$rule",
@@ -33303,14 +33380,20 @@
                                       "id": "k9gKn",
                                       "name": "Control",
                                       "width": "fill_container",
+                                      "fill": "$surface",
+                                      "cornerRadius": "$radius-card",
+                                      "stroke": "$rule",
+                                      "strokeWidth": 1,
                                       "layout": "vertical",
                                       "gap": "$space-6",
+                                      "padding": "$space-12",
                                       "children": [
                                         {
                                           "id": "t0IwzD",
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Auto",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Записывать звонки автоматически"
@@ -33335,6 +33418,7 @@
                                           "type": "ref",
                                           "ref": "ufHXu",
                                           "name": "Live",
+                                          "width": "fill_container",
                                           "descendants": {
                                             "eTs8B": {
                                               "content": "Живой текст"
@@ -33599,7 +33683,7 @@
                 "mode": "light"
               },
               "reusable": true,
-              "width": 668,
+              "width": 556,
               "fill": "$back",
               "layout": "vertical",
               "padding": "$space-24",
@@ -33608,7 +33692,7 @@
                   "type": "frame",
                   "id": "YMHgB",
                   "name": "Settings content",
-                  "width": 620,
+                  "width": 508,
                   "fill": "$win",
                   "layout": "vertical",
                   "gap": "$space-16",
@@ -33750,7 +33834,7 @@
                 "mode": "light"
               },
               "reusable": true,
-              "width": 668,
+              "width": 556,
               "fill": "$back",
               "layout": "vertical",
               "padding": "$space-24",
@@ -33759,7 +33843,7 @@
                   "type": "frame",
                   "id": "J8T5bl",
                   "name": "Settings content",
-                  "width": 620,
+                  "width": 508,
                   "fill": "$win",
                   "layout": "vertical",
                   "gap": "$space-16",
@@ -33901,7 +33985,7 @@
                 "mode": "light"
               },
               "reusable": true,
-              "width": 668,
+              "width": 556,
               "fill": "$back",
               "layout": "vertical",
               "padding": "$space-24",
@@ -33910,7 +33994,7 @@
                   "type": "frame",
                   "id": "PMdfE",
                   "name": "Settings content",
-                  "width": 620,
+                  "width": 508,
                   "fill": "$win",
                   "layout": "vertical",
                   "gap": "$space-16",
@@ -34085,7 +34169,7 @@
                 "mode": "light"
               },
               "reusable": true,
-              "width": 668,
+              "width": 556,
               "fill": "$back",
               "layout": "vertical",
               "padding": "$space-24",
@@ -34094,7 +34178,7 @@
                   "type": "frame",
                   "id": "qfkqB",
                   "name": "Settings content",
-                  "width": 620,
+                  "width": 508,
                   "fill": "$win",
                   "layout": "vertical",
                   "gap": "$space-16",
@@ -34262,7 +34346,7 @@
                 "mode": "light"
               },
               "reusable": true,
-              "width": 668,
+              "width": 556,
               "fill": "$back",
               "layout": "vertical",
               "padding": "$space-24",
@@ -34271,7 +34355,7 @@
                   "type": "frame",
                   "id": "H944B2",
                   "name": "Settings content",
-                  "width": 620,
+                  "width": 508,
                   "fill": "$win",
                   "layout": "vertical",
                   "gap": "$space-16",
@@ -34428,7 +34512,7 @@
                 "mode": "light"
               },
               "reusable": true,
-              "width": 668,
+              "width": 556,
               "fill": "$back",
               "layout": "vertical",
               "padding": "$space-24",
@@ -34437,7 +34521,7 @@
                   "type": "frame",
                   "id": "TvEgm",
                   "name": "Settings content",
-                  "width": 620,
+                  "width": 508,
                   "fill": "$win",
                   "layout": "vertical",
                   "gap": "$space-16",
@@ -34581,7 +34665,7 @@
                 "mode": "light"
               },
               "reusable": true,
-              "width": 668,
+              "width": 556,
               "fill": "$back",
               "layout": "vertical",
               "padding": "$space-24",
@@ -34590,7 +34674,7 @@
                   "type": "frame",
                   "id": "jpzcU",
                   "name": "Settings content",
-                  "width": 620,
+                  "width": 508,
                   "fill": "$win",
                   "layout": "vertical",
                   "gap": "$space-16",
@@ -34734,7 +34818,7 @@
                 "mode": "light"
               },
               "reusable": true,
-              "width": 668,
+              "width": 556,
               "fill": "$back",
               "layout": "vertical",
               "padding": "$space-24",
@@ -34743,7 +34827,7 @@
                   "type": "frame",
                   "id": "y7tALZ",
                   "name": "Settings content",
-                  "width": 620,
+                  "width": 508,
                   "fill": "$win",
                   "layout": "vertical",
                   "gap": "$space-16",
@@ -34900,7 +34984,7 @@
                 "mode": "light"
               },
               "reusable": true,
-              "width": 668,
+              "width": 556,
               "fill": "$back",
               "layout": "vertical",
               "padding": "$space-24",
@@ -34909,7 +34993,7 @@
                   "type": "frame",
                   "id": "U983Ut",
                   "name": "Settings content",
-                  "width": 620,
+                  "width": 508,
                   "fill": "$win",
                   "layout": "vertical",
                   "gap": "$space-16",
@@ -35053,7 +35137,7 @@
                 "mode": "light"
               },
               "reusable": true,
-              "width": 668,
+              "width": 556,
               "fill": "$back",
               "layout": "vertical",
               "padding": "$space-24",
@@ -35062,7 +35146,7 @@
                   "type": "frame",
                   "id": "pGT8b",
                   "name": "Settings content",
-                  "width": 620,
+                  "width": 508,
                   "fill": "$win",
                   "layout": "vertical",
                   "gap": "$space-16",
@@ -35100,7 +35184,7 @@
                 "mode": "light"
               },
               "reusable": true,
-              "width": 668,
+              "width": 556,
               "fill": "$back",
               "layout": "vertical",
               "padding": "$space-24",
@@ -35109,7 +35193,7 @@
                   "type": "frame",
                   "id": "eHPNc",
                   "name": "Settings content",
-                  "width": 620,
+                  "width": 508,
                   "fill": "$win",
                   "layout": "vertical",
                   "gap": "$space-16",
@@ -35270,7 +35354,7 @@
           "name": "Call notes behavior",
           "width": 1100,
           "height": 180,
-          "content": "Call notes. Window content only; the native title bar is not drawn. Settings has Recording and Call notes tabs. Fields stay editable while automatic notes are off. A save affects upcoming jobs; validation sends no paid prompt. The API-key field holds an environment-variable name, never its value. Loading and a load failure show no editable defaults. Both runtime slots and models are editable. The content scrolls in a 620 pt-wide window when taller than the desktop. Mouse uses buttons and menus; keyboard uses native text editing, Tab and Return. macOS only; no phone or tablet layout."
+          "content": "Call notes. Window content only; the native title bar is not drawn. Settings has Recording and Call notes tabs. Fields stay editable while automatic notes are off. A save affects upcoming jobs; validation sends no paid prompt. The API-key field holds an environment-variable name, never its value. Loading and a load failure show no editable defaults. Both runtime slots and models are editable. The content scrolls in a 460 pt-wide window when taller than the desktop. Mouse uses buttons and menus; keyboard uses native text editing, Tab and Return. macOS only; no phone or tablet layout."
         },
         {
           "type": "frame",
@@ -35289,7 +35373,7 @@
                 "mode": "light"
               },
               "reusable": true,
-              "width": 668,
+              "width": 556,
               "fill": "$back",
               "layout": "vertical",
               "padding": "$space-24",
@@ -35298,7 +35382,7 @@
                   "type": "frame",
                   "id": "jJz9F",
                   "name": "Settings content",
-                  "width": 620,
+                  "width": 508,
                   "fill": "$win",
                   "layout": "vertical",
                   "gap": "$space-24",
@@ -35467,7 +35551,7 @@
                 "mode": "light"
               },
               "reusable": true,
-              "width": 668,
+              "width": 556,
               "fill": "$back",
               "layout": "vertical",
               "padding": "$space-24",
@@ -35476,7 +35560,7 @@
                   "type": "frame",
                   "id": "W9lYm",
                   "name": "Settings content",
-                  "width": 620,
+                  "width": 508,
                   "fill": "$win",
                   "layout": "vertical",
                   "gap": "$space-24",
@@ -35645,7 +35729,7 @@
                 "mode": "light"
               },
               "reusable": true,
-              "width": 668,
+              "width": 556,
               "fill": "$back",
               "layout": "vertical",
               "padding": "$space-24",
@@ -35654,7 +35738,7 @@
                   "type": "frame",
                   "id": "IeCyE",
                   "name": "Settings content",
-                  "width": 620,
+                  "width": 508,
                   "fill": "$win",
                   "layout": "vertical",
                   "gap": "$space-24",
@@ -35823,7 +35907,7 @@
                 "mode": "light"
               },
               "reusable": true,
-              "width": 668,
+              "width": 556,
               "fill": "$back",
               "layout": "vertical",
               "padding": "$space-24",
@@ -35832,7 +35916,7 @@
                   "type": "frame",
                   "id": "bBlim",
                   "name": "Settings content",
-                  "width": 620,
+                  "width": 508,
                   "fill": "$win",
                   "layout": "vertical",
                   "gap": "$space-24",
@@ -36001,7 +36085,7 @@
                 "mode": "light"
               },
               "reusable": true,
-              "width": 668,
+              "width": 556,
               "fill": "$back",
               "layout": "vertical",
               "padding": "$space-24",
@@ -36010,7 +36094,7 @@
                   "type": "frame",
                   "id": "Wt5uB",
                   "name": "Settings content",
-                  "width": 620,
+                  "width": 508,
                   "fill": "$win",
                   "layout": "vertical",
                   "gap": "$space-24",
@@ -47464,8 +47548,13 @@
           "name": "Summary choices",
           "reusable": true,
           "width": 572,
+          "fill": "$surface",
+          "cornerRadius": "$radius-card",
+          "stroke": "$rule",
+          "strokeWidth": 1,
           "layout": "vertical",
-          "gap": "$space-6",
+          "gap": "$space-12",
+          "padding": "$space-12",
           "children": [
             {
               "id": "OIvU1",
@@ -72441,6 +72530,27 @@
     "radius-thumb": {
       "type": "number",
       "value": 5
+    },
+    "radius-switch": {
+      "type": "number",
+      "value": 9
+    },
+    "knob": {
+      "type": "color",
+      "value": [
+        {
+          "value": "#FFFFFF",
+          "theme": {
+            "mode": "light"
+          }
+        },
+        {
+          "value": "#E3E5E8",
+          "theme": {
+            "mode": "dark"
+          }
+        }
+      ]
     }
   },
   "fileToken": "11d61027-99ea-4c6c-bc5c-f6eff236c8bd"

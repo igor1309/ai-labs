@@ -13,16 +13,14 @@ extension SettingsView {
             errorBanner(banner.title, banner.detail)
             notesButton(retry, .secondary)
         case let .loaded(draft):
-            VStack(alignment: .leading, spacing: tokens.space6) {
-                checkbox(text(.notesAutomatic), isOn: draft.automatic, id: "notes-automatic") {
+            group {
+                toggle(text(.notesAutomatic), note: text(.notesAutomaticNote), isOn: draft.automatic, id: "notes-automatic") {
                     event(.setAutomaticNotes($0))
                 }
-                .accessibilityIdentifier("notes-automatic")
-                uiText(text(.notesAutomaticNote), tokens.typeSmall, tokens.sub)
-                checkbox(text(.notesSpeakers), isOn: draft.identifySpeakers, id: "notes-speakers") {
+                groupRule
+                toggle(text(.notesSpeakers), isOn: draft.identifySpeakers, id: "notes-speakers") {
                     event(.setIdentifySpeakers($0))
                 }
-                .accessibilityIdentifier("notes-speakers")
             }
             ForEach(draft.runtimes) { runtime in
                 runtimeCard(runtime)
