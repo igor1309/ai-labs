@@ -15,15 +15,19 @@ started=$(date +%s)
 merge_state="unknown"
 no_auto=0
 failed_calls=0
+err_file=$(mktemp)
+trap 'rm -f "$err_file"' EXIT
 
 while true; do
     if (($(date +%s) - started >= limit)); then
         echo "not merged after ${limit}s; merge state: $merge_state" >&2
         exit 4
     fi
-    view=$(gh pr view "$pr" --json state,mergeable,mergeStateStatus,autoMergeRequest 2>&1) || {
+    # gh writes hints to stderr even on success (2.105.0 adds one after
+    # `pr view`), so only stdout is parsed; stderr explains a failure.
+    view=$(gh pr view "$pr" --json state,mergeable,mergeStateStatus,autoMergeRequest 2> "$err_file") || {
         if ((++failed_calls >= ${WAIT_PR_MERGED_GH_RETRIES:-10})); then
-            echo "gh failed $failed_calls times in a row: $view" >&2
+            echo "gh failed $failed_calls times in a row: $(< "$err_file")" >&2
             exit 1
         fi
         sleep "$interval"
