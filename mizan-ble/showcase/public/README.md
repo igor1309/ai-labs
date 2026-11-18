@@ -115,7 +115,6 @@ shared key, on both screens for the payer to compare.
   and `ios/App/`.
 - Screen snapshot tests render the host on an 11-inch iPad and both sides
   on an iPhone 15 Pro, in light and dark, with each device's safe area.
-- Built with AI coding agents working from specs and tests.
 
 ## Running it
 

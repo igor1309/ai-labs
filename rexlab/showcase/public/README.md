@@ -32,8 +32,7 @@ and dark themes.
   scenarios in [`docs/features/`](docs/features/).
 - 130+ Vitest test files cover the games' rules, layout fit at real iPad
   window sizes, tap safety for small hands, and the architecture's own rules.
-- Built with AI coding agents working from those specs and tests. The
-  dinosaur, skeleton and item artwork is AI-generated; each picture's
+- The dinosaur, skeleton and item artwork is AI-generated; each picture's
   generator is recorded in a `CREDITS.md` beside it.
 
 ## Running it
