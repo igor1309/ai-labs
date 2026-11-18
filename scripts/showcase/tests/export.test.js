@@ -648,13 +648,13 @@ test('rexlab settings export required runtime and build files while keeping priv
   assert.equal(settings.repo, 'igor1309/rexlab');
   assert.equal(settings.check, 'sh scripts/test.sh');
   assert.equal(settings.homepage, 'https://rexlab.enoa.ai');
-  assert.deepEqual(settings.topics, ['react', 'typescript', 'vite', 'kids-game', 'ai-assisted']);
+  assert.deepEqual(settings.topics, ['react', 'typescript', 'vite', 'kids-game']);
   for (const path of ['src/App.tsx', 'src/assets/dinos/triceratops.webp', 'tests/catalogue.test.tsx', 'docs/features/catalogue.feature',
     'index.html', 'package.json', 'package-lock.json', 'tsconfig.json', 'vite.config.ts', '.gitignore', 'scripts/test.sh', 'scripts/digGrid.ts',
     'scripts/skeletonBones.ts', 'art/skeleton-cuts.json', 'prototypes/careHatch.ts', 'prototypes/careSounds.ts', 'prototypes/careHatch.css', 'prototypes/care-hatch.html']) {
     assert.equal(isIncluded(path, settings), true, path);
   }
-  for (const path of ['tests/catalogueSources.test.ts', 'docs/sources.md', 'docs/features/private/nested.feature', 'README.md', 'AGENTS.md',
+  for (const path of ['tests/catalogueSources.test.ts', 'tests/slowTestsReport.test.ts', 'docs/sources.md', 'docs/features/private/nested.feature', 'README.md', 'AGENTS.md',
     '.agister/x', 'research/notes.md', 'art/prompts.md', 'design/images/x.webp', 'wrangler.toml', 'scripts/spec-review.sh',
     'scripts/smoke-deployed-version.ts', 'scripts/body-picture.sh', 'scripts/skeleton-picture.sh', 'showcase/showcase.toml', 'showcase/AGENTS.md']) {
     assert.equal(isIncluded(path, settings), false, path);
