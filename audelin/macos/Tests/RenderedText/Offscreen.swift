@@ -49,6 +49,15 @@ public enum Offscreen {
         return (own.map { [$0] } ?? []) + view.subviews.flatMap { heldText(in: $0) }
     }
 
+    /// Applies a new root view and draws it, without copying out an image:
+    /// a snapshot renders layers on the CPU, where a switch's blurred knob
+    /// shadow alone costs milliseconds.
+    public static func update(_ view: NSView) {
+
+        view.layoutSubtreeIfNeeded()
+        view.display()
+    }
+
     public static func snapshot(_ view: NSView) -> NSBitmapImageRep? {
 
         // Two pixels a point whatever the display: a CI runner's screen is 1x,

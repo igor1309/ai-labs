@@ -12,11 +12,11 @@ struct CallNotesInteractionTests {
         var events: [SettingsEvent] = []
         let host = Offscreen.host(SettingsView(state: try preview("no-fallback"), event: { events.append($0) })
             .environment(\.colorScheme, scheme))
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         let collapsedHeight = host.fittingSize.height
         try button("notes-details", in: host).performClick(nil)
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         #expect(host.fittingSize.height > collapsedHeight)
         try Offscreen.save(try #require(Offscreen.snapshot(host)), "settings-details-expanded-\(scheme == .dark ? "dark" : "light")")
         try button("notes-details", in: host).performClick(nil)
@@ -50,16 +50,16 @@ struct CallNotesInteractionTests {
         var oldEvents: [SettingsEvent] = []
         var newEvents: [SettingsEvent] = []
         let host = Offscreen.host(SettingsView(state: try preview("off"), event: { oldEvents.append($0) }))
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         host.rootView = SettingsView(state: try preview("on"), event: { newEvents.append($0) })
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         #expect(try toggle("notes-automatic", in: host).state == .on)
         #expect(try toggle("notes-speakers", in: host).state == .on)
         try toggle("notes-speakers", in: host).performClick(nil)
         #expect(oldEvents.isEmpty)
         #expect(newEvents == [.setIdentifySpeakers(false)])
         host.rootView = SettingsView(state: try preview("saving"), event: { newEvents.append($0) })
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         #expect(try button("notes-save", in: host).isEnabled == false)
         try button("notes-save", in: host).performClick(nil)
         #expect(newEvents == [.setIdentifySpeakers(false)])
@@ -168,7 +168,7 @@ struct CallNotesInteractionTests {
 
     private func host(_ name: String, event: @escaping (SettingsEvent) -> Void) throws -> NSView {
         let host = Offscreen.host(SettingsView(state: try preview(name), event: event))
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         host.layoutSubtreeIfNeeded()
         return host
     }
