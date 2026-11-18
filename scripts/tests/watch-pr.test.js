@@ -17,10 +17,12 @@ function check(name, bucket, state, ago = 60) {
 
 const OPEN = { state: 'OPEN', mergeable: 'MERGEABLE', headRefOid: '0123abcd' };
 
+// gh writes hints to stderr even when a call succeeds; every fake success
+// does too, so the script is shown to parse stdout alone.
 // One poll's answers: gh pr checks' JSON, the head commit's workflow runs,
 // all completed unless given, and gh pr view's PR state.
 function polled(checks, runs = [{ status: 'completed' }], view = OPEN) {
-  return { exit: 0, stdout: JSON.stringify(checks), runs, view };
+  return { exit: 0, stdout: JSON.stringify(checks), stderr: 'hint: gh writes hints to stderr', runs, view };
 }
 
 const REPORT = check('report', 'pass', 'SUCCESS');
@@ -57,9 +59,11 @@ case "$1 $2" in
     n=$(wc -l < "${views}" | tr -d ' ')
     [ "$n" -gt ${answers.length} ] && n=${answers.length}
     echo "$n" > "$n_file"
+    echo "hint: if you need to wait for this pull request, use gh event listen" >&2
     cat "${dir}/view-$n"; exit 0 ;;
   "run list")
     [ "$4" = 0123abcd ] || exit 9
+    echo "hint: if you need to wait for this pull request, use gh event listen" >&2
     cat "${dir}/runs-$(cat "$n_file")"; exit 0 ;;
 esac
 echo "$*" >> "${calls}"
