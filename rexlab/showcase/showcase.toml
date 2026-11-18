@@ -9,6 +9,7 @@ include = [
   "tests/**",
   "docs/features/*.feature",
   "index.html",
+  "public/**",
   "package.json",
   "package-lock.json",
   "tsconfig.json",
@@ -32,4 +33,11 @@ include = [
 exclude = [
   "tests/catalogueSources.test.ts",
   "tests/slowTestsReport.test.ts",
+  "tests/browserImage.test.ts",
+  "tests/coloringGeometry.test.ts",
+  "tests/homeTilePictures.test.ts",
+  "tests/compareResultTheme.test.tsx",
+  "tests/digSiteTokens.test.tsx",
+  "tests/homeGround.test.tsx",
+  "tests/homeSky.test.tsx",
 ]
