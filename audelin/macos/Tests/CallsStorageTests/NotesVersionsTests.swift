@@ -90,6 +90,5 @@ private func seedPair(_ call: String, folder: URL, files: Files) async throws {
         try await files.publish(record, notes: text, template: .init(id: text, name: text), keeping: .rotation)
         var terminal = record; terminal.phase = "succeeded"
         try await files.progress(terminal)
-        try FileManager.default.removeItem(at: folder.appendingPathComponent(".summary-job.json"))
     }
 }

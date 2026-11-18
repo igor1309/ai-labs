@@ -4,6 +4,8 @@ public protocol SummariesPreparation: Sendable {
     func job(for submission: SummariesSubmission) async -> (job: Job, notesOn: Bool)
     /// The call's stored transcript as a submission the user asked for.
     func submission(call: String) async throws -> SummariesSubmission
+    /// The current final transcript's input identity, without capturing settings or making a job.
+    func input(call: String) async throws -> String
 }
 
 public enum SummariesClaimIntent: Equatable, Sendable { case ifAbsent, newRun }
@@ -110,14 +112,16 @@ public struct SummariesEffectHandler<Template: SummariesTemplate>: Sendable {
         case let .reload(calls):
             var results: [String: SummariesSaved?] = [:]
             for call in calls {
-                do { results[call] = .some(try await records.load(call: call)) } catch {}
+                do { results[call] = .some(try await loaded(call)) } catch {}
             }
             return .reloaded(results)
+        case let .readInput(job):
+            return .retryInput(job.call, try? await preparation.input(call: job.call))
         case let .retry(job):
             do { return .retried(job.call, try await records.retry(job)) }
             catch { return .retryFailed(job.call) }
         case let .load(call):
-            do { return .recovered(call, try await records.load(call: call)) }
+            do { return .recovered(call, try await loaded(call)) }
             catch { return .loadFailed(call) }
         case let .prepare(submission):
             let prepared = await preparation.job(for: submission)
@@ -128,6 +132,13 @@ public struct SummariesEffectHandler<Template: SummariesTemplate>: Sendable {
                 return .claimed(job.call, owned: result.owned, result.saved)
             } catch { return .storageFailed(job.call) }
         }
+    }
+    private func loaded(_ call: String) async throws -> SummariesSaved? {
+        guard var saved = try await records.load(call: call) else { return nil }
+        if [.pending, .failed, .interrupted].contains(saved.stage) {
+            saved.currentInput = try? await preparation.input(call: call)
+        }
+        return saved
     }
     /// Answers `done` after the write, or releases the job and answers a storage failure.
     private func stored(_ job: Job, _ done: SummariesEvent<Template>, _ write: () async throws -> Void) async -> SummariesEvent<Template> {

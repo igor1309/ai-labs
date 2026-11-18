@@ -25,7 +25,7 @@ import Testing
             try await owner.publish(job, notes: "complete")
             var terminal = job; terminal.phase = "succeeded"
             try await owner.progress(terminal)
-            #expect(try await observer.load(call: "call") == terminal)
+            #expect(try await observer.load(call: "call") == nil)
         } cleanup: {
             try FileManager.default.removeItem(at: root)
         }

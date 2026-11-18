@@ -23,7 +23,7 @@ Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/f
 
 ## S-5 Reconcile interrupted status
 
-Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/publicationReceiptRecoversExactJobAndInputAfterTerminalSaveFailure`. Setup fixture: summary output committed before a status-write failure; drive: I reload the job; read-back oracle: I can retrieve success without requesting generation. Use temporary call folders and job/input receipts; inject failure at the named claim/progress/publication/read/move operation and inspect on-disk bytes.
+Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/publicationReceiptRecoversExactJobAndInputAfterTerminalSaveFailure`. Setup fixture: summary output committed before a status-write failure; drive: I reload the job; read-back oracle: the call has no job record and I can read the committed notes without requesting generation. Use temporary call folders and job/input receipts; inject failure at the named claim/progress/publication/read/move operation and inspect on-disk bytes.
 
 ## S-6 Follow a renamed call
 

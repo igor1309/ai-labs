@@ -21,19 +21,6 @@ import Testing
         let result = try await makeSUT(files).claim(job)
         #expect(result.owned == owned && result.saved == .init(stage: .pending, job: job))
     }
-    @Test func aClaimReplacesAFinishedRecordWhoseNotesWereDeleted() async throws {
-        let files = FilesFake(), finished = try await record(phase: "succeeded")
-        files.claimAnswer = { [files] new in files.writes.isEmpty ? (false, finished) : (true, new) }
-        let result = try await makeSUT(files).claim(job)
-        #expect(files.writes == [.discard(finished)] && result.owned && result.saved == .init(stage: .pending, job: job))
-    }
-    @Test func aClaimKeepsAFinishedRecordWithItsNotes() async throws {
-        let files = FilesFake(), finished = try await record(phase: "succeeded")
-        files.storedNotes = .init(text: "notes", made: .distantPast)
-        files.claimAnswer = { _ in (false, finished) }
-        let result = try await makeSUT(files).claim(job)
-        #expect(files.writes.isEmpty && !result.owned && result.saved.stage == .succeeded)
-    }
     @Test func aFailedClaimThrows() async {
         let files = FilesFake(); files.claimAnswer = { _ in throw CocoaError(.fileWriteUnknown) }
         await #expect(throws: (any Error).self) { try await makeSUT(files).claim(job) }

@@ -164,12 +164,12 @@ import Testing
             for snapshot in snapshots {
                 try await withVersionsFolder { recoveryFolder, reopened in
                     try snapshot.restore(to: recoveryFolder)
-                    let record = try #require(try await reopened.load(call: "call"))
+                    let record = try await reopened.load(call: "call")
                     let pair = try #require(try await reopened.versions(call: "call"))
                     #expect(pair == old || pair == new, "\(snapshot.boundary)")
                     var expected = attempt
-                    expected.phase = pair == new ? "succeeded" : "interrupted"
-                    #expect(record == expected, "\(snapshot.boundary)")
+                    expected.phase = "interrupted"
+                    #expect(record == (pair == new ? nil : expected), "\(snapshot.boundary)")
                     recoveredOld = recoveredOld || pair == old
                     recoveredNew = recoveredNew || pair == new
                 }
@@ -236,7 +236,7 @@ import Testing
         }
     }
 
-    @Test(arguments: [Keeping.rotation, .replacement], ["record", "exists", "read"])
+    @Test(arguments: [Keeping.rotation, .replacement], ["record", "record exists", "exists", "read"])
     func discardReadAndRollbackCheckFailuresKeepThePublishedPair(keeping: Keeping, failure: String) async throws {
         try await withVersionsFolder { folder, files in
             try await publishVersion("A", files: files, folder: folder)
@@ -248,7 +248,7 @@ import Testing
             _ = try await owner.claim(record); #expect(try await owner.start(record))
             try await owner.publish(record, notes: "C", template: .default, keeping: keeping)
             disk.readFailure.withLock { $0 = failure }
-            if failure == "record" {
+            if failure == "record" || failure == "record exists" {
                 await #expect(throws: (any Error).self) { try await owner.discard(record) }
                 await owner.release(job: record.job, call: record.call, input: record.input)
                 #expect(try await files.load(call: "call")?.phase == "interrupted")
@@ -318,8 +318,6 @@ private func publishVersion(_ text: String, files: Files, folder: URL, keeping: 
     try await files.publish(record, notes: text, template: .init(id: "id-" + text, name: text), keeping: keeping)
     var terminal = record; terminal.phase = "succeeded"
     try await files.progress(terminal)
-    // Independent publication fixtures retire the completed attempt.
-    try FileManager.default.removeItem(at: folder.appendingPathComponent(".summary-job.json"))
 }
 private func withVersionsFolder(_ body: (URL, Files) async throws -> Void) async throws {
     let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -392,13 +390,17 @@ private final class VersionDisk: Disk, Sendable {
         return try base.read(url)
     }
     func exists(_ url: URL) throws -> Bool {
+        if url.lastPathComponent == ".summary-job.json", readFailure.withLock({ $0 == "record exists" }) { throw CocoaError(.fileReadUnknown) }
         if url.lastPathComponent == "summary.md", readFailure.withLock({ $0 == "exists" }) { throw CocoaError(.fileReadUnknown) }
         return try base.exists(url)
     }
     func create(_ data: Data, at url: URL) throws -> Bool { try base.create(data, at: url) }
     func readStamped(_ url: URL) throws -> (data: Data, modified: Date) { try base.readStamped(url) }
     func restore(_ data: Data, at url: URL, modified: Date) throws { try base.restore(data, at: url, modified: modified) }
-    func remove(_ url: URL) throws { try base.remove(url) }
+    func remove(_ url: URL) throws {
+        if url.lastPathComponent == ".summary-job.json", failTerminal.withLock({ $0 }) { throw CocoaError(.fileWriteUnknown) }
+        try base.remove(url)
+    }
     func replace(_ data: Data, at url: URL) throws {
         if url.lastPathComponent == ".summary-job.json", failTerminal.withLock({ $0 }) { throw CocoaError(.fileWriteUnknown) }
         if url.lastPathComponent == "summary.md", fail.withLock({ $0 }) { throw CocoaError(.fileWriteUnknown) }

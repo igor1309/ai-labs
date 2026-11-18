@@ -496,17 +496,14 @@ private func templateSummaryFiles(_ root: URL) -> Files {
           ownershipDirectory: root.appendingPathComponent("seed-leases"))
 }
 private func seedPublishedPair(_ files: Files) async throws {
-    var old: SummaryFiles.Record?
     for name in ["Previous", "Current"] {
         let record = SummaryFiles.Record(job: name, call: a, input: "seed-input", snapshot: Data("{}".utf8), phase: "pending")
-        if let old { _ = try await files.replaceAttempt(old, with: record) }
-        else { _ = try await files.claim(record) }
+        _ = try await files.claim(record)
         #expect(try await files.start(record))
         try await files.publish(record, notes: name, template: .default, keeping: .rotation)
         var completed = record; completed.phase = "succeeded"
         try await files.progress(completed)
         await files.release(job: record.job, call: record.call, input: record.input)
-        old = completed
     }
 }
 

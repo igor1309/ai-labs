@@ -69,18 +69,28 @@ private struct Backup {
               let previous = json["previous"] as? [String: Any] else { return nil }
         return previous["text"] as? String
     }
-    /// The job record's phase, once the job running in the call is a different one from the backed-up one.
-    /// Reading the file is how the driver knows a remake finished: notes already made with Daily
-    /// look the same in the window before and after.
+    /// A new publication receipt with no unfinished record proves success. Failed attempts keep their record.
+    /// Daily notes can look the same before and after, so completion is read from their job identity.
     func finishedPhase(_ call: String) throws -> String? {
         let source = try folder(of: call)
         func job(_ url: URL) -> [String: Any]? {
             (try? Data(contentsOf: url.appendingPathComponent(".summary-job.json"))).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
         }
-        let before = job(run.appendingPathComponent(source.lastPathComponent))?["job"] as? String
-        guard let now = job(source), let id = now["job"] as? String, id != before,
-              let phase = now["phase"] as? String, ["succeeded", "failed", "interrupted"].contains(phase) else { return nil }
-        return phase
+        func receiptJob(_ url: URL) -> String? {
+            guard let text = try? String(contentsOf: url.appendingPathComponent("summary.md"), encoding: .utf8),
+                  text.hasPrefix("<!-- audelin-summary:"), let newline = text.firstIndex(of: "\n") else { return nil }
+            let line = text[..<newline]
+            guard line.hasSuffix(" -->"), let payload = Data(base64Encoded: String(line.dropFirst(21).dropLast(4))),
+                  let receipt = try? JSONSerialization.jsonObject(with: payload) as? [String: Any] else { return nil }
+            return receipt["job"] as? String
+        }
+        let saved = run.appendingPathComponent(source.lastPathComponent)
+        let before = job(saved)?["job"] as? String
+        if let now = job(source), let id = now["job"] as? String, id != before,
+           let phase = now["phase"] as? String, ["succeeded", "failed", "interrupted"].contains(phase) { return phase }
+        guard !FileManager.default.fileExists(atPath: source.appendingPathComponent(".summary-job.json").path),
+              let published = receiptJob(source), published != before, published != receiptJob(saved) else { return nil }
+        return "succeeded"
     }
     /// Whether the receipt's Previous is the notes that were current before the run.
     func preserved(_ call: String) throws -> Bool {

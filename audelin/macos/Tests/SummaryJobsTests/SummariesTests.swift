@@ -353,7 +353,7 @@ import Testing
 
 @Suite struct SummariesDispatchReducerTests {
     let format = FormatSpy()
-    let pending = SummariesSaved(stage: .pending, job: makeJob(), warning: true)
+    let pending = SummariesSaved(stage: .pending, job: makeJob(), warning: true, currentInput: "input")
 
     @Test func anOwnedPendingClaimStartsWhileDispatching() {
         assert(makeClaiming(), .claimed("call", owned: true, pending)) {
@@ -540,9 +540,11 @@ final class PreparationSpy: SummariesPreparation {
     private let read = Mutex<[String]>([])
     private let job: Job
     private let notesOn: Bool
+    let currentInput: Result<String, SpyFailure>
+    func input(call: String) async throws -> String { read.withLock { $0.append(call) }; return try currentInput.get() }
     private let submission: Result<SummariesSubmission, SpyFailure>
-    init(job: Job = makeJob(), notesOn: Bool = true, submission: Result<SummariesSubmission, SpyFailure> = .success(makeSubmission(requested: true))) {
-        self.job = job; self.notesOn = notesOn; self.submission = submission
+    init(job: Job = makeJob(), notesOn: Bool = true, currentInput: Result<String, SpyFailure> = .success("input"), submission: Result<SummariesSubmission, SpyFailure> = .success(makeSubmission(requested: true))) {
+        self.job = job; self.notesOn = notesOn; self.currentInput = currentInput; self.submission = submission
     }
     var payloads: [SummariesSubmission] { recorded.withLock { $0 } }
     var reads: [String] { read.withLock { $0 } }

@@ -21,7 +21,6 @@ struct CallsSearchWiringTests {
                 try await files.publish(record, notes: text, template: .default, keeping: .rotation)
                 var terminal = record; terminal.phase = "succeeded"
                 try await files.progress(terminal)
-                try FileManager.default.removeItem(at: rig.root.appendingPathComponent(id + "/.summary-job.json"))
             }
             let calls = try #require(rig.menu.calls)
             await rig.menu.perform(.showCalls)

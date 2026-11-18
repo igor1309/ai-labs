@@ -13,7 +13,7 @@ import Testing
         #expect(format.payloads == [.init(stage: .retrying, warning: false)])
     }
     @Test(arguments: [SummariesState.Call.Stage.failed, .interrupted]) func aRetryDeliversRetry(stage: SummariesState.Call.Stage) {
-        assert(make(stage), .retry("call"), delivers: .retry(makeJob()))
+        assert(make(stage), .retry("call"), delivers: .readInput(makeJob()))
     }
     @Test(arguments: [SummariesState.Call.Stage.succeeded, .unavailable, .pending, .noting, .observed, .retrying])
     func aRetryOfACallNotFailedOrInterruptedChangesNothing(stage: SummariesState.Call.Stage) {
