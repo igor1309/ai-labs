@@ -82,3 +82,21 @@ Automated boundary: `cd audelin/macos && swift test --filter SummaryFilesTests/c
 `cd audelin/macos && swift test --filter SummaryFilesTests/anOwnerDiscardsItsRunningJob` claims and starts a job over published notes, discards it, and reads back no record, the same notes and the transcript bytes, and another instance then starts the same job; a discard by another instance while the owner runs fails and leaves the record running.
 
 `inactiveAttemptCanBeDiscardedWithoutTakingAnotherOwnersRecord` also covers pending and interrupted attempts: the exact inactive identity is removed under its lease; a different identity is refused and the transcript stays.
+
+`failedAttemptCanBeDiscardedWhenItsLeaseIsFree` discards a failed attempt with no owner: the record is gone and the notes and transcript stay; a running record held by another instance is refused.
+
+## S-22 Success leaves no record
+
+`cd audelin/macos && swift test --filter SummaryFilesTests/savingSuccessRemovesTheRecord` claims, starts, publishes and saves success, then reads back no record file, the published notes and unchanged transcript bytes.
+
+## S-23 A leftover succeeded record is absence
+
+`cd audelin/macos && swift test --filter SummaryFilesTests/leftoverSucceededRecordReadsAsNoJob` writes a succeeded record (with and without notes beside it), loads and claims the call, and reads back no job, no record file and, where present, the same notes.
+
+## S-24 A copied record belongs to its folder
+
+`cd audelin/macos && swift test --filter SummaryFilesTests/recordWithAnotherCallFieldBelongsToItsFolder` writes a record whose call field names another call into this call's folder, loads it as this call's attempt, and reads back the file still in this folder.
+
+## S-25 Failed terminal save keeps the record
+
+`cd audelin/macos && swift test --filter SummaryFilesTests/failedSuccessRemovalLeavesRunningForRecovery` fails the record removal after publication, receives the failure, reads back a running record, then a fresh instance reconciles it from the receipt to no record.

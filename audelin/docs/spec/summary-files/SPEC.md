@@ -13,6 +13,9 @@ Observer: the caller storing and reading a call summary job.
 - All disk work runs on a dedicated awaited executor. Identity resolution and publication coordinate with rename, delete and whole-folder moves, including partially completed moves, through consumer-owned storage ports.
 - **Notes read with when they were made: the notes file's last change.** The calls window shows that date under the notes. Publishing is unchanged and needs no time of its own; a user's later edit counts as the latest notes.
 - Failed terminal-state saving leaves a durable running claim, so recovery cannot replay an already dispatched request. These choices preserve output and avoid duplicate billing.
+- **A job record lives only while its job is unfinished.** Saving success removes the record; the published notes' job/input receipt is the only evidence of success. Pending, running, failed and interrupted records stay, since retry reuses a failed or interrupted attempt's saved input. A record left in the succeeded phase by an older version reads as no record and is removed under its lease the next time the call's job is loaded or claimed; the notes still read from the notes file.
+- **The folder holding a record is its call.** A record stores no call identity; one written with a call field still reads, and the field is ignored. A record copied into another call's folder therefore belongs to that folder, never to the call it came from.
+- **A stale inactive record can be dropped.** Discard accepts a pending, failed or interrupted attempt whose lease is free, so its consumer can drop a record whose input no longer matches the call's transcript. A running record is never dropped by anyone but its owner.
 
 ```gherkin
 Feature: Keep notes and job records durably
@@ -40,7 +43,7 @@ Feature: Keep notes and job records durably
   Scenario: S-5 Reconcile interrupted status
     Given summary output committed before a status-write failure
     When I reload the job
-    Then I can retrieve success without requesting generation
+    Then the call has no job record and I can read the committed notes without requesting generation
 
   Scenario: S-6 Follow a renamed call
     Given a claimed call folder is renamed
@@ -120,8 +123,27 @@ Feature: Keep notes and job records durably
     Then I get them with when they were made
 
   Scenario: S-21 Discard a cancelled job
-    Given I own a running job or its pending or interrupted attempt has no active owner
+    Given I own a running job or its pending, failed or interrupted attempt has no active owner
     When I discard it
     Then the call has no job record and its transcript and complete notes stay
 
+  Scenario: S-22 Success leaves no record
+    Given I own a running job
+    When I publish its notes and save success
+    Then the call has no job record and I can read the notes beside the unchanged transcript
+
+  Scenario: S-23 A leftover succeeded record is absence
+    Given a call holds a record in the succeeded phase from an older version
+    When I load or claim the call
+    Then I learn it has no job, the record is gone and its notes still read
+
+  Scenario: S-24 A copied record belongs to its folder
+    Given a record naming another call is copied into this call's folder
+    When I load the call
+    Then I get the record as this call's, not a corrupt-record failure
+
+  Scenario: S-25 Failed terminal save keeps the record
+    Given I own a running job whose notes are published
+    When removing its record fails
+    Then I receive a storage failure and the record stays running for recovery
 ```
