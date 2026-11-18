@@ -28,7 +28,8 @@ public func compose(
     chooseCallsFolder: @escaping () async throws -> URL? = { nil },
     summaryRuntime: SummaryRuntime.Runtime? = nil,
     copyNotes: @escaping (String) -> Void = { _ in },
-    readCall: @escaping () -> Void = {}
+    readCall: @escaping () -> Void = {},
+    notify: @escaping @MainActor (AppNotificationContent) -> Void = { _ in }
 ) async -> AudelinMenu {
     let preferences = PreferencesStore(fileURL: preferencesURL)
     await createDefaultCallsFolder(preferences.read().callsFolder, default: Preferences().callsFolder)
@@ -107,6 +108,9 @@ public func compose(
                                       initial: .init(callsFolder: preferences.read().callsFolder))
     menu.installMoveHold(subscribeMoveHold({ recordings.state().callsFolderAvailable },
                                            to: { [weak menu] moving in await menu?.callsFolderMoving(moving) }))
+    menu.installNotifications(subscribeNotifications(phase: { [weak menu] in menu?.state.phase ?? .idle },
+                                                     stages: { summaries.state.calls.mapValues(\.stage) },
+                                                     post: { notify($0.content(language.language)) }))
     menu.installMergeAvailability(subscribeMergeAvailability({ [weak menu] in
         idleToMerge(recording: menu?.state.phase ?? .idle, finishing: finalization.state.calls.values.map(\.stage),
                     notesBusy: summaries.busy)

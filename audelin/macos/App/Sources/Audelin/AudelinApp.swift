@@ -55,6 +55,7 @@ struct AudelinApp: App {
         self.settingsWindow = settingsWindow
         let callWindow = CallWindowSlot()
         let boundary = await makeRealBoundary()
+        let notifications = SystemNotifications(bundle: Bundle.main.bundleURL)
         let model = await compose(
             boundary: boundary,
             preferencesURL: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".audelin/preferences.json"),
@@ -74,7 +75,8 @@ struct AudelinApp: App {
                     begin: { completion in picker.begin { completion($0 == .OK ? picker.url : nil) } },
                     isVisible: { picker.isVisible }
                 )
-            }, copyNotes: { copyNotes($0, to: .general) }, readCall: { if let window = callWindow.window { presentCall(window, shown: { presence.shown($0) }) } }
+            }, copyNotes: { copyNotes($0, to: .general) }, readCall: { if let window = callWindow.window { presentCall(window, shown: { presence.shown($0) }) } },
+            notify: { notifications.post($0) }
         )
         self.model = model
         settingsWindow.contentView = NSHostingView(rootView: SettingsContent(model: model, window: settingsWindow))

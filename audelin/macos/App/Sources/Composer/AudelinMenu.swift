@@ -241,6 +241,7 @@ public final class AudelinMenu {
 
     func installMergeAvailability(_ subscription: Task<Void, Never>) { finalizationSubscriptions.append(subscription) }
     func installMoveHold(_ subscription: Task<Void, Never>) { finalizationSubscriptions.append(subscription) }
+    func installNotifications(_ subscription: Task<Void, Never>) { finalizationSubscriptions.append(subscription) }
 
     func installFolderPicker(_ choose: @escaping () async throws -> URL?) { chooseFolder = choose }
     /// Whether a folder move holds the calls folder, as Recordings says; RecordingConditions hears it.
