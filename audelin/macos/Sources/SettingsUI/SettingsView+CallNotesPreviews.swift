@@ -58,6 +58,7 @@ extension SettingsState {
             draft.banner = .init(title: say("Проверьте настройки", "Check the settings"),
                                  detail: say("Укажите модель резервного сервиса.", "Enter the fallback service’s model."))
             draft.status = say("Исправьте поле выше", "Correct the field above")
+            draft.statusTone = .error
             draft.save.isEnabled = false
         case "unavailable":
             draft.banner = .init(title: say("Claude Code не найден", "Claude Code not found"),
@@ -73,6 +74,7 @@ extension SettingsState {
             draft.banner = .init(title: text(.notesSaveFailed),
                                  detail: say("Изменения остались в окне. Повторите попытку.", "Your changes are still in the window. Try again."))
             draft.status = say("Сохранение не завершено", "Saving didn’t finish")
+            draft.statusTone = .error
             draft.save = .init(id: .retrySave, title: text(.notesRetry))
         case "saved":
             draft.status = text(.notesSaved)
