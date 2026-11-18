@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-18
+
+- Segmented controls (Settings tabs, Language, Appearance, chunk size, Предыдущие / Текущие) no longer draw an accent ring around the selected segment under keyboard focus.
+
 ## 2026-11-16
 
 - LAB-1672: Zoom's stand-in for a participant without a name ("Zoom user", "Пользователь Zoom" and its other languages) no longer names a speaker, so that speaker can still be named from the conversation.

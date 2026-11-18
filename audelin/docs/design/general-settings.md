@@ -64,14 +64,14 @@ size: the tab bar, Language, Appearance and the debug chunk size use it.
   apart and 2 pt in from its edge.
 - The selected segment is a `segThumb` chip with `radius-thumb` and a
   `segShadow` shadow; its label is medium weight. Every label is `text`.
-- No outlines and no ring around the control. Keyboard focus is a 2 pt
-  `me` ring outside the selected segment.
+- No outlines and no rings: keyboard focus draws nothing on the control,
+  neither around a segment nor around the track.
 - The grey hint line under a picker reaches 4.5:1 on the window.
 
 ## Input
 
 - Mouse: a click on a segment selects it.
-- Keyboard: Tab reaches the picker and rings its selected segment; the
+- Keyboard: Tab reaches the picker, with no visible ring; the
   arrow keys move between segments.
 - macOS only; there is no phone or tablet layout.
 
