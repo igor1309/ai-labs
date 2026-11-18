@@ -71,18 +71,29 @@ struct CallDiarizerBindingTests {
 
 private func withTwoVoices(_ body: ([Float], Double) async throws -> Void) async throws {
 
+    let voices = try await twoVoices.value
+    try await body(voices.samples, voices.boundary)
+}
+
+/// The two voices, spoken once per test process: `say` takes about a second,
+/// longer than VBx itself, and every binding test hears the same track.
+private let twoVoices = Task<(samples: [Float], boundary: Double), Error> {
+
+    var voices: (samples: [Float], boundary: Double)?
     try await withAudioDirectory { directory in
-        let russian = try await spoken("Сегодня мы обсуждаем проект и планы на следующую неделю.", voice: "Milena", in: directory)
-        let english = try await spoken("Let us review the project and agree on our plans for next week.", voice: "Fred", in: directory)
-        try #require(!russian.isEmpty)
-        try #require(!english.isEmpty)
+        async let russian = spoken("Сегодня мы обсуждаем проект и планы на следующую неделю.", voice: "Milena", in: directory)
+        async let english = spoken("Let us review the project and agree on our plans for next week.", voice: "Fred", in: directory)
+        let (first, second) = try await (russian, english)
+        try #require(!first.isEmpty)
+        try #require(!second.isEmpty)
         let track = directory.appendingPathComponent("two-voices.wav")
-        try writeWave(track, channels: [russian + english], rate: 16_000)
+        try writeWave(track, channels: [first + second], rate: 16_000)
         let audio = try await audioFile(track)
-        #expect(audio.sampleRate == 16_000)
-        #expect(audio.channelCount == 1)
-        try await body(audio.samples, Double(russian.count) / 16_000)
+        try #require(audio.sampleRate == 16_000)
+        try #require(audio.channelCount == 1)
+        voices = (audio.samples, Double(first.count) / 16_000)
     }
+    return try #require(voices)
 }
 
 private func spoken(_ text: String, voice: String, in directory: URL) async throws -> [Float] {
