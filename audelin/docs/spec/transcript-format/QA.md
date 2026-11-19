@@ -1,38 +1,32 @@
 # Transcript format — QA
 
-A pure adapter: every row renders numbered segments on both sides and reads
-the rendered Markdown back as compose would hand it to the user, checking its parts, never
-just that a call was made. The real call of the user spec (LAB-408) proves
-the whole path with the transcript file.
+A pure adapter: every row renders numbered segments on both sides and reads the
+Markdown back as compose would hand it to the user, checking its parts, never just
+that a call was made. The real call of the user spec (LAB-408) proves the whole path.
 
 ## S-1 Rendered text can be read
 
-Four numbered segments, mine and theirs interleaved, are rendered; the text
-holds each in the order given, marked mine or theirs, with its start time.
-Settled-only, pending-only and mixed segments hold all their words.
-Evidence: `TranscriptFormatTests.interleavedSegmentsKeepOrderTimesAndAllWords()`.
+Four numbered segments, mine and theirs interleaved, render in the order
+given, each marked mine or theirs with its start time.
+Settled-only, pending-only and mixed segments hold all their words. Evidence: `TranscriptFormatTests.interleavedSegmentsKeepOrderTimesAndAllWords()`.
 
 ## S-2 Revised text renders only the revision
 
-Segments with pending text are rendered, then the same segments settled
-with different words; the text holds only the settled words, and a segment
-dropped by the revision is gone. Evidence: `TranscriptFormatTests.revisionReplacesPendingWordsAndDroppedSegments()`.
+Pending segments, then the same settled with other words: only the settled
+words remain, and a segment the revision dropped is gone. Evidence: `TranscriptFormatTests.revisionReplacesPendingWordsAndDroppedSegments()`.
 
 ## S-3 Text filled in later is marked
 
-Live segments and segments marked written later are rendered; only the
-latter are marked as filled in later. Evidence: `TranscriptFormatTests.onlyLaterSegmentsAreMarked()`.
+Live and later-written segments render; only the latter are marked filled in later. Evidence: `TranscriptFormatTests.onlyLaterSegmentsAreMarked()`.
 
 ## S-4 No text says none was heard
 
-No segments are rendered, then text, then no segments again; both empty
-renderings say no text was heard. Evidence: `TranscriptFormatTests.emptyWritesReplaceTextWithNoTextMessage()`.
+No segments, then text, then none again: both empty renderings say no text was heard. Evidence: `TranscriptFormatTests.emptyWritesReplaceTextWithNoTextMessage()`.
 
 ## S-5 Final parts without words say none was heard
 
-Final segments without words are rendered, then text after them, then
-none after them again; the text says no text was heard, then holds the
-words, then says no text was heard. Evidence: `TranscriptFormatTests.wordlessFinalSegmentsStillMeanNoTextUntilWordsArrive()` and `TranscriptFormatTests.textGoingAfterFinalEntriesWithoutWordsSaysNoTextWasHeard()`.
+Final wordless segments, then text after them, then none again: no text was
+heard, then the words, then no text was heard. Evidence: `TranscriptFormatTests.wordlessFinalSegmentsStillMeanNoTextUntilWordsArrive()` and `TranscriptFormatTests.textGoingAfterFinalEntriesWithoutWordsSaysNoTextWasHeard()`.
 
 ## S-6 Final text stays the start of every rendering
 
@@ -47,18 +41,15 @@ S-9's drive up to the failure, which is told. Evidence: `TranscriptFormatTests.f
 
 ## S-9 Rendering after a failed one keeps the final text
 
-Text with a final part is rendered; then text with a segment whose start
-is not a finite time fails. The next rendering of good text holds the whole
-text, starts with the earlier final text byte for byte, tells the same
-final length, and asks only for segments after the final ones, so the
-earlier rendering was kept.
+Text with a final part renders; text with a non-finite start fails. The next
+good rendering holds the whole text, starts with the earlier final text byte
+for byte, tells the same length and asks only for segments after it.
 Evidence: `TranscriptFormatTests.failedRenderingKeepsTheFinalTextAndLength()`.
 
 ## S-8 A replaced transcript renders from nothing
 
-Text with final parts is rendered; then a replacement whose final parts
-hold other words is rendered from nothing. Its Markdown holds the new
-words and none of the old, and tells the new final length.
+Final parts, then a replacement with other words rendered from nothing:
+the new words, none of the old, and the new final length.
 Evidence: `TranscriptFormatTests.replacementStartsFromNothing()`.
 
 ## S-10 Their speakers are told apart and named after the text
@@ -87,8 +78,23 @@ reads back in `aGapRendersAsTheCallCutOffAndReadsBack()`.
 
 ## S-12 A gap reads as the call cut off
 
-A rendering with a gap of 120 s at 480 s shows a row at 00:08:00 saying the
-call was cut off for two minutes; read back, it is a gap of 120 s at 480 s.
-Evidence: `TranscriptReadingTests.aGapRendersAsTheCallCutOffAndReadsBack()`,
+A gap of 120 s at 480 s renders at 00:08:00 as cut off for two minutes and reads back so. Evidence: `TranscriptReadingTests.aGapRendersAsTheCallCutOffAndReadsBack()`,
 `aGapOfNoLengthRenders()`, `onlyAGapSaysNoTextWasHeard()` and
 `aGapOfNoUsableLengthFails(length:)`.
+
+## S-13 The origin reads above the text
+
+A fixture origin renders as front matter written out in the test, before
+`# Transcript`, the rest as without origin, and reads back equal (S-11's
+fixture gains it). Over two live renderings the told length covers the
+origin and the first starts the second. Evidence: Missing.
+
+## S-15 A changed origin is not kept as final
+
+A rendering with final parts, then one with another origin of the same
+length: it tells no final length. Saved through the transcript file in a
+composition test, the file reads back the new origin, whole. Evidence: Missing.
+
+## S-14 A transcript without origin reads as before
+
+A canonical transcript saved before origins reads back with no origin and renders again equal to it. Evidence: Missing.

@@ -640,16 +640,17 @@ diarizer whose split it saved, or none, and saves the split with the
 origin it is given plus that outcome. A commit adds the cleaning outcome:
 cleaned, or nothing kept. On shutdown a stage that will not run is
 skipped, not silent: a call being cleaned, or closing after shutdown, is
-committed once more as last saved with the stages left marked skipped,
+committed once more as last saved, if its latest write was saved, with the stages left marked skipped,
 and is final when that write returns. A failed write keeps the origin
 saved before it, as it keeps the text.
 
-**Transcript join carries each part's origin** without reading it,
-generic over it as over rows, in part order. The root gives it each part's
-origin read back by Transcript format, flattened to the original calls. A
+**Transcript join orders the original calls:** each part brings its
+original calls, each a start and an origin join never reads, and the
+joined call's are all of them by start, so a remerge interleaves them. The
+root maps each part's origin read back by Transcript format into them; a
 part with no origin is unknown for each of its original calls, whose starts
 **Calls** reads from the part's nested folders, as it already reads their
-tracks for duration. The root adds the merging build to the joined origin.
+tracks for duration. The root hands the merging build to the rendering.
 
 ## Bleed cleanup
 

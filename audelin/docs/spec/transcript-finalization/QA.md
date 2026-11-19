@@ -14,9 +14,13 @@ from `audelin/macos` with `GITHUB_ACTIONS=1`.
 
 Evidence: `TranscriptFinalizationReducerTests.closingASavedCallDiarizes_state`, `_effect`; `TranscriptFinalizationEffectHandlerTests.diarizeDeliversTheAttributedFarSide`.
 
+The diarizer port's spy gets no finishing outcome. Evidence: Missing.
+
 ## S-2 Failed write is final as last saved
 
 Evidence: `TranscriptFinalizationReducerTests.writeFailureMarksLatestWrite_state`, `closingAfterAFailedWriteIsFinalAsSaved_state`, `_effect`, `failedWriteEntriesAreTheLastSavedText`.
+
+After an earlier saved write with its origin, the latest write fails: the receiver spy gets the earlier text and no replacement is asked. Evidence: Missing.
 
 ## S-3 Call with no write is final and empty
 
@@ -26,9 +30,13 @@ Evidence: `TranscriptFinalizationReducerTests.closingWithoutAWriteIsFinalAndEmpt
 
 Evidence: `TranscriptFinalizationReducerTests.diarizedFarSideIsCleaned_state`, `_effect`; `TranscriptFinalizationEffectHandlerTests.cleanDeliversTheHeardMicrophoneSide`.
 
+The diarizer port reports Nemotron, then in a second run VBx: the cleanup commit the replacement spy gets tells the split by that diarizer. Evidence: Missing.
+
 ## S-5 Failed diarization still cleans
 
 Evidence: `TranscriptFinalizationReducerTests.failedDiarizationCleansTheWrittenText_state`, `_effect`; `TranscriptFinalizationEffectHandlerTests.failedDiarizationDeliversNoFarSide`.
+
+The commit the replacement spy gets tells the split as not kept. Evidence: Missing.
 
 ## S-6 Heard microphone side is committed
 
@@ -38,13 +46,19 @@ Evidence: `TranscriptFinalizationReducerTests.heardMicrophoneIsCommitted_state`,
 
 Evidence: `TranscriptFinalizationReducerTests.keptMicrophoneIsFinal_state`, `_effect`, `keptMicrophoneEntriesTakeTheFarSide`; `TranscriptFinalizationEffectHandlerTests.keptMicrophoneDeliversNothingHeard`.
 
+The replacement spy gets one commit of the text as written, cleaning told as nothing kept; the receiver spy gets nothing until it returns. Evidence: Missing.
+
 ## S-8 Committed cleanup is final
 
 Evidence: `TranscriptFinalizationReducerTests.committedCleanupIsFinal_state`, `_effect`, `committedEntriesTakeTheHeardSide`; `TranscriptFinalizationEffectHandlerTests.publishHandsEveryFinalOverAndDeliversPublished`.
 
+The replacement spy's commit tells cleaning as cleaned; held, the receiver spy gets nothing, released, the final transcript. Evidence: Missing.
+
 ## S-9 Failed commit is final as written
 
 Evidence: `TranscriptFinalizationReducerTests.failedCommitIsFinalAsWritten_state`, `_effect`, `failedCommitEntriesKeepTheWrittenSide`; `TranscriptFinalizationEffectHandlerTests.failedReplacementDeliversFailure`.
+
+The replacement fails: the receiver spy gets the earlier words, and the replacement spy is asked no second write; the file keeping the earlier origin is the transcript format and file's, read back in the user spec's failed-save row. Evidence: Missing.
 
 ## S-10 Calls are made final independently
 
@@ -62,13 +76,19 @@ Evidence: `TranscriptFinalizationShutdownTests.shutdownWithNoWorkIsSettled_state
 
 Evidence: `TranscriptFinalizationShutdownTests.cleaningCallIsFinalAsWritten_state`, `_effect`, `shutdownSettlesEveryCleaningCallAtOnce`; `TranscriptFinalizationEffectHandlerTests.stopCleaningStopsEachCallsCleanupThenPublishes`.
 
+With the split saved, cleanup held and shutdown sent: the stop spy is called, the commit tells the saved split and cleaning skipped, and the receiver spy gets the final transcript only after the commit returns. Evidence: Missing.
+
 ## S-14 Shutdown lets diarizing finish its write
 
 Evidence: `TranscriptFinalizationShutdownTests.diarizedAfterShutdownIsFinalWithoutCleaning_state`, `_effect`.
 
+Shutdown while the diarizer is held, then released with Nemotron: one commit with that split and cleaning skipped, then publication. Evidence: Missing.
+
 ## S-15 Call closing after shutdown skips model work
 
 Evidence: `TranscriptFinalizationShutdownTests.closedAfterShutdownIsFinalWithoutDiarizing_state`, `_effect`.
+
+A saved call closing after shutdown: no diarizer call, one commit with both stages skipped, then publication; a call whose latest write failed: no commit. Evidence: Missing.
 
 ## S-16 Settled waits for every publication
 
@@ -112,3 +132,10 @@ final transcript and file contain the last saved text, and observes publication
 before termination. Quit during transcript opening also holds termination until
 the late opening closes and its final transcript is taken. The subscription
 maps every transcript event in order and sends input ended after the last close.
+
+The late call's commit tells both stages skipped; with its latest write failed, none is asked. Evidence: Missing.
+
+## S-21 A split not kept still cleans
+
+The diarizer port returns with no saved split: cleanup is called on the far
+side as written, and the commit tells the split as not kept. Evidence: Missing.

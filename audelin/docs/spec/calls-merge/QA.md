@@ -82,3 +82,9 @@ back byte for byte (Evidence:
 `CallsMergeTests.S11_eachPartsTranscriptIsReadAsWritten()`); with B's
 unreadable the error names B and every file is where it was (Evidence:
 `CallsMergeTests.S11_anUnreadableTranscriptNamesItsCall()`).
+
+## S-12 A merged part names its original calls
+
+A seeded merge made before origins, holding a merged part of two calls and
+a plain call: its read gives the three leaf starts in order, each once. A
+plain call's read gives its own start, a separate case. Evidence: Missing.
