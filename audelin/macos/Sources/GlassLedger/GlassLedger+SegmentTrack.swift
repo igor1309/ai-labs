@@ -24,7 +24,7 @@ public struct SegmentTrack<Label: View>: View {
                 let isSelected = index == selected
                 label(index, isSelected)
                     .lineLimit(1)
-                    .padding(.vertical, tokens.space2)
+                    .padding(.vertical, tokens.space6)
                     .padding(.horizontal, tokens.space12)
                     .frame(maxWidth: fill ? .infinity : nil)
                     .background {
