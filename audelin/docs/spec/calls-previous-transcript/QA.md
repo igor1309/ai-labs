@@ -48,12 +48,12 @@ Evidence: `CallsPreviousTranscriptTests.S8_aListingTellsThePreviousTranscript`.
 ## S-9 A listing tells missing tracks
 
 List a merged call whose second part lacks its call track: that part and track named.
-Evidence: Missing.
+Evidence: `CallsPreviousTranscriptTests.S9_aListingTellsMissingTracks`.
 
 ## S-10 The transcript's identity follows its bytes
 
 Read, publish changed bytes, read twice: later reads match each other, not the first; publish identical bytes: the identity is unchanged.
-Evidence: Missing.
+Evidence: `CallsPreviousTranscriptTests.S10_theTranscriptsIdentityFollowsItsBytes`.
 
 ## S-11 A merged call's parts are untouched
 
@@ -68,9 +68,9 @@ Evidence: `CallsPreviousTranscriptTests.S12_anInterruptedRestoreIsSettledAtStart
 ## S-13 Restoring brings back the identity
 
 Read A, publish B, restore: the identity equals A's.
-Evidence: Missing.
+Evidence: `CallsPreviousTranscriptTests.S13_restoringBringsBackTheIdentity`.
 
 ## S-14 A read during a change finds a whole pair
 
 Hold a publish at each move and read the call's transcripts: the read answers only after the change, with the new pair whole; the same for a held restore.
-Evidence: Missing.
+Evidence: `CallsPreviousTranscriptTests.S14_aReadDuringAChangeFindsAWholePair`.

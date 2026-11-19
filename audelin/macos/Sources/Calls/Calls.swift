@@ -1,9 +1,23 @@
 import CallFolderName
+import CryptoKit
 import Darwin
 import Foundation
 
 /// Recorded folders, identified by the timestamp prefix that survives a title change.
 public struct Calls: Sendable {
+
+    public enum Track: String, CaseIterable, Sendable {
+        case microphone, call
+    }
+
+    public struct MissingTrack: Equatable, Sendable {
+        public let id: String
+        public let track: Track
+
+        public init(id: String, track: Track) {
+            self.id = id; self.track = track
+        }
+    }
 
     public struct Call: Equatable, Sendable {
         public let id: String
@@ -11,10 +25,13 @@ public struct Calls: Sendable {
         public let start: Date
         public let duration: TimeInterval?
         public let hasPreviousTranscript: Bool
+        public let missingTracks: [MissingTrack]
 
-        public init(id: String, title: String, start: Date, duration: TimeInterval?, hasPreviousTranscript: Bool = false) {
+        public init(id: String, title: String, start: Date, duration: TimeInterval?, hasPreviousTranscript: Bool = false,
+                    missingTracks: [MissingTrack] = []) {
             self.id = id; self.title = title; self.start = start; self.duration = duration
             self.hasPreviousTranscript = hasPreviousTranscript
+            self.missingTracks = missingTracks
         }
     }
 
@@ -31,7 +48,11 @@ public struct Calls: Sendable {
             }
         }
         public let transcript: [Line]
-        public init(transcript: [Line]) { self.transcript = transcript }
+        /// SHA-256 of the saved bytes, in lowercase hex; nil when the file is absent.
+        public let identity: String?
+        public init(transcript: [Line], identity: String? = nil) {
+            self.transcript = transcript; self.identity = identity
+        }
     }
 
     public struct Count: Equatable, Sendable {
@@ -71,34 +92,44 @@ public struct Calls: Sendable {
     public func list() throws -> [Call] {
         operation.lock(); defer { operation.unlock() }
         return try folders(in: folder).map { url, name in
-            Call(id: name.id, title: name.title, start: name.start, duration: try length(url, start: name.start),
-                 hasPreviousTranscript: try exists(url.appendingPathComponent(Self.previousTranscript)))
+            let audio = try audio(in: url, name: name)
+            return Call(id: name.id, title: name.title, start: name.start, duration: audio.duration,
+                        hasPreviousTranscript: try exists(url.appendingPathComponent(Self.previousTranscript)),
+                        missingTracks: audio.missing)
         }.sorted { $0.id > $1.id }
     }
 
     /// A call's longer track; a merged call's span, from its start to the latest end of
     /// any part, a merged part's parts included. None when a part's length is unknown.
     /// A folder with a track of its own is a recorded call, never searched for parts.
-    private func length(_ url: URL, start: Date) throws -> TimeInterval? {
-        let tracks = ["microphone.caf", "call.caf"].map { url.appendingPathComponent($0) }
-        guard !tracks.contains(where: { (try? values($0)) != nil }) else { return trackLength(url) }
-        let parts = try folders(in: url)
-        guard !parts.isEmpty else { return nil }
-        var end: TimeInterval = 0
-        for (part, name) in parts {
-            guard let length = try length(part, start: name.start) else { return nil }
-            end = max(end, name.start.timeIntervalSince(start) + length)
+    private func audio(in url: URL, name: CallFolderName) throws -> (duration: TimeInterval?, missing: [MissingTrack]) {
+        let tracks = Track.allCases.map { track in
+            (track, try? values(url.appendingPathComponent(track.rawValue + ".caf")))
         }
-        return end
-    }
-
-    private func trackLength(_ url: URL) -> TimeInterval? {
-        ["microphone.caf", "call.caf"].compactMap { track -> TimeInterval? in
-            let trackURL = url.appendingPathComponent(track)
-            guard let info = try? values(trackURL), info.isSymbolicLink != true,
-                  let length = try? duration(trackURL), length.isFinite, length >= 0 else { return nil }
-            return length
-        }.max()
+        if tracks.contains(where: { $0.1 != nil }) {
+            let missing = tracks.filter { $0.1 == nil || $0.1?.isSymbolicLink == true }
+                .map { MissingTrack(id: name.id, track: $0.0) }
+            let duration = tracks.compactMap { track, info -> TimeInterval? in
+                guard let info, info.isSymbolicLink != true,
+                      let length = try? self.duration(url.appendingPathComponent(track.rawValue + ".caf")),
+                      length.isFinite, length >= 0 else { return nil }
+                return length
+            }.max()
+            return (duration, missing)
+        }
+        let parts = try folders(in: url)
+        guard !parts.isEmpty else { return (nil, Track.allCases.map { MissingTrack(id: name.id, track: $0) }) }
+        var end: TimeInterval = 0
+        var knownLength = true
+        var missing: [MissingTrack] = []
+        for (part, partName) in parts.sorted(by: { $0.1.id < $1.1.id }) {
+            let audio = try audio(in: part, name: partName)
+            missing += audio.missing
+            if let length = audio.duration {
+                end = max(end, partName.start.timeIntervalSince(name.start) + length)
+            } else { knownLength = false }
+        }
+        return (knownLength ? end : nil, missing)
     }
 
     /// Resolves afresh, including when the title has changed in Finder.
@@ -135,10 +166,9 @@ public struct Calls: Sendable {
     public func text(id: String) throws -> Text {
         operation.lock(); defer { operation.unlock() }
         let folder = try location(id: id)
-        func string(_ name: String) throws -> String? {
-            try disk.read(folder.appendingPathComponent(name)).map { String(decoding: $0, as: UTF8.self) }
-        }
-        return Text(transcript: transcript(try string("transcript.md") ?? ""))
+        let data = try disk.read(folder.appendingPathComponent("transcript.md"))
+        let identity = data.map { SHA256.hash(data: $0).map { String(format: "%02x", $0) }.joined() }
+        return Text(transcript: transcript(data.map { String(decoding: $0, as: UTF8.self) } ?? ""), identity: identity)
     }
 
     /// A call's saved `transcript.md` as written, for a merge to read back.
@@ -263,7 +293,7 @@ public struct Calls: Sendable {
         guard parts.count > 1, let earliest = zip(ids, parts).min(by: { $0.0 < $1.0 }) else { throw POSIXError(.EINVAL) }
         for (id, part) in zip(ids, parts) {
             guard let name = CallFolderName(part.lastPathComponent, timeZone: timeZone),
-                  try length(part, start: name.start) != nil else { throw CallsFailure.unknownLength(id: id) }
+                  try audio(in: part, name: name).duration != nil else { throw CallsFailure.unknownLength(id: id) }
         }
         let prepared = try prepare()
         var step = CallsFailure.MergeStep.writingTranscript

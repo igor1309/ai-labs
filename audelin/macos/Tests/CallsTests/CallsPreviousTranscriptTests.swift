@@ -74,6 +74,89 @@ struct CallsPreviousTranscriptTests {
         }
     }
 
+    @Test func S9_aListingTellsMissingTracks() throws {
+        try withCall { root, call in
+            let originals: [(String, [Calls.Track])] = [
+                ("2026.10.24-1000", [.microphone, .call]),
+                ("2026.10.24-1010", [.microphone]),
+                ("2026.10.24-1020", []),
+                ("2026.10.24-1030", [.call])
+            ]
+            let nested = call.appendingPathComponent("2026.10.24-1010 Nested", isDirectory: true)
+            try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+            for (index, original) in originals.enumerated() {
+                let parent = index == 0 ? call : nested
+                let part = parent.appendingPathComponent(original.0 + " Original", isDirectory: true)
+                try FileManager.default.createDirectory(at: part, withIntermediateDirectories: false)
+                for track in original.1 {
+                    try Data().write(to: part.appendingPathComponent(track.rawValue + ".caf"))
+                }
+            }
+            // An original's own track stops traversal, even with named folders inside.
+            let ignored = call.appendingPathComponent("2026.10.24-1000 Original/2026.10.24-0900")
+            try FileManager.default.createDirectory(at: ignored, withIntermediateDirectories: false)
+            let calls = adapter(root)
+            let listing = try calls.list()
+            #expect(listing.count == 1)
+            let listed = try #require(listing.first)
+            #expect(listed.id == id)
+            #expect(listed.duration == nil)
+            #expect(listed.missingTracks == [
+                .init(id: "2026.10.24-1010", track: .call),
+                .init(id: "2026.10.24-1020", track: .microphone),
+                .init(id: "2026.10.24-1020", track: .call),
+                .init(id: "2026.10.24-1030", track: .microphone)
+            ])
+            try Data().write(to: call.appendingPathComponent("call.caf"))
+            #expect(try calls.list().first?.missingTracks == [.init(id: id, track: .microphone)])
+            try Data().write(to: call.appendingPathComponent("microphone.caf"))
+            #expect(try calls.list().first?.missingTracks == [])
+        }
+    }
+
+    @Test func S10_theTranscriptsIdentityFollowsItsBytes() throws {
+        try withCall { root, _ in
+            let calls = adapter(root)
+            let first = try #require(calls.text(id: id).identity)
+            // Both byte sequences decode to the same text, so hashing decoded text loses identity.
+            let changed = Data([0xfe]) + old.dropFirst()
+            #expect(String(decoding: old, as: UTF8.self) == String(decoding: changed, as: UTF8.self))
+            try calls.publishTranscript(id: id) { try changed.write(to: $0) }
+            let second = try #require(calls.text(id: id).identity)
+            #expect(second != first)
+            #expect(try calls.text(id: id).identity == second)
+            try calls.publishTranscript(id: id) { try changed.write(to: $0) }
+            #expect(try calls.text(id: id).identity == second)
+            try calls.rename(id: id, title: "Renamed")
+            #expect(try calls.text(id: id).identity == second)
+        }
+    }
+
+    @Test func transcriptIdentityHashesTheSingleReadHandedToTheReader() throws {
+        try withCall { root, call in
+            let bytes = Data("abc".utf8)
+            let reads = Mutex<[URL]>([])
+            let parsed = Mutex<[String]>([])
+            let lines = [Calls.Text.Line(start: 3, words: "reader's answer", label: "A")]
+            var disk = CallsDisk.system
+            disk.read = { url in
+                reads.withLock { $0.append(url) }
+                return bytes
+            }
+            let calls = Calls(folder: root, timeZone: TimeZone(secondsFromGMT: 0)!, duration: { _ in 60 },
+                              transcript: { text in parsed.withLock { $0.append(text) }; return lines }, disk: disk)
+            let text = try calls.text(id: id)
+            #expect(text == .init(transcript: lines, identity: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"))
+            #expect(reads.withLock { $0.map { $0.resolvingSymlinksInPath() } }
+                    == [call.appendingPathComponent("transcript.md").resolvingSymlinksInPath()])
+            #expect(parsed.withLock { $0 } == ["abc"])
+            try Data().write(to: call.appendingPathComponent("transcript.md"))
+            #expect(try adapter(root).text(id: id).identity == "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")
+            try FileManager.default.removeItem(at: call.appendingPathComponent("transcript.md"))
+            #expect(try adapter(root).text(id: id) == .init(transcript: [], identity: nil))
+        }
+    }
+
     @Test func S11_aMergedCallsPartsAreUntouched() throws {
         try withCall { root, call in
             let part = call.appendingPathComponent("2026.10.24-0900", isDirectory: true)
@@ -94,6 +177,89 @@ struct CallsPreviousTranscriptTests {
 
     @Test func S12_anInterruptedRestoreIsSettledAtStart() throws {
         try interruptionsSettle(restoring: true)
+    }
+
+    @Test func S13_restoringBringsBackTheIdentity() throws {
+        try withCall { root, _ in
+            let calls = adapter(root)
+            let first = try #require(calls.text(id: id).identity)
+            try publish(calls)
+            let second = try #require(calls.text(id: id).identity)
+            #expect(second != first)
+            try calls.restorePreviousTranscript(id: id)
+            #expect(try calls.text(id: id).identity == first)
+            try calls.restorePreviousTranscript(id: id)
+            #expect(try calls.text(id: id).identity == second)
+        }
+    }
+
+    @Test(arguments: [false, true])
+    func S14_aReadDuringAChangeFindsAWholePair(restoring: Bool) async throws {
+        // Zero holds the publish writer; the other points hold after each pair rename.
+        for point in (restoring ? 1 : 0)...4 {
+            let (root, call) = try makeCall(previous: older)
+            defer { try? FileManager.default.removeItem(at: root) }
+            let hold = HeldChange()
+            defer { hold.release() }
+            let moves = Mutex(0)
+            let pairs = Mutex<[[Data?]]>([])
+            let readBeforeRelease = Mutex(false)
+            let attempted = AsyncStream<Void>.makeStream()
+            var disk = CallsDisk.system
+            disk.rename = { source, target in
+                try CallsDisk.system.rename(source, target)
+                let move = moves.withLock { $0 += 1; return $0 }
+                if move == point { hold.wait() }
+            }
+            disk.read = { url in
+                let duringChange = hold.hasStarted
+                if duringChange && !hold.isReleased { readBeforeRelease.withLock { $0 = true } }
+                let data = try CallsDisk.system.read(url)
+                if duringChange && url.lastPathComponent == "transcript.md" {
+                    let previous = try CallsDisk.system.read(call.appendingPathComponent(previousName))
+                    pairs.withLock { $0.append([data, previous]) }
+                }
+                return data
+            }
+            let calls = adapter(root, disk: disk)
+            let changing = Task {
+                try await concurrentTranscriptOperation {
+                    defer { hold.started.continuation.finish() }
+                    if restoring { try calls.restorePreviousTranscript(id: id) }
+                    else {
+                        try calls.publishTranscript(id: id) { url in
+                            try new.write(to: url, options: .withoutOverwriting)
+                            if point == 0 { hold.wait() }
+                        }
+                    }
+                }
+            }
+            var started = hold.started.stream.makeAsyncIterator()
+            let didStart: Void? = await started.next()
+            let reading = Task {
+                try await concurrentTranscriptOperation {
+                    attempted.continuation.finish()
+                    let text = try calls.text(id: id)
+                    let bytes = try calls.savedTranscript(id: id)
+                    let listed = try calls.list()
+                    return (text, bytes, listed)
+                }
+            }
+            for await _ in attempted.stream {}
+            hold.release()
+            // Both operations are reaped before any throwing assertion or fixture cleanup.
+            let changed = await changing.result
+            let read = await reading.result
+            try changed.get()
+            let (text, bytes, listed) = try read.get()
+            #expect(didStart != nil)
+            #expect(!readBeforeRelease.withLock { $0 })
+            let expected = restoring ? older : new
+            #expect(bytes == expected)
+            #expect(text == (try adapter(root).text(id: id)))
+            #expect(listed.map(\.hasPreviousTranscript) == [true])
+            #expect(pairs.withLock { $0 } == [[expected, old], [expected, old]])
+        }
     }
 
     @Test func interruptedRollbackCanBeRestarted() throws {
@@ -294,13 +460,58 @@ private func files(_ root: URL) throws -> [String: Data] {
     }
     return result
 }
-private func withCall<T>(previous: Data? = older, _ body: (URL, URL) throws -> T) throws -> T {
+private func makeCall(previous: Data?) throws -> (URL, URL) {
     let root = FileManager.default.temporaryDirectory.resolvingSymlinksInPath().appendingPathComponent(UUID().uuidString, isDirectory: true)
     let call = root.appendingPathComponent(callName, isDirectory: true)
     try FileManager.default.createDirectory(at: call, withIntermediateDirectories: true)
+    do {
+        try old.write(to: call.appendingPathComponent("transcript.md"))
+        try previous?.write(to: call.appendingPathComponent(previousName))
+        try notes.write(to: call.appendingPathComponent("notes.md"))
+    } catch {
+        try? FileManager.default.removeItem(at: root)
+        throw error
+    }
+    return (root, call)
+}
+private func withCall<T>(previous: Data? = older, _ body: (URL, URL) throws -> T) throws -> T {
+    let (root, call) = try makeCall(previous: previous)
     defer { try? FileManager.default.removeItem(at: root) }
-    try old.write(to: call.appendingPathComponent("transcript.md"))
-    try previous?.write(to: call.appendingPathComponent(previousName))
-    try notes.write(to: call.appendingPathComponent("notes.md"))
     return try body(root, call)
+}
+
+/// Competing synchronous disk callers can wait on one another, outside the cooperative pool.
+private func concurrentTranscriptOperation<Value: Sendable>(
+    _ body: @escaping @Sendable () throws -> Value
+) async throws -> Value {
+    try await withCheckedThrowingContinuation { done in
+        Thread { done.resume(with: Result { try body() }) }.start()
+    }
+}
+
+private final class HeldChange: @unchecked Sendable {
+    let started = AsyncStream<Void>.makeStream()
+    private let condition = NSCondition()
+    private var held = false
+    private var released = false
+
+    var hasStarted: Bool {
+        condition.lock(); defer { condition.unlock() }
+        return held
+    }
+    var isReleased: Bool {
+        condition.lock(); defer { condition.unlock() }
+        return released
+    }
+    func wait() {
+        condition.lock(); defer { condition.unlock() }
+        held = true
+        started.continuation.yield(())
+        while !released { condition.wait() }
+    }
+    func release() {
+        condition.lock(); defer { condition.unlock() }
+        released = true
+        condition.broadcast()
+    }
 }
