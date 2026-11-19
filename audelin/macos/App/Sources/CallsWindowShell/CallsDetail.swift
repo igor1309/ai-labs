@@ -66,6 +66,8 @@ struct CallsDetailContent: View {
         // The summary's surface runs up under the window's transparent toolbar.
         return SummaryPreviewView(state: detailState(model.detail, tags: model.detailTags, menu: model.notesMenu, text: text), text: text,
                                   event: detailSender { await model.send(detail: $0) }, render: renderNotes)
+            // A different call gets a fresh view, so its notes start scrolled to the top.
+            .id(model.detail?.id)
             .background(GlassLedger.for(scheme).surface.ignoresSafeArea())
     }
 }
