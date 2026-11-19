@@ -10,6 +10,7 @@ final class CallsRehearsalDelegate: NSObject, NSApplicationDelegate {
     private var model: AudelinMenu?
     private var window: CallsWindow?
     private var windows: CallsWindows?
+    private let settingsWindow = SettingsWindow.make()
     private var terminationReady = false
 
     init(options: CallsRehearsalOptions) {
@@ -55,9 +56,13 @@ final class CallsRehearsalDelegate: NSObject, NSApplicationDelegate {
                     self?.terminationReady = true
                     NSApplication.shared.terminate(nil)
                 }
+            }, presentSettings: { [settingsWindow] in
+                NSApplication.shared.activate(ignoringOtherApps: true)
+                settingsWindow.makeKeyAndOrderFront(nil)
             }, summaryRuntime: options.runtime(),
             copyNotes: { copyNotes($0, to: .general) }, readCall: { if let window = callWindow.window { presentCall(window, shown: { _ in }) } })
         self.model = model
+        SettingsWindow.install(model, in: settingsWindow)
         window.retitle(model.callsListText(.windowTitle))
         NSApplication.shared.appearance = NSAppearance(named: .aqua)
         if let calls = model.calls {
@@ -65,6 +70,7 @@ final class CallsRehearsalDelegate: NSObject, NSApplicationDelegate {
                                    callWindow: callWindow, track: { _ in })
         }
         await model.perform(.showCalls)
+        if ProcessInfo.processInfo.arguments.contains("--show-settings") { await model.perform(.showSettings) }
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
@@ -88,7 +94,7 @@ private struct UnusedRecognizer: SpeechRecognizer {
 
 let options: CallsRehearsalOptions
 do {
-    options = try CallsRehearsalOptions.parse(Array(CommandLine.arguments.dropFirst()))
+    options = try CallsRehearsalOptions.parse(CommandLine.arguments.dropFirst().filter { $0 != "--show-settings" })
     try options.prepare()
 } catch {
     FileHandle.standardError.write(Data("\(error)\n\(CallsRehearsalOptions.usage)\n".utf8))

@@ -10,14 +10,12 @@ public struct SettingsConfig: Sendable {
     /// Line height as a ratio of the font size.
     public var lineHeight: CGFloat
     public var notesLabelWidth: CGFloat
-    public var labelWidth: CGFloat
     public var windowWidth: CGFloat
 
     public init(
         light: GlassLedger,
         dark: GlassLedger,
         lineHeight: CGFloat,
-        labelWidth: CGFloat,
         windowWidth: CGFloat,
         notesLabelWidth: CGFloat = 112
     ) {
@@ -25,7 +23,6 @@ public struct SettingsConfig: Sendable {
         self.light = light
         self.dark = dark
         self.lineHeight = lineHeight
-        self.labelWidth = labelWidth
         self.windowWidth = windowWidth
     }
 
@@ -46,8 +43,7 @@ public extension SettingsConfig {
             light: .light,
             dark: .dark,
             lineHeight: 1.45,
-            labelWidth: 172,
-            windowWidth: 620
+            windowWidth: 508
         )
     }()
 }

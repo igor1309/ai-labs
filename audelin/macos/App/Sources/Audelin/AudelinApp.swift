@@ -45,12 +45,8 @@ struct AudelinApp: App {
             return window
         }, title: CallsListText(language: .russian)(.windowTitle), activate: { NSApplication.shared.activate(ignoringOtherApps: true) }, shown: { presence.shown($0) })
         self.callsWindow = callsWindow
-        let settingsWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 668, height: 700),
-                                      styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        let settingsWindow = SettingsWindow.make()
         settingsWindow.title = SettingsText(language: .russian)(.windowTitle)
-        settingsWindow.isReleasedWhenClosed = false
-        settingsWindow.minSize = NSSize(width: 668, height: 120)
-        settingsWindow.center()
         presence.track(settingsWindow)
         self.settingsWindow = settingsWindow
         let callWindow = CallWindowSlot()
@@ -79,7 +75,7 @@ struct AudelinApp: App {
             notify: { notifications.post($0) }
         )
         self.model = model
-        settingsWindow.contentView = NSHostingView(rootView: SettingsContent(model: model, window: settingsWindow))
+        SettingsWindow.install(model, in: settingsWindow)
         observeLanguage(model, settingsWindow: settingsWindow, callsWindow: callsWindow)
         observeAppearance(model)
         if let calls = model.calls, let callsNSWindow {
@@ -247,23 +243,3 @@ func observeAppearance(_ model: AudelinMenu) {
     }
 }
 
-private struct SettingsContent: View {
-    let model: AudelinMenu
-    let window: NSWindow
-    var body: some View {
-        SettingsScrollView(state: model.settingsState, event: { event in Task { await model.sendSettings(event) } },
-                           text: model.settingsText,
-                           contentHeightChanged: { height in
-            // Keep the title bar in place when a tab or its contents changes height.
-            let visible = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? window.frame
-            let chrome = window.frame.height - window.contentLayoutRect.height
-            let targetHeight = min(height + chrome, visible.height)
-            var frame = window.frame
-            frame.origin.y += frame.height - targetHeight
-            frame.size.height = targetHeight
-            frame.origin.y = max(visible.minY, min(frame.origin.y, visible.maxY - targetHeight))
-            window.setFrame(frame, display: true)
-        })
-            .disabled(model.quitting)
-    }
-}

@@ -81,13 +81,13 @@ struct CallNotesSuppliedStateTests {
             } catch { Issue.record(error) }
         }))
         currentHost = host
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         let field = try input(.primary, .model, in: host)
         field.selectText(nil)
         let editor = try #require(field.currentEditor() as? NSTextView)
         editor.setSelectedRange(NSRange(location: 2, length: 0))
         editor.insertText("x", replacementRange: editor.selectedRange())
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         await finishInputTurn()
         let expected = decision == "accept" ? "soxnnet" : decision == "normalize" ? "SOXNNET" : "sonnet"
         #expect(field.stringValue == expected)
@@ -105,7 +105,7 @@ struct CallNotesSuppliedStateTests {
         // Offscreen.host returns the content view; retain its window across awaits.
         let window = try #require(host.window)
         defer { window.makeFirstResponder(nil) }
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         let field = try input(.primary, .model, in: host)
         field.selectText(nil)
         let editor = try #require(field.currentEditor() as? NSTextView)
@@ -115,13 +115,13 @@ struct CallNotesSuppliedStateTests {
             editor.insertText(String(character), replacementRange: editor.selectedRange())
             // Exercise layout before the observed SwiftUI update is delivered.
             field.layoutSubtreeIfNeeded()
-            _ = try #require(Offscreen.snapshot(host))
+            Offscreen.update(host)
             expected.append(character)
             #expect(editor.string == expected)
             #expect(editor.selectedRange() == NSRange(location: expected.utf16.count, length: 0))
             await finishInputTurn()
             await (try #require(model.pending)).value
-            _ = try #require(Offscreen.snapshot(host))
+            Offscreen.update(host)
             #expect(try draft(model.state).runtimes[0].fields[0].value == expected)
             #expect(field.stringValue == expected)
             #expect(editor.string == expected)
@@ -129,23 +129,23 @@ struct CallNotesSuppliedStateTests {
         }
         editor.setSelectedRange(NSRange(location: 0, length: editor.string.utf16.count))
         editor.insertText("claude-sonnet-4-5", replacementRange: editor.selectedRange())
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         await finishInputTurn()
         await (try #require(model.pending)).value
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         editor.setSelectedRange(NSRange(location: 7, length: 6))
         editor.insertText("opus", replacementRange: editor.selectedRange())
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         await finishInputTurn()
         await (try #require(model.pending)).value
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         #expect(editor.string == "claude-opus-4-5")
         #expect(editor.selectedRange() == NSRange(location: 11, length: 0))
         editor.deleteBackward(nil)
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         await finishInputTurn()
         await (try #require(model.pending)).value
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         #expect(editor.string == "claude-opu-4-5")
         #expect(editor.selectedRange() == NSRange(location: 10, length: 0))
         host.window?.makeFirstResponder(nil)
@@ -186,7 +186,7 @@ struct CallNotesSuppliedStateTests {
             } catch { Issue.record(error) }
         }))
         currentHost = host
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         try choose(.compatibleAPI, in: menu(.primary, in: host))
         try assertValues(state, in: host)
         try choose(.compatibleAPI, in: menu(.fallback, in: host))
@@ -250,7 +250,7 @@ struct CallNotesSuppliedStateTests {
     private func opposite(_ kind: Kind) -> Kind { kind == .claudeCLI ? .compatibleAPI : .claudeCLI }
 
     private func assertValues(_ state: SettingsState, in host: NSView) throws {
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         let draft = try draft(state)
         for runtime in draft.runtimes {
             let menu = try menu(runtime.id, in: host)

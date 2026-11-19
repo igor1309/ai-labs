@@ -63,7 +63,7 @@ struct GeneralInteractionTests {
     private func host(_ name: String, event: @escaping (SettingsEvent) -> Void) throws -> NSView {
         let state = try #require(SettingsState.previews.first { $0.name == name }?.state)
         let host = Offscreen.host(SettingsView(state: state, event: event))
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         host.layoutSubtreeIfNeeded()
         return host
     }

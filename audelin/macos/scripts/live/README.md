@@ -12,6 +12,7 @@ no component test reaches.
 | `sh scripts/live-calls-tags.sh` | Tags typed in the detail are written to the call's folder and shown in its row and the strip; a chip filters the list; merged calls keep both parts' tags. |
 | `sh scripts/live-calls-rename.sh` | Renaming a call in the list: Return saves without opening the folder; clicking, right-clicking or arrowing to another row saves; Escape cancels (below). |
 | `sh scripts/live-browser-names.sh` | A rehearsed call with recorded Telemost extension events names the remote speakers in the panel and the transcript. |
+| `sh scripts/live-settings.sh` | The settings window stays 508 pt wide on every tab; pressing a switch turns it on and saves the preference. |
 
 ## Running
 
