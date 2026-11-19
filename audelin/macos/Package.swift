@@ -16,6 +16,7 @@ let package = Package(
         .library(name: "SpeakerIdentification", targets: ["SpeakerIdentification"]),
         .library(name: "SpeakerNaming", targets: ["SpeakerNaming"]),
         .library(name: "NameCarry", targets: ["NameCarry"]),
+        .library(name: "ReRecognition", targets: ["ReRecognition"]),
         .library(name: "CallObservation", targets: ["CallObservation"]),
         .library(name: "CallNames", targets: ["CallNames"]),
         .library(name: "ZoomAccessibility", targets: ["ZoomAccessibility"]),
@@ -82,6 +83,8 @@ let package = Package(
         .package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.6.0"),
     ],
     targets: [
+        .target(name: "ReRecognition", dependencies: ["NameCarry"]),
+        .testTarget(name: "ReRecognitionTests", dependencies: ["ReRecognition"]),
         .target(name: "TemplateFiles"),
         .testTarget(name: "TemplateFilesTests", dependencies: ["TemplateFiles"]),
         .target(name: "NotesGeneration"),

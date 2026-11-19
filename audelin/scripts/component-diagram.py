@@ -31,6 +31,7 @@ TARGETS = {
     "TemplateFiles": ("storage", "resolves editable notes templates", 13),
     "NotesGeneration": ("text", "builds and validates template notes", 17),
     "NameCarry": ("text", "carries names by mutual\nmajority of speaker time", 18),
+    "ReRecognition": ("text", "makes a kept call's\ntranscript from its tracks", 19),
     "SummarySettings": ("machines", "validates and saves call-note settings", 6),
     "SummaryJobs": ("machines", "coordinates durable call-note jobs", 7),
     "SummaryFiles": ("storage", "claims and publishes call notes", 9),
