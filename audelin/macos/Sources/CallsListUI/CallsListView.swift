@@ -101,13 +101,22 @@ public struct CallsListView: View {
         }
     }
 
-    private func rowButton(_ row: CallsListState.Row) -> some View {
+    /// A waiting row keeps its Cancel reachable; any other row stays one button.
+    @ViewBuilder private func rowButton(_ row: CallsListState.Row) -> some View {
+        if row.transcriptWait == nil {
+            rowButtonBody(row)
+        } else {
+            rowButtonBody(row).accessibilityElement(children: .contain)
+        }
+    }
+
+    private func rowButtonBody(_ row: CallsListState.Row) -> some View {
         Button { click(row) } label: { rowContent(row).contentShape(.rect) }
             .buttonStyle(.plain)
-            .accessibilityElement(children: row.transcriptWait == nil ? .ignore : .contain)
             .accessibilityIdentifier("calls.select.\(row.id)")
             .accessibilityLabel(row.displayTitle)
             .accessibilityValue(rowValue(row))
+            .accessibilityAction(.showMenu) { showMenu(row) }
             .simultaneousGesture(TapGesture(count: 2).onEnded { if !state.busy, state.merge == nil { event(.open(row.id)) } })
             .overlay {
                 RowMenuTarget(identifier: "calls.row.\(row.id)", select: { if state.merge == nil { event(.select(row.id)) } },
@@ -165,9 +174,9 @@ public struct CallsListView: View {
         items.append(RowMenuItem(title: text(.rename), key: "\r", isEnabled: row.editable && !state.busy) {
             event(.beginRename(row.id))
         })
-        items.append(transcriptItem(text(.makeTranscriptAgain), offer: row.transcriptAgain) { event(.makeTranscriptAgain(row.id)) })
+        items.append(transcriptItem(text(.makeTranscriptAgain), identifier: "calls.transcriptAgain.\(row.id)", offer: row.transcriptAgain) { event(.makeTranscriptAgain(row.id)) })
         if let offer = row.restoreTranscript {
-            items.append(transcriptItem(text(.restoreTranscript), offer: offer) { event(.restorePreviousTranscript(row.id)) })
+            items.append(transcriptItem(text(.restoreTranscript), identifier: "calls.restoreTranscript.\(row.id)", offer: offer) { event(.restorePreviousTranscript(row.id)) })
         }
         if row.canMakeSummary {
             items.append(RowMenuItem(title: text(.makeSummary), isEnabled: !state.busy) { event(.makeSummary(row.id)) })
@@ -182,10 +191,17 @@ public struct CallsListView: View {
         return items
     }
 
-    private func transcriptItem(_ title: String, offer: CallsListState.TranscriptOffer, action: @escaping () -> Void) -> RowMenuItem {
+    /// Assistive apps open a row's menu at the pointer, as a right click would.
+    private func showMenu(_ row: CallsListState.Row) {
+        guard state.merge == nil else { return }
+        event(.select(row.id))
+        popUpRowMenu(identifier: "calls.row.\(row.id)", items: menu(row))
+    }
+
+    private func transcriptItem(_ title: String, identifier: String, offer: CallsListState.TranscriptOffer, action: @escaping () -> Void) -> RowMenuItem {
         switch offer {
-        case .available: RowMenuItem(title: title, action: action)
-        case let .unavailable(reason): RowMenuItem(title: title, isEnabled: false, help: reason, action: action)
+        case .available: RowMenuItem(title: title, identifier: identifier, action: action)
+        case let .unavailable(reason): RowMenuItem(title: title, identifier: identifier, isEnabled: false, help: reason, action: action)
         }
     }
 

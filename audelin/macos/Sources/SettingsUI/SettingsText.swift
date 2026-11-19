@@ -9,6 +9,16 @@ public enum SettingsLanguage: String, CaseIterable, Sendable {
 
 /// A fixed piece of Settings text; its raw value is the key in the strings tables.
 public enum SettingsPhrase: String, CaseIterable, Sendable {
+    case transcriptNotIdle = "transcript.notIdle"
+    case transcriptActionUnderWay = "transcript.actionUnderWay"
+    case transcriptNoPrevious = "transcript.noPrevious"
+    case transcriptCallNotFound = "transcript.callNotFound"
+    case transcriptRecordingStarted = "transcript.recordingStarted"
+    case transcriptRunning = "transcript.running"
+    case transcriptMissingTracks = "transcript.missingTracks"
+    case transcriptCallTrack = "transcript.callTrack"
+    case transcriptMicrophoneTrack = "transcript.microphoneTrack"
+
 
     /// Takes the call count and the total size.
     case moveTitle = "move.title"

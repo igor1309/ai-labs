@@ -46,3 +46,4 @@
 "preview.templateFiles" = "Template files";
 "preview.noUsableTemplates" = "No usable template files. Using built-in Default.";
 "preview.openTemplatesFolder" = "Open templates folder";
+"preview.earlierTranscript" = "Notes from an earlier transcript";

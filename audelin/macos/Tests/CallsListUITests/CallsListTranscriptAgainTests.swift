@@ -14,6 +14,7 @@ struct CallsListTranscriptAgainTests {
         defer { close(host) }
         let menu = try menu(state.rows[1].id, in: host)
         let item = try #require(menu.items.first { $0.title == "Распознать заново" })
+        #expect(item.accessibilityIdentifier() == "calls.transcriptAgain.\(state.rows[1].id)")
         #expect(!item.isEnabled)
         #expect(!item.accessibilityPerformPress())
         #expect(item.toolTip == "Нет дорожки звонка B")
@@ -38,6 +39,7 @@ struct CallsListTranscriptAgainTests {
         defer { close(host) }
         let menu = try menu(preview.rowID, in: host)
         let index = try #require(menu.items.firstIndex { $0.title == "Вернуть прежний транскрипт" })
+        #expect(menu.items[index].accessibilityIdentifier() == "calls.restoreTranscript.\(preview.rowID)")
         #expect(menu.items[index].accessibilityPerformPress())
         #expect(sent == [.select(preview.rowID), .restorePreviousTranscript(preview.rowID)])
     }

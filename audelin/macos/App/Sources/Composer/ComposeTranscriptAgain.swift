@@ -1,0 +1,169 @@
+import AVFoundation
+import BleedCleanup
+import Calls
+import CallsStorage
+import Foundation
+import LiveText
+import struct LiveText.Word
+import ReRecognition
+import SpeakerAttribution
+import TrackFile
+import TranscriptFile
+import TranscriptFormat
+import TranscriptJoin
+
+func transcriptAgain(storage: CallsStorage, boundary: ComposerBoundary, timeZone: TimeZone,
+                     describe: @escaping @Sendable (any Error) -> String) -> TranscriptAgainChain {
+    let ports = TranscriptAgainPorts(storage: storage, boundary: boundary, timeZone: timeZone, binding: DiskTranscriptBinding())
+    return TranscriptAgainChain(originals: ports.originals, recognition: ReRecognition(
+        hear: ports.hear, split: ports.split, clean: ports.clean, readOld: ports.readOld,
+        names: ReRecognition.carryNames, publish: ports.publish),
+        build: .init(version: boundary.transcriptBuild.release.version, number: boundary.transcriptBuild.release.build), describe: describe)
+}
+
+/// Translates kept calls into the same hearing, attribution and cleanup used for recordings.
+struct TranscriptAgainPorts: Sendable {
+    let storage: CallsStorage
+    let boundary: ComposerBoundary
+    let timeZone: TimeZone
+    let binding: any TranscriptFileBinding
+
+    func originals(_ id: String) async throws -> [ReRecognition.OriginalCall] {
+        try await storage.withFolder(call: id) { folder in
+            let root = try calls(in: folder.deletingLastPathComponent()).list().first { $0.id == id }
+            guard let root else { throw CallsFailure.notFound(id: id) }
+            return try originals(in: folder, call: root, start: root.start).sorted { $0.start < $1.start }
+        }
+    }
+
+    private func calls(in folder: URL) -> Calls {
+        Calls(folder: folder, timeZone: timeZone, duration: TrackFile.duration(at:), transcript: transcriptLines, disk: .system)
+    }
+
+    private func originals(in folder: URL, call: Calls.Call, start: Date) throws -> [ReRecognition.OriginalCall] {
+        let far = folder.appendingPathComponent("call.caf"), microphone = folder.appendingPathComponent("microphone.caf")
+        if FileManager.default.fileExists(atPath: far.path) || FileManager.default.fileExists(atPath: microphone.path) {
+            guard let duration = call.duration else { throw CallsFailure.unknownLength(id: call.id) }
+            return [.init(id: call.id, farTrack: far.path, microphoneTrack: microphone.path,
+                          duration: duration, start: call.start.timeIntervalSince(start))]
+        }
+        let parts = calls(in: folder)
+        return try parts.list().flatMap { part in
+            try originals(in: parts.location(id: part.id), call: part, start: start)
+        }
+    }
+
+    func hear(_ path: String, progress: ReRecognition.Fraction) async throws -> ReRecognition.Heard {
+        let url = URL(fileURLWithPath: path)
+        _ = try TrackFile.duration(at: url)
+        let mine = url.lastPathComponent == "microphone.caf"
+        let side: ComposerSide = mine ? .microphone : .call
+        let text = RecognitionStream(recognizerSource: { BoundaryRecognizer(base: try await boundary.recognizers.recognizer(for: side)) })
+        do {
+            try await text.prepare()
+            let file = try AVAudioFile(forReading: url, commonFormat: .pcmFormatFloat32, interleaved: false)
+            let rate = file.processingFormat.sampleRate
+            guard let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 48_000) else { throw TrackFile.Failure.invalidAudio }
+            while file.framePosition < file.length {
+                try Task.checkCancellation()
+                let start = Double(file.framePosition) / rate
+                try file.read(into: buffer)
+                guard buffer.frameLength > 0, let samples = buffer.floatChannelData else { throw TrackFile.Failure.invalidAudio }
+                _ = try await text.hear(.init(start: start, samples: Array(UnsafeBufferPointer(start: samples[0], count: Int(buffer.frameLength))), sampleRate: rate))
+                await progress(Double(file.framePosition) / Double(file.length))
+            }
+            let result = try await text.finish()
+            return .init(words: (result.final + result.tail).flatMap(\.words).map(Self.word),
+                         model: mine ? boundary.transcriptBuild.mine : boundary.transcriptBuild.theirs)
+        } catch {
+            await text.shutdown()
+            throw error
+        }
+    }
+
+    func split(_ original: ReRecognition.OriginalCall, words: [ReRecognition.Word]) async throws -> ReRecognition.Split? {
+        let result = try await boundary.diarizer.diarize(URL(fileURLWithPath: original.farTrack), speakers: nil)
+        guard !result.turns.isEmpty else { return nil }
+        let pieces = SpeakerAttribution().attribute(segments(words), turns: result.turns.map { .init(speaker: $0.speaker, start: $0.start, end: $0.end) })
+        var order: [Int] = [], grouped: [Int: [ReRecognition.Word]] = [:]
+        for piece in pieces {
+            // Unattributed words remain a distinct, unnamed speaker.
+            let id = piece.speaker ?? -1
+            if grouped[id] == nil { order.append(id) }
+            grouped[id, default: []] += piece.segment.words.map(Self.word)
+        }
+        return .init(speakers: order.map { .init(id: $0, name: nil, words: grouped[$0] ?? []) },
+                     diarizer: result.model == .nemotron ? "nemotron" : "vbx")
+    }
+
+    func clean(_ original: ReRecognition.OriginalCall, microphone: [ReRecognition.Word], far: [ReRecognition.Speaker]) async throws -> [ReRecognition.Word]? {
+        return await TranscriptCleanup(recording: .init(microphoneURL: URL(fileURLWithPath: original.microphoneTrack), callURL: URL(fileURLWithPath: original.farTrack)),
+            duration: { original.duration }, cleaning: boundary.bleedCleaning, hearing: boundary.bleedHearing, sink: boundary.log)
+            .run(microphone: microphone.map { .init(start: $0.time.start, text: $0.text) },
+                 call: far.flatMap(\.words).sorted { $0.time.start < $1.time.start }.map { .init(start: $0.time.start, text: $0.text) })?.flatMap(\.words).map(Self.word)
+    }
+
+    func readOld(_ id: String) async throws -> [ReRecognition.OldSpeaker] {
+        let saved = TranscriptFormat.read(String(decoding: try await storage.savedTranscript(id: id), as: UTF8.self))
+        let duration = try await storage.list().first { $0.id == id }?.duration ?? 0
+        return saved.speakers.map { speaker in
+            .init(name: speaker.name, ranges: saved.segments.enumerated().compactMap { index, row in
+                guard row.side == .theirs, row.speaker == speaker.id else { return nil }
+                let end = index + 1 < saved.segments.count ? saved.segments[index + 1].start : duration
+                return end > row.start ? .init(start: row.start, end: end) : nil
+            })
+        }
+    }
+
+    func publish(_ id: String, transcript: ReRecognition.Transcript) async throws {
+        guard let start = try await storage.list().first(where: { $0.id == id })?.start else { throw CallsFailure.notFound(id: id) }
+        let parts: [TranscriptJoin.Part<TranscriptFormat.Segment, TranscriptFormat.Speaker, TranscriptFormat.CallOrigin?>] = transcript.originals.map { part in
+            let release = TranscriptFormat.Release(version: part.origin.build.version, build: part.origin.build.number)
+            let split: TranscriptFormat.Split = switch part.origin.splitting {
+            case let .done(diarizer): .done(diarizer: diarizer, release: release)
+            case .nothingKept: .nothingKept(release: release)
+            }
+            let origin = TranscriptFormat.CallOrigin(hearing: release, mine: part.origin.microphoneModel, theirs: part.origin.farModel,
+                split: split, cleaning: .init(outcome: part.origin.cleaning == .done ? .done : .nothingKept, release: release))
+            let speakers = part.far.map { TranscriptFormat.Speaker(id: String($0.id), name: $0.name, state: $0.name == nil ? "diarized" : "confirmed") }
+            let far = part.far.flatMap { speaker in self.rows(speaker.words, side: .theirs, speaker: String(speaker.id)) }
+            let combined = (far + self.rows(part.microphone, side: .mine)).sorted { $0.start < $1.start }
+            return TranscriptJoin.Part(start: start.addingTimeInterval(part.original.start), length: part.original.duration,
+                rows: combined, speakers: speakers, originals: [.init(start: start.addingTimeInterval(part.original.start), origin: Optional(origin))])
+        }
+        let joined = TranscriptJoin.join(parts)
+        let rows = joined.items.map { item -> TranscriptFormat.Segment in
+            switch item { case let .row(row): row; case let .gap(at, length): .gap(at: at, length: length) }
+        }
+        var format = TranscriptFormat()
+        let chunks = try format.render(rows, speakers: joined.speakers,
+            origin: .init(calls: joined.originals.map { .init(start: $0.start, origin: $0.origin) },
+                          mergedBy: transcript.merger.map { .init(version: $0.version, build: $0.number) })).chunks
+        try await storage.publishTranscript(id: id) { url in
+            let file = try binding.create(at: url)
+            do { for chunk in chunks { try file.write(chunk) }; try file.flush() }
+            catch { binding.remove(at: url); throw error }
+        }
+    }
+
+    private func rows(_ words: [ReRecognition.Word], side: TranscriptFormat.Segment.Side, speaker: String? = nil) -> [TranscriptFormat.Segment] {
+        segments(words).map { .init(side: side, start: $0.start, settled: $0.settledText, pending: "", speaker: speaker) }
+    }
+
+    private func segments(_ words: [ReRecognition.Word]) -> [TranscriptSegment] {
+        // Keep timed words at the attribution boundary and separate utterances across pauses.
+        var groups: [[ReRecognition.Word]] = []
+        for word in words {
+            if let last = groups.last?.last, word.time.start - last.time.end <= 1 { groups[groups.count - 1].append(word) }
+            else { groups.append([word]) }
+        }
+        return groups.enumerated().map { index, words in
+            .init(id: index, start: words[0].time.start, end: words[words.count - 1].time.end,
+                  words: words.map { Word($0.text, start: $0.time.start, end: $0.time.end) }, settledCount: words.count)
+        }
+    }
+
+    private static func word(_ word: Word) -> ReRecognition.Word {
+        .init(text: word.text, time: .init(start: word.start, end: word.end))
+    }
+}

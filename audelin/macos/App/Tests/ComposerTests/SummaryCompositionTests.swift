@@ -49,6 +49,8 @@ struct SummaryCompositionTests {
                 let id = try #require(try await callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash).list().first?.id)
                 let pair = try #require(try await files.versions(call: id))
                 #expect(pair.current.text == output && pair.current.template == .default && pair.previous == nil)
+                let identity = try #require(try await callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash).text(id: id).identity)
+                #expect(pair.current.transcriptIdentity == identity)
                 await rig.finish()
             } catch { storage.release.send(); await rig.finish(); throw error }
         }

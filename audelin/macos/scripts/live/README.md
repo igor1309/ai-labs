@@ -8,6 +8,7 @@ no component test reaches.
 | Script (from `audelin/macos`) | Proves |
 |---|---|
 | `sh scripts/live-calls-summary.sh` | A call's template menu refreshes and makes notes; regeneration rotates or replaces versions; switching, keeping, edited templates, failure reasons and cancellation preserve the shown pair; a call whose transcript tells no origin reads with its notes; notes are made from the said words without the origin. |
+| `sh scripts/live-calls-transcript-again.sh` | Transcript menu offers and disabled reasons for missing tracks and busy Audelin; a fixture run publishes both newly heard sides, keeps the old bytes as previous and restores them without changing notes. |
 | `sh scripts/live-calls-merge.sh` | Merging calls in the calls window, end to end (below). |
 | `sh scripts/live-calls-tags.sh` | Tags typed in the detail are written to the call's folder and shown in its row and the strip; a chip filters the list; merged calls keep both parts' tags. |
 | `sh scripts/live-calls-rename.sh` | Renaming a call in the list: Return saves without opening the folder; clicking, right-clicking or arrowing to another row saves; Escape cancels (below). |

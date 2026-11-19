@@ -46,3 +46,4 @@
 "preview.templateFiles" = "Файлы шаблонов";
 "preview.noUsableTemplates" = "Нет доступных файлов шаблонов. Используется встроенный Default.";
 "preview.openTemplatesFolder" = "Открыть папку шаблонов";
+"preview.earlierTranscript" = "Итоги по прежнему транскрипту";

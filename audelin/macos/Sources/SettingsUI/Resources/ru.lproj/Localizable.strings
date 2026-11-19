@@ -112,3 +112,12 @@
 "general.languageHintSystem" = "Сейчас русский — язык macOS. Если язык macOS не русский и не английский, Audelin на английском.";
 "general.languageHintFallback" = "Сейчас английский: в Audelin нет языка macOS — %@.";
 "general.languageHintForced" = "Язык macOS — %@.";
+"transcript.notIdle" = "Audelin занят. Повторите, когда он освободится.";
+"transcript.actionUnderWay" = "Выполняется другое действие со звонками.";
+"transcript.noPrevious" = "Прежнего транскрипта нет.";
+"transcript.callNotFound" = "Звонок не найден.";
+"transcript.recordingStarted" = "Началась запись звонка.";
+"transcript.running" = "Уже идёт распознавание звонка «%@».";
+"transcript.missingTracks" = "Нет аудио: %@.";
+"transcript.callTrack" = "%@: дорожка звонка";
+"transcript.microphoneTrack" = "%@: дорожка микрофона";

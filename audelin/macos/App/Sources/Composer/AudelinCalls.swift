@@ -134,7 +134,7 @@ public final class AudelinCalls {
         self.summaryBadges = summaryBadges
         self.notes = notes
         let handler = CallDetailEffectHandler(notes: { @MainActor id in try await notes(id) })
-        detailModel = ObservableModel(initialState: .init(), reduce: CallDetailReducer(progress: { previewText()(.remaking, $0) }, failure: { previewText()(failurePhrase($0)) }, transcriptMark: { _ in "Notes from another transcript" }).reduce,
+        detailModel = ObservableModel(initialState: .init(), reduce: CallDetailReducer(progress: { previewText()(.remaking, $0) }, failure: { previewText()(failurePhrase($0)) }, transcriptMark: { _ in previewText()(.earlierTranscript) }).reduce,
                                       handleEffect: { effect in oneEvent { await handler.handle(effect) } })
         self.inputs = inputs; self.timeZone = timeZone; self.now = now; self.recordingState = recordingState
         self.location = location; self.openFolder = openFolder; self.present = present
@@ -146,6 +146,14 @@ public final class AudelinCalls {
             await self?.cancelSummary(call)
         }
         notesConnections = [
+            Task { @MainActor [weak self] in
+                var seen: TranscriptChange?
+                for await change in Observations({ inputs.state().transcriptChanged }) {
+                    guard let self, let change, change != seen else { continue }
+                    seen = change
+                    detailModel.event(.transcriptChanged(id: change.id))
+                }
+            },
             Task { @MainActor [weak self] in
                 var seen: [String: String] = [:]
                 for await current in Observations({ publications() }) {
@@ -517,6 +525,7 @@ public final class AudelinCalls {
         let id = recordedCallID(state)
         list.event(.recordingChanged(id: id))
         inputs.send(.recordingChanged(id))
+        if id != nil { inputs.send(.recordingStarted) }
     }
 
     public func send(_ event: CallsListEvent) async {

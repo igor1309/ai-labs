@@ -206,6 +206,11 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
         try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).savedTranscript(id: id) } }
     }
 
+    /// Publishes within the same turn as every read and mutation of this call.
+    public func publishTranscript(id: String, write: @escaping @Sendable (URL) throws -> Void) async throws {
+        try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).publishTranscript(id: id, write: write) } }
+    }
+
     public func restorePreviousTranscript(id: String) async throws {
         try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).restorePreviousTranscript(id: id) } }
     }

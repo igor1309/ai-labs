@@ -114,5 +114,18 @@ func recordingsReducer(_ text: @escaping @Sendable () -> SettingsText) -> Record
     RecordingsReducer(failureMessage: { prior, refreshError in
         text()(.refreshFailed, prior, refreshError)
     }, moveText: folderMoveText(text), busyMessage: { text()(.callMergeBusy) },
-                      transcriptMessage: { _ in text()(.callMergeBusy) })
+                      transcriptMessage: { transcriptMessage($0, text: text()) })
+}
+
+func transcriptMessage(_ refusal: TranscriptRefusal, text: SettingsText) -> String {
+    switch refusal {
+    case .notIdle: text(.transcriptNotIdle)
+    case .actionUnderWay: text(.transcriptActionUnderWay)
+    case .noPreviousTranscript: text(.transcriptNoPrevious)
+    case .callNotFound: text(.transcriptCallNotFound)
+    case .recordingStarted: text(.transcriptRecordingStarted)
+    case let .runningTranscript(id): text(.transcriptRunning, id)
+    case let .missingTracks(tracks):
+        text(.transcriptMissingTracks, tracks.map { text($0.track == .call ? .transcriptCallTrack : .transcriptMicrophoneTrack, $0.id) }.joined(separator: "; "))
+    }
 }

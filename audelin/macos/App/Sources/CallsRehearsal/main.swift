@@ -1,4 +1,5 @@
 import AppKit
+import CallDiarizer
 import CallsRehearsalSupport
 import CallsWindowShell
 import Composer
@@ -37,11 +38,13 @@ final class CallsRehearsalDelegate: NSObject, NSApplicationDelegate {
         var boundary = rehearsalBoundary(
             capturePersistence: .recorded,
             microphone: { throw RehearsalInput.unavailable }, call: { _ in throw RehearsalInput.unavailable },
-            mine: UnusedRecognizer(), theirs: UnusedRecognizer(),
+            mine: FixtureRecognizer(enabled: options.seed == .transcriptAgain, text: "Новый текст микрофона."),
+            theirs: FixtureRecognizer(enabled: options.seed == .transcriptAgain, text: "Новый текст звонка."),
             now: { Date() }, timeZone: { .current }, sleep: { try await Task.sleep(for: $0) },
             intervals: rehearsalIntervals(),
             // The calls live tests check this release as the merger of what they merge.
             transcriptBuild: .init(version: "rehearsal", build: "1", mine: "unused", theirs: "unused"))
+        boundary.diarizer = FixtureDiarizer()
         boundary.trash = options.trash
         let model = await compose(
             boundary: boundary, preferencesURL: options.preferencesURL,
@@ -89,9 +92,23 @@ final class CallsRehearsalDelegate: NSObject, NSApplicationDelegate {
 }
 
 private enum RehearsalInput: Error { case unavailable }
-private struct UnusedRecognizer: SpeechRecognizer {
-    func hear(_ chunk: SpeechAudio) throws -> SpeechHearing { throw RehearsalInput.unavailable }
-    func finish() throws -> SpeechHearing { throw RehearsalInput.unavailable }
+private struct FixtureRecognizer: SpeechRecognizer {
+    let enabled: Bool
+    let text: String
+    func hear(_ chunk: SpeechAudio) throws -> SpeechHearing {
+        guard enabled else { throw RehearsalInput.unavailable }
+        return .init(words: [])
+    }
+    func finish() throws -> SpeechHearing {
+        guard enabled else { throw RehearsalInput.unavailable }
+        return .init(words: [.init(text, start: 1, end: 2)], finalThrough: 2)
+    }
+}
+private struct FixtureDiarizer: TranscriptDiarizer {
+    func prepare() async {}
+    func diarize(_ track: URL, speakers: Int?) async throws -> CallDiarizer.Diarization {
+        .init(model: .nemotron, turns: [])
+    }
 }
 
 let options: CallsRehearsalOptions

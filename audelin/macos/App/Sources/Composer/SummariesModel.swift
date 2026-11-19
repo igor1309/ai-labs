@@ -93,9 +93,9 @@ public final class SummariesModel {
 
     /// Replaces the merged parts' jobs with one for the merged call's joined transcript,
     /// offered for notes as an ended recording's is.
-    public func merged(call: String, parts: [String], entries: [Job.Entry], notesOn: Bool) {
+    public func merged(call: String, parts: [String], entries: [Job.Entry], notesOn: Bool, transcriptIdentity: String? = nil) {
         drop(parts: parts)
-        model.event(.finalized(call, entries: entries, finalWrite: true, usable: true, notesOn: notesOn))
+        model.event(.finalized(call, entries: entries, finalWrite: true, usable: true, notesOn: notesOn, transcriptIdentity: transcriptIdentity))
     }
     /// Picks up each stored call's job at launch.
     public func recover(calls: [String]) { calls.forEach { model.event(.recover($0)) } }
