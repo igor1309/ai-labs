@@ -1,80 +1,77 @@
 # Re-recognition — QA
 
-Rows drive the built app by a checked-in live scenario on a temp calls
-folder of fixture calls: recorded tracks with audible bleed, two far
-speakers, call-app names, and a transcript whose origin names an older
-build. Model loading, hearing, finishing and saving are held at handshakes
-the scenario releases. Each row opens the transcript files from the
-call's folder and reads them back: words, speakers, names and origin.
-"Unchanged" means both files byte-identical to before the run. The user
-spec's real-call drive re-recognizes one real call recorded on this Mac.
+A plain component driven through fake ports: a hear port that reports
+fractions and returns scripted rows, a split port, a clean port, an old
+transcript read, Name carry's fake, and a publish spy that records the
+transcript it gets. Each fake can be held at a gate or made to fail.
+Expected transcripts are built as values independently of the component.
 
-## S-1 Preparing
+## S-1 A call is made in order
 
-Hold model loading: the call shows preparing; cancel, and the files are unchanged.
+Each stage returns marked data: the split port gets the heard far side, the clean port the heard microphone side, and the publish spy gets both stages' outputs and an origin naming this build's hearing, split and cleaning.
 Evidence: Missing.
 
-## S-2 Hearing
+## S-2 Preparing is reported first
 
-Hold hearing midway: progress shows and advances when released; the old transcript opens from the folder; cancel is enabled.
+Hold the hear port's load: preparing is reported, no fraction before the gate opens.
 Evidence: Missing.
 
-## S-3 Finishing
+## S-3 One fraction over every track
 
-Hold finishing during cleaning, and in a second run just before the swap: the call shows finishing, the old transcript opens, and cancelling leaves the files unchanged.
+Two original calls: every fraction precedes the first split call; hold the first split and assert no finishing before both originals' hearing ended; finishing is reported from the first split until publish returns.
 Evidence: Missing.
 
-## S-4 The new transcript replaces the old
+## S-4 A split that keeps nothing still publishes
 
-Release all: the file holds newly heard words, no bleed on the microphone side, their side split, the call-app name on the matching speaker, and this build's origin.
+Split keeps nothing, and in a second run the split port throws: the far side is one speaker; the origin says the split kept nothing.
 Evidence: Missing.
 
-## S-5 Finishing that keeps nothing
+## S-5 A clean that keeps nothing still publishes
 
-A fixture with no bleed: the file holds the heard words and tells cleaning kept nothing; the old transcript is now previous.
+Clean keeps nothing, and in a second run the clean port throws: the microphone side as heard; the origin says cleaning kept nothing.
 Evidence: Missing.
 
-## S-6 An ambiguous name stays unnamed
+## S-6 Carried names are published
 
-Three fixtures: a name overlapping two new speakers equally, unequally with neither mostly its own, and two names mostly on one new speaker: those speakers read unnamed. A one-to-one fixture keeps its name (S-4).
+Name carry's fake names new speaker A: the published A carries it. On a merged call whose current transcript dropped a name its archived part still has, the fake gets only the current transcript's speakers, cut per original call's span.
 Evidence: Missing.
 
-## S-7 Cancelling keeps the transcript
+## S-7 A track that cannot be heard fails
 
-Cancel at each held wait in turn: files unchanged, no error shown.
+The hear port throws on one track: no publish; the failure carries the reason.
 Evidence: Missing.
 
-## S-8 Hearing fails
+## S-8 A merged call names the failing call
 
-An undecodable track: the reason shows, files unchanged; restore the track, retry, and the run completes.
+A merge of a merge, the innermost call's hear throws: no publish; the failure names that call.
 Evidence: Missing.
 
-## S-9 Saving fails
+## S-9 Original calls are joined
 
-Fail the swap after the new file is written: the reason shows, files unchanged; retry completes.
+A merge of a merge of three calls: each original call once, in order, with new words, each gap, a new origin per call and this build as merger.
 Evidence: Missing.
 
-## S-10 Quitting keeps the transcript
+## S-10 Stopping publishes nothing
 
-Quit at each held wait, and kill the app during the swap, then relaunch: the pair is wholly old or wholly new, nothing is being made, and no stray files are in the folder.
+Hold hearing, ask stop, release: no publish; stopped only after the hear returns. Same at the split and the clean gates.
 Evidence: Missing.
 
-## S-11 A recording starting stops it
+## S-11 A failed publish fails
 
-Start a recording during hearing, automatically and in a second run by hand: it records, files unchanged, and the call reads that making again stopped.
+The old transcript read throws: the publish spy gets a transcript with no carried names; Name carry's fake got no old speakers.
 Evidence: Missing.
 
-## S-12 A merged call is made again by its original calls
+## S-12 The models fail to load
 
-A merge of a merge of three fixture calls: each original call named by its start, once, in order, with new words, each gap marked, a new origin per call and the merging version.
+The publish spy throws: the run fails with its reason.
 Evidence: Missing.
 
-## S-13 A failed original call keeps the merged transcript
+## S-13 A stop during publishing reports made
 
-The same merge with one undecodable call: files unchanged, that call and the reason show; fix it, retry, and the run completes.
+The hear port fails while loading: no publish; the failure carries the reason.
 Evidence: Missing.
 
-## S-14 The speech models fail to load
+## S-14 No old transcript carries no names
 
-Make model loading fail: the reason shows, files unchanged; let loading succeed, retry, and the run completes.
+Hold the publish, ask stop, release success: made is reported, not stopped.
 Evidence: Missing.

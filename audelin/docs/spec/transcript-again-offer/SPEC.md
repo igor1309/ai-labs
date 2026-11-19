@@ -1,7 +1,7 @@
 # Re-recognition offer — when a call's transcript can be made again
 
 Observer: the user, looking at a call's row menu in the calls window.
-The run itself is `../re-recognition/SPEC.md`; restoring the previous
+The run itself is `../transcript-again/SPEC.md`; restoring the previous
 transcript, `../previous-transcript/SPEC.md`.
 Oracle: the owner's rulings on LAB-1694.
 
@@ -48,21 +48,6 @@ Feature: When a call's transcript can be made again
     When I open a call's row menu
     Then I cannot ask to make its transcript again, and I can read why
 
-  Scenario: S-10 Same place without notes
-    Given a call without notes and one with them
-    When I open each call's row menu
-    Then I can find the item in the same place, after Переименовать
-
-  Scenario: S-11 A merge under way
-    Given calls are being merged
-    When I open a call's row menu
-    Then I cannot ask to make its transcript again, and I can read why
-
-  Scenario: S-12 Merging during a run
-    Given a call's transcript is being made again
-    When I confirm a merge
-    Then I cannot merge, and I can read why
-
   Scenario: S-6 Renaming the call being made again
     Given a call's transcript is being made again
     When I try to rename that call
@@ -82,4 +67,19 @@ Feature: When a call's transcript can be made again
     Given a call's transcript is being made again
     When I rename another call
     Then I can read the other call under its new name
+
+  Scenario: S-10 Same place without notes
+    Given a call without notes and one with them
+    When I open each call's row menu
+    Then I can find the item in the same place, after Переименовать
+
+  Scenario: S-11 A merge under way
+    Given calls are being merged
+    When I open a call's row menu
+    Then I cannot ask to make its transcript again, and I can read why
+
+  Scenario: S-12 Merging during a run
+    Given a call's transcript is being made again
+    When I confirm a merge
+    Then I cannot merge, and I can read why
 ```

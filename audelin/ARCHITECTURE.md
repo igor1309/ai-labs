@@ -50,7 +50,7 @@ platform; anything else breaks rule 1. The lanes of
 | Kind | May import | Targets |
 |---|---|---|
 | Machine | nothing | Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, NotesMenu, CallsList, TranscriptFinalization, RecordingConditions, CallNames |
-| Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, LatestText, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch, CallTags, ReRecognition |
+| Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, LatestText, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch, CallTags, ReRecognition, NameCarry |
 | Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, TemplateFiles, NotesGeneration, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, TagsFile, AgentsFile, Calls, CallsStorage, Preferences |
 | Shared helper | nothing | SplitRows, CallFolderName, AudioConversion, ModelLoading |
 | UI | GlassLedger, NotesMarkdown, other UI | PanelUI, SettingsUI, MenuBar, CallsListUI, CallsWindowUI, SummaryPreviewUI, NotesMarkdown, GlassLedger |
@@ -655,7 +655,7 @@ tracks for duration. The root hands the merging build to the rendering.
 ## Making a transcript again
 
 The user has a kept call's transcript made again from its audio by this
-Audelin (`docs/spec/re-recognition/`, `re-recognition-offer/`,
+Audelin (`docs/spec/transcript-again/`, `transcript-again-offer/`,
 `previous-transcript/`). Four responsibilities are new: the run as the
 user drives it (offer, waits, cancel, outcome); making one transcript from
 a call's tracks; keeping the replaced transcript beside the current one;
@@ -665,7 +665,8 @@ and telling which transcript a call's notes were made from.
 own. A run, a merge, a restore, a rename, a delete and a folder move all
 act on listed call folders and must exclude one another; one state holds
 them, so each refuses the others with its reason and no second machine
-reads Recordings' phase. Its state holds the call being made again, its
+reads Recordings' phase. A run takes minutes, so it locks only its own
+call and the folders' layout: renaming or deleting another call goes on. Its state holds the call being made again, its
 wait (preparing, hearing with how far, finishing) and the last failure's
 reason; whether a row offers the item is a pure rule over the list it
 holds, with each row's audio presence, original calls included, and the
@@ -680,9 +681,9 @@ order, it hears each original call's two tracks, has the far side split
 and the microphone side cleaned, carries the old transcript's call-app
 names onto the new speakers, joins the original calls, and saves the new
 transcript as the call's current one. It keeps nothing between runs;
-Recordings holds what is running. Carrying names is its own pure rule over
-speaker times: a name moves only where it and one new speaker overlap
-mostly each other. It owns its ports: hear a track (reporting how far),
+Recordings holds what is running. Carrying names is Name carry, a plain
+component of its own, a pure rule over speaker times: a name moves only
+where it and one new speaker overlap mostly each other. It owns its ports: hear a track (reporting how far),
 split a call track, clean a microphone side, read the old transcript, and
 publish the new one. The root answers them with the parts a live call's
 finishing already uses: Live text over the recogniser reading Track file,
@@ -707,7 +708,9 @@ read, which Summary files saves with the notes beside the template's. The
 notes read for CallDetail also reports the current transcript's identity
 and whether a previous one exists; CallDetail's reducer marks each set of
 notes whose identity is not current's, and notes without one once a
-previous exists. Replacing or restoring submits nothing to SummaryJobs.
+previous exists. Replacing or restoring submits nothing to SummaryJobs;
+the root tells CallDetail the shown call's transcript changed, as it tells
+it notes may have changed, and CallDetail reads the call again.
 
 The root constructs Re-recognition and the run port's chain with the rest
 of the calls window's composition, holds them as long as it holds

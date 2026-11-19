@@ -1,7 +1,7 @@
 # Previous transcript — the transcript a re-recognition replaced
 
 Observer: the user, with a call whose transcript was made again
-(`../re-recognition/SPEC.md`). Making notes again, from the template
+(`../transcript-again/SPEC.md`). Making notes again, from the template
 menu, is `../notes-templates/SPEC.md`.
 Oracle: the owner's rulings on LAB-1694.
 
@@ -16,7 +16,7 @@ Oracle: the owner's rulings on LAB-1694.
   re-recognition drops the older one.
 - **Restoring swaps the two in one step,** from the call's row menu, so
   neither is lost and no end, a crash included, leaves a mix. It needs
-  Audelin idle and no merge or run under way (`../re-recognition-offer/SPEC.md`).
+  Audelin idle and no merge or run under way (`../transcript-again-offer/SPEC.md`).
 - **Notes are never made again by themselves:** that sends the transcript
   to a provider, the user's choice (`../call-summaries/SPEC.md`).
   Replacing or restoring starts no request.
@@ -70,6 +70,11 @@ Feature: The transcript a re-recognition replaced
     When I read the notes
     Then I see no mark about an earlier transcript
 
+  Scenario: S-9 Older notes after a replacement
+    Given a call's notes were made before Audelin told notes' transcripts
+    When its transcript is made again
+    Then I can see the notes were made from an earlier transcript
+
   Scenario: S-10 Older notes after a restore
     Given a call's older notes were marked when its transcript was made again
     When I restore the previous transcript
@@ -79,9 +84,4 @@ Feature: The transcript a re-recognition replaced
     Given a call's Previous notes were made from an earlier transcript and its Current notes from the current one
     When I switch between them
     Then I can see the mark on Previous only
-
-  Scenario: S-9 Older notes after a replacement
-    Given a call's notes were made before Audelin told notes' transcripts
-    When its transcript is made again
-    Then I can see the notes were made from an earlier transcript
 ```
