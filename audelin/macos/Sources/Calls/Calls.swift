@@ -10,9 +10,11 @@ public struct Calls: Sendable {
         public let title: String
         public let start: Date
         public let duration: TimeInterval?
+        public let hasPreviousTranscript: Bool
 
-        public init(id: String, title: String, start: Date, duration: TimeInterval?) {
+        public init(id: String, title: String, start: Date, duration: TimeInterval?, hasPreviousTranscript: Bool = false) {
             self.id = id; self.title = title; self.start = start; self.duration = duration
+            self.hasPreviousTranscript = hasPreviousTranscript
         }
     }
 
@@ -37,6 +39,8 @@ public struct Calls: Sendable {
         public let bytes: Int64
     }
 
+    // Synchronous disk operations finish while holding this lock; no async work is awaited.
+    private let operation = NSRecursiveLock()
     private let folder: URL
     private let timeZone: TimeZone
     private let duration: @Sendable (URL) throws -> TimeInterval
@@ -65,8 +69,10 @@ public struct Calls: Sendable {
     private func trash(_ url: URL) throws { try disk.trash(url) }
 
     public func list() throws -> [Call] {
-        try folders(in: folder).map { url, name in
-            Call(id: name.id, title: name.title, start: name.start, duration: try length(url, start: name.start))
+        operation.lock(); defer { operation.unlock() }
+        return try folders(in: folder).map { url, name in
+            Call(id: name.id, title: name.title, start: name.start, duration: try length(url, start: name.start),
+                 hasPreviousTranscript: try exists(url.appendingPathComponent(Self.previousTranscript)))
         }.sorted { $0.id > $1.id }
     }
 
@@ -96,7 +102,10 @@ public struct Calls: Sendable {
     }
 
     /// Resolves afresh, including when the title has changed in Finder.
-    public func location(id: String) throws -> URL { try location(id: id, in: folder) }
+    public func location(id: String) throws -> URL {
+        operation.lock(); defer { operation.unlock() }
+        return try location(id: id, in: folder)
+    }
 
     private func location(id: String, in root: URL) throws -> URL {
         let matches = try folders(in: root).filter { $0.1.id == id }
@@ -107,6 +116,7 @@ public struct Calls: Sendable {
     }
 
     public func rename(id: String, title: String) throws {
+        operation.lock(); defer { operation.unlock() }
         guard !title.contains("\0") else { throw CallsFailure.invalidTitle }
         let source = try location(id: id)
         let target = folder.appendingPathComponent(CallFolderName.name(id: id, title: title), isDirectory: true)
@@ -115,6 +125,7 @@ public struct Calls: Sendable {
     }
 
     public func delete(id: String) throws {
+        operation.lock(); defer { operation.unlock() }
         let source = try location(id: id)
         do { try trash(source) }
         catch { throw CallsFailure.trashFailed(folder: source.lastPathComponent, reason: error.localizedDescription) }
@@ -122,6 +133,7 @@ public struct Calls: Sendable {
 
     /// Reads the call's transcript; a missing file reads as no lines.
     public func text(id: String) throws -> Text {
+        operation.lock(); defer { operation.unlock() }
         let folder = try location(id: id)
         func string(_ name: String) throws -> String? {
             try disk.read(folder.appendingPathComponent(name)).map { String(decoding: $0, as: UTF8.self) }
@@ -131,6 +143,7 @@ public struct Calls: Sendable {
 
     /// A call's saved `transcript.md` as written, for a merge to read back.
     public func savedTranscript(id: String) throws -> Data {
+        operation.lock(); defer { operation.unlock() }
         let url = try location(id: id).appendingPathComponent("transcript.md")
         do {
             guard let data = try disk.read(url) else { throw CocoaError(.fileReadNoSuchFile) }
@@ -148,6 +161,7 @@ public struct Calls: Sendable {
     }
 
     public func part(id: String) throws -> Part {
+        operation.lock(); defer { operation.unlock() }
         let url = try location(id: id)
         guard let name = CallFolderName(url.lastPathComponent, timeZone: timeZone) else { throw POSIXError(.EINVAL) }
         return Part(transcript: try savedTranscript(id: id), originalStarts: try originalStarts(in: url, start: name.start).sorted())
@@ -162,6 +176,79 @@ public struct Calls: Sendable {
         return try parts.flatMap { try originalStarts(in: $0.0, start: $0.1.start) }
     }
 
+    public enum TranscriptFailure: Error, Equatable, Sendable {
+        case noPrevious(id: String)
+        case changeFailed(id: String, reason: String)
+    }
+
+    /// Writes a new transcript at the fresh URL supplied to `write`, then publishes
+    /// it with the old current as previous. The writer must finish before returning.
+    public func publishTranscript(id: String, write: (URL) throws -> Void) throws {
+        operation.lock(); defer { operation.unlock() }
+        try changeTranscripts(id: id, restoring: false) { _, target in try write(target) }
+    }
+
+    /// Swaps the saved bytes without interpreting either transcript's format.
+    public func restorePreviousTranscript(id: String) throws {
+        operation.lock(); defer { operation.unlock() }
+        try changeTranscripts(id: id, restoring: true) { source, target in try copy(source, target) }
+    }
+
+    private func changeTranscripts(id: String, restoring: Bool, write: (URL, URL) throws -> Void) throws {
+        let call = try location(id: id)
+        let current = call.appendingPathComponent("transcript.md")
+        let previous = call.appendingPathComponent(Self.previousTranscript)
+        let hadPrevious = try exists(previous)
+        if restoring, !hadPrevious { throw TranscriptFailure.noPrevious(id: id) }
+        // Refuse before preparing anything if there is no current transcript to keep.
+        _ = try savedTranscript(id: id)
+        let prepared = try prepare(transcripts: true)
+        do {
+            let record = prepared.appendingPathComponent("transcripts", isDirectory: true)
+            try disk.makeFolder(record)
+            let before = record.appendingPathComponent(call.lastPathComponent, isDirectory: true)
+            try disk.makeFolder(before)
+            if hadPrevious { try disk.makeFolder(record.appendingPathComponent("had-previous", isDirectory: true)) }
+            let after = prepared.appendingPathComponent("after", isDirectory: true)
+            try disk.makeFolder(after)
+            let newCurrent = after.appendingPathComponent("transcript.md")
+            try write(previous, newCurrent)
+            try copy(current, after.appendingPathComponent(Self.previousTranscript))
+            try rename(current, before.appendingPathComponent("transcript.md"))
+            if hadPrevious { try rename(previous, before.appendingPathComponent(Self.previousTranscript)) }
+            try rename(newCurrent, current)
+            try rename(after.appendingPathComponent(Self.previousTranscript), previous)
+            try settle(prepared)
+        } catch {
+            let failure = TranscriptFailure.changeFailed(id: id, reason: error.localizedDescription)
+            if try exists(prepared.appendingPathComponent("transcripts")) {
+                try putBackTranscripts(from: prepared)
+            } else { try removeIfPresent(prepared) }
+            throw failure
+        }
+    }
+
+    private func putBackTranscripts(from prepared: URL) throws {
+        let record = prepared.appendingPathComponent("transcripts", isDirectory: true)
+        let hadPrevious = try exists(record.appendingPathComponent("had-previous"))
+        for (before, name) in try folders(in: record) {
+            let call = try location(id: name.id)
+            for file in ["transcript.md", Self.previousTranscript] {
+                let saved = before.appendingPathComponent(file)
+                let target = call.appendingPathComponent(file)
+                if try exists(saved) {
+                    try removeIfPresent(target)
+                    // Keep backups until rollback is settled, so rollback itself can restart.
+                    try copy(saved, target)
+                } else if file == Self.previousTranscript, !hadPrevious,
+                          try exists(before.appendingPathComponent("transcript.md")) {
+                    try removeIfPresent(target)
+                }
+            }
+        }
+        try settle(prepared)
+    }
+
     /// Merges calls into one call folder named as the earliest part, holding each part's
     /// folder whole and what `write` puts in the folder it is given, beside the parts'
     /// folders in the order of `ids`, before any part moves.
@@ -171,14 +258,14 @@ public struct Calls: Sendable {
     /// removes the prepared folder, so a merge is whole or not at all.
     @discardableResult
     public func merge(ids: [String], write: (_ prepared: URL, _ parts: [URL]) throws -> Void) throws -> String {
+        operation.lock(); defer { operation.unlock() }
         let parts = try ids.map { try location(id: $0) }
         guard parts.count > 1, let earliest = zip(ids, parts).min(by: { $0.0 < $1.0 }) else { throw POSIXError(.EINVAL) }
         for (id, part) in zip(ids, parts) {
             guard let name = CallFolderName(part.lastPathComponent, timeZone: timeZone),
                   try length(part, start: name.start) != nil else { throw CallsFailure.unknownLength(id: id) }
         }
-        let prepared = folder.appendingPathComponent(Self.mergePrefix + UUID().uuidString, isDirectory: true)
-        try disk.makeFolder(prepared)
+        let prepared = try prepare()
         var step = CallsFailure.MergeStep.writingTranscript
         do {
             try write(prepared, parts)
@@ -196,19 +283,47 @@ public struct Calls: Sendable {
         }
     }
 
-    /// Puts back every merge interrupted before it was in place: each part in a
-    /// prepared folder goes back to the calls folder and the prepared folder is
-    /// removed. The prepared folder is made before any part moves, so it records the
-    /// merge; a merge in place has none. Run once as Calls starts, before its first
-    /// listing, never while a merge is under way.
+    /// Puts back interrupted transcript changes and merges. A hidden prepared folder
+    /// records each change before anything moves; a published merge has none.
+    /// Run once as Calls starts, before its first listing, never during a change.
     public func recoverInterruptedMerges() throws {
-        for prepared in try children(folder) where prepared.lastPathComponent.hasPrefix(Self.mergePrefix) {
+        operation.lock(); defer { operation.unlock() }
+        for prepared in try children(folder) {
+            if prepared.lastPathComponent.hasPrefix(Self.settledPrefix) {
+                try remove(prepared)
+                continue
+            }
+            guard prepared.lastPathComponent.hasPrefix(Self.mergePrefix) else { continue }
+            if prepared.lastPathComponent.hasPrefix(Self.transcriptPrefix) {
+                if try exists(prepared.appendingPathComponent("transcripts")) {
+                    try putBackTranscripts(from: prepared)
+                } else { try remove(prepared) }
+                continue
+            }
             let parts = try folders(in: prepared).map { folder.appendingPathComponent($0.0.lastPathComponent, isDirectory: true) }
             try putBack(parts, from: prepared)
         }
     }
 
     private static let mergePrefix = ".audelin-merge-"
+    private static let transcriptPrefix = mergePrefix + "transcripts-"
+    private static let settledPrefix = ".audelin-settled-"
+    private static let previousTranscript = "transcript-previous.md"
+
+    private func prepare(transcripts: Bool = false) throws -> URL {
+        let prefix = transcripts ? Self.transcriptPrefix : Self.mergePrefix
+        let prepared = folder.appendingPathComponent(prefix + UUID().uuidString, isDirectory: true)
+        try disk.makeFolder(prepared)
+        return prepared
+    }
+
+    /// Retires the recovery record atomically before deleting any of its backups.
+    private func settle(_ prepared: URL) throws {
+        let settled = folder.appendingPathComponent(Self.settledPrefix + UUID().uuidString, isDirectory: true)
+        try rename(prepared, settled)
+        // Publication is committed; leftover backups can be removed at the next start.
+        try? remove(settled)
+    }
 
     /// Moves every part found in `prepared` back to its place and removes `prepared`.
     private func putBack(_ parts: [URL], from prepared: URL) throws {
@@ -219,12 +334,16 @@ public struct Calls: Sendable {
         try removeIfPresent(prepared)
     }
 
-    public func bytes(id: String) throws -> Int64 { try size(location(id: id)) }
+    public func bytes(id: String) throws -> Int64 {
+        operation.lock(); defer { operation.unlock() }
+        return try size(location(id: id))
+    }
 
     /// The callback durably records ownership before a destructive disk step.
     @discardableResult
     public func move(id: String, to destination: URL,
                      record: (Move) throws -> Void = { _ in }) throws -> Int64 {
+        operation.lock(); defer { operation.unlock() }
         let source = try location(id: id)
         let destination = destination.resolvingSymlinksInPath().standardizedFileURL
         let sourcePath = source.resolvingSymlinksInPath().standardizedFileURL.path
@@ -296,6 +415,7 @@ public struct Calls: Sendable {
     /// Recovery follows the recorded owner, including a title changed in Finder.
     @discardableResult
     public func recover(_ given: Move, record: (Move) throws -> Void) throws -> Move {
+        operation.lock(); defer { operation.unlock() }
         var move = given
         if ![.source, .destination].contains(move.phase) {
             guard let name = CallFolderName(move.owner.lastPathComponent, timeZone: timeZone) else { throw POSIXError(.EINVAL) }
@@ -397,6 +517,7 @@ public struct Calls: Sendable {
     }
 
     public func count() throws -> Count {
+        operation.lock(); defer { operation.unlock() }
         let calls = try folders(in: folder)
         return Count(calls: calls.count, bytes: try calls.reduce(0) { try $0 + size($1.0) })
     }

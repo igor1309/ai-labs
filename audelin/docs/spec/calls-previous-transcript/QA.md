@@ -8,42 +8,42 @@ each step of a pair change; restart is a new Calls on the same folder.
 ## S-1 Publishing keeps the old transcript beside
 
 Publish: the current file holds the new bytes; the previous equals the old bytes.
-Evidence: Missing.
+Evidence: `CallsPreviousTranscriptTests.S1_publishingKeepsTheOldTranscriptBeside`.
 
 ## S-2 Publishing drops an older previous
 
 Publish into a call with a previous: exactly the new and the replaced file remain.
-Evidence: Missing.
+Evidence: `CallsPreviousTranscriptTests.S2_publishingDropsAnOlderPrevious`.
 
 ## S-3 A failed publish leaves the pair
 
 Fail at each step after the first move: both files equal their bytes before; the error is returned.
-Evidence: Missing.
+Evidence: `CallsPreviousTranscriptTests.S3_aFailedPublishLeavesThePair`.
 
 ## S-4 An interrupted publish is settled at start
 
 Interrupt publishing at each step, start a new Calls: the old pair or the new, whole, no stray file.
-Evidence: Missing.
+Evidence: `CallsPreviousTranscriptTests.S4_anInterruptedPublishIsSettledAtStart`.
 
 ## S-5 Restoring swaps the two
 
 Restore: the two files have swapped bytes.
-Evidence: Missing.
+Evidence: `CallsPreviousTranscriptTests.S5_restoringSwapsTheTwo`.
 
 ## S-6 A failed restore leaves the pair
 
 Fail the swap at each step: both files equal their bytes before; the error is returned.
-Evidence: Missing.
+Evidence: `CallsPreviousTranscriptTests.S6_aFailedRestoreLeavesThePair`.
 
 ## S-7 Restoring without a previous is refused
 
 Restore a call with no previous: refused with the reason; the folder unchanged.
-Evidence: Missing.
+Evidence: `CallsPreviousTranscriptTests.S7_restoringWithoutAPreviousIsRefused`.
 
 ## S-8 A listing tells the previous transcript
 
 List: the call with a previous reads has-previous; the other not.
-Evidence: Missing.
+Evidence: `CallsPreviousTranscriptTests.S8_aListingTellsThePreviousTranscript`.
 
 ## S-9 A listing tells missing tracks
 
@@ -58,12 +58,12 @@ Evidence: Missing.
 ## S-11 A merged call's parts are untouched
 
 Publish into a merged call: every part's files byte-identical to before.
-Evidence: Missing.
+Evidence: `CallsPreviousTranscriptTests.S11_aMergedCallsPartsAreUntouched`.
 
 ## S-12 An interrupted restore is settled at start
 
 Interrupt restoring at each step, start a new Calls: the old pair or the swapped pair, whole.
-Evidence: Missing.
+Evidence: `CallsPreviousTranscriptTests.S12_anInterruptedRestoreIsSettledAtStart`.
 
 ## S-13 Restoring brings back the identity
 
