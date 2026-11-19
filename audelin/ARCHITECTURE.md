@@ -589,16 +589,17 @@ final transcript, its entries, whether they hold words, and whether the file
 holds the latest text, is published once, and is published when its
 receiver has taken it. Entries come from an injected pure mapping.
 
-On shutdown no new model work starts. A call being cleaned is final at once
-as written, and the machine stops its cleanup; a call being diarized or
+On shutdown no new model work starts. A call being cleaned is committed
+as written with its stages left skipped (Transcript origin), and the
+machine stops its cleanup; a call being diarized or
 committed is final when that file write returns, since both replace the
-file; a call still being written is final as last saved once it closes.
+file; a call still being written is committed as last saved, its stages skipped, once it closes.
 The root sends shutdown on the quit intention. Recording's ordered transcript
 subscription sends input ended when Recording's transcript output ends: no more
 openings, writes or closes can arrive. The machine publishes settled only after
 both shutdown and input ended, with every opened call's final transcript
 published, so quit waits on settled alone. A call opening after shutdown but
-before input ends is final as last saved once it closes, without model work.
+before input ends is committed as last saved, its stages skipped, once it closes, without model work.
 Without Recording the root sends both shutdown and input ended.
 
 Its collaborators are ports it owns: the diarizer (the root's after-call
@@ -612,6 +613,43 @@ output (each opening, write and close, keyed by call, none dropped), and
 answers the receiver port by handing each final transcript to SummaryJobs
 before it releases the call's handles; it subscribes the panel's speaker
 rows to the machine.
+
+## Transcript origin
+
+A transcript file tells what made it (`docs/spec/transcript-origin/`):
+which Audelin version and build heard each side and with which speech
+model, and how each finishing stage ended. No new component is needed;
+four change, each for its own reason.
+
+**Transcript format** renders the origin as front matter above the
+transcript and reads it back, an absent block as no origin. The origin is
+part of what it renders and reads, as the speakers' names are, so it is
+saved in the same write as the text it tells of and a merge renders a read
+transcript again with it. Notes see none of it: their entries come from the
+final transcript, not from the file.
+
+**The root supplies hearing.** It reads the version and build from the
+app's bundle once and names the recogniser it wires to each side; it hands
+both to each call's transcript writer when it builds it, so every live
+write carries them. The rehearsals and tests supply their own values.
+
+**TranscriptFinalization decides the finishing outcomes,** as it already
+holds each stage. Its state keeps each call's origin so far; every
+replacing write it asks for carries it. The diarizer port reports the
+diarizer whose split it saved, or none, and saves the split with the
+origin it is given plus that outcome. A commit adds the cleaning outcome:
+cleaned, or nothing kept. On shutdown a stage that will not run is
+skipped, not silent: a call being cleaned, or closing after shutdown, is
+committed once more as last saved with the stages left marked skipped,
+and is final when that write returns. A failed write keeps the origin
+saved before it, as it keeps the text.
+
+**Transcript join carries each part's origin** without reading it,
+generic over it as over rows, in part order. The root gives it each part's
+origin read back by Transcript format, flattened to the original calls. A
+part with no origin is unknown for each of its original calls, whose starts
+**Calls** reads from the part's nested folders, as it already reads their
+tracks for duration. The root adds the merging build to the joined origin.
 
 ## Bleed cleanup
 
