@@ -70,3 +70,15 @@ Automated boundary: `cd audelin/macos && swift test --filter SummaryJobsTests/st
 Automated boundary: `cd audelin/macos && swift test --filter SummaryJobsTests/successPersistsBeforeRequestsAndCheckpointsBeforeNotes`. Setup fixture: a claimed eligible job is held before dispatch; drive: I inspect progress; read-back oracle: I can distinguish waiting from an active request. Gate claim/runtime/checkpoint ports as named, count adapter invocations and read saved output/state; compare original transcript bytes.
 
 Prompt evidence: `cd audelin/macos/App && swift test --filter SummaryGenerationTests/adversarialTranscriptRemainsDataAndPromptDoesNotPromiseSemanticProof`; structured Russian/English fixtures check required sections and localized empty decisions/actions.
+
+## S-18 Drop an attempt made from another transcript
+
+`cd audelin/macos && swift test --filter SummaryJobsTests/loadingDropsAnAttemptMadeFromAnotherTranscript` loads a failed and an interrupted attempt whose saved input differs from the transcript input port's answer; it asserts a discard effect for each, the call settles with no job and no failure, and the runtime spy gets no request. Its paired reducer test asserts the state change for the same event.
+
+## S-19 Retry with a changed transcript
+
+`cd audelin/macos && swift test --filter SummaryJobsTests/retryWithAChangedTranscriptRunsAFreshJob` retries a failed attempt after the transcript input changed; it asserts the old attempt is discarded and a fresh job is claimed with the current input.
+
+## S-20 Keep a running attempt whatever its input
+
+`cd audelin/macos && swift test --filter SummaryJobsTests/runningAttemptIsNeverComparedOrDropped` loads a running attempt with a changed transcript input; no discard effect is produced and the call shows running.

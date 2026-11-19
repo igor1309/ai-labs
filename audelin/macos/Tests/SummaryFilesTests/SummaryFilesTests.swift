@@ -6,6 +6,106 @@ import Synchronization
 import Testing
 
 @Suite struct SummaryFilesTests {
+    @Test func savingSuccessRemovesTheRecord() async throws {
+        try await withFolder { folder, locations in
+            let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.appendingPathComponent("leases"))
+            _ = try await files.claim(record()); #expect(try await files.start(record()))
+            try await files.publish(record(), notes: "complete notes")
+            var success = record(); success.phase = "succeeded"
+            try await files.progress(success)
+            #expect(try await files.load(call: "call") == nil)
+            #expect(!FileManager.default.fileExists(atPath: folder.appendingPathComponent(".summary-job.json").path))
+            #expect(try await files.notes(call: "call")?.text == "complete notes")
+            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == "original transcript")
+        }
+    }
+    @Test(arguments: [false, true], [false, true])
+    func leftoverSucceededRecordReadsAsNoJob(notes: Bool, claim: Bool) async throws {
+        try await withFolder { folder, locations in
+            let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.appendingPathComponent("leases"))
+            let path = folder.appendingPathComponent(".summary-job.json")
+            var old = record(); old.phase = "succeeded"
+            try JSONEncoder().encode(old).write(to: path)
+            if notes { try Data("previous notes".utf8).write(to: folder.appendingPathComponent("summary.md")) }
+            if claim {
+                let next = record(job: "fresh")
+                let result = try await files.claim(next)
+                #expect(result.owned && result.record == next)
+                #expect(try await files.load(call: "call") == next)
+            } else {
+                #expect(try await files.load(call: "call") == nil)
+                #expect(!FileManager.default.fileExists(atPath: path.path))
+            }
+            #expect(try await files.notes(call: "call")?.text == (notes ? "previous notes" : nil))
+        }
+    }
+    @Test(arguments: ["pending", "failed", "interrupted", "running"])
+    func recordWithAnotherCallFieldBelongsToItsFolder(phase: String) async throws {
+        try await withFolder { folder, locations in
+            let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.appendingPathComponent("leases"))
+            var saved = record(); saved.phase = phase
+            let data = try JSONEncoder().encode(saved)
+            var json = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+            #expect(json["call"] == nil)
+            json["call"] = "another call"
+            let path = folder.appendingPathComponent(".summary-job.json")
+            try JSONSerialization.data(withJSONObject: json).write(to: path)
+            if phase == "running" { saved.phase = "interrupted" }
+            #expect(try await files.load(call: "call") == saved)
+            #expect(FileManager.default.fileExists(atPath: path.path))
+        }
+    }
+    @Test func failedSuccessRemovalLeavesRunningForRecovery() async throws {
+        try await withFolder { folder, locations in
+            let directory = folder.appendingPathComponent("leases")
+            let disk = FailingDisk(), files = Files(locations: locations, disk: disk, ownershipDirectory: directory)
+            _ = try await files.claim(record()); #expect(try await files.start(record()))
+            try await files.publish(record(), notes: "complete notes")
+            disk.failure.withLock { $0 = ".summary-job.json" }
+            var success = record(); success.phase = "succeeded"
+            await #expect(throws: (any Error).self) { try await files.progress(success) }
+            let path = folder.appendingPathComponent(".summary-job.json")
+            #expect(try JSONDecoder().decode(Record.self, from: Data(contentsOf: path)).phase == "running")
+            let reopened = Files(locations: locations, disk: FileDisk(), ownershipDirectory: directory)
+            #expect(try await reopened.load(call: "call") == nil)
+            #expect(!FileManager.default.fileExists(atPath: path.path))
+            #expect(try await reopened.notes(call: "call")?.text == "complete notes")
+        }
+    }
+    @Test func failedRecoveryRemovalLeavesRunningAndReleasesItsLease() async throws {
+        try await withFolder { folder, locations in
+            let directory = folder.appendingPathComponent("leases")
+            let owner = Files(locations: locations, disk: FileDisk(), ownershipDirectory: directory)
+            _ = try await owner.claim(record()); #expect(try await owner.start(record()))
+            try await owner.publish(record(), notes: "complete notes")
+            await owner.release(job: "job", call: "call", input: "input")
+            let disk = FailingDisk()
+            disk.failure.withLock { $0 = ".summary-job.json" }
+            let recovery = Files(locations: locations, disk: disk, ownershipDirectory: directory)
+            await #expect(throws: (any Error).self) { try await recovery.load(call: "call") }
+            #expect(try JSONDecoder().decode(Record.self, from: Data(contentsOf: folder.appendingPathComponent(".summary-job.json"))).phase == "running")
+            let reopened = Files(locations: locations, disk: FileDisk(), ownershipDirectory: directory)
+            #expect(try await reopened.load(call: "call") == nil)
+            #expect(try await reopened.notes(call: "call")?.text == "complete notes")
+        }
+    }
+    @Test func failedAttemptCanBeDiscardedWhenItsLeaseIsFree() async throws {
+        try await withFolder { folder, locations in
+            let directory = folder.appendingPathComponent("leases")
+            let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: directory)
+            var failed = record(); failed.phase = "failed"
+            _ = try await files.claim(failed)
+            try Data("previous notes".utf8).write(to: folder.appendingPathComponent("summary.md"))
+            try await files.discard(failed)
+            #expect(try await files.load(call: "call") == nil)
+            #expect(try await files.notes(call: "call")?.text == "previous notes")
+            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == "original transcript")
+            _ = try await files.claim(record()); #expect(try await files.start(record()))
+            let other = Files(locations: locations, disk: FileDisk(), ownershipDirectory: directory)
+            await #expect(throws: (any Error).self) { try await other.discard(record()) }
+            #expect(try await other.load(call: "call")?.phase == "running")
+        }
+    }
     @Test func publishedNotesReadBackWithoutReceipt() async throws {
         try await withFolder { folder, locations in
             let files = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
@@ -131,7 +231,7 @@ import Testing
             #expect(try await observer.load(call: "call")?.phase == "running")
             var terminal = job; terminal.phase = "succeeded"
             try await owner.progress(terminal)
-            #expect(try await observer.load(call: "call") == terminal)
+            #expect(try await observer.load(call: "call") == nil)
             #expect(try String(contentsOf: folder.appendingPathComponent("summary.md"), encoding: .utf8).hasSuffix("complete result"))
         }
     }
@@ -177,7 +277,7 @@ import Testing
             await #expect(throws: (any Error).self) { try await files.progress(terminal) }
             disk.failure.withLock { $0 = nil }
             let observer = Files(locations: locations, disk: FileDisk(), ownershipDirectory: folder.deletingLastPathComponent().appendingPathComponent("leases"))
-            #expect(try await observer.load(call: "call")?.phase == "succeeded")
+            #expect(try await observer.load(call: "call") == nil)
             let output = try String(contentsOf: folder.appendingPathComponent("summary.md"), encoding: .utf8)
             #expect(output.hasSuffix("# Complete notes"))
             #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == "original transcript")
@@ -319,7 +419,7 @@ import Testing
             try await owner.publish(record(), notes: "moved result")
             var terminal = record(); terminal.phase = "succeeded"
             try await owner.progress(terminal)
-            #expect(try await observer.load(call: "call") == terminal)
+            #expect(try await observer.load(call: "call") == nil)
             #expect(!FileManager.default.fileExists(atPath: folder.path))
         }
     }
@@ -434,7 +534,9 @@ import Testing
             let current = value
             _ = try await files.claim(current)
             await #expect(throws: (any Error).self) { try await files.retry(current, job: "fresh") }
-            #expect(try JSONDecoder().decode(Record.self, from: Data(contentsOf: folder.appendingPathComponent(".summary-job.json"))) == current)
+            var decoded = try JSONDecoder().decode(Record.self, from: Data(contentsOf: folder.appendingPathComponent(".summary-job.json")))
+            decoded.call = "call"
+            #expect(decoded == current)
         }
     }
     @Test func failedRetryWriteLeavesTheInterruptedAttemptAndOutputIntact() async throws {

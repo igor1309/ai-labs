@@ -46,9 +46,10 @@ from `audelin`). Any driver that can change real data follows these rules:
    exactly, removing notes files the run added, and compares each with its backup.
 4. After the run it prints `PRESERVED:` or `LOST:` per call, comparing what the
    app kept (for notes, the receipt's Previous) with the backup, and fails on a loss.
-5. It knows the app finished from the call's files, not from the window: a new job
-   in `.summary-job.json` that is no longer running. Notes already made with the same
-   template look the same in the window before and after.
+5. It knows the app finished from the call's files: a new job/input receipt in the
+   notes with no unfinished record proves success; failed or interrupted attempts
+   retain their record. Notes already made with the same template look the same
+   in the window before and after.
 
 ## Calls fixtures
 

@@ -84,7 +84,7 @@ import Testing
     @Test func recoveryUsesTheSavedTemplateWithoutResolution() {
         var job = makeJob(); job.speakers = false; job.template = makeTemplate().jobTemplate; job.keepPrevious = false
         let state = makeState(calls: ["call": .init(stage: .recovering)])
-        assert(state, .recovered("call", .init(stage: .pending, job: job)), delivers: .start(job)) {
+        assert(state, .recovered("call", .init(stage: .pending, job: job, currentInput: job.input)), delivers: .start(job)) {
             $0.calls["call"] = .init(stage: .starting, requestedTemplate: "Daily", template: makeTemplate(), job: job, status: "starting:false", badge: .pending)
         }
         let starting = makeState(calls: ["call": .init(stage: .starting, template: makeTemplate(), job: job)])

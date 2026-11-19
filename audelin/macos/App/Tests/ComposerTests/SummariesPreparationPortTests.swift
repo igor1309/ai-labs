@@ -35,6 +35,17 @@ import Testing
         #expect(submission.call == "call" && submission.entries == [.init(label: "A", time: "3.0", text: "spoken")]
                 && submission.finalWrite && submission.usable && submission.requested)
     }
+    @Test func currentInputUsesTheSameIdentityAsAPreparedJob() async throws {
+        let sut = SummariesPreparationPort(notes: { .init(enabled: true) }, makeID: { "id-1" },
+                                           callText: { _ in .init(transcript: [.init(start: 3, words: "spoken", label: "A")]) })
+        let submission = try await sut.submission(call: "call")
+        let job = await sut.job(for: submission).job
+        #expect(try await sut.input(call: "call") == job.input)
+    }
+    @Test func currentInputPropagatesAnUnreadableTranscript() async {
+        let sut = SummariesPreparationPort(notes: { .init(enabled: true) }, makeID: { "id-1" }, callText: { _ in throw CocoaError(.fileReadNoSuchFile) })
+        await #expect(throws: CocoaError.self) { try await sut.input(call: "call") }
+    }
     @Test func anEmptyTranscriptIsNotUsable() async throws {
         #expect(try await makeSUT(.init(enabled: true)).submission(call: "call").usable == false)
     }

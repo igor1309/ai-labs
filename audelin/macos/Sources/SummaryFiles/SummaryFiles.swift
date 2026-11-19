@@ -4,12 +4,14 @@ import Foundation
 
 public struct Record: Codable, Equatable, Sendable {
     public var job: String
-    public var call: String
+    /// Supplied by the containing folder, never by the stored JSON.
+    public var call: String = ""
     public var input: String
     public var snapshot: Data
     public var phase: String
     public var checkpoint: Data?
     public var warning: Bool
+    private enum CodingKeys: String, CodingKey { case job, input, snapshot, phase, checkpoint, warning }
     public init(job: String, call: String, input: String, snapshot: Data, phase: String, checkpoint: Data? = nil, warning: Bool = false) {
         self.job = job; self.call = call; self.input = input; self.snapshot = snapshot
         self.phase = phase; self.checkpoint = checkpoint; self.warning = warning
@@ -125,7 +127,7 @@ public struct Files: Sendable {
     }
     public func versions(call: String) async throws -> Versions? { try await storage.versions(call: call) }
     /// Removes a cancelled attempt, restoring notes replaced by this instance's publication.
-    /// Earlier notes and the transcript stay; a completed record without notes can also be retired.
+    /// Earlier notes and the transcript stay; inactive attempts need a free lease.
     public func discard(_ record: Record) async throws { try await storage.discard(record) }
     /// The call's published notes as saved, with when they were made, or nil when it has none.
     public func notes(call: String) async throws -> Notes? { try await storage.versions(call: call)?.current }
@@ -185,10 +187,12 @@ private actor DiskFiles: FilesStorage {
             let path = folder.appendingPathComponent(".summary-job.json")
             if try disk.exists(path) {
                 let current = try Self.read(path, disk: disk, call: record.call)
-                if replacingInactive, ["succeeded", "failed", "interrupted"].contains(current.phase) {
+                if current.phase == "succeeded" {
+                    guard try Self.removeSucceeded(current, at: path, disk: disk, directory: ownershipDirectory) else { throw CocoaError(.fileWriteUnknown) }
+                } else if replacingInactive, ["failed", "interrupted"].contains(current.phase) {
                     return (true, try Self.replaceAttempt(current, with: record, at: path, disk: disk, directory: ownershipDirectory))
                 }
-                return (false, current)
+                if current.phase != "succeeded" { return (false, current) }
             }
             let owned = try disk.create(JSONEncoder().encode(record), at: path)
             return (owned, owned ? record : try Self.read(path, disk: disk, call: record.call))
@@ -214,17 +218,28 @@ private actor DiskFiles: FilesStorage {
             let path = folder.appendingPathComponent(".summary-job.json")
             guard try disk.exists(path) else { return nil }
             var record = try Self.read(path, disk: disk, call: call)
+            if record.phase == "succeeded" {
+                _ = try Self.removeSucceeded(record, at: path, disk: disk, directory: ownershipDirectory)
+                return nil
+            }
             if record.phase == "running" {
                 guard let lease = try Self.acquire(record, directory: ownershipDirectory) else { return record }
                 defer { close(lease) }
                 let identity = record
+                guard try disk.exists(path) else { return nil }
                 record = try Self.read(path, disk: disk, call: call)
+                guard record.job == identity.job, record.input == identity.input else { return record }
+                if record.phase == "succeeded" {
+                    try disk.remove(path)
+                    return nil
+                }
                 // Completion can commit and release ownership between the first read and acquisition.
-                guard record.phase == "running", record.job == identity.job, record.input == identity.input else { return record }
+                guard record.phase == "running" else { return record }
                 let output = folder.appendingPathComponent("summary.md")
                 if try disk.exists(output), let receipt = Self.receipt(try disk.read(output)),
                    receipt.job == record.job, receipt.input == record.input {
-                    record.phase = "succeeded"; record.warning = receipt.warning
+                    try disk.remove(path)
+                    return nil
                 } else { record.phase = "interrupted" }
                 // A failed recovery save still leaves running, which is never replayable.
                 try disk.replace(JSONEncoder().encode(record), at: path)
@@ -281,7 +296,8 @@ private actor DiskFiles: FilesStorage {
                 guard current.job == record.job, current.input == record.input, current.phase == "running" else { throw CocoaError(.fileWriteUnknown) }
                 var updated = record
                 if updated.checkpoint == nil { updated.checkpoint = current.checkpoint }
-                try disk.replace(JSONEncoder().encode(updated), at: path)
+                if updated.phase == "succeeded" { try disk.remove(path) }
+                else { try disk.replace(JSONEncoder().encode(updated), at: path) }
             } catch {
                 // A failed make-again save retains the pair the caller could already read.
                 if record.phase != "running", let publication, publication.versions != nil {
@@ -336,19 +352,25 @@ private actor DiskFiles: FilesStorage {
         try await locations.withFolder(call: record.call) { [disk] folder in
             let path = folder.appendingPathComponent(".summary-job.json")
             let output = folder.appendingPathComponent("summary.md")
+            let hasRecord: Bool
             do {
-                let current = try Self.read(path, disk: disk, call: record.call)
-                let completedWithoutNotes = try current.phase == "succeeded" && !disk.exists(output)
-                guard current.job == record.job, current.input == record.input,
-                      ownsRunning ? current.phase == "running" : (["pending", "interrupted"].contains(current.phase) || completedWithoutNotes || publication != nil) else {
-                    throw CocoaError(.fileWriteUnknown)
+                hasRecord = try disk.exists(path)
+                if hasRecord {
+                    let current = try Self.read(path, disk: disk, call: record.call)
+                    guard current.job == record.job, current.input == record.input,
+                          ownsRunning ? current.phase == "running" : (["pending", "failed", "interrupted"].contains(current.phase) || publication != nil) else {
+                        throw CocoaError(.fileWriteUnknown)
+                    }
+                } else {
+                    // Cancellation can arrive while success is removing the record. Its publication still owns rollback.
+                    guard publication != nil else { throw CocoaError(.fileWriteUnknown) }
                 }
             } catch {
                 if let publication { try Self.rollback(publication, at: output, disk: disk) }
                 throw error
             }
             if let publication { try Self.rollback(publication, at: output, disk: disk) }
-            try disk.remove(path)
+            if hasRecord { try disk.remove(path) }
         }
         publications[identity] = nil
         release(job: record.job, call: record.call, input: record.input)
@@ -389,9 +411,18 @@ private actor DiskFiles: FilesStorage {
                         current: Notes(text: String(text[text.index(after: newline)...]), made: made,
                                        template: metadata?.template ?? .default))
     }
+    private static func removeSucceeded(_ record: Record, at path: URL, disk: any Disk, directory: URL) throws -> Bool {
+        guard let lease = try acquire(record, directory: directory) else { return false }
+        defer { flock(lease, LOCK_UN); close(lease) }
+        guard try disk.exists(path) else { return true }
+        guard try read(path, disk: disk, call: record.call) == record else { throw CocoaError(.fileWriteUnknown) }
+        try disk.remove(path)
+        return true
+    }
     private static func read(_ url: URL, disk: any Disk, call: String) throws -> Record {
-        let record = try JSONDecoder().decode(Record.self, from: disk.read(url))
-        guard !record.job.isEmpty, record.call == call, !record.input.isEmpty,
+        var record = try JSONDecoder().decode(Record.self, from: disk.read(url))
+        record.call = call
+        guard !record.job.isEmpty, !record.input.isEmpty,
               ["pending", "running", "succeeded", "failed", "interrupted"].contains(record.phase) else { throw CocoaError(.fileReadCorruptFile) }
         return record
     }

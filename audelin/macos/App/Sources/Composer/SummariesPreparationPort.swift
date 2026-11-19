@@ -16,6 +16,9 @@ public struct SummariesPreparationPort: SummariesPreparation {
         let entries = try await callText(call).transcript.map { Job.Entry(label: $0.label, time: String($0.start), text: $0.words) }
         return .init(call: call, entries: entries, finalWrite: true, usable: !entries.isEmpty, requested: true)
     }
+    public func input(call: String) async throws -> String {
+        summaryInput(try await submission(call: call).entries)
+    }
     public func job(for submission: SummariesSubmission) async -> (job: Job, notesOn: Bool) {
         let config = notes()
         func runtime(_ value: NotesPreferences.Runtime) -> Job.Runtime {

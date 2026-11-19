@@ -81,7 +81,8 @@ public final class SummariesModel {
         let before = model.state
         guard before.calls[call]?.retryable == true, before.lifecycle == .accepting, before.dispatch else { throw CocoaError(.fileWriteUnknown) }
         model.event(.retry(call))
-        while model.state.calls[call] == before.calls[call] || model.state.calls[call]?.stage == .retrying { await changed() }
+        while model.state.calls[call] == before.calls[call] || model.state.calls[call]?.stage == .retrying
+                || model.state.calls[call]?.replacement == .request { await changed() }
         if model.state.calls[call]?.retryFailed == true { throw CocoaError(.fileWriteUnknown) }
     }
     /// Drops a deleted call once its notes have settled.
