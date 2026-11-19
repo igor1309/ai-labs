@@ -113,5 +113,6 @@ func makeRecordings(handler: RecordingsEffectHandler, text: @escaping @Sendable 
 func recordingsReducer(_ text: @escaping @Sendable () -> SettingsText) -> RecordingsReducer {
     RecordingsReducer(failureMessage: { prior, refreshError in
         text()(.refreshFailed, prior, refreshError)
-    }, moveText: folderMoveText(text), busyMessage: { text()(.callMergeBusy) })
+    }, moveText: folderMoveText(text), busyMessage: { text()(.callMergeBusy) },
+                      transcriptMessage: { _ in text()(.callMergeBusy) })
 }

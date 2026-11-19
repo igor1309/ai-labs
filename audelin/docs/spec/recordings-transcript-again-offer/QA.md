@@ -11,59 +11,59 @@ asserted. A row without evidence is Missing.
 ## S-1 A whole idle call offers a run
 
 Idle, nothing under way, a listing with both tracks: the row offers a run.
-Evidence: Missing.
+Evidence: `RecordingsTranscriptAgainOfferTests.S1_wholeIdleCallOffersARun`.
 
 ## S-2 A call missing one track
 
 A call without its call track: not offered; the formatter gets that call and track.
-Evidence: Missing.
+Evidence: `RecordingsTranscriptAgainOfferTests.S2_missingCallTrackNamesTheCallAndTrack`.
 
 ## S-3 A call missing all audio
 
 A call with no tracks: not offered; the formatter gets both tracks.
-Evidence: Missing.
+Evidence: `RecordingsTranscriptAgainOfferTests.S3_missingAllAudioNamesBothTracks`.
 
 ## S-4 A nested merge missing a track
 
 A merge of a merge whose innermost call lacks a track: not offered; that call and track named.
-Evidence: Missing.
+Evidence: `RecordingsTranscriptAgainOfferTests.S4_nestedMissingAudioNamesTheOriginalCall`.
 
 ## S-5 Offers follow idleness
 
 An offered row, then not idle: the row no longer offers, with the busy reason; no effect.
-Evidence: Missing.
+Evidence: `RecordingsTranscriptAgainOfferTests.S5_offersFollowIdleness`.
 
 ## S-6 A request is checked again
 
 Offered row, not idle arrives, then the request: no effect; the busy reason.
-Evidence: Missing.
+Evidence: `RecordingsTranscriptAgainOfferTests.S6_requestChecksIdlenessAgain`.
 
 ## S-7 A run waits for a merge
 
 A merge under way, ask for a run: no effect; the reason.
-Evidence: Missing.
+Evidence: `RecordingsTranscriptAgainOfferTests.S7_runWaitsForAMerge`.
 
 ## S-8 A run's own call cannot be renamed
 
 Run under way, rename that call: no effect; the reason.
-Evidence: Missing.
+Evidence: `RecordingsTranscriptAgainOfferTests.S8_runsOwnCallCannotBeRenamed`.
 
 ## S-9 Another call stays usable
 
 Run under way, rename another call: the rename effect for that call.
-Evidence: Missing.
+Evidence: `RecordingsTranscriptAgainOfferTests.S9_anotherCallStaysUsable`.
 
 ## S-10 The layout is locked during a run
 
 Run under way, each of merge, move and restore: no effect; each reason.
-Evidence: Missing.
+Evidence: `RecordingsTranscriptAgainOfferTests.S10_layoutIsLockedDuringARun`.
 
 ## S-11 Restore is offered only when it can start
 
 A call with a previous, idle, nothing under way: offers restore; not idle: no longer offers, with the reason.
-Evidence: Missing.
+Evidence: `RecordingsTranscriptAgainOfferTests.S11_restoreIsOfferedOnlyWhenItCanStart`.
 
 ## S-12 A run's own call cannot be deleted
 
 Run under way, delete that call: no effect; the reason.
-Evidence: Missing.
+Evidence: `RecordingsTranscriptAgainOfferTests.S12_runsOwnCallCannotBeDeleted`.

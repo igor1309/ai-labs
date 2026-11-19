@@ -23,9 +23,13 @@ public struct RecordedCall: Equatable, Sendable {
     public let start: Date
     public let duration: TimeInterval?
     public let tags: Tags
+    public let hasPreviousTranscript: Bool
+    public let missingTracks: [MissingRecordingTrack]
 
-    public init(id: String, title: String, start: Date, duration: TimeInterval?, tags: Tags = .known([])) {
+    public init(id: String, title: String, start: Date, duration: TimeInterval?, tags: Tags = .known([]),
+                hasPreviousTranscript: Bool = false, missingTracks: [MissingRecordingTrack] = []) {
         self.id = id; self.title = title; self.start = start; self.duration = duration; self.tags = tags
+        self.hasPreviousTranscript = hasPreviousTranscript; self.missingTracks = missingTracks
     }
 }
 
@@ -39,6 +43,7 @@ public struct RecordingsState: Equatable, Sendable {
         case warnedFarApart
         /// The merge port is merging the selected calls.
         case runningMerge
+        case restoring(String)
     }
 
     public struct Failure: Equatable, Sendable {
@@ -61,19 +66,25 @@ public struct RecordingsState: Equatable, Sendable {
     /// The calls-folder claim's token while a move holds it.
     public var moveToken: UInt64?
     public var stopping = false
-    /// Stopping, with no folder move holding the calls folder and no merge running: storage has settled for quit.
+    /// Stopping, with no folder move holding the calls folder and no merge or transcript run running: storage has settled for quit.
     public var stopped = false
     public var move: CallsFolderMove?
     /// The calls chosen to merge, while merging.
     public var mergeSelection: Set<String> = []
     /// The call the last merge made, to be selected in the list.
     public var mergedCallID: String?
-    /// Audelin is idle enough to merge, as compose last said; not until it says so.
+    /// Audelin is idle enough to merge or make a transcript again, as compose last said; not until it says so.
     public var mergeAvailable = false
     /// The tags save under way, one at a time.
     public var tagsSave: TagsSave?
     /// How the last tags request ended, echoing its request id, for the list to apply.
     public var tagsOutcome: TagsOutcome?
+    public var transcriptOffers: [String: TranscriptOffers]
+    public var transcriptRun: TranscriptRun?
+    public var transcriptRequest: Int
+    public var selectedCallID: String?
+    /// A distinct value for each made transcript, even when the same call is made again.
+    public var transcriptChanged: TranscriptChange?
 
     public struct TagsSave: Equatable, Sendable {
         public let request: Int
@@ -94,15 +105,24 @@ public struct RecordingsState: Equatable, Sendable {
                 recordingID: String? = nil, failure: Failure? = nil, callsFolder: URL? = nil,
                 callsFolderAvailable: Bool = true, moveToken: UInt64? = nil, stopping: Bool = false, stopped: Bool = false, move: CallsFolderMove? = nil,
                 mergeSelection: Set<String> = [], mergedCallID: String? = nil, mergeAvailable: Bool = false,
-                tagsSave: TagsSave? = nil, tagsOutcome: TagsOutcome? = nil) {
+                tagsSave: TagsSave? = nil, tagsOutcome: TagsOutcome? = nil,
+                transcriptOffers: [String: TranscriptOffers] = [:], transcriptRun: TranscriptRun? = nil,
+                transcriptRequest: Int = 0, selectedCallID: String? = nil, transcriptChanged: TranscriptChange? = nil) {
         self.calls = calls; self.isListing = isListing; self.listRequest = listRequest; self.phase = phase; self.recordingID = recordingID
         self.failure = failure; self.callsFolder = callsFolder; self.callsFolderAvailable = callsFolderAvailable; self.moveToken = moveToken; self.stopping = stopping; self.stopped = stopped; self.move = move
         self.mergeSelection = mergeSelection; self.mergedCallID = mergedCallID; self.mergeAvailable = mergeAvailable
         self.tagsSave = tagsSave; self.tagsOutcome = tagsOutcome
+        self.transcriptOffers = transcriptOffers; self.transcriptRun = transcriptRun
+        self.transcriptRequest = transcriptRequest; self.selectedCallID = selectedCallID; self.transcriptChanged = transcriptChanged
     }
 }
 
 public enum RecordingsEvent: Equatable, Sendable {
+    case makeTranscriptAgain(String), cancelTranscriptAgain
+    case transcriptReported(request: Int, TranscriptReport)
+    /// Recording starts are separate from the idle value, which only admits requests.
+    case recordingStarted
+    case restorePreviousTranscript(String)
     case stopActions
     /// A list answer names the request it answers.
     case refresh, clearFailure, listed(request: Int, [RecordedCall]), listFailed(request: Int, String)
@@ -124,6 +144,7 @@ public enum RecordingsEvent: Equatable, Sendable {
 }
 
 public enum RecordingsEffect: Equatable, Sendable {
+    case makeTranscriptAgain(id: String, request: Int), stopTranscriptAgain(id: String, request: Int)
     case prepareMove(URL), reserveMove, releaseMove(token: UInt64), moveCall(id: String, to: URL), storeFolder(URL)
     /// Lists the calls under a new request id.
     case list(request: Int), rename(id: String, title: String), delete(String)
@@ -136,23 +157,29 @@ public struct RecordingsReducer: Sendable {
     private let failureMessage: @Sendable (String, String) -> String
 
     let moveText: @Sendable (CallsFolderMove) -> MoveText
+    let transcriptMessage: @Sendable (TranscriptRefusal) -> String
     private let busyMessage: @Sendable () -> String
 
     /// `busyMessage` says Audelin is not idle enough to merge, or that a move or merge holds the calls.
+    /// `transcriptMessage` renders transcript offers and refusals from their exact reasons.
     public init(failureMessage: @escaping @Sendable (String, String) -> String, moveText: @escaping @Sendable (CallsFolderMove) -> MoveText,
-                busyMessage: @escaping @Sendable () -> String) {
+                busyMessage: @escaping @Sendable () -> String,
+                transcriptMessage: @escaping @Sendable (TranscriptRefusal) -> String) {
         self.failureMessage = failureMessage
         self.moveText = moveText
         self.busyMessage = busyMessage
+        self.transcriptMessage = transcriptMessage
     }
 
     public func reduce(_ state: RecordingsState, _ event: RecordingsEvent) -> (RecordingsState, RecordingsEffect?) {
         var (next, effect) = reduceEvent(state, event)
-        if next.stopping, next.moveToken == nil, next.tagsSave == nil, ![.reservingMove, .releasingMove, .runningMerge].contains(next.phase) { next.stopped = true }
+        updateTranscriptOffers(&next)
+        if next.stopping, next.transcriptRun == nil, next.moveToken == nil, next.tagsSave == nil, ![.reservingMove, .releasingMove, .runningMerge].contains(next.phase) { next.stopped = true }
         return (next, effect)
     }
 
     private func reduceEvent(_ state: RecordingsState, _ event: RecordingsEvent) -> (RecordingsState, RecordingsEffect?) {
+        if let result = reduceTranscript(state, event) { return result }
         if let result = reduceMove(state, event) { return result }
         var state = state
         switch event {
@@ -338,6 +365,7 @@ public struct RecordingsReducer: Sendable {
 }
 
 public struct RecordingsEffectHandler: Sendable {
+    private let transcriptAgain: any RecordingsTranscriptAgain
     private let calls: any RecordingsCalls
     private let reserve: @Sendable () async -> UInt64?
     private let release: @Sendable (UInt64) async -> Void
@@ -345,16 +373,25 @@ public struct RecordingsEffectHandler: Sendable {
     private let describe: @Sendable (any Error) -> String
     /// `reserve` takes the calls-folder claim for a move, answering its token or nil when refused;
     /// `release` lets that token go. `describe` writes the sentence a failure shows, in the language the UI chose.
-    public init(calls: any RecordingsCalls, reserve: @escaping @Sendable () async -> UInt64?,
+    public init(calls: any RecordingsCalls, transcriptAgain: any RecordingsTranscriptAgain, reserve: @escaping @Sendable () async -> UInt64?,
                 release: @escaping @Sendable (UInt64) async -> Void, storeFolder: @escaping @Sendable (URL) async throws -> Void,
                 describe: @escaping @Sendable (any Error) -> String) {
+        self.transcriptAgain = transcriptAgain
         self.calls = calls; self.reserve = reserve; self.release = release; self.storeFolder = storeFolder; self.describe = describe
     }
 
     public func handle(_ effect: RecordingsEffect) -> AsyncStream<RecordingsEvent> {
         AsyncStream { output in
             let task = Task {
-                output.yield(await perform(effect))
+                switch effect {
+                case let .makeTranscriptAgain(id, request):
+                    for await report in transcriptAgain.run(id: id, request: request) {
+                        output.yield(.transcriptReported(request: request, report))
+                    }
+                case let .stopTranscriptAgain(id, request):
+                    await transcriptAgain.stop(id: id, request: request)
+                default: output.yield(await perform(effect))
+                }
                 output.finish()
             }
             output.onTermination = { _ in task.cancel() }
@@ -363,6 +400,7 @@ public struct RecordingsEffectHandler: Sendable {
 
     private func perform(_ effect: RecordingsEffect) async -> RecordingsEvent {
         switch effect {
+        case .makeTranscriptAgain, .stopTranscriptAgain: preconditionFailure("Streaming effects are dispatched by handle")
         case .reserveMove: return .moveReserved(token: await reserve())
         case let .releaseMove(token): await release(token); return .moveReleased
         case let .prepareMove(destination):

@@ -100,7 +100,7 @@ public func compose(
                             })
     disk.log = boundary.log
     let moveClaim = MoveFolderClaim(storage: storage)
-    let recordings = makeRecordings(handler: RecordingsEffectHandler(calls: disk,
+    let recordings = makeRecordings(handler: RecordingsEffectHandler(calls: disk, transcriptAgain: TranscriptAgainNotWired(),
                                       reserve: moveClaim.take, release: moveClaim.release,
                                       storeFolder: { destination in
                                           try await storage.commitFolder(destination) { try preferences.updateCallsFolder(destination) }
