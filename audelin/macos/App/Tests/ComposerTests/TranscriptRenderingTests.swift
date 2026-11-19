@@ -11,13 +11,46 @@ import TranscriptFormat
 @Suite(.timeLimit(.minutes(1)))
 struct TranscriptRenderingTests {
 
+    @Test func changedOriginReplacesTheTranscriptFileWhole() async throws {
+        try await withComposeFolder { folder in
+            let url = folder.appendingPathComponent("transcript.md")
+            let binding = RecordingTranscriptBinding()
+            let file = try await TranscriptFile(url: url, initialBytes: [], binding: binding)
+            var format = TranscriptFormat()
+            func origin(_ version: String) -> TranscriptFormat.Origin {
+                .init(calls: [.init(start: Date(timeIntervalSince1970: 1_800_000_000), origin: .init(
+                    hearing: .init(version: version, build: "42"), mine: "mine", theirs: "theirs"
+                ))])
+            }
+            let first = try format.render(count: 1, finalCount: 1, origin: origin("1.0")) { _ in
+                .init(side: .mine, start: 1, settled: "unchanged words", pending: "")
+            }
+            try await file.write(first.chunks, finalLength: first.finalLength)
+            #expect(first.finalLength != nil)
+            _ = binding.take()
+            let second = try format.render(count: 1, finalCount: 1, origin: origin("2.0")) { _ in
+                Issue.record("Final text is already rendered")
+                return .init(side: .mine, start: 0, settled: "unexpected", pending: "")
+            }
+            #expect(first.chunks.reduce(0) { $0 + $1.count } == second.chunks.reduce(0) { $0 + $1.count })
+            #expect(second.finalLength == nil)
+            try await file.write(second.chunks, finalLength: second.finalLength)
+            #expect(binding.take() == ["create", "rename"])
+            let saved = try String(contentsOf: url, encoding: .utf8)
+            #expect(Data(saved.utf8) == second.chunks.reduce(Data(), +))
+            #expect(TranscriptFormat.read(saved).origin == origin("2.0"))
+            #expect(TranscriptFormat.entries(saved).map(\.words) == ["unchanged words"])
+            await file.close()
+        }
+    }
+
     @Test(arguments: [false, true])
     func microphoneReplacementUsesTheSuppliedFarSideAndNames(attributed: Bool) async throws {
 
         let bytes = BytesSpy()
         let otherCall = RecordingNames()
         otherCall.published(liveNames([1: "Another call"]))
-        let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: otherCall, sink: RenderingLog())
+        let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: otherCall, origin: testTranscriptOrigin, sink: RenderingLog())
         let names = RecordingNames()
         names.published(liveNames([1: "Anna"]))
         let state = CallState(status: .finished, entries: [
@@ -44,7 +77,7 @@ struct TranscriptRenderingTests {
         ] + (attributed ? [far.far[1]] : [])
         #expect(replacement.segments == expected)
         #expect(replacement.speakers == (attributed ? far.speakers : [.init(id: "z1", name: "Anna", state: "tentative")]))
-        try await writer.replaceWhole(replacement.segments, speakers: replacement.speakers)
+        try await writer.replaceWhole(replacement.segments, speakers: replacement.speakers, outcomes: .init())
         #expect(bytes.calls() == ["replace"])
         let text = try #require(bytes.replaced())
         #expect(text.contains("**\(attributed ? "Them 1" : "Them")** 00:00:00 (filled in later)\n\(attributed ? "attributed far" : "raw far")\n"))
@@ -58,7 +91,7 @@ struct TranscriptRenderingTests {
 
         let bytes = BytesSpy()
         let renderer = RendererStub()
-        let writer = WritingTranscript(file: bytes, format: renderer, names: RecordingNames(), sink: RenderingLog())
+        let writer = WritingTranscript(file: bytes, format: renderer, names: RecordingNames(), origin: testTranscriptOrigin, sink: RenderingLog())
         let state = CallState(status: .listening, entries: [
             .init(speaker: .mine, text: .init(id: 0, start: 1, end: 2, words: [.init("1", start: 1, end: 2), .init("final", start: 1, end: 2)], settledCount: 2), writtenLater: false),
         ], finalCount: 1)
@@ -77,7 +110,7 @@ struct TranscriptRenderingTests {
             let binding = RecordingTranscriptBinding()
             var initial = TranscriptFormat()
             let file = try await TranscriptFile(url: url, initialBytes: try initial.render([]).chunks, binding: binding)
-            let writer = WritingTranscript(file: file, format: TranscriptFormat(), names: RecordingNames(), sink: RenderingLog())
+            let writer = WritingTranscript(file: file, format: TranscriptFormat(), names: RecordingNames(), origin: testTranscriptOrigin, sink: RenderingLog())
             let bad = CallState(status: .listening, entries: [
                 .init(speaker: .mine, text: .init(id: 1, start: .nan, end: 3, words: [.init("bad", start: .nan, end: 3)], settledCount: 1), writtenLater: false),
             ])
@@ -101,7 +134,7 @@ struct TranscriptRenderingTests {
             let file = try await TranscriptFile(url: url, initialBytes: try initial.render([]).chunks, binding: binding)
             let names = RecordingNames()
             names.published(liveNames([1: "Anna"]))
-            let writer = WritingTranscript(file: file, format: TranscriptFormat(), names: names, sink: RenderingLog())
+            let writer = WritingTranscript(file: file, format: TranscriptFormat(), names: names, origin: testTranscriptOrigin, sink: RenderingLog())
             let snapshot = CallState(status: .listening, entries: [
                 .init(speaker: .theirs, text: .init(id: 1, start: 2, end: 3, words: [.init("1", start: 2, end: 3), .init("hello", start: 2, end: 3)], settledCount: 2), writtenLater: false),
             ], finalCount: 1)
@@ -126,17 +159,17 @@ private final class RendererStub: TranscriptRenderer {
 
     func failNext() { state.withLock { $0.fail = true } }
 
-    func render(count: Int, finalCount: Int, speakers: [TranscriptFormat.Speaker], segment: (Int) -> TranscriptFormat.Segment) throws -> TranscriptFormat.Rendering {
+    func render(count: Int, finalCount: Int, speakers: [TranscriptFormat.Speaker], origin: TranscriptFormat.Origin?, segment: (Int) -> TranscriptFormat.Segment) throws -> TranscriptFormat.Rendering {
 
         try state.withLock { value in
             if value.fail { value.fail = false; throw TranscriptFormat.Failure.invalidStart }
-            return try value.format.render(count: count, finalCount: finalCount, speakers: speakers, segment: segment)
+            return try value.format.render(count: count, finalCount: finalCount, speakers: speakers, origin: origin, segment: segment)
         }
     }
 
-    func renderWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) throws -> TranscriptFormat.Rendering {
+    func renderWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker], origin: TranscriptFormat.Origin?) throws -> TranscriptFormat.Rendering {
 
-        try TranscriptFormat().renderWhole(segments, speakers: speakers)
+        try TranscriptFormat().renderWhole(segments, speakers: speakers, origin: origin)
     }
 }
 

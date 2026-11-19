@@ -12,9 +12,8 @@ and moves hold as in `../calls/SPEC.md`.
 - **A merged call is a call folder holding its parts' folders whole,** with
   the joined `transcript.md` beside them. Its name is the earliest part's,
   so it keeps that part's id, start and title. The parts' files, audio
-  included, are never changed.
-- **Only top-level call folders are listed,** so the parts leave the list
-  and the merged call takes their place.
+  included, are never changed. Only top-level call folders are listed, so
+  the merged call takes the parts' place in the list.
 - **A merge is prepared out of sight:** in a folder whose name has no
   prefix, so it is never listed. The joined transcript is written there,
   each part's folder is renamed into it, and last it is renamed to the
@@ -25,17 +24,16 @@ and moves hold as in `../calls/SPEC.md`.
   starts, before its first listing, unless the merged call is in place. A
   merge under way is never undone by a listing; it is only renames, and
   Recordings lists again after its outcome.
-- **A merged call's duration is its span,** from the earliest start to the
-  latest end of any part's longer track, a merged part's parts included.
+- **A merged call's duration is its span,** earliest start to latest end
+  of any part's longer track, a merged part's parts included.
 - **Every part needs a known length,** read from its tracks, so its gap can
-  be placed; a part without one fails the merge, named, before anything
-  moves.
+  be placed; a part without one fails the merge, named, before anything moves.
 - **A part's saved transcript is read whole,** as written, for compose to
-  read back through Transcript format; a part whose transcript cannot be
-  read fails the merge, named, before anything moves.
-- **Rename, delete, move and text treat a merged call as any call:** delete
-  sends it to the Trash with its parts, a move carries them, and its text
-  is its joined transcript and its own notes.
+  read back through Transcript format, with a merged part's original calls'
+  starts from its nested folders, so a merge older than transcript origins
+  names them. An unreadable transcript fails the merge, named, first.
+- **Rename, delete, move and text treat a merged call as any call:** its
+  parts go with it, and its text is its joined transcript and own notes.
 
 ```gherkin
 Feature: Keeping merged calls on disk
@@ -94,4 +92,9 @@ Feature: Keeping merged calls on disk
     Given calls to merge
     When I read each one's saved transcript
     Then I get it as written, or which call's cannot be read and why
+
+  Scenario: S-12 A merged part names its original calls
+    Given a merged call to merge with another
+    When I read each one's saved transcript
+    Then I get the merged call's original calls' starts, in order
 ```

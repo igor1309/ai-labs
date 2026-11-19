@@ -138,6 +138,30 @@ public struct Calls: Sendable {
         } catch { throw CallsFailure.unreadableTranscript(id: id, reason: error.localizedDescription) }
     }
 
+    /// A merge part's saved bytes and the starts of its original call folders.
+    public struct Part: Equatable, Sendable {
+        public let transcript: Data
+        public let originalStarts: [Date]
+        public init(transcript: Data, originalStarts: [Date]) {
+            self.transcript = transcript; self.originalStarts = originalStarts
+        }
+    }
+
+    public func part(id: String) throws -> Part {
+        let url = try location(id: id)
+        guard let name = CallFolderName(url.lastPathComponent, timeZone: timeZone) else { throw POSIXError(.EINVAL) }
+        return Part(transcript: try savedTranscript(id: id), originalStarts: try originalStarts(in: url, start: name.start).sorted())
+    }
+
+    private func originalStarts(in url: URL, start: Date) throws -> [Date] {
+        let tracks = ["microphone.caf", "call.caf"].map { url.appendingPathComponent($0) }
+        // As for duration, a folder with its own track is an original recording.
+        guard !tracks.contains(where: { (try? values($0)) != nil }) else { return [start] }
+        let parts = try folders(in: url)
+        if parts.isEmpty { return [start] }
+        return try parts.flatMap { try originalStarts(in: $0.0, start: $0.1.start) }
+    }
+
     /// Merges calls into one call folder named as the earliest part, holding each part's
     /// folder whole and what `write` puts in the folder it is given, beside the parts'
     /// folders in the order of `ids`, before any part moves.

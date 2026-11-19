@@ -15,9 +15,9 @@ func makeState(_ call: State.Call? = nil, shuttingDown: Bool = false, inputEnded
 
 func makeCall(
     _ stage: State.Stage = .writing, saved: Bool = true, raw: String? = "raw", names: String? = nil, far: String? = nil, heard: String? = nil,
-    published: Bool = false
+    outcomes: FinishingOutcomes = .init(), published: Bool = false
 ) -> State.Call {
-    .init(stage: stage, latestWriteSucceeded: saved, raw: raw, names: names, far: far, heard: heard, published: published)
+    .init(stage: stage, latestWriteSucceeded: saved, raw: raw, names: names, far: far, heard: heard, outcomes: outcomes, published: published)
 }
 
 /// Records each entries request and answers with `stub`.
@@ -62,4 +62,9 @@ func published(_ entries: [String] = ["entry"], finalWrite: Bool = true) -> Effe
 
 func final(_ entries: [String] = ["entry"], finalWrite: Bool = true) -> FinalTranscript<String> {
     .init(entries: entries, usable: !entries.isEmpty, finalWrite: finalWrite)
+}
+
+func commit(_ raw: String = "raw", names: String? = nil, far: String? = nil, heard: String? = nil,
+            outcomes: FinishingOutcomes) -> TranscriptCommit<String, String, String, String> {
+    .init(raw: raw, names: names, far: far, heard: heard, outcomes: outcomes)
 }

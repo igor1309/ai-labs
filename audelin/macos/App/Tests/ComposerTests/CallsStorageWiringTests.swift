@@ -29,7 +29,7 @@ import Testing
                 try JSONEncoder().encode(record).write(to: url, options: .atomic)
             })
             var state = RecordingsState(callsFolder: source)
-            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage, deleted: { _ in }), reserve: MoveFolderClaim(storage: storage).take, release: MoveFolderClaim(storage: storage).release,
+            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage, release: testTranscriptBuild.release, deleted: { _ in }), reserve: MoveFolderClaim(storage: storage).take, release: MoveFolderClaim(storage: storage).release,
                 storeFolder: { folder in try await storage.commitFolder(folder) { try preferences.updateCallsFolder(folder) } }, describe: russianSettings.callsFailure)
             func send(_ event: RecordingsEvent) async {
                 var next: RecordingsEvent? = event
@@ -76,7 +76,7 @@ import Testing
             }
             let storage = callsStorage(folder: source, timeZone: .gmt, journal: root.appendingPathComponent("roots.json"), trash: removeForTrash)
             var state = RecordingsState(callsFolder: source)
-            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage, deleted: { _ in }), reserve: MoveFolderClaim(storage: storage).take, release: MoveFolderClaim(storage: storage).release,
+            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage, release: testTranscriptBuild.release, deleted: { _ in }), reserve: MoveFolderClaim(storage: storage).take, release: MoveFolderClaim(storage: storage).release,
                 storeFolder: { folder in try await storage.commitFolder(folder, commit: {}) }, describe: russianSettings.callsFailure)
             var observedMoves: [CallsFolderMove] = []
             func send(_ event: RecordingsEvent) async {
@@ -146,7 +146,7 @@ import Testing
             }
             let storage = CallsStorage(folder: source, journal: root.appendingPathComponent("moves.json"),
                 writeJournal: { try JSONEncoder().encode($0).write(to: $1, options: .atomic) },
-                makeCalls: { folder in
+                readPart: { _, _ in throw CocoaError(.fileReadUnknown) }, makeCalls: { folder in
                     Calls(folder: folder, timeZone: .gmt,
                         duration: { _ in 0 },
                         transcript: { _ in [] },
@@ -166,7 +166,7 @@ import Testing
                             try FileManager.default.removeItem(at: url)
                         }))
                 })
-            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage, deleted: { _ in }), reserve: MoveFolderClaim(storage: storage).take, release: MoveFolderClaim(storage: storage).release,
+            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage, release: testTranscriptBuild.release, deleted: { _ in }), reserve: MoveFolderClaim(storage: storage).take, release: MoveFolderClaim(storage: storage).release,
                 storeFolder: { _ in stored.withLock { $0 = true } }, describe: russianSettings.callsFailure)
             var state = RecordingsState(callsFolder: source)
             var events: [RecordingsEvent] = []

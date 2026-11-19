@@ -105,14 +105,16 @@ struct TranscriptFinalizationShutdownTests {
         assert(state, .published(calls: ["a"]), delivers: nil)
     }
 
-    @Test func cleaningCallIsFinalAsWritten_state() {
-        assert(makeState(makeCall(.cleaning, far: "far")), .shutdown) {
+    @Test func cleaningCallCommitsAsWritten_state() {
+        assert(makeState(makeCall(.cleaning, names: "names", far: "far", outcomes: .init(split: .done(diarizer: "vbx")))), .shutdown) {
             $0.shuttingDown = true
-            $0.calls[callID]?.stage = .finalized
+            $0.calls[callID]?.stage = .committing
+            $0.calls[callID]?.outcomes.cleaning = .skipped
         }
     }
-    @Test func cleaningCallIsFinalAsWritten_effect() {
-        assert(makeState(makeCall(.cleaning, far: "far")), .shutdown, delivers: .stopCleaning([callID: final()]))
+    @Test func cleaningCallCommitsAsWritten_effect() {
+        assert(makeState(makeCall(.cleaning, names: "names", far: "far", outcomes: .init(split: .done(diarizer: "vbx")))), .shutdown,
+               delivers: .stopCleaning([callID: commit(names: "names", far: "far", outcomes: .init(split: .done(diarizer: "vbx"), cleaning: .skipped))]))
     }
 
     /// Diarizing and committing replace the file; the final form waits for that write.
@@ -125,14 +127,15 @@ struct TranscriptFinalizationShutdownTests {
         assert(makeState(makeCall(stage, heard: "h"), inputEnded: true), .shutdown, delivers: nil)
     }
 
-    @Test func diarizedAfterShutdownIsFinalWithoutCleaning_state() {
-        assert(makeState(makeCall(.diarizing), shuttingDown: true), .diarized(call: callID, "far")) {
-            $0.calls[callID]?.stage = .finalized
+    @Test func diarizedAfterShutdownCommitsWithoutCleaning_state() {
+        assert(makeState(makeCall(.diarizing), shuttingDown: true), .diarized(call: callID, .init(far: "far", diarizer: "nemotron"))) {
+            $0.calls[callID]?.stage = .committing
+            $0.calls[callID]?.outcomes = .init(split: .done(diarizer: "nemotron"), cleaning: .skipped)
             $0.calls[callID]?.far = "far"
         }
     }
-    @Test func diarizedAfterShutdownIsFinalWithoutCleaning_effect() {
-        assert(makeState(makeCall(.diarizing), shuttingDown: true), .diarized(call: callID, "far"), delivers: published())
+    @Test func diarizedAfterShutdownCommitsWithoutCleaning_effect() {
+        assert(makeState(makeCall(.diarizing), shuttingDown: true), .diarized(call: callID, .init(far: "far", diarizer: "nemotron")), delivers: .commit(call: callID, "raw", nil, "far", nil, .init(split: .done(diarizer: "nemotron"), cleaning: .skipped)))
     }
 
     @Test func committedAfterShutdownIsFinal_state() {
@@ -144,14 +147,15 @@ struct TranscriptFinalizationShutdownTests {
         assert(makeState(makeCall(.committing, heard: "h"), shuttingDown: true), .committed(call: callID, succeeded: true), delivers: published())
     }
 
-    @Test func closedAfterShutdownIsFinalWithoutDiarizing_state() {
+    @Test func closedAfterShutdownCommitsWithoutDiarizing_state() {
         assert(makeState(makeCall(), shuttingDown: true), .closed(call: callID, names: "names")) {
-            $0.calls[callID]?.stage = .finalized
+            $0.calls[callID]?.stage = .committing
+            $0.calls[callID]?.outcomes = .init(split: .skipped, cleaning: .skipped)
             $0.calls[callID]?.names = "names"
         }
     }
-    @Test func closedAfterShutdownIsFinalWithoutDiarizing_effect() {
-        assert(makeState(makeCall(), shuttingDown: true), .closed(call: callID, names: "names"), delivers: published())
+    @Test func closedAfterShutdownCommitsWithoutDiarizing_effect() {
+        assert(makeState(makeCall(), shuttingDown: true), .closed(call: callID, names: "names"), delivers: .commit(call: callID, "raw", "names", nil, nil, .init(split: .skipped, cleaning: .skipped)))
     }
 
     /// A cleanup result that arrives after its call was settled is dropped.
@@ -170,12 +174,12 @@ struct TranscriptFinalizationShutdownTests {
         assert(State(calls: [callID: makeCall(.finalized, published: true)], shuttingDown: true, inputEnded: true, settled: true), .shutdown, delivers: nil)
     }
 
-    @Test func shutdownSettlesEveryCleaningCallAtOnce() {
+    @Test func shutdownCommitsEveryCleaningCall() {
         let (sut, spy) = makeSUT(stub: ["e"])
         let state = State(calls: ["a": makeCall(.cleaning, raw: "ra"), "b": makeCall(.cleaning, raw: "rb", far: "fb"), "c": makeCall(.diarizing)])
         let effect = sut.reduce(state, .shutdown).1
-        #expect(effect == .stopCleaning(["a": final(["e"]), "b": final(["e"])]))
-        #expect(Set(spy.requests.map(\.raw)) == ["ra", "rb"])
-        #expect(spy.requests.first { $0.raw == "rb" }?.far == "fb")
+        #expect(effect == .stopCleaning(["a": commit("ra", outcomes: .init(cleaning: .skipped)),
+                                         "b": commit("rb", far: "fb", outcomes: .init(cleaning: .skipped))]))
+        #expect(spy.requests.isEmpty)
     }
 }

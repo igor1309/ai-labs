@@ -125,6 +125,7 @@ public protocol RecordingStorage: Sendable {
 public struct ComposerBoundary: Sendable {
     public var bleedCleaning: any MicrophoneCleaning<CleanupRecording, [Float]>
     public var bleedHearing: any CleanedHearing<[Float], [TranscriptSegment]>
+    public var transcriptBuild: TranscriptBuild
     public var capturePersistence: CapturePersistence
     public var microphone: any MicrophoneSource
     public var callAudio: any CallAudioSource
@@ -146,7 +147,7 @@ public struct ComposerBoundary: Sendable {
     /// Moves a deleted call's folder to the Trash.
     public var trash: @Sendable (URL) throws -> Void
 
-    public init(capturePersistence: CapturePersistence, microphone: any MicrophoneSource, callAudio: any CallAudioSource,
+    public init(transcriptBuild: TranscriptBuild, capturePersistence: CapturePersistence, microphone: any MicrophoneSource, callAudio: any CallAudioSource,
                 recognizers: any RecognizerSource, processes: any CallProcessSource, access: any CallAudioAccessSource,
                 microphonePermission: any MicrophonePermission, capacity: any FolderCapacity,
                 time: any ComposerClock, log: any LogSink, intervals: ProfileIntervals,
@@ -155,6 +156,7 @@ public struct ComposerBoundary: Sendable {
                 bleedHearing: any CleanedHearing<[Float], [TranscriptSegment]>, transcripts: any TranscriptStorage,
                 preferredLanguages: @escaping @Sendable () -> [String] = { Locale.preferredLanguages },
                 browser: @escaping @Sendable () -> BrowserChannel? = { nil }) {
+        self.transcriptBuild = transcriptBuild
         self.browser = browser
         self.preferredLanguages = preferredLanguages
         self.bleedCleaning = bleedCleaning; self.bleedHearing = bleedHearing

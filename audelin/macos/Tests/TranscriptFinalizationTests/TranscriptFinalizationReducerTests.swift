@@ -24,7 +24,7 @@ struct TranscriptFinalizationReducerTests {
         $0.calls[callID]?.stage = .diarizing
         $0.calls[callID]?.names = "names"
     } }
-    @Test func closingASavedCallDiarizes_effect() { assert(makeState(makeCall()), .closed(call: callID, names: "names"), delivers: .diarize(call: callID, "raw")) }
+    @Test func closingASavedCallDiarizes_effect() { assert(makeState(makeCall()), .closed(call: callID, names: "names"), delivers: .diarize(call: callID, "raw", .init())) }
 
     @Test func closingAfterAFailedWriteIsFinalAsSaved_state() {
         assert(makeState(makeCall(saved: false)), .closed(call: callID, names: "names")) {
@@ -44,17 +44,18 @@ struct TranscriptFinalizationReducerTests {
     }
 
     @Test func diarizedFarSideIsCleaned_state() {
-        assert(makeState(makeCall(.diarizing)), .diarized(call: callID, "far")) {
+        assert(makeState(makeCall(.diarizing)), .diarized(call: callID, .init(far: "far", diarizer: "nemotron"))) {
             $0.calls[callID]?.stage = .cleaning
             $0.calls[callID]?.far = "far"
+            $0.calls[callID]?.outcomes.split = .done(diarizer: "nemotron")
         }
     }
     @Test func diarizedFarSideIsCleaned_effect() {
-        assert(makeState(makeCall(.diarizing)), .diarized(call: callID, "far"), delivers: .clean(call: callID, "raw", "far"))
+        assert(makeState(makeCall(.diarizing)), .diarized(call: callID, .init(far: "far", diarizer: "nemotron")), delivers: .clean(call: callID, "raw", "far"))
     }
 
     @Test func failedDiarizationCleansTheWrittenText_state() {
-        assert(makeState(makeCall(.diarizing)), .diarized(call: callID, nil)) { $0.calls[callID]?.stage = .cleaning }
+        assert(makeState(makeCall(.diarizing)), .diarized(call: callID, nil)) { $0.calls[callID]?.stage = .cleaning; $0.calls[callID]?.outcomes.split = .nothingKept }
     }
     @Test func failedDiarizationCleansTheWrittenText_effect() {
         assert(makeState(makeCall(.diarizing)), .diarized(call: callID, nil), delivers: .clean(call: callID, "raw", nil))
@@ -64,18 +65,19 @@ struct TranscriptFinalizationReducerTests {
         assert(makeState(makeCall(.cleaning, names: "names", far: "far")), .cleaned(call: callID, "heard")) {
             $0.calls[callID]?.stage = .committing
             $0.calls[callID]?.heard = "heard"
+            $0.calls[callID]?.outcomes.cleaning = .done
         }
     }
     @Test func heardMicrophoneIsCommitted_effect() {
         assert(makeState(makeCall(.cleaning, names: "names", far: "far")), .cleaned(call: callID, "heard"),
-               delivers: .commit(call: callID, "raw", "names", "far", "heard"))
+               delivers: .commit(call: callID, "raw", "names", "far", "heard", .init(cleaning: .done)))
     }
 
     @Test func keptMicrophoneIsFinal_state() {
-        assert(makeState(makeCall(.cleaning, far: "far")), .cleaned(call: callID, nil)) { $0.calls[callID]?.stage = .finalized }
+        assert(makeState(makeCall(.cleaning, far: "far")), .cleaned(call: callID, nil)) { $0.calls[callID]?.stage = .committing; $0.calls[callID]?.outcomes.cleaning = .nothingKept }
     }
     @Test func keptMicrophoneIsFinal_effect() {
-        assert(makeState(makeCall(.cleaning, far: "far")), .cleaned(call: callID, nil), delivers: published())
+        assert(makeState(makeCall(.cleaning, far: "far")), .cleaned(call: callID, nil), delivers: .commit(call: callID, "raw", nil, "far", nil, .init(cleaning: .nothingKept)))
     }
 
     @Test func committedCleanupIsFinal_state() {
@@ -105,7 +107,7 @@ struct TranscriptFinalizationReducerTests {
     }
     @Test func callsAreIndependent_effect() {
         let state = State(calls: ["other": makeCall(.diarizing), callID: makeCall()])
-        assert(state, .closed(call: callID, names: "names"), delivers: .diarize(call: callID, "raw"))
+        assert(state, .closed(call: callID, names: "names"), delivers: .diarize(call: callID, "raw", .init()))
     }
 
     /// Each stage takes only its own result; a final call takes nothing.
@@ -121,7 +123,7 @@ struct TranscriptFinalizationEntriesTests {
                                (makeState(shuttingDown: true), .opened(call: callID)),
                                (makeState(shuttingDown: true), .wrote(call: callID, "saved")),
                                (makeState(), Event.wrote(call: callID, "a")), (makeState(makeCall()), .closed(call: callID, names: "names")),
-                               (makeState(makeCall(.diarizing)), .diarized(call: callID, "far")),
+                               (makeState(makeCall(.diarizing)), .diarized(call: callID, .init(far: "far", diarizer: "nemotron"))),
                                (makeState(makeCall(.cleaning)), .cleaned(call: callID, "heard"))] + outOfStage {
             _ = sut.reduce(state, event)
         }
@@ -144,7 +146,7 @@ struct TranscriptFinalizationEntriesTests {
 
     @Test func keptMicrophoneEntriesTakeTheFarSide() {
         let (sut, spy) = makeSUT(stub: ["kept"])
-        let effect = sut.reduce(makeState(makeCall(.cleaning, far: "far")), .cleaned(call: callID, nil)).1
+        let effect = sut.reduce(makeState(makeCall(.committing, far: "far", outcomes: .init(cleaning: .nothingKept))), .committed(call: callID, succeeded: true)).1
         #expect(spy.requests == [.init(raw: "raw", far: "far", heard: nil)])
         #expect(effect == published(["kept"]))
     }
@@ -165,13 +167,13 @@ struct TranscriptFinalizationEntriesTests {
 
     @Test func emptyEntriesAreNotUsable() {
         let (sut, _) = makeSUT(stub: [])
-        #expect(sut.reduce(makeState(makeCall(.cleaning)), .cleaned(call: callID, nil)).1 == published([]))
+        #expect(sut.reduce(makeState(makeCall(.committing)), .committed(call: callID, succeeded: true)).1 == published([]))
     }
 }
 
 let outOfStage: [(State, Event)] = {
     let all: [Event] = [
-        .wrote(call: callID, "x"), .writeFailed(call: callID), .closed(call: callID, names: "names"), .diarized(call: callID, "f"),
+        .wrote(call: callID, "x"), .writeFailed(call: callID), .closed(call: callID, names: "names"), .diarized(call: callID, .init(far: "f", diarizer: "nemotron")),
         .cleaned(call: callID, "h"), .committed(call: callID, succeeded: true), .published(calls: [callID]), .opened(call: callID),
     ]
     let accepted: [State.Stage: Set<Int>] = [.writing: [0, 1, 2], .diarizing: [3], .cleaning: [4], .committing: [5], .finalized: [6], .failed: [6]]

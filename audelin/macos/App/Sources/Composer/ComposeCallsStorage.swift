@@ -15,9 +15,18 @@ func callsStorage(folder: URL, timeZone: TimeZone, journal: URL? = nil, trash: @
                   writeJournal: @escaping @Sendable (CallsJournal, URL) throws -> Void = CallsStorage.writeAtomically) -> CallsStorage {
     var disk = CallsDisk.system
     disk.trash = trash
+    let makeCalls: @Sendable (URL) -> Calls = { [disk] in
+        Calls(folder: $0, timeZone: timeZone, duration: TrackFile.duration(at:), transcript: transcriptLines, disk: disk)
+    }
     return CallsStorage(folder: folder, journal: journal, writeJournal: writeJournal,
-                        makeCalls: { [disk] in Calls(folder: $0, timeZone: timeZone, duration: TrackFile.duration(at:),
-                                                     transcript: transcriptLines, disk: disk) })
+                        readPart: { folder, id in try storedMergePart(makeCalls(folder.deletingLastPathComponent()), id: id) },
+                        makeCalls: makeCalls)
+}
+
+/// Translates Calls' persisted part into the storage boundary's merge input.
+func storedMergePart(_ calls: Calls, id: String) throws -> CallsStorage.Part {
+    let part = try calls.part(id: id)
+    return .init(transcript: part.transcript, originalStarts: part.originalStarts)
 }
 
 /// Recording's port to the calls-folder claim, answered by the one CallsStorage.
@@ -72,6 +81,7 @@ func transcriptLines(_ markdown: String) -> [Calls.Text.Line] {
 
 struct SummaryCalls: RecordingsCalls {
     let storage: CallsStorage
+    let release: TranscriptFormat.Release
     let deleted: @Sendable (String) async -> Void
     /// Hands the notes side the merged call, its parts and the joined transcript's entries.
     var merged: @Sendable (String, [String], [Job.Entry]) async -> Void = { _, _, _ in }
@@ -97,7 +107,7 @@ struct SummaryCalls: RecordingsCalls {
     func prepareMove(to destination: URL) async throws -> [MoveCall] { try await storage.prepareMove(to: destination) }
     func move(id: String, to destination: URL) async throws -> Int64 { try await storage.move(id: id, to: destination) }
     func merge(ids: [String]) async throws -> String {
-        let merged = try await mergeCalls(ids: ids, storage: storage, binding: binding)
+        let merged = try await mergeCalls(ids: ids, storage: storage, binding: binding, release: release)
         await self.merged(merged.id, ids, merged.entries)
         return merged.id
     }

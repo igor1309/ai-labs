@@ -23,7 +23,7 @@ func makeStorage(folder: URL, journal: URL? = nil,
     var disk = CallsDisk.system
     disk.trash = removeForTrash
     return CallsStorage(folder: folder, journal: journal, writeJournal: writeJournal,
-                        makeCalls: { [disk] in Calls(folder: $0, timeZone: .gmt, duration: { _ in 0 }, transcript: { _ in [] }, disk: disk) })
+                        readPart: { _, _ in throw CocoaError(.fileReadUnknown) }, makeCalls: { [disk] in Calls(folder: $0, timeZone: .gmt, duration: { _ in 0 }, transcript: { _ in [] }, disk: disk) })
 }
 
 enum ScriptFailure: Error, Equatable { case failed }

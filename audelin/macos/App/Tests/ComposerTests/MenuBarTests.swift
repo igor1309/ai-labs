@@ -35,6 +35,7 @@ struct MenuBarTests {
                 let panelClock = ReadingClockSpy()
                 let permissionRead = Signal()
                 let boundary = ComposerBoundary(
+                    transcriptBuild: testTranscriptBuild,
                     capturePersistence: .recorded,
                     microphone: FixtureMicrophone(begin: {
                         events.append("microphone started")

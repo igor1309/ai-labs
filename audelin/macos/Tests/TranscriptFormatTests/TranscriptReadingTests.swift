@@ -99,17 +99,20 @@ struct TranscriptReadingTests {
             .init(side: .mine, start: 1, settled: "hello", pending: ""),
             .init(side: .theirs, start: 5, settled: "hi from Ann", pending: "", speaker: "a"),
             .init(side: .theirs, start: 9, settled: "late words", pending: "", filledInLater: true, speaker: "b"),
+            .gap(at: 10, length: 1),
             .init(side: .mine, start: 12, settled: "first\n\nsecond", pending: ""),
-        ], speakers: speakers)
+        ], speakers: speakers, origin: fixtureOrigin)
         let saved = TranscriptFormat.read(text)
         #expect(saved.speakers == speakers)
+        #expect(saved.origin == fixtureOrigin)
         #expect(saved.segments == [
             .init(side: .mine, start: 1, settled: "hello", pending: ""),
             .init(side: .theirs, start: 5, settled: "hi from Ann", pending: "", speaker: "a"),
             .init(side: .theirs, start: 9, settled: "late words", pending: "", filledInLater: true, speaker: "b"),
+            .gap(at: 10, length: 1),
             .init(side: .mine, start: 12, settled: "first\n\nsecond", pending: ""),
         ])
-        #expect(try rendered(saved.segments, speakers: saved.speakers) == text)
+        #expect(try rendered(saved.segments, speakers: saved.speakers, origin: saved.origin) == text)
     }
 
     @Test func aLoneSpeakerAndPartsWithoutWordsReadBack() throws {
@@ -168,9 +171,9 @@ struct TranscriptReadingTests {
     }
 }
 
-private func rendered(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker] = []) throws -> String {
+private func rendered(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker] = [], origin: TranscriptFormat.Origin? = nil) throws -> String {
 
     var format = TranscriptFormat()
-    let rendering = try format.render(segments, speakers: speakers)
+    let rendering = try format.render(segments, speakers: speakers, origin: origin)
     return rendering.chunks.map { String(decoding: $0, as: UTF8.self) }.joined()
 }

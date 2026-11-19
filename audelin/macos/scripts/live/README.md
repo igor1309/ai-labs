@@ -7,7 +7,7 @@ no component test reaches.
 
 | Script (from `audelin/macos`) | Proves |
 |---|---|
-| `sh scripts/live-calls-summary.sh` | A call's template menu refreshes and makes notes; regeneration rotates or replaces versions; switching, keeping, edited templates, failure reasons and cancellation preserve the shown pair. |
+| `sh scripts/live-calls-summary.sh` | A call's template menu refreshes and makes notes; regeneration rotates or replaces versions; switching, keeping, edited templates, failure reasons and cancellation preserve the shown pair; a call whose transcript tells no origin reads with its notes; notes are made from the said words without the origin. |
 | `sh scripts/live-calls-merge.sh` | Merging calls in the calls window, end to end (below). |
 | `sh scripts/live-calls-tags.sh` | Tags typed in the detail are written to the call's folder and shown in its row and the strip; a chip filters the list; merged calls keep both parts' tags. |
 | `sh scripts/live-calls-rename.sh` | Renaming a call in the list: Return saves without opening the folder; clicking, right-clicking or arrowing to another row saves; Escape cancels (below). |
@@ -66,9 +66,11 @@ that binding fail. Opening a call's folder writes `state/control/opened-<uuid>`
 holding the folder's path, so a driver can check that nothing was opened.
 `--seed merge` writes calls through the app's own track and transcript writers
 before launch: A at 10:00 and B at 10:06, one call cut off, each with two remote
-speakers and notes; C, whose transcript failed (a track, no transcript); and D,
-with a transcript and no notes. `--seed interrupted-merge` writes the same calls as
-a crash leaves a merge of A and B: B inside the merge's prepared folder.
+speakers and notes, and each transcript's origin naming its own version; C, whose
+transcript failed (a track, no transcript); and D, with a transcript that tells no
+origin and no notes. `--seed interrupted-merge` writes the same calls as a crash
+leaves a merge of A and B: B inside the merge's prepared folder. `--seed legacy-merge`
+writes them as a merge of A and B made before transcripts told their origin.
 
 ## Merging calls
 
@@ -80,7 +82,9 @@ a crash leaves a merge of A and B: B inside the merge's prepared folder.
 2. A and B merge into one call at A's start, its length the span to B's end. Its
    transcript holds A, a gap row, then B, with each part's remote speakers labelled
    apart. The parts' folders are kept whole inside it and nothing goes to the
-   Trash. Its notes are made from the joined transcript.
+   Trash. Its notes are made from the joined transcript. Its transcript tells A's
+   and B's origins by their starts, in order, and the rehearsal's release as the
+   merger. Merging it with D then lists A, B and D once each, D as unknown.
 3. A and D, with calls between them, warn first; going back keeps the marks, and
    merging anyway merges.
 4. With the calls folder read-only the merge fails, says why, and the calls stay.
@@ -88,6 +92,8 @@ a crash leaves a merge of A and B: B inside the merge's prepared folder.
    merge mode does not open; once the notes are done it opens.
 6. An interrupted merge is put back whole on launch: B returns to the list and the
    prepared folder is gone.
+7. A merge made before origins, merged with D, lists A, B and D by their starts,
+   each as unknown.
 
 The run removes the seeded folders and keeps the screenshots and the merged
 transcript.

@@ -55,7 +55,8 @@ struct TranscriptFinalizationCompositionTests {
             let boundary = rehearsalBoundary(capturePersistence: .recorded,
                 microphone: { throw ScriptFailure.failed }, call: { _ in throw ScriptFailure.failed },
                 mine: RehearsalRecognizer(SessionRecognizer(name: "mine")), theirs: RehearsalRecognizer(SessionRecognizer(name: "theirs")),
-                now: clock.time.now, timeZone: { .gmt }, sleep: clock.sleep, intervals: testIntervals)
+                now: clock.time.now, timeZone: { .gmt }, sleep: clock.sleep, intervals: testIntervals,
+                transcriptBuild: testTranscriptBuild)
             let resources = FinalizationResources(), events = Values<String>()
             let finalization = TranscriptFinalizationModel(diarizing: FinalizationDiarizing(resources: resources),
                 cleanup: FinalizationCleanup(resources: resources), replacement: FinalizationReplacement(resources: resources),
@@ -91,7 +92,8 @@ struct TranscriptFinalizationCompositionTests {
             var boundary = rehearsalBoundary(capturePersistence: .recorded,
                 microphone: { throw ScriptFailure.failed }, call: { _ in throw ScriptFailure.failed },
                 mine: RehearsalRecognizer(SessionRecognizer(name: "mine")), theirs: RehearsalRecognizer(SessionRecognizer(name: "theirs")),
-                now: clock.time.now, timeZone: { .gmt }, sleep: clock.sleep, intervals: testIntervals)
+                now: clock.time.now, timeZone: { .gmt }, sleep: clock.sleep, intervals: testIntervals,
+                transcriptBuild: testTranscriptBuild)
             boundary.time = clock.time
             boundary.transcripts = OpeningTranscriptStorage(opening: opening, open: open)
             let resources = FinalizationResources()
@@ -142,7 +144,8 @@ struct TranscriptFinalizationCompositionTests {
             var boundary = rehearsalBoundary(capturePersistence: .recorded,
                 microphone: { microphone.started }, call: { _ in callAudio.started },
                 mine: RehearsalRecognizer(SessionRecognizer(name: "mine")), theirs: RehearsalRecognizer(SessionRecognizer(name: "theirs")),
-                now: clock.time.now, timeZone: { .gmt }, sleep: clock.sleep, intervals: testIntervals)
+                now: clock.time.now, timeZone: { .gmt }, sleep: clock.sleep, intervals: testIntervals,
+                transcriptBuild: testTranscriptBuild)
             boundary.time = clock.time
             boundary.transcripts = FileTranscriptStorage(diarizer: CompositionDiarizer {
                 diarizations.append("entered")
@@ -175,7 +178,7 @@ struct TranscriptFinalizationCompositionTests {
             #expect(savedCall.value.published)
             #expect(finalization.state.inputEnded && finalization.state.settled)
             #expect(resources.resource(call: savedCall.key) == nil)
-            #expect(try String(contentsOf: URL(fileURLWithPath: savedCall.key).appendingPathComponent("transcript.md"), encoding: .utf8)
+            #expect(try transcriptBody(at: URL(fileURLWithPath: savedCall.key).appendingPathComponent("transcript.md"))
                 == "# Transcript\n\n**Me** 00:00:00\nmine final\n\n**Them** 00:00:00\ntheirs final\n")
         }
     }
@@ -268,8 +271,8 @@ private final class FinalizationHTTP: HTTPRequesting, Sendable {
 private struct OpeningTranscriptStorage: TranscriptStorage {
     let opening: Signal
     let open: Signal
-    func open(at url: URL, names: RecordingNames, sink: any LogSink) async throws -> OpenedTranscript {
-        let file = try await FileTranscriptStorage(diarizer: CallDiarizer.unavailable).open(at: url, names: names, sink: sink)
+    func open(at url: URL, names: RecordingNames, origin: TranscriptOrigin, sink: any LogSink) async throws -> OpenedTranscript {
+        let file = try await FileTranscriptStorage(diarizer: CallDiarizer.unavailable).open(at: url, names: names, origin: origin, sink: sink)
         opening.send()
         await open.next()
         return file

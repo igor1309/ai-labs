@@ -1,3 +1,4 @@
+import TranscriptFinalization
 import CallDiarizer
 import TranscriptFormat
 import CallDetail
@@ -109,6 +110,27 @@ struct SummaryCompositionTests {
             } catch { await rig.finish(); throw error }
         }
     }
+    /// Notes are made from the final transcript's entries, so the origin the file tells
+    /// never reaches the notes request.
+    @Test func notesRequestCarriesTheWordsWithoutTheOrigin() async throws {
+        try await withComposeFolder { root in
+            let http = ControlledHTTP(hold: false)
+            let rig = try await fixture(root: root, storage: ControlledTranscripts(), http: http)
+            do {
+                try await rig.start(); await rig.mine.heard.next(); await rig.theirs.heard.next()
+                try await rig.stop()
+                _ = try await summary(rig.menu) { $0.values.contains("Итоги готовы") }
+                #expect(TranscriptFormat.read(try await transcriptFile(of: rig)).origin?.calls.first?.origin?.hearing == testTranscriptBuild.release)
+                let body = await http.lastBody
+                #expect(body.contains("mine final") && body.contains("theirs final"))
+                for told in [testTranscriptBuild.release.version, testTranscriptBuild.release.build, testTranscriptBuild.mine, testTranscriptBuild.theirs, "schemaVersion"] {
+                    #expect(!body.contains(told), "the notes request holds the origin's \(told)")
+                }
+                await rig.finish()
+            } catch { await rig.finish(); throw error }
+        }
+    }
+
     @Test func waitForFinalWriteThenPublishAndShowStatus() async throws {
         try await withComposeFolder { root in
             let storage = ControlledTranscripts(holdFinal: true), http = ControlledHTTP(hold: false)
@@ -443,8 +465,8 @@ private final class ControlledTranscripts: TranscriptStorage, Sendable {
     init(holdFinal: Bool = false, failEarly: Bool = false, failFinal: Bool = false) {
         self.holdFinal = holdFinal; self.failEarly = failEarly; self.failFinal = failFinal
     }
-    func open(at url: URL, names: RecordingNames, sink: any LogSink) async throws -> OpenedTranscript {
-        let opened = try await FileTranscriptStorage(diarizer: CallDiarizer.unavailable).open(at: url, names: names, sink: sink)
+    func open(at url: URL, names: RecordingNames, origin: TranscriptOrigin, sink: any LogSink) async throws -> OpenedTranscript {
+        let opened = try await FileTranscriptStorage(diarizer: CallDiarizer.unavailable).open(at: url, names: names, origin: origin, sink: sink)
         return OpenedTranscript(writer: ControlledTranscript(base: opened.writer, controls: self), pass: opened.pass, names: opened.names)
     }
 }
@@ -458,8 +480,8 @@ private struct ControlledTranscript: TranscriptWriter {
         try await base.write(state)
         controls.written.send()
     }
-    func replaceWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) async throws {
-        try await base.replaceWhole(segments, speakers: speakers)
+    func replaceWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker], outcomes: FinishingOutcomes) async throws {
+        try await base.replaceWhole(segments, speakers: speakers, outcomes: outcomes)
     }
 
     func close() async { await base.close() }

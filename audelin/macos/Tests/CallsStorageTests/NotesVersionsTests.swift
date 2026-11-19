@@ -68,7 +68,7 @@ import Testing
                 try rename(from, to)
             }
             let binding = disk
-            let storage = CallsStorage(folder: root, journal: nil, makeCalls: {
+            let storage = CallsStorage(folder: root, journal: nil, readPart: { _, _ in throw CocoaError(.fileReadUnknown) }, makeCalls: {
                 Calls(folder: $0, timeZone: .gmt, duration: { _ in 0 }, transcript: { _ in [] }, disk: binding)
             })
             let files = Files(locations: storage, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))

@@ -8,6 +8,15 @@ import Synchronization
 /// the calls journal, recovers moves a crash interrupted, runs every operation
 /// one at a time, and refuses to delete, move or commit while a move is half finished.
 public final class CallsStorage: SummaryFiles.Locations, Sendable {
+    /// The saved bytes and original recording starts needed to merge a stored call.
+    public struct Part: Equatable, Sendable {
+        public let transcript: Data
+        public let originalStarts: [Date]
+        public init(transcript: Data, originalStarts: [Date]) {
+            self.transcript = transcript; self.originalStarts = originalStarts
+        }
+    }
+
     private struct State {
         var recordingFolder: URL
         var journal = CallsJournal()
@@ -15,6 +24,7 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
     private let state: Mutex<State>
     private let journal: URL?
     private let writeJournal: @Sendable (CallsJournal, URL) throws -> Void
+    private let readPart: @Sendable (URL, String) throws -> Part
     private let makeCalls: @Sendable (URL) -> Calls
     // Every operation, including summary writes through withFolder, takes this turn,
     // so one waiting for a long folder move suspends instead of blocking a thread.
@@ -24,10 +34,12 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
     let folderClaim = Mutex<(holder: (CallsFolderHolder, CallsFolderToken)?, lastToken: UInt64)>((nil, 0))
 
     /// `journal` is where the journal is kept; nil keeps it in memory only.
-    /// `makeCalls` opens the calls of one folder.
+    /// `makeCalls` opens the calls of one folder; `readPart` reads a resolved call folder for merging.
     public init(folder: URL, journal: URL?, writeJournal: @escaping @Sendable (CallsJournal, URL) throws -> Void = CallsStorage.writeAtomically,
+                readPart: @escaping @Sendable (URL, String) throws -> Part,
                 makeCalls: @escaping @Sendable (URL) -> Calls) {
         state = Mutex(State(recordingFolder: directory(folder)))
+        self.readPart = readPart
         self.journal = journal; self.writeJournal = writeJournal; self.makeCalls = makeCalls
     }
 
@@ -193,6 +205,11 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
     public func savedTranscript(id: String) async throws -> Data {
         try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).savedTranscript(id: id) } }
     }
+    /// Reads a merge part within the same turn that resolves its folder.
+    public func part(id: String) async throws -> Part {
+        try await perform { [self] in try folder(call: id) { try readPart($0, id) } }
+    }
+
     /// Merges calls of the calls folder into one, the earliest part's, with what `write`
     /// puts in the prepared folder it is given beside the parts' resolved folders, in the
     /// order of `ids`, within this storage's turn; returns the merged call's id. A failing

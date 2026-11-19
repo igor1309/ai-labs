@@ -120,7 +120,9 @@ public struct CallsListView: View {
 
     /// The duration and tags, and in merge mode whether the row is marked.
     private func rowValue(_ row: CallsListState.Row) -> String {
-        let value = ([row.duration] + row.tags.map { "#" + $0 }).joined(separator: ", ")
+        // The row is one accessibility element, so its visible transcript match belongs in its value.
+        let snippet = row.match?.snippet.map { [$0.place, $0.text] } ?? []
+        let value = ([row.duration] + row.tags.map { "#" + $0 } + snippet).joined(separator: ", ")
         guard let merge = state.merge else { return value }
         return value + ", " + text(merge.marked.contains(row.id) ? .markOn : .markOff)
     }
