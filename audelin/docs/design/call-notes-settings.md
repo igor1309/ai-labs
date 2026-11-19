@@ -7,14 +7,14 @@ runtime fields, cards and navigation use existing Glass Ledger tokens only.
 
 ## Layout and interaction
 
-Content is 620 pt wide, padded 24 pt, with 16 pt vertical gaps. Native window chrome is not drawn. Production scrolls the content when the desktop
+The window is 508 pt wide: 460 pt of content, padded 24 pt, with 16 pt vertical gaps. Each section's name is a header above its controls; on/off settings sit in a grouped card, one switch row each. Native window chrome is not drawn. Production scrolls the content when the desktop
 cannot accommodate its height. There is no mobile layout.
 
 Automatic notes defaults off; all runtime fields remain editable while off.
 Speaker identification is a separate opt-in. Each runtime has an editable kind
 and model; CLI has an executable field, API has endpoint and optional credential
 environment-variable name. Never display or persist the credential value.
-Use native text editing, keyboard traversal, menus, checkboxes and buttons.
+Use native text editing, keyboard traversal, menus, switches and buttons. On/off settings are System Settings rows: the title and its note on the left, a native switch on the right.
 The design's drawn menu chevron is replaced with the native menu affordance.
 
 Primary defaults to Claude Code CLI / sonnet with automatic executable discovery.

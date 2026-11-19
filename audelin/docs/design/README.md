@@ -125,7 +125,7 @@ from instances.
 | Settings row | `W8h2bZ` | `Name`; replace `Control` with the row's control |
 | Live panel | `c0qJn` | The glass panel shell; replace `Body` with the header, banners and log |
 | Added late | `HIqfu` | `Late label`; the group of minutes filled in after live text is switched on mid-call |
-| Checkbox/On, /Off | `ufHXu`, `zhXsW` | `Label` |
+| Switch/On, /Off | `ufHXu`, `zhXsW` | `Label` |
 | Eye, /Active, /Disabled; Calls row/Selected; Summary preview | on the board "Glass Ledger — summary preview components" | see [summary preview brief](summary-preview.md); Calls row has a hidden `Eye cell` |
 | Sheet | `w9b9LL` | Scrim with a centred Alert; set x, y and size to the window under the title bar, and override the Alert through `Alert/<id>` |
 

@@ -1,6 +1,8 @@
 # Log
 
-## 2026-11-18
+## 2026-11-19
+
+- Settings use native macOS switches, grouped in cards as in System Settings, and the window is narrower: 508 pt on every tab.
 
 - Segmented controls (Settings tabs, Language, Appearance, chunk size, Предыдущие / Текущие) no longer draw an accent ring around the selected segment under keyboard focus.
 

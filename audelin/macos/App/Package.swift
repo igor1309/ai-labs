@@ -50,6 +50,7 @@ let package = Package(
         .target(
             name: "CallsWindowShell",
             dependencies: [
+                .product(name: "SettingsUI", package: "macos"),
                 .product(name: "CallDetail", package: "macos"),
                 .product(name: "NotesMenu", package: "macos"),
                 "Composer",

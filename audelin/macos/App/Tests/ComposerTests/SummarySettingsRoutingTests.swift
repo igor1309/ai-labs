@@ -146,8 +146,9 @@ private func expectedNotes() -> NotesPreferences {
     })
     #expect(inputs == ["notes-primary-model": "primary-distinct", "notes-primary-endpoint": "http://127.0.0.1:8181/primary", "notes-primary-credentialVariable": "", "notes-fallback-model": "fallback-distinct", "notes-fallback-endpoint": "http://localhost:9191/fallback", "notes-fallback-credentialVariable": ""])
     let buttons = views.compactMap { $0 as? NSButton }
+    let switches = views.compactMap { $0 as? NSSwitch }
     for id in ["notes-automatic", "notes-speakers"] {
-        #expect(buttons.first { $0.accessibilityIdentifier() == id }?.state == .on)
+        #expect(switches.first { $0.accessibilityIdentifier() == id }?.state == .on)
     }
     #expect(buttons.first { $0.accessibilityIdentifier() == "notes-save" }?.isEnabled == canSave)
     let menus = views.compactMap { $0 as? NSPopUpButton }
