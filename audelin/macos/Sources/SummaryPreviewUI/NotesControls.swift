@@ -119,19 +119,17 @@ struct NotesVersionControl: View {
     let current: String
     let tokens: GlassLedger
     let event: (SummaryPreviewEvent) -> Void
-    @State private var focused = false
 
     var body: some View {
         let titles = [previous, current]
         let selected = version == .previous ? 0 : 1
-        SegmentTrack(count: 2, selected: selected, ring: focused ? selected : nil, fill: false, tokens: tokens) { index, isSelected in
+        SegmentTrack(count: 2, selected: selected, fill: false, tokens: tokens) { index, isSelected in
             Text(titles[index]).font(tokens.ui(tokens.typeSmall, isSelected ? .medium : .regular)).foregroundStyle(tokens.text)
         }
         .overlay {
             SegmentsTarget(titles: titles, enabled: [true, true], selected: selected, identifier: "preview.versions",
                            segmentIdentifiers: ["preview.versions.previous", "preview.versions.current"],
-                           select: { event(.chooseVersion($0 == 0 ? .previous : .current)) },
-                           focusChanged: { focused = $0 })
+                           select: { event(.chooseVersion($0 == 0 ? .previous : .current)) })
         }
     }
 }

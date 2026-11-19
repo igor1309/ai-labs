@@ -16,8 +16,6 @@ public struct SettingsView: View {
     @State var notesDetailsExpanded = false
     @State var tabsHeight: CGFloat = 0
     @State var pageHeight: CGFloat = 0
-    /// The segmented control or tab that holds keyboard focus, ringed in the accent colour.
-    @State var focusedControl: String?
 
     @Environment(\.colorScheme) private var scheme
 
@@ -93,8 +91,7 @@ extension SettingsView {
 
         segmentTrack(
             titles: control.segments.map(\.title), enabled: control.segments.map(\.isEnabled),
-            selected: control.segments.firstIndex { $0.id == control.selected },
-            ring: focusedControl == id ? control.segments.firstIndex { $0.id == control.selected } : nil
+            selected: control.segments.firstIndex { $0.id == control.selected }
         )
         .overlay { segmentsTarget(titles: control.segments.map(\.title), enabled: control.segments.map(\.isEnabled),
                                   selected: control.segments.firstIndex { $0.id == control.selected }, id: id,
@@ -104,19 +101,16 @@ extension SettingsView {
     }
 
     /// The native-style track every segmented choice in Settings draws: a
-    /// raised thumb under the selected segment and, while the control holds
-    /// keyboard focus, an accent ring around the segment that has it. The
-    /// ring sits in the track's padding, so nothing draws outside the control.
+    /// raised thumb under the selected segment. Keyboard focus draws nothing.
     func segmentTrack(
         titles: [String],
         enabled: [Bool],
         selected: Int?,
-        ring: Int?,
         data: Bool = false,
         fill: Bool = true
     ) -> some View {
 
-        SegmentTrack(count: titles.count, selected: selected, ring: ring, fill: fill, tokens: tokens) { index, isSelected in
+        SegmentTrack(count: titles.count, selected: selected, fill: fill, tokens: tokens) { index, isSelected in
             let color = enabled[index] ? tokens.text : tokens.disText
             if data {
                 dataText(titles[index], tokens.typeSmall, color, isSelected ? .medium : .regular)
@@ -127,7 +121,7 @@ extension SettingsView {
     }
 
     /// AppKit target over a segment track: focus, clicks, arrow keys and the
-    /// radio-group accessibility, reporting focus so the track draws its ring.
+    /// radio-group accessibility.
     func segmentsTarget(
         titles: [String],
         enabled: [Bool],
@@ -139,13 +133,7 @@ extension SettingsView {
 
         SegmentsTarget(
             titles: titles, enabled: enabled, selected: selected, identifier: id,
-            segmentIdentifiers: segmentIDs, select: select,
-            focusChanged: { focusChanged(id, $0) })
-    }
-
-    func focusChanged(_ id: String, _ isFocused: Bool) {
-
-        if isFocused { focusedControl = id } else if focusedControl == id { focusedControl = nil }
+            segmentIdentifiers: segmentIDs, select: select)
     }
 
     var recordingPage: some View {
@@ -177,8 +165,7 @@ extension SettingsView {
         let selected = all.firstIndex { $0.1 == state.selectedTab }
 
         return segmentTrack(
-            titles: titles, enabled: titles.map { _ in true }, selected: selected,
-            ring: focusedControl == "tabs" ? selected : nil
+            titles: titles, enabled: titles.map { _ in true }, selected: selected
         )
         .overlay {
             segmentsTarget(titles: titles, enabled: titles.map { _ in true }, selected: selected, id: "tabs",
@@ -368,7 +355,7 @@ extension SettingsView {
 
             segmentTrack(
                 titles: titles, enabled: titles.map { _ in true }, selected: selected,
-                ring: focusedControl == "chunk" ? selected : nil, data: true, fill: false
+                data: true, fill: false
             )
             .fixedSize()
             .overlay {

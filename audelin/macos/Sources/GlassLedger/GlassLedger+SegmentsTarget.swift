@@ -12,14 +12,11 @@ public struct SegmentsTarget: NSViewRepresentable {
     public var identifier: String
     public var segmentIdentifiers: [String]
     public var select: (Int) -> Void
-    /// Told when the control gains or loses keyboard focus; SwiftUI rings the selected segment.
-    public var focusChanged: (Bool) -> Void
 
     public init(titles: [String], enabled: [Bool], selected: Int?, identifier: String,
-                segmentIdentifiers: [String], select: @escaping (Int) -> Void,
-                focusChanged: @escaping (Bool) -> Void) {
+                segmentIdentifiers: [String], select: @escaping (Int) -> Void) {
         self.titles = titles; self.enabled = enabled; self.selected = selected; self.identifier = identifier
-        self.segmentIdentifiers = segmentIdentifiers; self.select = select; self.focusChanged = focusChanged
+        self.segmentIdentifiers = segmentIdentifiers; self.select = select
     }
 
     public func makeNSView(context: Context) -> SegmentsView { SegmentsView() }
@@ -27,7 +24,6 @@ public struct SegmentsTarget: NSViewRepresentable {
     public func updateNSView(_ view: SegmentsView, context: Context) {
         view.update(titles: titles, enabled: enabled, selected: selected, identifier: identifier,
                     segmentIdentifiers: segmentIdentifiers, select: select)
-        view.focusChanged = focusChanged
     }
 }
 
@@ -36,7 +32,6 @@ public final class SegmentsView: NSView {
     private var selected: Int?
     private var select: (Int) -> Void = { _ in }
     private var segments: [SegmentElement] = []
-    var focusChanged: (Bool) -> Void = { _ in }
 
     func update(titles: [String], enabled: [Bool], selected: Int?, identifier: String,
                 segmentIdentifiers: [String], select: @escaping (Int) -> Void) {
@@ -67,18 +62,6 @@ public final class SegmentsView: NSView {
 
     override public var acceptsFirstResponder: Bool { enabled.contains(true) }
     override public var canBecomeKeyView: Bool { enabled.contains(true) }
-
-    override public func becomeFirstResponder() -> Bool {
-        let became = super.becomeFirstResponder()
-        if became { focusChanged(true) }
-        return became
-    }
-
-    override public func resignFirstResponder() -> Bool {
-        let resigned = super.resignFirstResponder()
-        if resigned { focusChanged(false) }
-        return resigned
-    }
 
     override public func mouseDown(with event: NSEvent) {
         guard !segments.isEmpty, bounds.width > 0 else { return }

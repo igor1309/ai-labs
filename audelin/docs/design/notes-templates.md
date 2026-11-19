@@ -39,7 +39,7 @@ Daily writes is [../spec/daily-notes/SPEC.md](../spec/daily-notes/SPEC.md).
   above the summary that picks which set the summary shows; Текущие is
   selected after new notes. It is the app's one segmented control
   (Segmented/First, /Second): the selected set on the neutral `segThumb`,
-  never an accent fill, and an accent ring on it only under keyboard focus. The template line and the date line follow the
+  never an accent fill. Keyboard focus draws no ring. The template line and the date line follow the
   shown set.
 
 ## Making notes again
