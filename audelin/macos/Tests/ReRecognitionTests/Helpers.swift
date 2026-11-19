@@ -8,6 +8,8 @@ func word(_ text: String, _ start: Double = 1, _ end: Double = 3) -> R.Word {
 }
 
 let original = R.OriginalCall(id: "original", farTrack: "far-track", microphoneTrack: "mic-track", duration: 20)
+let second = R.OriginalCall(id: "second", farTrack: "far-track-2", microphoneTrack: "mic-track-2", duration: 10, start: 50)
+let third = R.OriginalCall(id: "third", farTrack: "far-track-3", microphoneTrack: "mic-track-3", duration: 30, start: 55)
 let build = R.Build(version: "2.1", number: "44")
 
 enum PortFailure: Error { case hearing, loading, splitting, cleaning, reading, publishing }
@@ -54,13 +56,17 @@ final class Spy: Sendable {
     let old: [R.OldSpeaker]
     let carried: [Int: String]
     let fractions: [Double]
+    let splits: [String: R.Split]
+    let cleans: [String: [R.Word]]
 
     init(split: Answer = .kept, clean: Answer = .kept, failure: PortFailure? = nil,
          hearingFailureTrack: String = "far-track", held: Stage? = nil, gate: Gate = Gate(),
-         old: [R.OldSpeaker] = [], carried: [Int: String] = [:], fractions: [Double] = [0, 0.5, 1]) {
+         old: [R.OldSpeaker] = [], carried: [Int: String] = [:], fractions: [Double] = [0, 0.5, 1],
+         splits: [String: R.Split] = [:], cleans: [String: [R.Word]] = [:]) {
         splitAnswer = split; cleanAnswer = clean; self.failure = failure
         self.hearingFailureTrack = hearingFailureTrack; self.held = held; self.gate = gate
         self.old = old; self.carried = carried; self.fractions = fractions
+        self.splits = splits; self.cleans = cleans
     }
 
     func record(_ call: Call) { records.withLock { $0.append(call) } }
@@ -78,7 +84,7 @@ final class Spy: Sendable {
         R(
             hear: { [self] track, report in
                 record(.hear(track))
-                let stage: Stage = track == "far-track" ? .hearFar : .hearMicrophone
+                let stage: Stage = track.hasPrefix("far-track") ? .hearFar : .hearMicrophone
                 if held == stage { await gate.hold() }
                 defer { record(.returned(stage)) }
                 if failure == .loading { throw PortFailure.loading }
@@ -91,7 +97,8 @@ final class Spy: Sendable {
                 switch splitAnswer {
                 case .failed: throw PortFailure.splitting
                 case .nothing: return nil
-                case .kept: return .init(speakers: [.init(id: 7, name: nil, words: [word("split")])], diarizer: "diarizer")
+                case .kept: return splits[call.id] ?? .init(
+                    speakers: [.init(id: 7, name: nil, words: [word("split")])], diarizer: "diarizer")
                 }
             },
             clean: { [self] call, words, far in
@@ -99,7 +106,7 @@ final class Spy: Sendable {
                 switch cleanAnswer {
                 case .failed: throw PortFailure.cleaning
                 case .nothing: return nil
-                case .kept: return [word("cleaned")]
+                case .kept: return cleans[call.id] ?? [word("cleaned")]
                 }
             },
             readOld: { [self] call in

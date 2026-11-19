@@ -19,7 +19,7 @@ Evidence: `ReRecognitionTests.preparingIsReportedFirst`.
 ## S-3 One fraction over every track
 
 Two original calls: every fraction precedes the first split call; hold the first split and assert no finishing before both originals' hearing ended; finishing is reported from the first split until publish returns.
-Evidence: Missing.
+Evidence: `ReRecognitionTests.oneFractionOverEveryTrack` and `ReRecognitionTests.finishingLastsUntilPublicationReturns` (single and merged).
 
 ## S-4 A split that keeps nothing still publishes
 
@@ -34,7 +34,7 @@ Evidence: `ReRecognitionTests.aCleanThatKeepsNothingStillPublishes` (nothing kep
 ## S-6 Carried names are published
 
 Name carry's fake names new speaker A: the published A carries it. On a merged call whose current transcript dropped a name its archived part still has, the fake gets only the current transcript's speakers, cut per original call's span.
-Evidence: `ReRecognitionTests.carriedNamesArePublished` (single original). Merged-current-transcript case: Missing.
+Evidence: `ReRecognitionTests.carriedNamesArePublished` and `ReRecognitionTests.mergedNamesComeOnlyFromTheCurrentTranscriptCutPerOriginal`.
 
 ## S-7 A track that cannot be heard fails
 
@@ -44,12 +44,13 @@ Evidence: `ReRecognitionTests.aTrackThatCannotBeHeardFails` (each track).
 ## S-8 A merged call names the failing call
 
 A merge of a merge, the innermost call's hear throws: no publish; the failure names that call.
-Evidence: Missing.
+Evidence: `ReRecognitionTests.aMergedCallNamesTheFailingOriginal` (each track of later originals).
 
 ## S-9 Original calls are joined
 
 A merge of a merge of three calls: each original call once, in order, with new words, each gap, a new origin per call and this build as merger.
-Evidence: Missing.
+The publish port receives the ordered finished originals, their starts and durations for gaps, speakers scoped per original, and the merger build; it owns joining and rendering.
+Evidence: `ReRecognitionTests.originalCallsAreJoined`.
 
 ## S-10 Stopping publishes nothing
 

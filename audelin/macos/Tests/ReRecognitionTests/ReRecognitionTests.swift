@@ -123,9 +123,10 @@ import Testing
                           .hearing(0.9), .hearing(1), .finishing])
     }
 
-    @Test func finishingLastsUntilPublicationReturns() async {
+    @Test(arguments: [1, 2])
+    func finishingLastsUntilPublicationReturns(count: Int) async {
         let spy = Spy(held: .publish)
-        let task = Task { await spy.run() }
+        let task = Task { await spy.run(originals: Array([original, second].prefix(count))) }
         await spy.gate.waitUntilEntered()
         let waits = spy.calls.compactMap { if case let .wait(wait) = $0 { wait } else { nil } }
         #expect(waits.last == .finishing)
@@ -147,12 +148,125 @@ import Testing
         #expect(R.carryNames(old: old, new: new) == [:])
     }
 
-    @Test(arguments: [0, 2])
-    func joiningIsRejectedBeforeAnyPort(count: Int) async {
+    @Test func emptyOriginalsAreRejectedBeforeAnyPort() async {
         let spy = Spy()
-        #expect(await spy.run(originals: Array(repeating: original, count: count)) ==
-                .failed(original: nil, reason: "Exactly one original call is supported."))
-        #expect(spy.calls == [.outcome(.failed(original: nil, reason: "Exactly one original call is supported."))])
+        #expect(await spy.run(originals: []) ==
+                .failed(original: nil, reason: "At least one original call is required."))
+        #expect(spy.calls == [.outcome(.failed(original: nil, reason: "At least one original call is required."))])
+    }
+
+    @Test func oneFractionOverEveryTrack() async {
+        let spy = Spy(held: .split, fractions: [0, 0.5, 0.2, .nan, .infinity, -1])
+        let task = Task { await spy.run(originals: [original, second]) }
+        await spy.gate.waitUntilEntered()
+        let hearing: [Call] = [
+            .wait(.preparing), .hear("far-track"),
+            .wait(.hearing(0)), .wait(.hearing(0.125)), .returned(.hearFar), .wait(.hearing(0.25)),
+            .hear("mic-track"), .wait(.hearing(0.375)), .returned(.hearMicrophone), .wait(.hearing(0.5)),
+            .hear("far-track-2"), .wait(.hearing(0.625)), .returned(.hearFar), .wait(.hearing(0.75)),
+            .hear("mic-track-2"), .wait(.hearing(0.875)), .returned(.hearMicrophone), .wait(.hearing(1)),
+            .wait(.finishing), .split(original, [word("far-track")]),
+        ]
+        #expect(spy.calls == hearing)
+        #expect(spy.publications.isEmpty)
+        await spy.gate.release()
+        #expect(await task.value == .made)
+        #expect(spy.calls.filter { if case .wait = $0 { true } else { false } } ==
+                hearing.filter { if case .wait = $0 { true } else { false } })
+    }
+
+    @Test func mergedNamesComeOnlyFromTheCurrentTranscriptCutPerOriginal() async {
+        let old = [
+            R.OldSpeaker(name: "Anna", ranges: [.init(start: -2, end: 3), .init(start: 19, end: 52)]),
+            R.OldSpeaker(name: nil, ranges: [.init(start: 51, end: 54)]),
+            R.OldSpeaker(name: "In the gap", ranges: [.init(start: 20, end: 50)]),
+            R.OldSpeaker(name: "After both", ranges: [.init(start: 60, end: 70)]),
+        ]
+        let spy = Spy(old: old)
+        let sut = spy.component { clipped, _ in
+            clipped[1].ranges.isEmpty ? [7: "carried first"] : [7: "carried second"]
+        }
+        #expect(await spy.run(sut, originals: [original, second]) == .made)
+        let speakers = [R.Speaker(id: 7, name: nil, words: [word("split")])]
+        #expect(spy.calls.filter { if case .read = $0 { true } else { false } } == [.read("current")])
+        #expect(spy.calls.filter { if case .names = $0 { true } else { false } } == [
+            .names([
+                .init(name: "Anna", ranges: [.init(start: 0, end: 3), .init(start: 19, end: 20)]),
+                .init(name: nil, ranges: []), .init(name: "In the gap", ranges: []),
+                .init(name: "After both", ranges: []),
+            ], speakers),
+            .names([
+                .init(name: "Anna", ranges: [.init(start: 0, end: 2)]),
+                .init(name: nil, ranges: [.init(start: 1, end: 4)]), .init(name: "In the gap", ranges: []),
+                .init(name: "After both", ranges: []),
+            ], speakers),
+        ])
+        #expect(spy.publications.first?.originals.map { $0.far } == [
+            [.init(id: 7, name: "carried first", words: [word("split")])],
+            [.init(id: 7, name: "carried second", words: [word("split")])],
+        ])
+    }
+
+    @Test(arguments: ["far-track-2", "mic-track-2", "far-track-3", "mic-track-3"])
+    func aMergedCallNamesTheFailingOriginal(track: String) async {
+        // A merge of a merge arrives as its ordered original calls, never nested containers.
+        let originals = [original, second, third]
+        let spy = Spy(failure: .hearing, hearingFailureTrack: track)
+        let failed = track.hasSuffix("2") ? second : third
+        #expect(await spy.run(originals: originals) == .failed(original: failed.id, reason: "hearing"))
+        #expect(spy.publications.isEmpty)
+        #expect(!spy.calls.contains { if case .split = $0 { true } else { false } })
+        #expect(spy.calls.filter { if case .hear = $0 { true } else { false } }.last == .hear(track))
+    }
+
+    @Test func originalCallsAreJoined() async {
+        // Flattened originals preserve a positive gap and an overlap for publish to join.
+        let originals = [original, second, third]
+        let spy = Spy(splits: [
+            original.id: .init(speakers: [.init(id: 7, name: nil, words: [word("first new")])], diarizer: "first split"),
+            second.id: .init(speakers: [.init(id: 7, name: nil, words: [word("second new", 0, 2)])], diarizer: "second split"),
+            third.id: .init(speakers: [.init(id: 7, name: nil, words: [word("third new", 4, 6)])], diarizer: "third split"),
+        ], cleans: [original.id: [word("first clean")], second.id: [], third.id: [word("third clean", 7, 8)]])
+        #expect(await spy.run(originals: originals) == .made)
+        let expected = R.Transcript(originals: [
+            .init(original: original, far: [.init(id: 7, name: nil, words: [word("first new")])],
+                  microphone: [word("first clean")], origin: .init(
+                    build: build, farModel: "model-far-track", microphoneModel: "model-mic-track",
+                    splitting: .done(diarizer: "first split"), cleaning: .done)),
+            .init(original: second, far: [.init(id: 7, name: nil, words: [word("second new", 0, 2)])],
+                  microphone: [], origin: .init(
+                    build: build, farModel: "model-far-track-2", microphoneModel: "model-mic-track-2",
+                    splitting: .done(diarizer: "second split"), cleaning: .done)),
+            .init(original: third, far: [.init(id: 7, name: nil, words: [word("third new", 4, 6)])],
+                  microphone: [word("third clean", 7, 8)], origin: .init(
+                    build: build, farModel: "model-far-track-3", microphoneModel: "model-mic-track-3",
+                    splitting: .done(diarizer: "third split"), cleaning: .done)),
+        ], merger: build)
+        #expect(spy.publications == [expected])
+        let finishing = spy.calls.filter {
+            switch $0 { case .split, .clean, .read, .names: true; default: false }
+        }
+        #expect(finishing == [
+            .split(original, [word("far-track")]),
+            .clean(original, [word("mic-track")], expected.originals[0].far),
+            .split(second, [word("far-track-2")]),
+            .clean(second, [word("mic-track-2")], expected.originals[1].far),
+            .split(third, [word("far-track-3")]),
+            .clean(third, [word("mic-track-3")], expected.originals[2].far),
+            .read("current"), .names([], expected.originals[0].far),
+            .names([], expected.originals[1].far), .names([], expected.originals[2].far),
+        ])
+        #expect(spy.calls.filter { if case .hear = $0 { true } else { false } } == [
+            .hear("far-track"), .hear("mic-track"), .hear("far-track-2"), .hear("mic-track-2"),
+            .hear("far-track-3"), .hear("mic-track-3"),
+        ])
+    }
+
+    @Test func aFailedMergedPublishFailsTheWholeRun() async {
+        let spy = Spy(failure: .publishing)
+        #expect(await spy.run(originals: [original, second]) == .failed(original: nil, reason: "publishing"))
+        #expect(spy.publications.count == 1)
+        #expect(spy.publications.first?.originals.map(\.original) == [original, second])
     }
 
     @Test func runsKeepNothingBetweenThem() async {

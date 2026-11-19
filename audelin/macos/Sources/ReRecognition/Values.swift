@@ -5,10 +5,13 @@ extension ReRecognition {
         public let farTrack: String
         public let microphoneTrack: String
         public let duration: Double
+        /// Seconds from the current transcript's start; heard words remain local to this call.
+        public let start: Double
 
-        public init(id: String, farTrack: String, microphoneTrack: String, duration: Double) {
+        public init(id: String, farTrack: String, microphoneTrack: String, duration: Double, start: Double = 0) {
             self.id = id; self.farTrack = farTrack; self.microphoneTrack = microphoneTrack
             self.duration = duration
+            self.start = start
         }
     }
 
@@ -86,8 +89,14 @@ extension ReRecognition {
     }
 
     public struct Transcript: Equatable, Sendable {
+        /// Finished originals in input order, with local word times and separate speaker IDs.
+        /// Publish joins these by their starts and durations, including gaps between calls.
         public let originals: [FinishedCall]
-        public init(originals: [FinishedCall]) { self.originals = originals }
+        /// The build joining multiple originals; a single original has no merger.
+        public let merger: Build?
+        public init(originals: [FinishedCall], merger: Build? = nil) {
+            self.originals = originals; self.merger = merger
+        }
     }
 
     public enum Wait: Equatable, Sendable {
@@ -96,7 +105,7 @@ extension ReRecognition {
 
     public enum Outcome: Equatable, Sendable {
         case made, stopped
-        /// A nil original identifies a failure of the whole run's input.
+        /// A nil original identifies a failure of the whole run rather than one original.
         case failed(original: String?, reason: String)
     }
 }
