@@ -7,6 +7,7 @@ struct RowMenuItem {
     var key: String = ""
     var modifiers: NSEvent.ModifierFlags = []
     var isEnabled = true
+    var help: String?
     var action: () -> Void
 }
 
@@ -39,17 +40,7 @@ final class RowMenuView: NSView {
 
     override func menu(for event: NSEvent) -> NSMenu? {
         select()
-        let menu = NSMenu()
-        menu.autoenablesItems = false
-        for item in items() {
-            guard let item else { menu.addItem(.separator()); continue }
-            let entry = ActionMenuItem(title: item.title, action: item.action)
-            entry.keyEquivalent = item.key
-            entry.keyEquivalentModifierMask = item.modifiers
-            entry.isEnabled = item.isEnabled
-            menu.addItem(entry)
-        }
-        return menu
+        return makeRowMenu(items())
     }
 
     private static func opensMenu(_ event: NSEvent) -> Bool {
@@ -59,6 +50,22 @@ final class RowMenuView: NSView {
         default: false
         }
     }
+}
+
+func makeRowMenu(_ items: [RowMenuItem?]) -> NSMenu {
+    let menu = NSMenu()
+    menu.autoenablesItems = false
+    for item in items {
+        guard let item else { menu.addItem(.separator()); continue }
+        let entry = ActionMenuItem(title: item.title, action: item.action)
+        entry.keyEquivalent = item.key
+        entry.keyEquivalentModifierMask = item.modifiers
+        entry.isEnabled = item.isEnabled
+        entry.toolTip = item.help
+        entry.setAccessibilityHelp(item.help)
+        menu.addItem(entry)
+    }
+    return menu
 }
 
 private final class ActionMenuItem: NSMenuItem {
@@ -71,6 +78,13 @@ private final class ActionMenuItem: NSMenuItem {
     }
 
     @available(*, unavailable) required init(coder: NSCoder) { fatalError("init(coder:) is not used") }
+
+    override func accessibilityPerformPress() -> Bool {
+        guard isEnabled else { return false }
+        menu?.cancelTracking()
+        run()
+        return true
+    }
 
     @objc private func runAction() { run() }
 }

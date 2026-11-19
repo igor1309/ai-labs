@@ -524,6 +524,9 @@ public final class AudelinCalls {
         recordingChanged(recordingState())
         let snapshot = await syncRows()
         switch event {
+        case let .makeTranscriptAgain(id), let .retryTranscriptAgain(id): inputs.send(.makeTranscriptAgain(id))
+        case let .restorePreviousTranscript(id): inputs.send(.restorePreviousTranscript(id))
+        case .cancelTranscriptAgain: inputs.send(.cancelTranscriptAgain)
         case let .beginRename(id): await sendList(.beginRename(id))
         case let .editTitle(title): await sendList(.editTitle(title))
         case .cancelRename: await sendList(.cancelRename)
@@ -609,15 +612,50 @@ func callsListState(_ state: RecordingsState, timeZone: TimeZone, now: Date, tex
         let opens = index == 0 || days[index - 1] != day
         return .init(id: call.id, title: call.title, displayTitle: call.title.isEmpty ? format.stamp(call.start) : call.title,
                      day: opens ? .init(title: day, count: format.count(days[index...].prefix { $0 == day }.count)) : nil,
-                     time: format.time(call.start), duration: format.duration(call.duration), editable: call.id != state.recordingID)
+                     time: format.time(call.start), duration: format.duration(call.duration), editable: call.id != state.recordingID && call.id != state.transcriptRun?.id,
+                     transcriptAgain: transcriptOffer(state.transcriptOffers[call.id]?.run, text: text),
+                     restoreTranscript: call.hasPreviousTranscript ? transcriptOffer(state.transcriptOffers[call.id]?.restore, text: text) : nil,
+                     transcriptWait: state.transcriptRun.flatMap { $0.id == call.id ? transcriptWait($0.wait, text: text) : nil })
     }, deleteID: deleteID, deleteBody: state.calls.first { $0.id == deleteID }.map { call in
         text(.deleteBody, call.id + (call.title.isEmpty ? "" : " " + call.title))
-    }, busy: busy || state.isListing, failure: state.failure.map { failure in
-        (failure.id.map { "«\($0)»: " } ?? "") + failure.reason
-    }, merge: merge)
+    }, busy: busy || state.isListing, failure: state.failure.flatMap { failure in
+        guard failure.kind == .action else { return nil }
+        return (failure.id.map { "«\($0)»: " } ?? "") + failure.reason
+    }, merge: merge, transcriptBanner: transcriptBanner(state.failure, text: text))
 }
 
 /// A call's tags; unreadable ones count as none for filtering and showing.
 func knownTags(_ call: RecordedCall) -> [String] {
     if case let .known(tags) = call.tags { tags } else { [] }
+}
+
+private func transcriptOffer(_ offer: TranscriptOffer?, text: CallsListText) -> CallsListState.TranscriptOffer {
+    switch offer {
+    case .available: .available
+    case let .unavailable(_, message): .unavailable(message)
+    case nil: .unavailable(text(.transcriptUnavailable))
+    }
+}
+
+private func transcriptWait(_ wait: TranscriptWait, text: CallsListText) -> CallsListState.TranscriptWait {
+    switch wait {
+    case .preparing: .init(message: text(.transcriptPreparing))
+    case let .hearing(progress): .init(message: text(.transcriptHearing), progress: progress)
+    case .finishing: .init(message: text(.transcriptFinishing))
+    }
+}
+
+private func transcriptBanner(_ failure: RecordingsState.Failure?, text: CallsListText) -> CallsListState.TranscriptBanner? {
+    guard let failure else { return nil }
+    switch failure.kind {
+    case .action: return nil
+    case .transcriptRun:
+        return .init(style: .error, title: text(.transcriptFailed),
+                     message: failure.reason + " " + text(.transcriptPreserved), retryID: failure.id)
+    case .transcriptRestore:
+        return .init(style: .error, title: text(.transcriptRestoreFailed), message: failure.reason)
+    case .transcriptStopped:
+        return .init(style: .info, title: text(.transcriptStopped),
+                     message: failure.reason + " " + text(.transcriptPreserved))
+    }
 }

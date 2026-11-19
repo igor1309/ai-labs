@@ -9,6 +9,19 @@ public enum CallsListLanguage: String, CaseIterable, Sendable {
 
 /// A fixed piece of calls list text; its raw value is the key in the strings tables.
 public enum CallsListPhrase: String, CaseIterable, Sendable {
+    case makeTranscriptAgain = "transcript.again"
+    case restoreTranscript = "transcript.restore"
+    case transcriptPreparing = "transcript.preparing"
+    case transcriptHearing = "transcript.hearing"
+    case transcriptFinishing = "transcript.finishing"
+    case transcriptCancel = "transcript.cancel"
+    case transcriptRetry = "transcript.retry"
+    case transcriptRestoreFailed = "transcript.restoreFailed"
+    case transcriptFailed = "transcript.failed"
+    case transcriptStopped = "transcript.stopped"
+    case transcriptRecordingStarted = "transcript.recordingStarted"
+    case transcriptPreserved = "transcript.preserved"
+    case transcriptUnavailable = "transcript.unavailable"
 
     case loading = "list.loading"
     case empty = "list.empty"

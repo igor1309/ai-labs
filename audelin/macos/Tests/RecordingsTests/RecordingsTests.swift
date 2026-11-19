@@ -196,13 +196,14 @@ struct RecordingsTests {
         }
     }
 
-    @Test func failureStaysAcrossTheReloadAndClearsAtTheNextAction() {
-        let failed = makeState { $0.failure = .init(id: "A", reason: "disk") }
-        let refreshing = makeState { $0.failure = .init(id: "A", reason: "disk"); $0.isListing = true }
+    @Test(arguments: [RecordingsState.Failure.Kind.action, .transcriptRun, .transcriptStopped, .transcriptRestore])
+    func failureStaysAcrossTheReloadAndClearsAtTheNextAction(kind: RecordingsState.Failure.Kind) {
+        let failed = makeState { $0.failure = .init(id: "A", reason: "disk", kind: kind) }
+        let refreshing = makeState { $0.failure = .init(id: "A", reason: "disk", kind: kind); $0.isListing = true }
         assert(refreshing, .listed(request: 0, []), delivers: nil) { $0.isListing = false }
         assert(refreshing, .listFailed(request: 0, "denied"), delivers: nil) {
             $0.isListing = false
-            $0.failure = .init(id: "A", reason: "disk Не удалось обновить список: denied")
+            $0.failure = .init(id: "A", reason: "disk Не удалось обновить список: denied", kind: kind)
         }
         assert(failed, .clearFailure, delivers: nil) { $0.failure = nil }
         assert(failed, .askDelete("B"), delivers: nil) {

@@ -62,6 +62,41 @@ public enum CallsListPreviews {
                 $0.search = .init(query: "#клиент", searching: false)
                 $0.rows.remove(at: 1)
             }),
+        ] + transcriptStates(in: text)
+    }
+
+    public static func transcriptStates(in text: CallsListText) -> [(name: String, state: CallsListState)] {
+        let base = notes(Words(text))
+        let reason = text.language == .english ? "Not enough disk space." : "Нет места на диске."
+        return [
+            ("transcript-preparing", with(base) { $0.rows[0].transcriptWait = .init(message: text(.transcriptPreparing)) }),
+            ("transcript-hearing", with(base) { $0.rows[0].transcriptWait = .init(message: text(.transcriptHearing), progress: 0.4) }),
+            ("transcript-finishing", with(base) { $0.rows[0].transcriptWait = .init(message: text(.transcriptFinishing)) }),
+            ("transcript-failed", with(base) {
+                $0.transcriptBanner = .init(style: .error, title: text(.transcriptFailed),
+                                           message: reason + " " + text(.transcriptPreserved), retryID: $0.rows[0].id)
+            }),
+            ("transcript-stopped", with(base) {
+                $0.transcriptBanner = .init(style: .info, title: text(.transcriptStopped), message: text(.transcriptRecordingStarted))
+            }),
+            ("transcript-restore-failed", with(base) {
+                $0.transcriptBanner = .init(style: .error, title: text(.transcriptRestoreFailed), message: reason)
+            }),
+        ]
+    }
+
+    public static func transcriptMenuStates(in text: CallsListText) -> [(name: String, state: CallsListState, rowID: String)] {
+        let base = with(notes(Words(text))) { $0.rows[1].canMakeSummary = true }
+        let reason = text.language == .english ? "A transcript is already running." : "Уже идёт распознавание."
+        let restored = with(base) { $0.rows[0].restoreTranscript = .available }
+        return [
+            ("transcript-menu-notes", base, base.rows[0].id),
+            ("transcript-menu-no-notes", base, base.rows[1].id),
+            ("transcript-menu-restore", restored, base.rows[0].id),
+            ("transcript-menu-disabled", with(restored) {
+                $0.rows[0].transcriptAgain = .unavailable(reason)
+                $0.rows[0].restoreTranscript = .unavailable(reason)
+            }, base.rows[0].id),
         ]
     }
 

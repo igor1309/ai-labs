@@ -36,7 +36,7 @@ struct RecordingsRestoreTests {
     @Test func S3_failedRestoreKeepsReasonAndSelectionWithoutListing() async {
         await assert(makeRestoring { $0.selectedCallID = "B" },
                      .transcriptRestoreFailed(id: "A", reason: "restore failed"), delivers: nil) {
-            $0.phase = .idle; $0.selectedCallID = "A"; $0.failure = .init(id: "A", reason: "restore failed")
+            $0.phase = .idle; $0.selectedCallID = "A"; $0.failure = .init(id: "A", reason: "restore failed", kind: .transcriptRestore)
             setOffers(&$0, nil)
         }
         let calls = RestoreCallsSpy(), descriptions = Mutex<[RestoreFailure]>([])
@@ -126,7 +126,7 @@ struct RecordingsRestoreTests {
             $0.isListing = true; $0.listRequest = 8
         }
         await assert(stopping, .transcriptRestoreFailed(id: "A", reason: "failed"), delivers: nil) {
-            $0.phase = .idle; $0.stopped = true; $0.failure = .init(id: "A", reason: "failed")
+            $0.phase = .idle; $0.stopped = true; $0.failure = .init(id: "A", reason: "failed", kind: .transcriptRestore)
         }
     }
 

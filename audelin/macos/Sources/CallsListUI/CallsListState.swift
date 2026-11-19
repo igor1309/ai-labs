@@ -1,7 +1,32 @@
 import Foundation
 
 public struct CallsListState: Equatable, Sendable {
+    public enum TranscriptOffer: Equatable, Sendable {
+        case available, unavailable(String)
+    }
+
+    public struct TranscriptWait: Equatable, Sendable {
+        public var message: String
+        public var progress: Double?
+        public init(message: String, progress: Double? = nil) { self.message = message; self.progress = progress }
+    }
+
+    public struct TranscriptBanner: Equatable, Sendable {
+        public enum Style: Equatable, Sendable { case error, info }
+        public var style: Style
+        public var title: String
+        public var message: String
+        public var retryID: String?
+        public init(style: Style, title: String, message: String, retryID: String? = nil) {
+            self.style = style; self.title = title; self.message = message; self.retryID = retryID
+        }
+    }
+
     public struct Row: Equatable, Identifiable, Sendable {
+        public var transcriptAgain: TranscriptOffer
+        /// Nil when the call has no previous transcript.
+        public var restoreTranscript: TranscriptOffer?
+        public var transcriptWait: TranscriptWait?
         /// Where the call's summary stands, drawn as an icon; `summaryStatus` says it in words.
         public enum Summary: Equatable, Sendable { case none, pending, failed }
         public var summary: Summary
@@ -54,7 +79,9 @@ public struct CallsListState: Equatable, Sendable {
 
         public init(id: String, title: String, displayTitle: String, day: Day?, time: String, duration: String, editable: Bool,
                     summaryStatus: String = "", hasNotes: Bool = false, gist: String? = nil, canRetrySummary: Bool = false, canMakeSummary: Bool = false, summary: Summary = .none,
-                    match: Match? = nil, tags: [String] = []) {
+                    match: Match? = nil, tags: [String] = [], transcriptAgain: TranscriptOffer = .available,
+                    restoreTranscript: TranscriptOffer? = nil, transcriptWait: TranscriptWait? = nil) {
+            self.transcriptAgain = transcriptAgain; self.restoreTranscript = restoreTranscript; self.transcriptWait = transcriptWait
             self.match = match
             self.tags = tags
             self.summary = summary
@@ -120,6 +147,7 @@ public struct CallsListState: Equatable, Sendable {
     public var deleteBody: String?
     public var busy: Bool
     public var failure: String?
+    public var transcriptBanner: TranscriptBanner?
     /// The selected call, if any.
     public var selectedID: String?
     /// The window is too narrow to show the call beside the list, so Return and Space open it in its own window.
@@ -127,7 +155,8 @@ public struct CallsListState: Equatable, Sendable {
 
     public init(rows: [Row] = [], editing: Editing? = nil, deleteID: String? = nil, deleteBody: String? = nil, busy: Bool = false, failure: String? = nil,
                 selectedID: String? = nil, narrow: Bool = false, search: Search? = nil, searchText: String = "", merge: Merge? = nil,
-                tagStrip: [TagChip] = []) {
+                tagStrip: [TagChip] = [], transcriptBanner: TranscriptBanner? = nil) {
+        self.transcriptBanner = transcriptBanner
         self.merge = merge
         self.tagStrip = tagStrip
         self.searchText = searchText
@@ -139,6 +168,7 @@ public struct CallsListState: Equatable, Sendable {
 }
 
 public enum CallsListEvent: Equatable, Sendable {
+    case makeTranscriptAgain(String), restorePreviousTranscript(String), cancelTranscriptAgain, retryTranscriptAgain(String)
     case open(String), beginRename(String), editTitle(String), submitRename, cancelRename
     case askDelete(String), confirmDelete, cancelDelete
     case select(String), selectNext, selectPrevious, retrySummary(String), makeSummary(String)

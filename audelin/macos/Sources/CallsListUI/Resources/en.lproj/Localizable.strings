@@ -52,3 +52,17 @@
 "tags.chipOn" = "Chosen";
 "tags.chipOff" = "Not chosen";
 "tags.strip" = "Tags";
+
+"transcript.again" = "Make transcript again";
+"transcript.restore" = "Restore previous transcript";
+"transcript.preparing" = "Preparing transcription…";
+"transcript.hearing" = "Transcribing again";
+"transcript.finishing" = "Finishing transcript…";
+"transcript.cancel" = "Cancel";
+"transcript.retry" = "Retry";
+"transcript.failed" = "Could not transcribe again";
+"transcript.stopped" = "Transcription stopped";
+"transcript.recordingStarted" = "A recording started. The previous transcript is preserved.";
+"transcript.preserved" = "The previous transcript is preserved.";
+"transcript.unavailable" = "Transcription is not available yet.";
+"transcript.restoreFailed" = "Could not restore the previous transcript";

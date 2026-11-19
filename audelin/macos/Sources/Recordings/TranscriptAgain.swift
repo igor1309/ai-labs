@@ -113,9 +113,9 @@ extension RecordingsReducer {
                 state.transcriptRun = nil
                 state.selectedCallID = run.id
                 if run.stopReason == .recordingStarted {
-                    state.failure = .init(id: run.id, reason: transcriptMessage(.recordingStarted))
+                    state.failure = .init(id: run.id, reason: transcriptMessage(.recordingStarted), kind: .transcriptStopped)
                 } else if case let .failed(reason) = report {
-                    state.failure = .init(id: run.id, reason: reason)
+                    state.failure = .init(id: run.id, reason: reason, kind: .transcriptRun)
                 } else { state.failure = nil }
             }
             return (state, nil)
@@ -154,7 +154,7 @@ extension RecordingsReducer {
             guard state.phase == .restoring(id) else { return (state, nil) }
             state.phase = .idle
             state.selectedCallID = id
-            state.failure = .init(id: id, reason: reason)
+            state.failure = .init(id: id, reason: reason, kind: .transcriptRestore)
             return (state, nil)
         default: return nil
         }

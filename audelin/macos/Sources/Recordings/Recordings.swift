@@ -49,9 +49,13 @@ public struct RecordingsState: Equatable, Sendable {
     }
 
     public struct Failure: Equatable, Sendable {
+        public enum Kind: Equatable, Sendable { case action, transcriptRun, transcriptStopped, transcriptRestore }
         public let id: String?
         public let reason: String
-        public init(id: String?, reason: String) { self.id = id; self.reason = reason }
+        public let kind: Kind
+        public init(id: String?, reason: String, kind: Kind = .action) {
+            self.id = id; self.reason = reason; self.kind = kind
+        }
     }
 
     public var calls: [RecordedCall] = []
@@ -216,7 +220,7 @@ public struct RecordingsReducer: Sendable {
             guard state.isListing, request == state.listRequest else { return (state, nil) }
             state.isListing = false
             if let failure = state.failure {
-                state.failure = .init(id: failure.id, reason: failureMessage(failure.reason, reason))
+                state.failure = .init(id: failure.id, reason: failureMessage(failure.reason, reason), kind: failure.kind)
             } else {
                 state.failure = .init(id: nil, reason: reason)
             }

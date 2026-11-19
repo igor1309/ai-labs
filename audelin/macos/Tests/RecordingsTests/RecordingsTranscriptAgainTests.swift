@@ -27,7 +27,7 @@ struct RecordingsTranscriptAgainTests {
 
     @Test func S3_failureKeepsItsReasonAndRetryOffer() async {
         await assert(makeRunning { $0.transcriptRun?.wait = .hearing(0.4) }, .transcriptReported(request: 1, .failed("hearing failed")), delivers: nil) {
-            $0.transcriptRun = nil; $0.failure = .init(id: "A", reason: "hearing failed"); setOffers(&$0, nil)
+            $0.transcriptRun = nil; $0.failure = .init(id: "A", reason: "hearing failed", kind: .transcriptRun); setOffers(&$0, nil)
         }
         await expectRun(reports: [.failed("hearing failed")])
     }
@@ -61,7 +61,7 @@ struct RecordingsTranscriptAgainTests {
         await assert(stopping, .recordingStarted, delivers: nil)
         let message = TranscriptMessageSpy()
         await assert(stopping, .transcriptReported(request: 1, .stopped), delivers: nil, reducer: message.reducer) {
-            $0.transcriptRun = nil; $0.failure = .init(id: "A", reason: "text"); setOffers(&$0, nil)
+            $0.transcriptRun = nil; $0.failure = .init(id: "A", reason: "text", kind: .transcriptStopped); setOffers(&$0, nil)
         }
         #expect(message.received == [.recordingStarted])
         await assertMade(stopping)
@@ -91,7 +91,7 @@ struct RecordingsTranscriptAgainTests {
                 if report == .made {
                     $0.isListing = true; $0.listRequest = 1; $0.transcriptChanged = .init(id: "A", request: 1)
                 }
-                if case let .failed(reason) = report { $0.failure = .init(id: "A", reason: reason) }
+                if case let .failed(reason) = report { $0.failure = .init(id: "A", reason: reason, kind: .transcriptRun) }
             }
         }
         await expectRun(reports: [.stopped])
@@ -136,7 +136,7 @@ struct RecordingsTranscriptAgainTests {
         await assert(recording, .cancelTranscriptAgain, delivers: nil)
         await assert(recording, .stopActions, delivers: nil) { $0.stopping = true }
         await assert(recording, .transcriptReported(request: 1, .failed("interrupted")), delivers: nil) {
-            $0.transcriptRun = nil; $0.failure = .init(id: "A", reason: "text"); setOffers(&$0, nil)
+            $0.transcriptRun = nil; $0.failure = .init(id: "A", reason: "text", kind: .transcriptStopped); setOffers(&$0, nil)
         }
     }
 }

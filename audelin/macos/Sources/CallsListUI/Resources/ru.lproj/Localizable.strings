@@ -52,3 +52,17 @@
 "tags.chipOn" = "Выбран";
 "tags.chipOff" = "Не выбран";
 "tags.strip" = "Теги";
+
+"transcript.again" = "Распознать заново";
+"transcript.restore" = "Вернуть прежний транскрипт";
+"transcript.preparing" = "Готовлю распознавание…";
+"transcript.hearing" = "Распознаю заново";
+"transcript.finishing" = "Дописываю транскрипт…";
+"transcript.cancel" = "Отменить";
+"transcript.retry" = "Повторить";
+"transcript.failed" = "Не удалось распознать заново";
+"transcript.stopped" = "Распознавание остановлено";
+"transcript.recordingStarted" = "Началась запись. Прежний транскрипт сохранён.";
+"transcript.preserved" = "Прежний транскрипт сохранён.";
+"transcript.unavailable" = "Распознавание пока недоступно.";
+"transcript.restoreFailed" = "Не удалось вернуть прежний транскрипт";
