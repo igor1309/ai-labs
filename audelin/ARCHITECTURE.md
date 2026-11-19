@@ -670,8 +670,8 @@ call and the folders' layout: renaming or deleting another call goes on. Its sta
 wait (preparing, hearing with how far, finishing) and the last failure's
 reason; whether a row offers the item is a pure rule over the list it
 holds, with each row's audio presence, original calls included, and the
-idle value it already receives. A recording starting turns that value to
-not idle, and the reducer then stops the run. It owns one new port: make
+idle value it already receives, which only admits requests. The root
+sends a recording starting as its own event, and the reducer stops the run. It owns one new port: make
 this call's transcript again, reporting each wait, then made or why not,
 and stopping when asked. Restoring is a second port on Calls, below. The
 row menu draws the offer and sends the request; it decides nothing.

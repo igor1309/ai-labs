@@ -69,3 +69,8 @@ Evidence: Missing.
 
 Behaviour: a call with a previous during a run: restore disabled, its help text the reason; a restore that fails shows its reason under the list.
 Evidence: Missing.
+
+## S-14 A failed restore under the list
+
+Preview of a state carrying a restore failure: the reason under the list.
+Evidence: Missing.

@@ -34,9 +34,9 @@ Feature: Making a transcript again from the calls list
     Then I see the item disabled, and can read why
 
   Scenario: S-3 Restore in the menu
-    Given a call with a previous transcript
+    Given a call that offers a restore
     When I open its menu
-    Then I can choose «Вернуть прежний транскрипт»
+    Then I can choose «Вернуть прежний транскрипт» right after «Распознать заново»
 
   Scenario: S-4 No restore without a previous
     Given a call without a previous transcript
@@ -87,4 +87,9 @@ Feature: Making a transcript again from the calls list
     Given a call with a previous transcript that cannot be restored now
     When I open its menu
     Then I see restore disabled, and can read why
+
+  Scenario: S-14 A failed restore under the list
+    Given a restore failed
+    When I look at the list
+    Then I can read why under it
 ```

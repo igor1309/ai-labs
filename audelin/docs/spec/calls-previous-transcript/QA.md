@@ -52,7 +52,7 @@ Evidence: Missing.
 
 ## S-10 The transcript's identity follows its bytes
 
-Read, publish, read twice: the later reads match each other, not the first.
+Read, publish changed bytes, read twice: later reads match each other, not the first; publish identical bytes: the identity is unchanged.
 Evidence: Missing.
 
 ## S-11 A merged call's parts are untouched

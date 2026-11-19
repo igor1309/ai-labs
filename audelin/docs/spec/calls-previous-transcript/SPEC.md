@@ -76,7 +76,7 @@ Feature: Keeping the previous transcript
   Scenario: S-10 The transcript's identity follows its bytes
     Given a call whose transcript was replaced
     When I read its transcript
-    Then I get an identity different from the one before, and the same on every read
+    Then I get a new identity if the bytes changed, the same one if not, and the same on every read
 
   Scenario: S-11 A merged call's parts are untouched
     Given a merged call

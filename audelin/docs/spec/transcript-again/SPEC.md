@@ -81,7 +81,7 @@ Feature: Making a call's transcript again from its audio
   Scenario: S-11 A recording starting stops it
     Given a call's transcript is being made again
     When a recording starts
-    Then I can open the old call's transcripts as they were, and read that making it again stopped
+    Then before saving began I can open the old call's transcripts as they were, and read that making it again stopped
 
   Scenario: S-12 A merged call is made again by its original calls
     Given a merged call whose original calls all have their audio

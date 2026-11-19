@@ -58,20 +58,20 @@ Evidence: Missing.
 
 ## S-11 A failed publish fails
 
-The old transcript read throws: the publish spy gets a transcript with no carried names; Name carry's fake got no old speakers.
+The publish spy throws: the run fails with its reason.
 Evidence: Missing.
 
 ## S-12 The models fail to load
 
-The publish spy throws: the run fails with its reason.
+The hear port fails while loading: no publish; the failure carries the reason.
 Evidence: Missing.
 
 ## S-13 A stop during publishing reports made
 
-The hear port fails while loading: no publish; the failure carries the reason.
+Hold the publish, ask stop, release success: made is reported, not stopped.
 Evidence: Missing.
 
 ## S-14 No old transcript carries no names
 
-Hold the publish, ask stop, release success: made is reported, not stopped.
+The old transcript read throws: the publish spy gets a transcript with no carried names; Name carry's fake got no old speakers.
 Evidence: Missing.
