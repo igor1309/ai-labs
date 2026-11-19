@@ -401,6 +401,7 @@ private actor TranscriptCallsSpy: RecordingsCalls {
     func list() async throws -> [RecordedCall] { await request(.list(request: 0)) }
     func rename(id: String, title: String) async throws { _ = await request(.rename(id: id, title: title)) }
     func delete(id: String) async throws { _ = await request(.delete(id)) }
+    func restorePreviousTranscript(id: String) async throws { Issue.record("Unexpected restore") }
     func prepareMove(to destination: URL) async throws -> [MoveCall] { Issue.record("Unexpected move"); return [] }
     func move(id: String, to: URL) async throws -> Int64 { Issue.record("Unexpected move"); return 0 }
     func merge(ids: [String]) async throws -> String { Issue.record("Unexpected merge"); return "" }

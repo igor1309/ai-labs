@@ -205,6 +205,10 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
     public func savedTranscript(id: String) async throws -> Data {
         try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).savedTranscript(id: id) } }
     }
+
+    public func restorePreviousTranscript(id: String) async throws {
+        try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).restorePreviousTranscript(id: id) } }
+    }
     /// Reads a merge part within the same turn that resolves its folder.
     public func part(id: String) async throws -> Part {
         try await perform { [self] in try folder(call: id) { try readPart($0, id) } }

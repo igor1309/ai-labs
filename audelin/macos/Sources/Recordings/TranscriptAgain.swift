@@ -57,7 +57,27 @@ public protocol RecordingsTranscriptAgain: Sendable {
 extension RecordingsReducer {
     func reduceTranscript(_ given: RecordingsState, _ event: RecordingsEvent) -> (RecordingsState, RecordingsEffect?)? {
         var state = given
+        if case .restoring = state.phase {
+            let id: String?
+            switch event {
+            case let .rename(call, _), let .askDelete(call), let .makeTranscriptAgain(call), let .restorePreviousTranscript(call): id = call
+            case .confirmDelete, .enterMergeMode, .confirmMerge, .mergeAnyway, .chooseFolder, .confirmMove, .retryMove: id = nil
+            default: return reduceRestoreOutcome(state, event)
+            }
+            state.failure = .init(id: id, reason: transcriptMessage(.actionUnderWay))
+            return (state, nil)
+        }
         switch event {
+        case let .restorePreviousTranscript(id):
+            if let refusal = restoreRefusal(state, id: id) {
+                state.failure = .init(id: id, reason: transcriptMessage(refusal))
+                return (state, nil)
+            }
+            state.phase = .restoring(id)
+            state.transcriptRequest += 1
+            state.selectedCallID = id
+            state.failure = nil
+            return (state, .restorePreviousTranscript(id))
         case let .makeTranscriptAgain(id):
             if let refusal = runRefusal(state, id: id) {
                 state.failure = .init(id: id, reason: transcriptMessage(refusal))
@@ -117,6 +137,34 @@ extension RecordingsReducer {
         guard locked else { return nil }
         state.failure = .init(id: id, reason: transcriptMessage(.runningTranscript(id: run.id)))
         return (state, nil)
+    }
+
+    private func reduceRestoreOutcome(_ given: RecordingsState, _ event: RecordingsEvent) -> (RecordingsState, RecordingsEffect?)? {
+        var state = given
+        switch event {
+        case let .transcriptRestored(id):
+            guard state.phase == .restoring(id) else { return (state, nil) }
+            state.phase = .idle
+            state.selectedCallID = id
+            state.failure = nil
+            state.transcriptChanged = .init(id: id, request: state.transcriptRequest)
+            let list = Self.requestList(&state)
+            return (state, list)
+        case let .transcriptRestoreFailed(id, reason):
+            guard state.phase == .restoring(id) else { return (state, nil) }
+            state.phase = .idle
+            state.selectedCallID = id
+            state.failure = .init(id: id, reason: reason)
+            return (state, nil)
+        default: return nil
+        }
+    }
+
+    private func restoreRefusal(_ state: RecordingsState, id: String) -> TranscriptRefusal? {
+        if let run = state.transcriptRun { return .runningTranscript(id: run.id) }
+        guard let call = state.calls.first(where: { $0.id == id }) else { return .callNotFound }
+        guard call.hasPreviousTranscript else { return .noPreviousTranscript }
+        return actionRefusal(state)
     }
 
     private func actionRefusal(_ state: RecordingsState) -> TranscriptRefusal? {

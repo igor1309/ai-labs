@@ -97,6 +97,7 @@ struct SummaryCalls: RecordingsCalls {
         }
     }
     func rename(id: String, title: String) async throws { try await storage.rename(id: id, title: title) }
+    func restorePreviousTranscript(id: String) async throws { try await storage.restorePreviousTranscript(id: id) }
     func delete(id: String) async throws {
         let call = String(id.prefix("yyyy.MM.dd-HHmm".count))
         do { try await storage.delete(id: id) }

@@ -12,6 +12,8 @@ public protocol RecordingsCalls: Sendable {
     func merge(ids: [String]) async throws -> String
     /// Replaces a call's tags.
     func setTags(id: String, tags: [String]) async throws
+    /// Swaps the call's current and previous transcripts, or throws why not.
+    func restorePreviousTranscript(id: String) async throws
 }
 
 public struct RecordedCall: Equatable, Sendable {
@@ -66,7 +68,7 @@ public struct RecordingsState: Equatable, Sendable {
     /// The calls-folder claim's token while a move holds it.
     public var moveToken: UInt64?
     public var stopping = false
-    /// Stopping, with no folder move holding the calls folder and no merge or transcript run running: storage has settled for quit.
+    /// Stopping, with no folder move holding the calls folder and no merge, restore or transcript run running: storage has settled for quit.
     public var stopped = false
     public var move: CallsFolderMove?
     /// The calls chosen to merge, while merging.
@@ -83,7 +85,7 @@ public struct RecordingsState: Equatable, Sendable {
     public var transcriptRun: TranscriptRun?
     public var transcriptRequest: Int
     public var selectedCallID: String?
-    /// A distinct value for each made transcript, even when the same call is made again.
+    /// A distinct value for each made or restored transcript, even for the same call.
     public var transcriptChanged: TranscriptChange?
 
     public struct TagsSave: Equatable, Sendable {
@@ -123,6 +125,7 @@ public enum RecordingsEvent: Equatable, Sendable {
     /// Recording starts are separate from the idle value, which only admits requests.
     case recordingStarted
     case restorePreviousTranscript(String)
+    case transcriptRestored(String), transcriptRestoreFailed(id: String, reason: String)
     case stopActions
     /// A list answer names the request it answers.
     case refresh, clearFailure, listed(request: Int, [RecordedCall]), listFailed(request: Int, String)
@@ -144,6 +147,7 @@ public enum RecordingsEvent: Equatable, Sendable {
 }
 
 public enum RecordingsEffect: Equatable, Sendable {
+    case restorePreviousTranscript(String)
     case makeTranscriptAgain(id: String, request: Int), stopTranscriptAgain(id: String, request: Int)
     case prepareMove(URL), reserveMove, releaseMove(token: UInt64), moveCall(id: String, to: URL), storeFolder(URL)
     /// Lists the calls under a new request id.
@@ -174,7 +178,11 @@ public struct RecordingsReducer: Sendable {
     public func reduce(_ state: RecordingsState, _ event: RecordingsEvent) -> (RecordingsState, RecordingsEffect?) {
         var (next, effect) = reduceEvent(state, event)
         updateTranscriptOffers(&next)
-        if next.stopping, next.transcriptRun == nil, next.moveToken == nil, next.tagsSave == nil, ![.reservingMove, .releasingMove, .runningMerge].contains(next.phase) { next.stopped = true }
+        switch next.phase {
+        case .reservingMove, .releasingMove, .runningMerge, .restoring: break
+        default:
+            if next.stopping, next.transcriptRun == nil, next.moveToken == nil, next.tagsSave == nil { next.stopped = true }
+        }
         return (next, effect)
     }
 
@@ -400,6 +408,9 @@ public struct RecordingsEffectHandler: Sendable {
 
     private func perform(_ effect: RecordingsEffect) async -> RecordingsEvent {
         switch effect {
+        case let .restorePreviousTranscript(id):
+            do { try await calls.restorePreviousTranscript(id: id); return .transcriptRestored(id) }
+            catch { return .transcriptRestoreFailed(id: id, reason: describe(error)) }
         case .makeTranscriptAgain, .stopTranscriptAgain: preconditionFailure("Streaming effects are dispatched by handle")
         case .reserveMove: return .moveReserved(token: await reserve())
         case let .releaseMove(token): await release(token); return .moveReleased

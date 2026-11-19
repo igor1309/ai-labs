@@ -407,6 +407,7 @@ private actor CallsSpy: RecordingsCalls {
     func list() async throws -> [RecordedCall] { try await call(.list(request: 0)) }
     func rename(id: String, title: String) async throws { _ = try await call(.rename(id: id, title: title)) }
     func delete(id: String) async throws { _ = try await call(.delete(id)) }
+    func restorePreviousTranscript(id: String) async throws { _ = try await call(.restorePreviousTranscript(id)) }
     func prepareMove(to destination: URL) async throws -> [MoveCall] { _ = try await call(.prepareMove(destination)); return [] }
     func move(id: String, to destination: URL) async throws -> Int64 { _ = try await call(.moveCall(id: id, to: destination)); return 0 }
     /// Answers with the first listed call's id as the merged call.

@@ -249,6 +249,7 @@ private actor MoveSpy: RecordingsCalls {
     func list() async throws -> [RecordedCall] { throw MoveError() }
     func rename(id: String, title: String) async throws { throw MoveError() }
     func delete(id: String) async throws { throw MoveError() }
+    func restorePreviousTranscript(id: String) async throws { Issue.record("Unexpected restore"); throw MoveError() }
     func merge(ids: [String]) async throws -> String { throw MoveError() }
     func setTags(id: String, tags: [String]) async throws { throw MoveError() }
 }

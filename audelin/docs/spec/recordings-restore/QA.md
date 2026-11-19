@@ -11,19 +11,19 @@ asserted. A row without evidence is Missing.
 ## S-1 Restoring asks Calls
 
 Offered, restore: restoring; the restore port asked for that call.
-Evidence: Missing.
+Evidence: `RecordingsRestoreTests.S1_offeredRestoreAsksCallsAndShowsRestoring`.
 
 ## S-2 A restored call lists again
 
 Restoring, restored: no action; a distinct listing arrives and the call is selected; the transcript-changed output names the call.
-Evidence: Missing.
+Evidence: `RecordingsRestoreTests.S2_restoredListsFreshCallsSelectsAndPublishesChange`.
 
 ## S-3 A failed restore is named
 
 Restoring, failed: no action, the call selected, the reason kept; no list effect.
-Evidence: Missing.
+Evidence: `RecordingsRestoreTests.S3_failedRestoreKeepsReasonAndSelectionWithoutListing`.
 
 ## S-4 Nothing starts during a restore
 
 Restoring, each of rename, delete, merge, move, run: no effect; each reason.
-Evidence: Missing.
+Evidence: `RecordingsRestoreTests.S4_restoringRefusesEveryOtherActionWithItsReason`.
