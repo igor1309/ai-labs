@@ -13,8 +13,9 @@ public struct SummariesPreparationPort: SummariesPreparation {
         self.notes = notes; self.makeID = makeID; self.callText = callText
     }
     public func submission(call: String) async throws -> SummariesSubmission {
-        let entries = try await callText(call).transcript.map { Job.Entry(label: $0.label, time: String($0.start), text: $0.words) }
-        return .init(call: call, entries: entries, finalWrite: true, usable: !entries.isEmpty, requested: true)
+        let text = try await callText(call)
+        let entries = text.transcript.map { Job.Entry(label: $0.label, time: String($0.start), text: $0.words) }
+        return .init(call: call, entries: entries, finalWrite: true, usable: !entries.isEmpty, requested: true, transcriptIdentity: text.identity)
     }
     public func input(call: String) async throws -> String {
         summaryInput(try await submission(call: call).entries)
@@ -25,7 +26,7 @@ public struct SummariesPreparationPort: SummariesPreparation {
             .init(kind: value.kind, model: value.model, program: value.executable, endpoint: value.endpoint, credentialVariable: value.credentialVariable)
         }
         let job = Job(id: makeID(), call: submission.call, input: summaryInput(submission.entries), entries: submission.entries,
-                      speakers: config.speakers, primary: runtime(config.primary), fallback: config.fallback.map(runtime))
+                      speakers: config.speakers, primary: runtime(config.primary), fallback: config.fallback.map(runtime), transcriptIdentity: submission.transcriptIdentity)
         return (job, config.enabled)
     }
 }

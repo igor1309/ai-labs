@@ -5,6 +5,81 @@ import Synchronization
 import Testing
 
 @Suite(.timeLimit(.minutes(1))) struct SummaryVersionsTests {
+    @Test func transcriptIdentityIsReadBack() async throws {
+        try await withVersionsFolder { folder, files in
+            try await publishVersion("notes", files: files, folder: folder, transcriptIdentity: "opaque:transcript-A")
+            let reopened = Files(locations: VersionLocation(folder: folder), disk: FileDisk(), ownershipDirectory: folder.appendingPathComponent("leases"))
+            #expect(try await reopened.notes(call: "call")?.transcriptIdentity == "opaque:transcript-A")
+        }
+    }
+
+    @Test(arguments: ["plain", "receipt", "versions"])
+    func olderTranscriptIdentitiesReadAsUnknownWithoutRewriting(format: String) async throws {
+        try await withVersionsFolder { folder, files in
+            let output = folder.appendingPathComponent("summary.md")
+            var text = "legacy"
+            if format != "plain" {
+                var metadata: [String: Any] = ["job": "old", "input": "input", "warning": false]
+                if format == "versions" {
+                    metadata["template"] = ["id": "daily", "name": "Daily"]
+                    metadata["previous"] = ["text": "older", "made": 123.0, "template": ["id": "before", "name": "Before"]]
+                }
+                let receipt = try JSONSerialization.data(withJSONObject: metadata).base64EncodedString()
+                text = "<!-- audelin-summary:" + receipt + " -->\nlegacy"
+            }
+            try Data(text.utf8).write(to: output)
+            let before = try FileDisk().readStamped(output)
+            let versions = try #require(try await files.versions(call: "call"))
+            #expect(versions.current.text == "legacy" && versions.current.transcriptIdentity == nil)
+            if format == "versions" {
+                let previous = try #require(versions.previous)
+                #expect(previous.text == "older" && previous.transcriptIdentity == nil)
+            } else { #expect(versions.previous == nil) }
+            let after = try FileDisk().readStamped(output)
+            #expect(after.data == before.data && after.modified == before.modified)
+        }
+    }
+
+    @Test func eachVersionKeepsItsTranscriptIdentity() async throws {
+        try await withVersionsFolder { folder, files in
+            for name in ["discarded", "previous", "current"] {
+                try await publishVersion(name, files: files, folder: folder, transcriptIdentity: "transcript-" + name)
+            }
+            let reopened = Files(locations: VersionLocation(folder: folder), disk: FileDisk(), ownershipDirectory: folder.appendingPathComponent("leases"))
+            let versions = try #require(try await reopened.versions(call: "call"))
+            #expect(versions.previous?.text == "previous" && versions.previous?.transcriptIdentity == "transcript-previous")
+            #expect(versions.current.text == "current" && versions.current.transcriptIdentity == "transcript-current")
+        }
+    }
+
+    @Test(arguments: [Keeping.rotation, .replacement], [false, true])
+    func failedPublicationKeepsTranscriptIdentities(keeping: Keeping, terminalFailure: Bool) async throws {
+        try await withVersionsFolder { folder, files in
+            try await publishVersion("A", files: files, folder: folder, transcriptIdentity: "transcript-A")
+            try await publishVersion("B", files: files, folder: folder, transcriptIdentity: "transcript-B")
+            let before = try #require(try await files.versions(call: "call"))
+            let disk = VersionDisk()
+            let owner = Files(locations: VersionLocation(folder: folder), disk: disk, ownershipDirectory: folder.appendingPathComponent("leases"))
+            let record = versionRecord("candidate")
+            _ = try await owner.claim(record)
+            #expect(try await owner.start(record))
+            if terminalFailure {
+                try await owner.publish(record, notes: "C", template: .default, keeping: keeping, transcriptIdentity: "transcript-C")
+                disk.failTerminal.withLock { $0 = true }
+                var terminal = record; terminal.phase = "succeeded"
+                await #expect(throws: (any Error).self) { try await owner.progress(terminal) }
+            } else {
+                disk.fail.withLock { $0 = true }
+                await #expect(throws: (any Error).self) {
+                    try await owner.publish(record, notes: "C", template: .default, keeping: keeping, transcriptIdentity: "transcript-C")
+                }
+                try await owner.discard(record)
+            }
+            #expect(before.previous?.transcriptIdentity == "transcript-A" && before.current.transcriptIdentity == "transcript-B")
+            #expect(try await files.versions(call: "call") == before)
+        }
+    }
+
     @Test(arguments: [0.0, 0.000000238, 0.123456789, 0.999999762])
     func restoringAFilePreservesItsReadDatePrecision(fraction: Double) async throws {
         try await withVersionsFolder { folder, _ in
@@ -311,11 +386,11 @@ import Testing
 private func versionRecord(_ job: String) -> Record {
     Record(job: job, call: "call", input: "input", snapshot: Data(), phase: "pending")
 }
-private func publishVersion(_ text: String, files: Files, folder: URL, keeping: Keeping = .rotation) async throws {
+private func publishVersion(_ text: String, files: Files, folder: URL, keeping: Keeping = .rotation, transcriptIdentity: String? = nil) async throws {
     let record = versionRecord(UUID().uuidString)
     _ = try await files.claim(record)
     #expect(try await files.start(record))
-    try await files.publish(record, notes: text, template: .init(id: "id-" + text, name: text), keeping: keeping)
+    try await files.publish(record, notes: text, template: .init(id: "id-" + text, name: text), keeping: keeping, transcriptIdentity: transcriptIdentity)
     var terminal = record; terminal.phase = "succeeded"
     try await files.progress(terminal)
 }

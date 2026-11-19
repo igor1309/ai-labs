@@ -102,10 +102,11 @@ struct Snapshot: Codable {
         }
     }
     var template: Template?
+    var transcriptIdentity: String?
     var keepPrevious: Bool?
     var requested: Bool?
     var entries: [Entry]; var speakers: Bool; var primary: Runtime; var fallback: Runtime?
-    init(_ job: Job) throws { template = try job.template.map(Template.init); keepPrevious = job.keepPrevious; requested = job.requested; entries = job.entries.map(Entry.init); speakers = job.speakers; primary = .init(job.primary); fallback = job.fallback.map(Runtime.init) }
+    init(_ job: Job) throws { transcriptIdentity = job.transcriptIdentity; template = try job.template.map(Template.init); keepPrevious = job.keepPrevious; requested = job.requested; entries = job.entries.map(Entry.init); speakers = job.speakers; primary = .init(job.primary); fallback = job.fallback.map(Runtime.init) }
 }
 
 /// Adapts the jobs outcome to the detail's own failure contract.

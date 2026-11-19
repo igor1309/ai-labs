@@ -30,13 +30,14 @@ public struct Versions: Equatable, Sendable {
     public let current: Notes
     public init(previous: Notes?, current: Notes) { self.previous = previous; self.current = current }
 }
-/// A version's saved notes, made date and template attribution.
+/// A version's saved notes, made date, template and transcript identity.
 public struct Notes: Codable, Equatable, Sendable {
     public let text: String
     public let made: Date
     public let template: Attribution
-    public init(text: String, made: Date, template: Attribution = .default) {
-        self.text = text; self.made = made; self.template = template
+    public let transcriptIdentity: String?
+    public init(text: String, made: Date, template: Attribution = .default, transcriptIdentity: String? = nil) {
+        self.text = text; self.made = made; self.template = template; self.transcriptIdentity = transcriptIdentity
     }
 }
 public protocol Locations: Sendable {
@@ -122,8 +123,8 @@ public struct Files: Sendable {
     public func publish(_ record: Record, notes: String) async throws {
         try await publish(record, notes: notes, template: .default, keeping: .replacement)
     }
-    public func publish(_ record: Record, notes: String, template: Attribution, keeping: Keeping) async throws {
-        try await storage.publish(record, notes: notes, template: template, keeping: keeping)
+    public func publish(_ record: Record, notes: String, template: Attribution, keeping: Keeping, transcriptIdentity: String? = nil) async throws {
+        try await storage.publish(record, notes: notes, template: template, keeping: keeping, transcriptIdentity: transcriptIdentity)
     }
     public func versions(call: String) async throws -> Versions? { try await storage.versions(call: call) }
     /// Removes a cancelled attempt, restoring notes replaced by this instance's publication.
@@ -140,7 +141,7 @@ private protocol FilesStorage: Sendable {
     func retry(_ record: Record, job: String) async throws -> Record
     func start(_ record: Record) async throws -> Bool
     func progress(_ record: Record) async throws
-    func publish(_ record: Record, notes: String, template: Attribution, keeping: Keeping) async throws
+    func publish(_ record: Record, notes: String, template: Attribution, keeping: Keeping, transcriptIdentity: String?) async throws
     func versions(call: String) async throws -> Versions?
     func discard(_ record: Record) async throws
 }
@@ -307,7 +308,7 @@ private actor DiskFiles: FilesStorage {
             }
         }
     }
-    public func publish(_ record: Record, notes: String, template: Attribution, keeping: Keeping) async throws {
+    public func publish(_ record: Record, notes: String, template: Attribution, keeping: Keeping, transcriptIdentity: String? = nil) async throws {
         let identity = Identity(call: record.call, job: record.job, input: record.input)
         guard leases[identity] != nil else { throw CocoaError(.fileWriteUnknown) }
         let saved = publications[identity]
@@ -327,7 +328,7 @@ private actor DiskFiles: FilesStorage {
                 old = try Self.versions(stamped.data, made: stamped.modified)
             } else { previous = nil; old = nil }
             let receipt = Receipt(job: record.job, input: record.input, warning: record.warning,
-                                  template: template, previous: keeping == .rotation ? old?.current : nil)
+                                  template: template, previous: keeping == .rotation ? old?.current : nil, transcriptIdentity: transcriptIdentity)
             let marker = try JSONEncoder().encode(receipt).base64EncodedString()
             // The receipt and both versions share one rename, including recovery's completion evidence.
             let data = Data(("<!-- audelin-summary:" + marker + " -->\n" + notes).utf8)
@@ -409,7 +410,7 @@ private actor DiskFiles: FilesStorage {
         let metadata = receipt(data)
         return Versions(previous: metadata?.previous,
                         current: Notes(text: String(text[text.index(after: newline)...]), made: made,
-                                       template: metadata?.template ?? .default))
+                                       template: metadata?.template ?? .default, transcriptIdentity: metadata?.transcriptIdentity))
     }
     private static func removeSucceeded(_ record: Record, at path: URL, disk: any Disk, directory: URL) throws -> Bool {
         guard let lease = try acquire(record, directory: directory) else { return false }
@@ -432,6 +433,7 @@ private actor DiskFiles: FilesStorage {
         var warning: Bool
         var template: Attribution?
         var previous: Notes?
+        var transcriptIdentity: String?
     }
     private static func receipt(_ data: Data) -> Receipt? {
         let prefix = data
