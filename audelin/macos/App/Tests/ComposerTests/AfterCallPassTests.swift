@@ -74,7 +74,7 @@ struct AfterCallPassTests {
             #expect(returned.far.far.map(\.speaker) == [ids["Anna"], ids["Boris"], ids["Anna"]])
             #expect(returned.far.speakers.map(\.state) == ["confirmed", "confirmed"])
             let text = try #require(await bytes.replaced.last)
-            #expect(TranscriptFormat.read(text).origin == testTranscriptOrigin.rendering(.init(split: .nothingKept)))
+            #expect(TranscriptFormat.read(text).origin == expectedTranscriptOrigin(split: .nothingKept(release: .init(version: "test-version", build: "test-build"))))
             let anna = try #require(text.firstMatch(of: /- Them (\d): Anna/)?.1)
             let boris = try #require(text.firstMatch(of: /- Them (\d): Boris/)?.1)
             let offered = summaryEntries(.init(status: .finished, entries: [], finalCount: 0), attributed: returned.far)

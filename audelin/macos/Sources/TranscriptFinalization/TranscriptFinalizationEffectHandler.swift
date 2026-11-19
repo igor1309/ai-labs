@@ -53,34 +53,42 @@ public struct TranscriptFinalizationEffectHandler<Raw: Equatable & Sendable, Nam
         self.diarizing = diarizing; self.cleanup = cleanup; self.replacement = replacement; self.finals = finals
     }
 
-    /// The event that completes the effect.
-    public func handle(_ effect: Effect) async -> Event {
+    /// Delivers each result as it completes, including each shutdown replacement.
+    public func handle(_ effect: Effect) -> AsyncStream<Event> {
+        AsyncStream { output in
+            let work = Task {
+                await handle(effect, output: output)
+                output.finish()
+            }
+            output.onTermination = { _ in work.cancel() }
+        }
+    }
+
+    private func handle(_ effect: Effect, output: AsyncStream<Event>.Continuation) async {
         switch effect {
         case let .diarize(call, raw, outcomes):
-            return .diarized(call: call, await diarizing.diarize(call: call, raw, outcomes: outcomes))
+            output.yield(.diarized(call: call, await diarizing.diarize(call: call, raw, outcomes: outcomes)))
         case let .clean(call, raw, far):
-            return .cleaned(call: call, await cleanup.clean(call: call, raw, far: far))
+            output.yield(.cleaned(call: call, await cleanup.clean(call: call, raw, far: far)))
         case let .commit(call, raw, names, far, heard, outcomes):
             do {
                 try await replacement.replace(call: call, raw, names: names, far: far, heard: heard, outcomes: outcomes)
-                return .committed(call: call, succeeded: true)
+                output.yield(.committed(call: call, succeeded: true))
             } catch {
-                return .committed(call: call, succeeded: false)
+                output.yield(.committed(call: call, succeeded: false))
             }
         case let .publish(transcripts):
             await finals.publish(transcripts)
-            return .published(calls: Set(transcripts.keys))
+            output.yield(.published(calls: Set(transcripts.keys)))
         case let .stopCleaning(commits):
             for call in commits.keys.sorted() { await cleanup.stop(call: call) }
-            var results: [String: Bool] = [:]
             for (call, commit) in commits.sorted(by: { $0.key < $1.key }) {
                 do {
                     try await replacement.replace(call: call, commit.raw, names: commit.names, far: commit.far,
                                                   heard: commit.heard, outcomes: commit.outcomes)
-                    results[call] = true
-                } catch { results[call] = false }
+                    output.yield(.committed(call: call, succeeded: true))
+                } catch { output.yield(.committed(call: call, succeeded: false)) }
             }
-            return .committedCalls(results)
         }
     }
 }

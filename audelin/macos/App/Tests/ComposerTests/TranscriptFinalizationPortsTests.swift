@@ -11,6 +11,58 @@ import TranscriptFormat
 
 @MainActor @Suite(.timeLimit(.minutes(1)))
 struct TranscriptFinalizationPortsTests {
+    @Test func shutdownPublishesAndReleasesOneCallWhileAnotherReplacementIsHeld() async throws {
+        let raw = try await publishedCall(status: .finished,
+            mine: [.init(text: line("shared words here", start: 1))],
+            theirs: [.init(text: line("shared words here", start: 0))])
+        let cleaningA = Signal(), cleaningB = Signal(), finishCleaningA = Signal(), finishCleaningB = Signal()
+        let replacingA = Signal(), replacingB = Signal(), finishA = Signal(), finishB = Signal()
+        defer {
+            cleaningA.end(); cleaningB.end(); finishCleaningA.end(); finishCleaningB.end()
+            replacingA.end(); replacingB.end(); finishA.end(); finishB.end()
+        }
+        let resources = FinalizationResources(), log = FixtureLog()
+        let received = Values<String>(), released = Values<String>()
+        for (id, cleaning, finishCleaning, replacing, finish) in [
+            ("a", cleaningA, finishCleaningA, replacingA, finishA), ("b", cleaningB, finishCleaningB, replacingB, finishB)
+        ] {
+            let bytes = FinalizationBytes(beforeReplacement: { replacing.send(); await finish.next() })
+            resources.add(call: id,
+                transcript: openedTranscript(bytes: bytes, names: RecordingNames(), diarizer: .unused, sink: log),
+                cleanup: TranscriptCleanup(recording: .init(microphoneURL: URL(fileURLWithPath: "/mic"), callURL: URL(fileURLWithPath: "/call")),
+                    duration: { 60 }, cleaning: CleaningStub { _ in
+                        cleaning.send(); await finishCleaning.next(); return []
+                    }, hearing: HearingStub { _ in Issue.record("Stopped cleanup must not hear again"); return nil }, sink: log),
+                speakers: { _ in }, finishReading: { released.append(id) })
+        }
+        let model = TranscriptFinalizationModel(diarizing: FinalizationDiarizing(resources: resources),
+            cleanup: FinalizationCleanup(resources: resources), replacement: FinalizationReplacement(resources: resources),
+            finals: FinalTranscriptsPort(resources: resources, deliver: { call, _ in received.append(call) }))
+        for id in ["a", "b"] {
+            model.send(.opened(call: id)); model.send(.wrote(call: id, raw)); model.send(.closed(call: id, names: .init()))
+        }
+        await cleaningA.next(); await cleaningB.next()
+        model.send(.shutdown); model.send(.inputEnded)
+        await replacingA.next()
+        #expect(received.all.isEmpty)
+        finishA.send()
+        await replacingB.next()
+        for await state in model.states() where state.calls["a"]?.published == true { break }
+        #expect(model.state.calls["a"]?.stage == .finalized)
+        #expect(model.state.calls["b"]?.stage == .committing)
+        #expect(model.state.calls["b"]?.published == false)
+        #expect(!model.state.settled)
+        #expect(received.all == ["a"])
+        #expect(released.all == ["a"])
+        #expect(resources.resource(call: "a") == nil)
+        #expect(resources.resource(call: "b") != nil)
+        finishB.send()
+        await model.settled()
+        #expect(received.all == ["a", "b"])
+        #expect(released.all == ["a", "b"])
+        #expect(resources.resource(call: "b") == nil)
+    }
+
     enum CleanupCase: CaseIterable {
         case cleaned, noBleed, differentWordTimes, longRecording, silent, emptyWords, cleaningFails, hearingFails
     }
@@ -210,9 +262,13 @@ private enum FinalizationFailure: Error { case failed }
 private actor FinalizationBytes: TranscriptBytes {
     let fails: Bool
     private(set) var replacements: [String] = []
-    init(fails: Bool = false) { self.fails = fails }
+    let beforeReplacement: @Sendable () async -> Void
+    init(fails: Bool = false, beforeReplacement: @escaping @Sendable () async -> Void = {}) {
+        self.fails = fails; self.beforeReplacement = beforeReplacement
+    }
     func write(_ chunks: [Data], finalLength: Int?) {}
-    func replace(_ chunks: [Data], finalLength: Int?) throws {
+    func replace(_ chunks: [Data], finalLength: Int?) async throws {
+        await beforeReplacement()
         if fails { throw FinalizationFailure.failed }
         replacements.append(String(decoding: chunks.reduce(Data(), +), as: UTF8.self))
     }

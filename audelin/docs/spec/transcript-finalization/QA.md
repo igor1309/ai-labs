@@ -63,6 +63,11 @@ The replacement fails: the receiver spy gets the earlier words, and the replacem
 ## S-10 Calls are made final independently
 
 Evidence: `TranscriptFinalizationReducerTests.callsAreIndependent_state`, `_effect`.
+At shutdown, both cleanups stop before any replacement. Complete A's
+replacement while B's remains held: A finalizes, publishes and releases its
+resources; B remains committing and shutdown stays unsettled. Evidence:
+`TranscriptFinalizationEffectHandlerTests.stopCleaningStopsEachCallThenPublishesEachCompletedCommit`;
+`TranscriptFinalizationPortsTests.shutdownPublishesAndReleasesOneCallWhileAnotherReplacementIsHeld`.
 
 ## S-11 Late results change nothing
 
@@ -74,9 +79,9 @@ Evidence: `TranscriptFinalizationShutdownTests.shutdownWithNoWorkIsSettled_state
 
 ## S-13 Shutdown stops cleaning
 
-Evidence: `TranscriptFinalizationShutdownTests.cleaningCallCommitsAsWritten_state`, `_effect`, `shutdownCommitsEveryCleaningCall`; `TranscriptFinalizationEffectHandlerTests.stopCleaningStopsEachCallThenCommits`.
+Evidence: `TranscriptFinalizationShutdownTests.cleaningCallCommitsAsWritten_state`, `_effect`, `shutdownCommitsEveryCleaningCall`; `TranscriptFinalizationEffectHandlerTests.stopCleaningStopsEachCallThenPublishesEachCompletedCommit`.
 
-With the split saved, cleanup held and shutdown sent: the stop spy is called, the commit tells the saved split and cleaning skipped, and the receiver spy gets the final transcript only after the commit returns. Evidence: `TranscriptFinalizationEffectHandlerTests.stopCleaningStopsEachCallThenCommits`; `TranscriptFinalizationOutcomesTests.stoppedCommitsPublishTogether_state`, `_effect`; `TranscriptOriginCompositionTests.quitCommitsTheSavedStagesAndSkipsOnlyUnfinishedWork` at cleaning.
+With the split saved, cleanup held and shutdown sent: the stop spy is called, the commit tells the saved split and cleaning skipped, and the receiver spy gets the final transcript only after the commit returns. Evidence: `TranscriptFinalizationEffectHandlerTests.stopCleaningStopsEachCallThenPublishesEachCompletedCommit`; `TranscriptFinalizationOutcomesTests.stoppedCommitPublishesIndependently_state`, `_effect`; `TranscriptOriginCompositionTests.quitCommitsTheSavedStagesAndSkipsOnlyUnfinishedWork` at cleaning.
 
 ## S-14 Shutdown lets diarizing finish its write
 

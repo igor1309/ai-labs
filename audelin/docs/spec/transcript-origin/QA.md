@@ -9,7 +9,11 @@ calls scripts with fixture calls whose front matter names distinct versions.
 ## S-1 A transcript tells who heard each side
 
 Read the file at the first in-call save: the bundle's version and build,
-and the recogniser identity the drive supplied for each side. Evidence: `TranscriptOriginCompositionTests.liveWriteTellsTheSuppliedBuildAndBothRecognisers`.
+and the recogniser identity the drive supplied for each side. Also read an
+opened transcript before any text write: its start, hearing release and both
+recognisers are present, with no split or cleaning outcome. Expected origins
+are constructed as format values independently of the production mapping.
+Evidence: `TranscriptStorageTests.openingATranscriptSavesItsOriginAndStartsLoadingTheDiarizer`; `TranscriptOriginCompositionTests.liveWriteTellsTheSuppliedBuildAndBothRecognisers`.
 
 ## S-2 A transcript being finished tells what is saved so far
 
@@ -45,7 +49,10 @@ build. Evidence: `TranscriptOriginCompositionTests.savedSplitTellsItsDiarizerWhi
 ## S-7 Their side not split tells it
 
 Diarization fails: their side is unsplit and the origin says nothing kept,
-with version and build. Evidence: `TranscriptOriginCompositionTests.failedSplitKeepsTheirSideUnsplitAndTellsNothingKept`.
+with version and build. A failed split save followed by a successful names-only
+save tells nothing kept, with no cleaning outcome, while retaining the corrected
+names. Evidence: `TranscriptOriginCompositionTests.failedSplitKeepsTheirSideUnsplitAndTellsNothingKept`;
+`AfterCallPassTests.aFailedAttributedSaveStillWritesTheCorrectedNamesOnEveryRow`.
 
 ## S-13 A failed save keeps the text and its origin together
 

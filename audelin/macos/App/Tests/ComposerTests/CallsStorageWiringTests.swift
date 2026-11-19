@@ -146,7 +146,7 @@ import Testing
             }
             let storage = CallsStorage(folder: source, journal: root.appendingPathComponent("moves.json"),
                 writeJournal: { try JSONEncoder().encode($0).write(to: $1, options: .atomic) },
-                makeCalls: { folder in
+                readPart: { _, _ in throw CocoaError(.fileReadUnknown) }, makeCalls: { folder in
                     Calls(folder: folder, timeZone: .gmt,
                         duration: { _ in 0 },
                         transcript: { _ in [] },

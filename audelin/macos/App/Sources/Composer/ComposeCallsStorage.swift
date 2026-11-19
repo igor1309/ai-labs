@@ -15,9 +15,18 @@ func callsStorage(folder: URL, timeZone: TimeZone, journal: URL? = nil, trash: @
                   writeJournal: @escaping @Sendable (CallsJournal, URL) throws -> Void = CallsStorage.writeAtomically) -> CallsStorage {
     var disk = CallsDisk.system
     disk.trash = trash
+    let makeCalls: @Sendable (URL) -> Calls = { [disk] in
+        Calls(folder: $0, timeZone: timeZone, duration: TrackFile.duration(at:), transcript: transcriptLines, disk: disk)
+    }
     return CallsStorage(folder: folder, journal: journal, writeJournal: writeJournal,
-                        makeCalls: { [disk] in Calls(folder: $0, timeZone: timeZone, duration: TrackFile.duration(at:),
-                                                     transcript: transcriptLines, disk: disk) })
+                        readPart: { folder, id in try storedMergePart(makeCalls(folder.deletingLastPathComponent()), id: id) },
+                        makeCalls: makeCalls)
+}
+
+/// Translates Calls' persisted part into the storage boundary's merge input.
+func storedMergePart(_ calls: Calls, id: String) throws -> CallsStorage.Part {
+    let part = try calls.part(id: id)
+    return .init(transcript: part.transcript, originalStarts: part.originalStarts)
 }
 
 /// Recording's port to the calls-folder claim, answered by the one CallsStorage.

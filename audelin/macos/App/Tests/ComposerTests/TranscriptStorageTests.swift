@@ -1,12 +1,13 @@
 import CallDiarizer
 import Foundation
 import Testing
+import TranscriptFormat
 @testable import Composer
 
 @Suite(.timeLimit(.minutes(1)))
 struct TranscriptStorageTests {
 
-    @Test func openingATranscriptStartsLoadingTheDiarizer() async throws {
+    @Test func openingATranscriptSavesItsOriginAndStartsLoadingTheDiarizer() async throws {
 
         let loads = AsyncStream<Void>.makeStream()
         let storage = FileTranscriptStorage(diarizer: CallDiarizer(binding: LoadSignal { loads.continuation.yield() }))
@@ -15,6 +16,10 @@ struct TranscriptStorageTests {
         defer { try? FileManager.default.removeItem(at: directory) }
 
         let file = try await storage.open(at: directory.appendingPathComponent("transcript.md"), names: RecordingNames(), origin: testTranscriptOrigin, sink: TestLogSink())
+
+        let saved = TranscriptFormat.read(try String(contentsOf: directory.appendingPathComponent("transcript.md"), encoding: .utf8))
+        #expect(saved.origin == expectedTranscriptOrigin())
+        #expect(saved.segments.isEmpty)
 
         var iterator = loads.stream.makeAsyncIterator()
         await iterator.next()

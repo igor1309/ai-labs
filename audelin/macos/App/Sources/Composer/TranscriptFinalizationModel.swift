@@ -25,15 +25,7 @@ final class TranscriptFinalizationModel {
             let (next, effect) = reducer.reduce(state, event)
             if next != state { feed.publish(next) }
             return (next, effect)
-        }, handleEffect: { effect in
-            AsyncStream { output in
-                let work = Task {
-                    output.yield(await handler.handle(effect))
-                    output.finish()
-                }
-                output.onTermination = { _ in work.cancel() }
-            }
-        })
+        }, handleEffect: handler.handle)
     }
 
     var state: State { model.state }

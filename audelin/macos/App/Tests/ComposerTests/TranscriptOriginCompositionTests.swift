@@ -24,7 +24,7 @@ struct TranscriptOriginCompositionTests {
                 try await rig.start()
                 await saved.next()
                 let file = try TranscriptFormat.read(String(contentsOf: root.appendingPathComponent("1970.01.01-0000/transcript.md"), encoding: .utf8))
-                #expect(file.origin == TranscriptOrigin(start: Date(timeIntervalSince1970: 0), build: testTranscriptBuild).rendering(.init()))
+                #expect(file.origin == expectedTranscriptOrigin(start: Date(timeIntervalSince1970: 0)))
                 await rig.finish()
             } catch { await rig.finish(); throw error }
         }
@@ -42,11 +42,14 @@ struct TranscriptOriginCompositionTests {
             await held.next()
             let saved = try rig.read()
             #expect(saved.segments.filter { $0.side == .theirs }.map(\.speaker) == ["d0", "d1"])
-            #expect(saved.origin == testTranscriptOrigin.rendering(.init(split: .done(diarizer: diarizer))))
+            let expectedSplit = expectedTranscriptOrigin(split: .done(diarizer: diarizer, release: .init(version: "test-version", build: "test-build")))
+            #expect(saved.origin == expectedSplit)
             #expect(rig.finals.all.isEmpty)
             release.send()
             await rig.published()
-            #expect(try rig.read().origin == testTranscriptOrigin.rendering(.init(split: .done(diarizer: diarizer), cleaning: .done)))
+            let expected = expectedTranscriptOrigin(split: .done(diarizer: diarizer, release: .init(version: "test-version", build: "test-build")),
+                cleaning: .init(outcome: .done, release: .init(version: "test-version", build: "test-build")))
+            #expect(try rig.read().origin == expected)
             #expect(try rig.read().segments.filter { $0.side == .mine }.map(\.settled) == ["cleaned answer"])
         }
     }
@@ -61,7 +64,9 @@ struct TranscriptOriginCompositionTests {
             rig.close()
             await rig.published()
             #expect(try rig.read().segments.filter { $0.side == .mine }.map(\.settled) == ["shared words"])
-            #expect(try rig.read().origin == testTranscriptOrigin.rendering(.init(split: .nothingKept, cleaning: .nothingKept)))
+            let expected = expectedTranscriptOrigin(split: .nothingKept(release: .init(version: "test-version", build: "test-build")),
+                cleaning: .init(outcome: .nothingKept, release: .init(version: "test-version", build: "test-build")))
+            #expect(try rig.read().origin == expected)
             #expect(rig.replacements.all.count == 1)
         }
     }
@@ -74,7 +79,9 @@ struct TranscriptOriginCompositionTests {
             #expect(saved.segments.filter { $0.side == .theirs }.map(\.settled) == ["shared words", "second voice"])
             #expect(saved.segments.filter { $0.side == .theirs }.allSatisfy { $0.speaker == nil })
             #expect(saved.speakers.isEmpty)
-            #expect(saved.origin == testTranscriptOrigin.rendering(.init(split: .nothingKept, cleaning: .done)))
+            let expected = expectedTranscriptOrigin(split: .nothingKept(release: .init(version: "test-version", build: "test-build")),
+                cleaning: .init(outcome: .done, release: .init(version: "test-version", build: "test-build")))
+            #expect(saved.origin == expected)
         }
     }
 
@@ -85,7 +92,9 @@ struct TranscriptOriginCompositionTests {
             })
             rig.close(); await rig.published()
             #expect(try rig.read().segments.filter { $0.side == .mine }.map(\.settled) == ["my own answer"])
-            #expect(try rig.read().origin == testTranscriptOrigin.rendering(.init(split: .nothingKept, cleaning: .nothingKept)))
+            let expected = expectedTranscriptOrigin(split: .nothingKept(release: .init(version: "test-version", build: "test-build")),
+                cleaning: .init(outcome: .nothingKept, release: .init(version: "test-version", build: "test-build")))
+            #expect(try rig.read().origin == expected)
         }
     }
 
@@ -96,7 +105,8 @@ struct TranscriptOriginCompositionTests {
                 cleaning: { binding.failRename = true; return [0.25] })
             rig.close(); await rig.published()
             #expect(try rig.read().segments.filter { $0.side == .mine }.map(\.settled) == ["shared words"])
-            #expect(try rig.read().origin == testTranscriptOrigin.rendering(.init(split: .done(diarizer: "nemotron"))))
+            let expected = expectedTranscriptOrigin(split: .done(diarizer: "nemotron", release: .init(version: "test-version", build: "test-build")))
+            #expect(try rig.read().origin == expected)
             #expect(rig.replacements.all.count == 1)
             #expect(rig.finals.all.first?.entries.filter { $0.label == "Me" }.map(\.text) == ["shared words"])
         }
@@ -129,10 +139,12 @@ struct TranscriptOriginCompositionTests {
             }
             await rig.published()
             if boundary == .cleaning { release.send() }
-            let split: FinishingOutcomes.Split = boundary == .writing || boundary == .opening ? .skipped : .done(diarizer: "nemotron")
-            let cleaning: FinishingOutcomes.Cleaning = boundary == .committing ? .done : .skipped
+            let buildRelease = TranscriptFormat.Release(version: "test-version", build: "test-build")
+            let split: TranscriptFormat.Split = boundary == .writing || boundary == .opening ? .skipped(release: buildRelease) : .done(diarizer: "nemotron", release: buildRelease)
+            let cleaning = TranscriptFormat.Cleaning(outcome: boundary == .committing ? .done : .skipped, release: buildRelease)
             let saved = try rig.read()
-            #expect(saved.origin == testTranscriptOrigin.rendering(.init(split: split, cleaning: cleaning)))
+            let expected = expectedTranscriptOrigin(split: split, cleaning: cleaning)
+            #expect(saved.origin == expected)
             #expect(saved.segments.filter { $0.side == .mine }.map(\.settled) == [boundary == .committing ? "cleaned answer" : "shared words"])
             #expect(rig.replacements.all.count == 1)
             rig.model.send(.inputEnded)

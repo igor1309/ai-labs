@@ -116,8 +116,6 @@ public enum TranscriptFinalizationEvent<Raw: Equatable & Sendable, Names: Equata
     /// Nil when cleanup kept the microphone side as written.
     case cleaned(call: String, Heard?)
     case committed(call: String, succeeded: Bool)
-    /// Each call committed as written once shutdown stopped its cleanup, with whether its write succeeded.
-    case committedCalls([String: Bool])
     /// The calls' final forms have reached their consumers.
     case published(calls: Set<String>)
     /// No more transcript openings, writes or closes will arrive.
@@ -220,10 +218,7 @@ public struct TranscriptFinalizationReducer<Raw: Equatable & Sendable, Names: Eq
             return (next, commit(id, call, raw: raw))
 
         case let .committed(id, succeeded):
-            return committed(state, results: [id: succeeded])
-
-        case let .committedCalls(results):
-            return committed(state, results: results)
+            return committed(state, id: id, succeeded: succeeded)
 
         case let .published(ids):
             for id in ids where state.calls[id].map({ $0.stage == .finalized || $0.stage == .failed }) == true {
@@ -254,18 +249,14 @@ public struct TranscriptFinalizationReducer<Raw: Equatable & Sendable, Names: Eq
         .commit(call: id, raw, call.names, call.far, call.heard, call.outcomes)
     }
 
-    private func committed(_ state: State, results: [String: Bool]) -> (State, Effect?) {
+    private func committed(_ state: State, id: String, succeeded: Bool) -> (State, Effect?) {
+        guard var call = state.calls[id], call.stage == .committing else { return (state, nil) }
         var next = state
-        var finals: [String: FinalTranscript<Entry>] = [:]
-        for (id, succeeded) in results {
-            guard var call = state.calls[id], call.stage == .committing else { continue }
-            // A failed replacement leaves the saved far side and original microphone text.
-            if !succeeded { call.heard = nil }
-            call.stage = .finalized
-            next.calls[id] = call
-            finals[id] = final(call, finalWrite: true)
-        }
-        return (next, finals.isEmpty ? nil : .publish(finals))
+        // A failed replacement leaves the saved far side and original microphone text.
+        if !succeeded { call.heard = nil }
+        call.stage = .finalized
+        next.calls[id] = call
+        return (next, publish(id, call, finalWrite: true))
     }
 
     private func publish(_ id: String, _ call: State.Call, finalWrite: Bool) -> Effect {

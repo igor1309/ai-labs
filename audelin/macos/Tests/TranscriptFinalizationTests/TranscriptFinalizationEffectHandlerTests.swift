@@ -55,7 +55,7 @@ struct TranscriptFinalizationEffectHandlerTests {
         let (sut, spies) = makeHandler()
         let finals = ["a": FinalTranscript(entries: ["e"], usable: true, finalWrite: true),
                       "b": FinalTranscript<String>(entries: [], usable: false, finalWrite: false)]
-        async let event = sut.handle(.publish(finals))
+        async let event = firstEvent(sut, .publish(finals))
         await spies.finals.complete(with: ())
         #expect(await event == .published(calls: ["a", "b"]))
         #expect(await spies.finals.payloads == [finals])
@@ -68,15 +68,15 @@ struct TranscriptFinalizationEffectHandlerTests {
         let reducer = makeSUT().sut
         let initial = makeState(makeCall())
         let (diarizing, diarize) = reducer.reduce(initial, .closed(call: callID, names: "names"))
-        async let splitEvent = handler.handle(diarize!)
+        async let splitEvent = firstEvent(handler, diarize!)
         let saved: SavedDiarization<String>? = split == "failed" ? nil : .init(far: "far", diarizer: split == "names-only" ? nil : split)
         await spies.diarizing.complete(with: saved)
         #expect(await spies.diarizing.payloads == [.init(call: callID, raw: "raw", outcomes: .init())])
         let (cleaning, clean) = reducer.reduce(diarizing, await splitEvent)
-        async let cleanEvent = handler.handle(clean!)
+        async let cleanEvent = firstEvent(handler, clean!)
         await spies.cleanup.complete(with: heard ? "heard" : nil)
         let (committing, commit) = reducer.reduce(cleaning, await cleanEvent)
-        async let commitEvent = handler.handle(commit!)
+        async let commitEvent = firstEvent(handler, commit!)
         await spies.replacement.waitForCall()
         #expect(await spies.finals.payloads.isEmpty)
         await spies.replacement.complete(with: succeeds ? .success(()) : .failure(Refused()))
@@ -86,7 +86,7 @@ struct TranscriptFinalizationEffectHandlerTests {
         #expect(await spies.replacement.payloads == [.init(call: callID, raw: "raw", names: "names", far: saved?.far,
                                                           heard: heard ? "heard" : nil, outcomes: outcome)])
         let (_, publish) = reducer.reduce(committing, await commitEvent)
-        async let publishedEvent = handler.handle(publish!)
+        async let publishedEvent = firstEvent(handler, publish!)
         await spies.finals.complete(with: ())
         #expect(await publishedEvent == .published(calls: [callID]))
         #expect(await spies.finals.payloads == [[callID: final()]])
@@ -95,22 +95,36 @@ struct TranscriptFinalizationEffectHandlerTests {
     }
 
     /// Every cleanup stops before any replacement begins; publication follows the reducer's commit result.
-    @Test func stopCleaningStopsEachCallThenCommits() async {
+    @Test func stopCleaningStopsEachCallThenPublishesEachCompletedCommit() async throws {
         let (sut, spies) = makeHandler()
         let outcomes = FinishingOutcomes(split: .done(diarizer: "vbx"), cleaning: .skipped)
         let commits = ["a": commit("ra", outcomes: outcomes), "b": commit("rb", outcomes: outcomes)]
-        async let event = sut.handle(.stopCleaning(commits))
+        var events = sut.handle(.stopCleaning(commits)).makeAsyncIterator()
         await spies.stops.complete(with: ())
         #expect(await spies.replacement.payloads.isEmpty)
         await spies.stops.complete(with: ())
         await spies.replacement.complete(with: .success(()))
+        let committed = try #require(await events.next())
+        #expect(committed == .committed(call: "a", succeeded: true))
+        await spies.replacement.waitForCall()
+        let reducer = makeSUT().sut
+        let initial = State(calls: ["a": makeCall(.committing), "b": makeCall(.committing)], shuttingDown: true)
+        let (finalized, publish) = reducer.reduce(initial, committed)
+        #expect(finalized.calls["a"]?.stage == .finalized)
+        #expect(finalized.calls["b"]?.stage == .committing)
+        async let published = firstEvent(sut, publish!)
+        await spies.finals.complete(with: ())
+        let (delivered, _) = reducer.reduce(finalized, await published)
+        #expect(delivered.calls["a"]?.published == true)
+        #expect(delivered.calls["b"]?.published == false)
+        #expect(await spies.finals.payloads == [["a": final()]])
         await spies.replacement.complete(with: .failure(Refused()))
-        #expect(await event == .committedCalls(["a": true, "b": false]))
+        #expect(await events.next() == .committed(call: "b", succeeded: false))
+        #expect(await events.next() == nil)
         #expect(await spies.stops.payloads == ["a", "b"])
         #expect(await spies.replacement.payloads == [
             .init(call: "a", raw: "ra", names: nil, far: nil, heard: nil, outcomes: outcomes),
             .init(call: "b", raw: "rb", names: nil, far: nil, heard: nil, outcomes: outcomes)])
-        #expect(await spies.finals.payloads.isEmpty)
     }
 
 }
@@ -140,7 +154,7 @@ private func expect(
     _ sut: Handler, with effect: Effect, toDeliver expected: Event,
     on action: @escaping @Sendable () async -> Void, sourceLocation: SourceLocation = #_sourceLocation
 ) async {
-    async let event = sut.handle(effect)
+    async let event = firstEvent(sut, effect)
     await action()
     #expect(await event == expected, sourceLocation: sourceLocation)
 }
@@ -193,4 +207,9 @@ private actor Spy<Payload: Sendable, Value: Sendable> {
         await waitForCall()
         pending.removeFirst().resume(returning: value)
     }
+}
+
+private func firstEvent(_ handler: Handler, _ effect: Effect) async -> Event {
+    var events = handler.handle(effect).makeAsyncIterator()
+    return await events.next()!
 }

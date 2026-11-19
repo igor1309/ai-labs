@@ -131,9 +131,12 @@ struct MergeChainTests {
     private func storage(_ root: URL) -> CallsStorage {
         var disk = CallsDisk.system
         disk.trash = removeForTrash
-        return CallsStorage(folder: root, journal: nil, makeCalls: { [disk] in
+        let makeCalls: @Sendable (URL) -> Calls = { [disk] in
             Calls(folder: $0, timeZone: .gmt, duration: { _ in 10 }, transcript: transcriptLines, disk: disk)
-        })
+        }
+        return CallsStorage(folder: root, journal: nil,
+            readPart: { folder, id in try storedMergePart(makeCalls(folder.deletingLastPathComponent()), id: id) },
+            makeCalls: makeCalls)
     }
 }
 

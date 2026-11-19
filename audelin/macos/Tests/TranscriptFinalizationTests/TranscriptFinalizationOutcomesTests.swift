@@ -51,14 +51,14 @@ struct TranscriptFinalizationOutcomesTests {
         assert(makeState(makeCall(saved: false), shuttingDown: true), .closed(call: callID, names: "names"), delivers: published(finalWrite: false))
     }
 
-    @Test func stoppedCommitsPublishTogether_state() {
+    @Test func stoppedCommitPublishesIndependently_state() {
         let state = State(calls: ["a": makeCall(.committing), "b": makeCall(.committing, heard: "heard"), "c": makeCall(.diarizing)], shuttingDown: true)
-        assert(state, .committedCalls(["a": true, "b": false, "c": true])) {
-            $0.calls["a"]?.stage = .finalized; $0.calls["b"]?.stage = .finalized; $0.calls["b"]?.heard = nil
+        assert(state, .committed(call: "a", succeeded: true)) {
+            $0.calls["a"]?.stage = .finalized
         }
     }
-    @Test func stoppedCommitsPublishTogether_effect() {
+    @Test func stoppedCommitPublishesIndependently_effect() {
         let state = State(calls: ["a": makeCall(.committing), "b": makeCall(.committing, heard: "heard"), "c": makeCall(.diarizing)], shuttingDown: true)
-        assert(state, .committedCalls(["a": true, "b": false, "c": true]), delivers: .publish(["a": final(), "b": final()]))
+        assert(state, .committed(call: "a", succeeded: true), delivers: .publish(["a": final()]))
     }
 }

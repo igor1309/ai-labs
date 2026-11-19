@@ -8,6 +8,33 @@ import Testing
 import CallsStorage
 
 @Suite struct CallsStorageTests {
+    @Test(arguments: [false, true])
+    func partReaderReceivesTheResolvedFolderAndReturnsItsOwnedValue(fails: Bool) async throws {
+        try await withStorageFolder { root in
+            let id = "1970.01.01-0000"
+            try FileManager.default.createDirectory(at: root.appendingPathComponent(id), withIntermediateDirectories: true)
+            let received = Mutex<[(URL, String)]>([])
+            let expected = CallsStorage.Part(transcript: Data("saved part".utf8), originalStarts: [Date(timeIntervalSince1970: 42)])
+            let storage = CallsStorage(folder: root, journal: nil, readPart: { folder, call in
+                received.withLock { $0.append((folder, call)) }
+                if fails { throw ScriptFailure.failed }
+                return expected
+            }, makeCalls: {
+                Calls(folder: $0, timeZone: .gmt, duration: { _ in 0 }, transcript: { _ in [] }, disk: .system)
+            })
+            try await storage.rename(id: id, title: "renamed")
+            if fails {
+                await #expect(throws: ScriptFailure.failed) { try await storage.part(id: id) }
+            } else {
+                #expect(try await storage.part(id: id) == expected)
+            }
+            let reads = received.withLock { $0 }
+            #expect(reads.count == 1)
+            #expect(reads.first?.0.lastPathComponent == id + " renamed")
+            #expect(reads.first?.1 == id)
+        }
+    }
+
     @Test func preparationMarksCallsAlreadyInTheDestination() async throws {
         try await withStorageFolder { root in
             let source = root.appendingPathComponent("source")

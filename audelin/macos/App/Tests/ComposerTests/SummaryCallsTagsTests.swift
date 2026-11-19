@@ -61,7 +61,7 @@ struct SummaryCallsTagsTests {
     private func storage(_ root: URL) -> CallsStorage {
         var disk = CallsDisk.system
         disk.trash = removeForTrash
-        return CallsStorage(folder: root, journal: nil, makeCalls: { [disk] in
+        return CallsStorage(folder: root, journal: nil, readPart: { _, _ in throw CocoaError(.fileReadUnknown) }, makeCalls: { [disk] in
             Calls(folder: $0, timeZone: .gmt, duration: { _ in 10 }, transcript: transcriptLines, disk: disk)
         })
     }
