@@ -250,8 +250,8 @@ private let a = "2024.01.01-1000", b = "2024.01.01-1006", d = "2024.01.01-1030"
                     return true
                 }
                 let changed = try Data(contentsOf: transcript)
-                guard let words = String(data: changed, encoding: .utf8), words.contains("Новый текст звонка."), words.contains("Новый текст микрофона.") else {
-                    throw LiveFailure("The fixture recognition did not reach the saved transcript")
+                guard let words = String(data: changed, encoding: .utf8), words.contains("Новый текст звонка: 10 с, 0 %."), words.contains("Новый текст микрофона: 10 с, 25 %.") else {
+                    throw LiveFailure("The fixture recognition did not hear each whole track into the saved transcript")
                 }
                 try live.screenshot("made-again", into: root)
                 try live.showMenu(a)

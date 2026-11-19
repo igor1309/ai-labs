@@ -46,6 +46,8 @@ public struct SummaryPreviewState: Equatable, Sendable {
     public var templateName: String?
     public var progress: String?
     public var failure: String?
+    /// Says the shown notes were made from a transcript other than the call's current one; nil when they were not.
+    public var transcriptMark: String?
     public var title: String
     public var date: String
     public var duration: String
@@ -56,7 +58,9 @@ public struct SummaryPreviewState: Equatable, Sendable {
     public var tags: Tags
 
     public init(title: String, date: String, duration: String, notes: Notes, canRetry: Bool = false, tags: Tags = .shown([]), menu: Menu? = nil,
-                version: Version? = nil, templateName: String? = nil, progress: String? = nil, failure: String? = nil) {
+                version: Version? = nil, templateName: String? = nil, progress: String? = nil, failure: String? = nil,
+                transcriptMark: String? = nil) {
+        self.transcriptMark = transcriptMark
         self.title = title; self.date = date; self.duration = duration; self.notes = notes; self.canRetry = canRetry
         self.tags = tags
         self.menu = menu; self.version = version; self.templateName = templateName; self.progress = progress; self.failure = failure

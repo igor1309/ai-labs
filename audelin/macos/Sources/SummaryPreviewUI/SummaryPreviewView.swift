@@ -72,6 +72,7 @@ public struct SummaryPreviewView: View {
                 }
                 switch state.notes {
                 case let .markdown(source, made):
+                    if let mark = state.transcriptMark { transcriptMark(mark) }
                     NotesText(text: notes(source, made: made, template: state.templateName), background: NSColor(tokens.surface),
                               inset: NSSize(width: tokens.space28 - 5, height: 0),
                               label: text(.notes), made: made.map { text(.made, $0) + (state.templateName.map { " · " + text(.templateLine, $0) } ?? "") })
@@ -240,6 +241,20 @@ public struct SummaryPreviewView: View {
         }
         .font(tokens.ui(tokens.typeSmall))
         .padding(tokens.space12).background(tokens.okBg)
+        .padding(.horizontal, tokens.space28).padding(.bottom, tokens.space12)
+    }
+
+    /// Notes made from another transcript: a history icon and the mark in `warn`, above the notes.
+    private func transcriptMark(_ mark: String) -> some View {
+        HStack(spacing: tokens.space8) {
+            Image(systemName: "clock.arrow.circlepath").accessibilityHidden(true)
+            Text(mark)
+                .accessibilityIdentifier("preview.transcriptMark")
+                .accessibilityLabel(mark)
+                .accessibilityValue(mark)
+        }
+        .font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.warn)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, tokens.space28).padding(.bottom, tokens.space12)
     }
 

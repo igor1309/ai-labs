@@ -50,6 +50,7 @@ public struct TranscriptChange: Equatable, Sendable {
 /// The request identifies a run across retries, so a delayed stop cannot stop its successor.
 /// A stop asks the same run to end; its terminal report decides whether publication won.
 public protocol RecordingsTranscriptAgain: Sendable {
+    /// Starts the run before it returns, so a stop for it called afterwards always finds it.
     func run(id: String, request: Int) -> AsyncStream<TranscriptReport>
     func stop(id: String, request: Int) async
 }

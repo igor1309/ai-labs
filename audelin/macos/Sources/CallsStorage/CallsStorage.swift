@@ -69,25 +69,37 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
         }
     }
 
-    /// Puts back every merge interrupted in the calls folder, then recovers the moves the journal records.
+    /// Puts back every merge and transcript change interrupted in the calls folder and in
+    /// every other folder the journal says owns a call, then recovers the moves it records.
     public func restore() async throws {
         try await perform { [self] in
-            try state.withLock { state in
-                // A calls folder that is not there, such as one on an unmounted volume, holds no merge.
-                guard FileManager.default.fileExists(atPath: state.recordingFolder.path) else { return }
-                try makeCalls(state.recordingFolder).recoverInterruptedMerges()
-            }
+            try state.withLock { state in try recoverInterruptedChanges(in: state.recordingFolder) }
             guard let journal else { return }
             let data: Data
             do { data = try Data(contentsOf: journal) }
             catch let error as CocoaError where error.code == .fileReadNoSuchFile { return }
             let (saved, migrated) = try CallsJournal.read(data) { [makeCalls] root in try makeCalls(root).list().map(\.id) }
             if migrated { try save(saved) }
-            state.withLock { state in
+            try state.withLock { state in
                 state.journal = saved
+                // A transcript is changed in the folder that owns its call, so each owning folder
+                // is put back before any of its calls is listed or moved on.
+                for root in otherRoots(state) { try recoverInterruptedChanges(in: root) }
                 recover(&state)
             }
         }
+    }
+    private func recoverInterruptedChanges(in root: URL) throws {
+        // A folder that is not there, such as one on an unmounted volume, holds no change.
+        guard FileManager.default.fileExists(atPath: root.path) else { return }
+        try makeCalls(root).recoverInterruptedMerges()
+    }
+    /// The folders other than the calls folder that the journal says own a call.
+    private func otherRoots(_ state: State) -> [URL] {
+        let roots = Set((Array(state.journal.owners.values) + state.journal.moves.values.map { $0.owner.deletingLastPathComponent() }).map {
+            directory($0.resolvingSymlinksInPath())
+        })
+        return roots.filter { !sameRoot($0, state.recordingFolder) }.sorted { $0.path < $1.path }
     }
     private func save(_ record: CallsJournal) throws {
         if let journal { try writeJournal(record, journal) }
@@ -142,11 +154,7 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
             guard let owner = ownerRoot(id: $0.id, state: state) else { return true }
             return sameRoot(owner, state.recordingFolder)
         }
-        let otherRoots = Set((Array(state.journal.owners.values) + state.journal.moves.values.map { $0.owner.deletingLastPathComponent() }).map {
-            directory($0.resolvingSymlinksInPath())
-        })
-            .filter { !sameRoot($0, state.recordingFolder) }
-        for root in otherRoots {
+        for root in otherRoots(state) {
             result += try makeCalls(root).list().filter { call in
                 ownerRoot(id: call.id, state: state).map { sameRoot($0, root) } == true
             }

@@ -29,7 +29,8 @@ func detailState(_ detail: CallsDetail?, tags: CallsDetailTags = .shown([]), men
                                        keeping: $0.offersKeeping ? $0.keeping : nil, saving: $0.saving, failure: $0.saveFailure, catalogueRevision: $0.catalogueRevision,
                                        filesReason: $0.filesReason, offersFolder: $0.offersFolder, openingFolder: $0.openingFolder, folderFailure: $0.folderFailure, opens: $0.opens) },
                  version: detail.pair?.previous == nil ? nil : (detail.version == .previous ? .previous : .current),
-                 templateName: detail.template, progress: detail.progress, failure: detail.failure)
+                 templateName: detail.template, progress: detail.progress, failure: detail.failure,
+                 transcriptMark: detail.transcriptMark)
 }
 
 /// The detail's buttons, as the calls window's actions on the call it shows.

@@ -41,10 +41,7 @@ public struct CallsRehearsalOptions: Equatable, Sendable {
     /// Writes the seed's calls, if any; run before composition, so the calls list reads them on launch.
     public func seedCalls() async throws {
         switch seed {
-        case .transcriptAgain:
-            try await CallsFixture.seedMerge(in: callsFolder)
-            try FileManager.default.copyItem(at: callsFolder.appendingPathComponent("\(CallsFixture.a)/call.caf"),
-                                             to: callsFolder.appendingPathComponent("\(CallsFixture.a)/microphone.caf"))
+        case .transcriptAgain: try await CallsFixture.seedTranscriptAgain(in: callsFolder)
         case .merge: try await CallsFixture.seedMerge(in: callsFolder)
         case .legacyMerge: try await CallsFixture.seedLegacyMerge(in: callsFolder)
         case .interruptedMerge: try await CallsFixture.seedInterruptedMerge(in: callsFolder)

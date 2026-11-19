@@ -51,15 +51,31 @@ struct TranscriptAgainCompositionTests {
         #expect(await result.value.last == (current ? .stopped : .made))
     }
 
+    @Test func aStopHandledRightAfterItsRunStopsIt() async {
+        let held = AsyncStream<Void>.makeStream(), published = Values<String>()
+        let chain = TranscriptAgainChain(originals: { _ in
+                for await _ in held.stream {}
+                try Task.checkCancellation()
+                return [.init(id: "original", farTrack: "far", microphoneTrack: "mic", duration: 4)]
+            },
+            recognition: .init(hear: { _, _ in .init(words: [], model: "model") }, split: { _, _ in nil }, clean: { _, _, _ in nil },
+                               readOld: { _ in [] }, names: ReRecognition.carryNames, publish: { id, _ in published.append(id) }),
+            build: .init(version: "version", number: "number"), describe: { String(describing: $0) })
+        let handler = RecordingsEffectHandler(calls: UnusedCalls(), transcriptAgain: chain, reserve: { nil }, release: { _ in },
+                                              storeFolder: { _ in }, describe: { String(describing: $0) })
+        let run = handler.handle(.makeTranscriptAgain(id: "call", request: 1))
+        for await _ in handler.handle(.stopTranscriptAgain(id: "call", request: 1)) {}
+        held.continuation.finish()
+        var events: [RecordingsEvent] = []
+        for await event in run { events.append(event) }
+        #expect(events.last == .transcriptReported(request: 1, .stopped))
+        #expect(published.all.isEmpty)
+    }
+
     @Test @MainActor func remakeAndRestoreRefreshTheShownDetailAndKeepTheOldBytes() async throws {
         try await withComposeFolder { root in
             let id = "1970.01.01-1000", folder = root.appendingPathComponent(id)
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            for name in ["call", "microphone"] {
-                let track = try await TrackFile(url: folder.appendingPathComponent(name + ".caf"))
-                try await track.write(Array(repeating: 0, count: 4 * 48_000), sampleRate: 48_000)
-                try await track.close()
-            }
+            try await FixtureTrack.write(far: 1, microphone: 2, seconds: 4, in: folder)
             var format = TranscriptFormat()
             let old = try format.render([
                 .init(side: .theirs, start: 1, settled: "Old call", pending: "", speaker: "p"),
@@ -77,9 +93,10 @@ struct TranscriptAgainCompositionTests {
             try await port.publish(job, notes: "# Kept notes", warning: false, keeping: .replacement)
             try await port.save(job, stage: .succeeded, warning: false)
             await port.release(job)
+            let recognizers = TrackRecognizers(answers: [1: [.init("New call", start: 1, end: 1.8)], 2: [.init("New microphone", start: 2, end: 2.8)]])
             let rig = try await ComposeFixture.make(root: root, preferences: .init(automaticRecording: false, liveText: false, callsFolder: root),
                 configure: { boundary in
-                    boundary.recognizers = KeptRecognizers()
+                    boundary.recognizers = recognizers
                     boundary.diarizer = KeptDiarizer()
                 })
             do {
@@ -100,6 +117,7 @@ struct TranscriptAgainCompositionTests {
                 let changed = try Data(contentsOf: folder.appendingPathComponent("transcript.md"))
                 let read = TranscriptFormat.read(String(decoding: changed, as: UTF8.self))
                 #expect(read.segments.map(\.settled) == ["New call", "New microphone"])
+                #expect(recognizers.heard.all.map(\.track) == [1, 2])
                 #expect(read.speakers.map(\.name) == ["Ada"])
                 #expect(read.origin?.calls.first?.origin?.hearing == testTranscriptBuild.release)
                 await calls.send(.restorePreviousTranscript(id))
@@ -120,19 +138,18 @@ struct TranscriptAgainCompositionTests {
             let originals = [nested.appendingPathComponent(first), nested.appendingPathComponent(second), outer.appendingPathComponent(third)]
             let archived = Data("Archived original transcript".utf8)
             for (index, folder) in originals.enumerated() {
-                try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-                for name in ["call", "microphone"] where !(missing && index == 0 && name == "microphone") {
-                    let track = try await TrackFile(url: folder.appendingPathComponent(name + ".caf"))
-                    try await track.write(Array(repeating: 0, count: 4 * 48_000), sampleRate: 48_000)
-                    try await track.close()
-                }
+                try await FixtureTrack.write(far: 2 * index + 1, microphone: 2 * index + 2, seconds: 4, in: folder)
+                if missing && index == 0 { try FileManager.default.removeItem(at: folder.appendingPathComponent("microphone.caf")) }
                 try archived.write(to: folder.appendingPathComponent("transcript.md"))
             }
             let old = Data("# Transcript\n\n**Me** 00:00:00\nOld merged words.\n".utf8)
             try old.write(to: outer.appendingPathComponent("transcript.md"))
             try Data("Older previous".utf8).write(to: outer.appendingPathComponent("transcript-previous.md"))
+            let recognizers = TrackRecognizers(answers: Dictionary(uniqueKeysWithValues: (1...6).map { tag in
+                (tag, [tag.isMultiple(of: 2) ? SpeechWord("Microphone \(tag)", start: 2, end: 2.8) : SpeechWord("Call \(tag)", start: 1, end: 1.8)])
+            }))
             let rig = try await ComposeFixture.make(root: root, configure: { boundary in
-                boundary.recognizers = KeptRecognizers(); boundary.diarizer = KeptDiarizer()
+                boundary.recognizers = recognizers; boundary.diarizer = KeptDiarizer()
             })
             do {
                 let calls = try #require(rig.menu.calls)
@@ -153,6 +170,9 @@ struct TranscriptAgainCompositionTests {
                     #expect(calls.recordingsState.failure == nil)
                     let joined = TranscriptFormat.read(try String(contentsOf: outer.appendingPathComponent("transcript.md"), encoding: .utf8))
                     #expect(joined.segments.map(\.start) == [1, 2, 4, 61, 62, 64, 121, 122])
+                    #expect(joined.segments.filter { $0.gapLength == nil }.map(\.settled)
+                        == ["Call 1", "Microphone 2", "Call 3", "Microphone 4", "Call 5", "Microphone 6"])
+                    #expect(recognizers.heard.all.map(\.track) == [1, 2, 3, 4, 5, 6])
                     #expect(joined.origin?.mergedBy == testTranscriptBuild.release)
                     #expect(joined.origin?.calls.map(\.start) == [Date(timeIntervalSince1970: 36_000), Date(timeIntervalSince1970: 36_060), Date(timeIntervalSince1970: 36_120)])
                     #expect(try Data(contentsOf: outer.appendingPathComponent("transcript-previous.md")) == old)
@@ -211,18 +231,6 @@ struct TranscriptAgainCompositionTests {
     }
 }
 
-private struct KeptRecognizers: RecognizerSource {
-    func recognizer(for side: ComposerSide) async throws -> any SpeechRecognizer { KeptRecognizer(mine: side == .microphone) }
-    func missingModels() -> [String] { [] }
-    func startLoading() -> Task<Void, any Error> { Task {} }
-}
-private struct KeptRecognizer: SpeechRecognizer {
-    let mine: Bool
-    func hear(_ chunk: SpeechAudio) async throws -> SpeechHearing { .init(words: []) }
-    func finish() async throws -> SpeechHearing {
-        .init(words: [.init(mine ? "New microphone" : "New call", start: mine ? 2 : 1, end: mine ? 2.8 : 1.8)], finalThrough: 4)
-    }
-}
 private struct KeptDiarizer: TranscriptDiarizer {
     func prepare() async {}
     func diarize(_ track: URL, speakers: Int?) async throws -> CallDiarizer.Diarization {

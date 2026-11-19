@@ -393,13 +393,15 @@ public struct RecordingsEffectHandler: Sendable {
     }
 
     public func handle(_ effect: RecordingsEffect) -> AsyncStream<RecordingsEvent> {
-        AsyncStream { output in
+        // The run starts here, not in the task below: effects are handled in the order they are
+        // reduced, so a stop handled after this always finds the run it names.
+        let reports: AsyncStream<TranscriptReport>?
+        if case let .makeTranscriptAgain(id, request) = effect { reports = transcriptAgain.run(id: id, request: request) } else { reports = nil }
+        return AsyncStream { output in
             let task = Task {
                 switch effect {
-                case let .makeTranscriptAgain(id, request):
-                    for await report in transcriptAgain.run(id: id, request: request) {
-                        output.yield(.transcriptReported(request: request, report))
-                    }
+                case let .makeTranscriptAgain(_, request):
+                    if let reports { for await report in reports { output.yield(.transcriptReported(request: request, report)) } }
                 case let .stopTranscriptAgain(id, request):
                     await transcriptAgain.stop(id: id, request: request)
                 default: output.yield(await perform(effect))

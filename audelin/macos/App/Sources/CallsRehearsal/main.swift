@@ -38,8 +38,8 @@ final class CallsRehearsalDelegate: NSObject, NSApplicationDelegate {
         var boundary = rehearsalBoundary(
             capturePersistence: .recorded,
             microphone: { throw RehearsalInput.unavailable }, call: { _ in throw RehearsalInput.unavailable },
-            mine: FixtureRecognizer(enabled: options.seed == .transcriptAgain, text: "Новый текст микрофона."),
-            theirs: FixtureRecognizer(enabled: options.seed == .transcriptAgain, text: "Новый текст звонка."),
+            mine: FixtureRecognizer(enabled: options.seed == .transcriptAgain, text: "Новый текст микрофона:"),
+            theirs: FixtureRecognizer(enabled: options.seed == .transcriptAgain, text: "Новый текст звонка:"),
             now: { Date() }, timeZone: { .current }, sleep: { try await Task.sleep(for: $0) },
             intervals: rehearsalIntervals(),
             // The calls live tests check this release as the merger of what they merge.
@@ -92,16 +92,26 @@ final class CallsRehearsalDelegate: NSObject, NSApplicationDelegate {
 }
 
 private enum RehearsalInput: Error { case unavailable }
-private struct FixtureRecognizer: SpeechRecognizer {
+/// Answers with its text and what it heard of the track: how many seconds and the loudest sample,
+/// so a transcript shows which track reached it and whether all of it did. Nothing heard, nothing said.
+private actor FixtureRecognizer: SpeechRecognizer {
     let enabled: Bool
     let text: String
+    private var seconds: Double = 0
+    private var peak: Float = 0
+    init(enabled: Bool, text: String) { self.enabled = enabled; self.text = text }
     func hear(_ chunk: SpeechAudio) throws -> SpeechHearing {
         guard enabled else { throw RehearsalInput.unavailable }
+        seconds += Double(chunk.samples.count) / chunk.sampleRate
+        peak = chunk.samples.reduce(peak) { max($0, abs($1)) }
         return .init(words: [])
     }
     func finish() throws -> SpeechHearing {
         guard enabled else { throw RehearsalInput.unavailable }
-        return .init(words: [.init(text, start: 1, end: 2)], finalThrough: 2)
+        // One instance hears every track of its side, one run after another.
+        defer { seconds = 0; peak = 0 }
+        guard seconds > 0 else { return .init(words: []) }
+        return .init(words: [.init("\(text) \(Int(seconds.rounded())) с, \(Int((peak * 100).rounded())) %.", start: 1, end: 2)], finalThrough: 2)
     }
 }
 private struct FixtureDiarizer: TranscriptDiarizer {

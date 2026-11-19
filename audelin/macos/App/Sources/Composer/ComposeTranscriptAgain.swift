@@ -126,7 +126,7 @@ struct TranscriptAgainPorts: Sendable {
             let origin = TranscriptFormat.CallOrigin(hearing: release, mine: part.origin.microphoneModel, theirs: part.origin.farModel,
                 split: split, cleaning: .init(outcome: part.origin.cleaning == .done ? .done : .nothingKept, release: release))
             let speakers = part.far.map { TranscriptFormat.Speaker(id: String($0.id), name: $0.name, state: $0.name == nil ? "diarized" : "confirmed") }
-            let far = part.far.flatMap { speaker in self.rows(speaker.words, side: .theirs, speaker: String(speaker.id)) }
+            let far = self.farRows(part.far)
             let combined = (far + self.rows(part.microphone, side: .mine)).sorted { $0.start < $1.start }
             return TranscriptJoin.Part(start: start.addingTimeInterval(part.original.start), length: part.original.duration,
                 rows: combined, speakers: speakers, originals: [.init(start: start.addingTimeInterval(part.original.start), origin: Optional(origin))])
@@ -144,6 +144,19 @@ struct TranscriptAgainPorts: Sendable {
             do { for chunk in chunks { try file.write(chunk) }; try file.flush() }
             catch { binding.remove(at: url); throw error }
         }
+    }
+
+    /// The far side in call order: the split hands each speaker's words together, so a speaker
+    /// who talks again after another is a new row, as each attributed piece is in a live call.
+    private func farRows(_ speakers: [ReRecognition.Speaker]) -> [TranscriptFormat.Segment] {
+        let words = speakers.flatMap { speaker in speaker.words.map { (speaker: speaker.id, word: $0) } }
+            .enumerated().sorted { ($0.element.word.time.start, $0.offset) < ($1.element.word.time.start, $1.offset) }.map(\.element)
+        var turns: [(speaker: Int, words: [ReRecognition.Word])] = []
+        for (speaker, word) in words {
+            if turns.last?.speaker == speaker { turns[turns.count - 1].words.append(word) }
+            else { turns.append((speaker, [word])) }
+        }
+        return turns.flatMap { rows($0.words, side: .theirs, speaker: String($0.speaker)) }
     }
 
     private func rows(_ words: [ReRecognition.Word], side: TranscriptFormat.Segment.Side, speaker: String? = nil) -> [TranscriptFormat.Segment] {

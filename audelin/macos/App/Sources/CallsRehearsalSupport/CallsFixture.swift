@@ -19,6 +19,17 @@ public enum CallsFixture {
         try await call(d, in: calls, words: ["Другой звонок.", "Ответ."], notes: false)
     }
 
+    /// The merge fixture with A's microphone track beside its call track. The two differ, at a
+    /// steady `microphoneLevel` against the call's silence, so a recogniser can tell which it heard.
+    public static func seedTranscriptAgain(in calls: URL) async throws {
+        try await seedMerge(in: calls)
+        let track = try await TrackFile(url: calls.appendingPathComponent(a, isDirectory: true).appendingPathComponent("microphone.caf"))
+        try await track.write([Float](repeating: microphoneLevel, count: Int(length * TrackFile.sampleRate)), sampleRate: TrackFile.sampleRate)
+        try await track.close()
+    }
+    /// The level of every sample of A's microphone track in the transcript-again fixture.
+    public static let microphoneLevel: Float = 0.25
+
     /// The merge fixture as a crash leaves a merge of A and B: the merge's prepared folder holds
     /// the joined transcript and B, moved into it; A has not moved yet.
     public static func seedInterruptedMerge(in calls: URL) async throws {
