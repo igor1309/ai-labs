@@ -198,7 +198,8 @@ private func withPieces(folderFails: Bool = false, consumeTranscript: Bool = tru
         var boundary = rehearsalBoundary(capturePersistence: .recorded,
             microphone: { try microphones.start() }, call: { _ in try calls.start() },
             mine: RehearsalRecognizer(SessionRecognizer(name: "mine")), theirs: RehearsalRecognizer(SessionRecognizer(name: "theirs")),
-            now: { Date(timeIntervalSince1970: 0) }, timeZone: { .gmt }, sleep: clock.sleep, intervals: testIntervals)
+            now: { Date(timeIntervalSince1970: 0) }, timeZone: { .gmt }, sleep: clock.sleep, intervals: testIntervals,
+            transcriptBuild: testTranscriptBuild)
         boundary.time = clock.time
         boundary.transcripts = FileTranscriptStorage(diarizer: CallDiarizer.unavailable)
         boundary.log = log

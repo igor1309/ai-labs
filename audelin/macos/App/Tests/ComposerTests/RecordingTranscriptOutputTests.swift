@@ -1,3 +1,4 @@
+import TranscriptFinalization
 import CallAppProcesses
 import CallDiarizer
 import CallFolder
@@ -127,7 +128,8 @@ private func withTranscriptPieces(
         var boundary = rehearsalBoundary(capturePersistence: .recorded,
             microphone: { throw ScriptFailure.failed }, call: { _ in throw ScriptFailure.failed },
             mine: RehearsalRecognizer(SessionRecognizer(name: "mine")), theirs: RehearsalRecognizer(SessionRecognizer(name: "theirs")),
-            now: clock.time.now, timeZone: { .gmt }, sleep: clock.sleep, intervals: testIntervals)
+            now: clock.time.now, timeZone: { .gmt }, sleep: clock.sleep, intervals: testIntervals,
+            transcriptBuild: testTranscriptBuild)
         boundary.transcripts = OutputStorage(writer: writer, fails: openFails)
         let rig = TranscriptPiecesRig(root: root, boundary: boundary, resources: await FinalizationResources(), writer: writer)
         defer { rig.output.continuation.finish() }
@@ -142,7 +144,7 @@ private struct OutputProcesses: ProcessList {
 private struct OutputStorage: TranscriptStorage {
     let writer: OutputWriter
     let fails: Bool
-    func open(at url: URL, names: RecordingNames, sink: any LogSink) throws -> OpenedTranscript {
+    func open(at url: URL, names: RecordingNames, origin: TranscriptOrigin, sink: any LogSink) throws -> OpenedTranscript {
         if fails { throw ScriptFailure.failed }
         return OpenedTranscript(writer: writer, pass: AfterCallPass(writer: writer, track: nil, names: names,
                                 diarizer: CallDiarizer.unavailable, sink: sink), names: names)
@@ -159,5 +161,5 @@ private actor OutputWriter: TranscriptWriter, WholeTranscriptReplacing {
         if fails { fails = false; throw ScriptFailure.failed }
     }
     func close() async { closing?.send(); await closeGate?.next() }
-    func replaceWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) {}
+    func replaceWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker], outcomes: FinishingOutcomes) {}
 }

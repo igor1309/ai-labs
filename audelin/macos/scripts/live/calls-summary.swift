@@ -156,7 +156,7 @@ private func descendants(_ root: AXUIElement) -> [AXUIElement] {
             print("Artifacts: \(output.path)")
             for cancel in [false, true] { try await scenario(app: app, output: output, cancel: cancel) }
             try await templateMenuVersionsKeepingFailureAndCancellation(app: app, output: output)
-            print("PASS: summary completion, template menu, versions, keeping, failure and cancellation")
+            print("PASS: summary completion without the origin, a transcript without origin, template menu, versions, keeping, failure and cancellation")
         } catch {
             fputs("FAIL: \(error)\n", stderr)
             exit(1)
@@ -186,7 +186,7 @@ private func descendants(_ root: AXUIElement) -> [AXUIElement] {
         let driver = try Driver(process: application, folders: [control, call])
         defer { driver.stop() }
         do {
-            try driver.press("calls.select.2024.01.01-1000")
+            try legacyTranscriptAndNotesRemainReadable(driver)
             _ = try driver.element("preview.notes", value: { $0.contains("Прежние итоги звонка.") && $0.contains("Шаблон: Default") })
             try brokenTemplatesAndFolder(driver, templates: templates, control: control, output: output)
             try openTemplateMenu(driver, keeping: true)
@@ -262,6 +262,23 @@ private func descendants(_ root: AXUIElement) -> [AXUIElement] {
             try? driver.screenshot("template-scenario-failure", into: output)
             throw error
         }
+    }
+
+    @MainActor private static func legacyTranscriptAndNotesRemainReadable(_ driver: Driver) throws {
+        let search = try driver.element("calls.search")
+        guard AXUIElementSetAttributeValue(search, kAXValueAttribute as CFString, "Другой" as CFString) == .success else {
+            throw LiveFailure("Cannot search the legacy transcript")
+        }
+        _ = AXUIElementPerformAction(search, kAXConfirmAction as CFString)
+        _ = try driver.element("calls.select.2024.01.01-0900", value: { $0.contains("Другой") })
+        try driver.press("calls.select.2024.01.01-0900")
+        _ = try driver.element("preview.notes", value: { $0.contains("Другие итоги.") })
+        guard AXUIElementSetAttributeValue(search, kAXValueAttribute as CFString, "" as CFString) == .success else {
+            throw LiveFailure("Cannot clear the legacy transcript search")
+        }
+        _ = AXUIElementPerformAction(search, kAXConfirmAction as CFString)
+        _ = try driver.element("calls.select.2024.01.01-1000")
+        try driver.press("calls.select.2024.01.01-1000")
     }
 
     @MainActor private static func brokenTemplatesAndFolder(_ driver: Driver, templates: URL, control: URL, output: URL) throws {
@@ -382,7 +399,10 @@ private func descendants(_ root: AXUIElement) -> [AXUIElement] {
         let state = fixture.appendingPathComponent("state")
         let control = state.appendingPathComponent("control")
         for folder in [call, control] { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
-        try "# Transcript\n\n**Me** 00:00:03\n\nОбсудили выпуск Audelin.\n".write(to: call.appendingPathComponent("transcript.md"), atomically: true, encoding: .utf8)
+        let hearing: [String: Any] = ["hearing": ["version": "ORIGIN-ONLY-MARKER", "build": "origin-build"], "mine": "origin-microphone", "theirs": "origin-call"]
+        let block: [String: Any] = ["schemaVersion": 1, "origin": ["calls": [["start": 1704103200, "origin": hearing]]]]
+        let header = String(decoding: try JSONSerialization.data(withJSONObject: block, options: .sortedKeys), as: UTF8.self)
+        try ("---\n" + header + "\n---\n\n# Transcript\n\n**Me** 00:00:03\n\nОбсудили выпуск Audelin. SPOKEN-ONLY-MARKER\n").write(to: call.appendingPathComponent("transcript.md"), atomically: true, encoding: .utf8)
         let application = Process()
         application.executableURL = app
         application.arguments = ["--calls", calls.path, "--state", state.path, "--trash", fixture.appendingPathComponent("trash").path]
@@ -425,11 +445,14 @@ private func descendants(_ root: AXUIElement) -> [AXUIElement] {
             try Data().write(to: control.appendingPathComponent("finish-1"))
             try driver.screenshot("cancelled", into: output)
         } else {
-            try Data().write(to: control.appendingPathComponent("finish-1"))
+            try "echo-transcript".write(to: control.appendingPathComponent("finish-1"), atomically: true, encoding: .utf8)
             _ = try driver.element("preview.notes", value: { $0.contains("Обсудили выпуск Audelin.") && $0.contains("Сделано ") })
             _ = try driver.element("preview.made", value: { $0.hasPrefix("Сделано ") && $0.count > "Сделано ".count })
             let notes = try String(contentsOf: call.appendingPathComponent("summary.md"), encoding: .utf8)
-            guard notes.contains("## О чём встреча\n\nОбсудили выпуск Audelin.") else { throw LiveFailure("Wrong notes file") }
+            let request = try String(contentsOf: control.appendingPathComponent("request-1.json"), encoding: .utf8)
+            guard request.contains("SPOKEN-ONLY-MARKER"), !request.contains("ORIGIN-ONLY-MARKER"),
+                  notes.contains("SPOKEN-ONLY-MARKER"), !notes.contains("ORIGIN-ONLY-MARKER"),
+                  !notes.contains("origin-microphone"), !notes.contains("origin-build") else { throw LiveFailure("Origin reached the notes request or the echoed notes") }
             try driver.screenshot("completed", into: output)
         }
         application.terminate()

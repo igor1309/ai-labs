@@ -10,7 +10,7 @@ struct SessionTranscriptTests {
             try await rig.start()
             try await rig.stop()
             let url = rig.folder().appendingPathComponent("transcript.md")
-            #expect(try String(contentsOf: url, encoding: .utf8) == "# Transcript\n\nNo text was heard.\n")
+            #expect(try transcriptBody(at: url) == "# Transcript\n\nNo text was heard.\n")
         }
     }
 

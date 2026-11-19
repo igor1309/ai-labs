@@ -13,6 +13,12 @@ struct SummaryFileControl: Sendable {
     func notes(_ request: Int, body: Data) throws -> String {
         try body.write(to: folder.appendingPathComponent("request-\(request).json"), options: .atomic)
         let content = try String(contentsOf: folder.appendingPathComponent("finish-\(request)"), encoding: .utf8)
+        if content == "echo-transcript" {
+            let request = try JSONSerialization.jsonObject(with: body) as? [String: Any]
+            let messages = request?["messages"] as? [[String: String]]
+            let prompt = messages?.first?["content"] ?? ""
+            return LiveSummaryService.notes.replacingOccurrences(of: "Обсудили выпуск Audelin.", with: prompt.components(separatedBy: "\nTRANSCRIPT DATA:\n").last ?? "")
+        }
         return content.isEmpty ? LiveSummaryService.notes : content
     }
 

@@ -159,7 +159,8 @@ private func rehearse(_ options: RehearsalOptions, voices: any RehearsalVoices, 
         microphone: { microphone.started() }, call: { _ in call.started() },
         mine: RehearsalRecognizer(voices.mine), theirs: RehearsalRecognizer(voices.theirs),
         now: { Date() }, timeZone: { .current }, sleep: { try await ContinuousClock().sleep(for: $0) },
-        intervals: rehearsalIntervals()
+        intervals: rehearsalIntervals(),
+        transcriptBuild: .init(version: "rehearsal", build: "1", mine: "rehearsal voice", theirs: "rehearsal voice")
     )
     let callApp = RehearsalCallApp()
     boundary.processes = callApp

@@ -2,6 +2,7 @@ import CallDiarizer
 import Foundation
 import Recording
 import Synchronization
+import TranscriptFinalization
 import TranscriptFile
 import TranscriptFormat
 import protocol TranscriptWriting.CallText
@@ -26,7 +27,7 @@ struct WritingCallText: TranscriptWriting.CallText {
 public protocol TranscriptWriter: Sendable {
     func write(_ state: CallState) async throws
     func close() async
-    func replaceWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) async throws
+    func replaceWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker], outcomes: FinishingOutcomes) async throws
 }
 
 /// Open file handles and the pass that uses them; progress belongs to the finalization machine.
@@ -58,10 +59,10 @@ struct TranscriptDestination: Saving {
 /// Renders call text for the transcript; `TranscriptFormat` in the app.
 protocol TranscriptRenderer: Sendable {
 
-    mutating func render(count: Int, finalCount: Int, speakers: [TranscriptFormat.Speaker], segment: (Int) -> TranscriptFormat.Segment) throws -> TranscriptFormat.Rendering
+    mutating func render(count: Int, finalCount: Int, speakers: [TranscriptFormat.Speaker], origin: TranscriptFormat.Origin?, segment: (Int) -> TranscriptFormat.Segment) throws -> TranscriptFormat.Rendering
 
     /// Renders a whole replacement from nothing, leaving the live rendering as it was.
-    func renderWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) throws -> TranscriptFormat.Rendering
+    func renderWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker], origin: TranscriptFormat.Origin?) throws -> TranscriptFormat.Rendering
 }
 
 /// Keeps rendered bytes on disk; `TranscriptFile` in the app.
@@ -74,10 +75,10 @@ protocol TranscriptBytes: Sendable {
 
 extension TranscriptFormat: TranscriptRenderer {
 
-    func renderWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) throws -> TranscriptFormat.Rendering {
+    func renderWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker], origin: TranscriptFormat.Origin?) throws -> TranscriptFormat.Rendering {
 
         var fresh = TranscriptFormat()
-        return try fresh.render(segments, speakers: speakers)
+        return try fresh.render(segments, speakers: speakers, origin: origin)
     }
 }
 extension TranscriptFile: TranscriptBytes {}
@@ -87,11 +88,12 @@ actor WritingTranscript: TranscriptWriter, WholeTranscriptReplacing {
     let file: any TranscriptBytes
     let sink: any LogSink
     private let names: RecordingNames
+    private let origin: TranscriptOrigin
     private var format: any TranscriptRenderer
     private var replaceNext = false
     private var closed = false
-    init(file: any TranscriptBytes, format: any TranscriptRenderer, names: RecordingNames, sink: any LogSink) {
-        self.file = file; self.format = format; self.names = names; self.sink = sink
+    init(file: any TranscriptBytes, format: any TranscriptRenderer, names: RecordingNames, origin: TranscriptOrigin, sink: any LogSink) {
+        self.file = file; self.format = format; self.names = names; self.origin = origin; self.sink = sink
     }
 
     /// Logs each save with the final count it wrote, so a reader of the log knows
@@ -108,7 +110,7 @@ actor WritingTranscript: TranscriptWriter, WholeTranscriptReplacing {
         let names = names.snapshot()
         let rendering: TranscriptFormat.Rendering
         do {
-            rendering = try format.render(count: entries.count, finalCount: finalCount, speakers: Composer.Transcript.speakers(names)) {
+            rendering = try format.render(count: entries.count, finalCount: finalCount, speakers: Composer.Transcript.speakers(names), origin: origin.rendering(.init())) {
                 let entry = entries[$0]
                 return Composer.Transcript.segment(from: entry, speaker: names.rowNames[entry.text.id].flatMap { names.participantIDs[$0] })
             }
@@ -126,9 +128,9 @@ actor WritingTranscript: TranscriptWriter, WholeTranscriptReplacing {
         sink.write(.init(category: .session, message: "transcript saved finalCount=\(finalCount)"))
     }
 
-    func replaceWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) async throws {
+    func replaceWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker], outcomes: FinishingOutcomes) async throws {
 
-        let rendering = try format.renderWhole(segments, speakers: speakers)
+        let rendering = try format.renderWhole(segments, speakers: speakers, origin: origin.rendering(outcomes))
         try await file.replace(rendering.chunks, finalLength: rendering.finalLength)
     }
 
@@ -168,20 +170,20 @@ final class TranscriptFailureReport: FailureReport, Sendable {
 
 
 public protocol TranscriptStorage: Sendable {
-    func open(at url: Foundation.URL, names: RecordingNames, sink: any LogSink) async throws -> OpenedTranscript
+    func open(at url: Foundation.URL, names: RecordingNames, origin: TranscriptOrigin, sink: any LogSink) async throws -> OpenedTranscript
 }
 public struct FileTranscriptStorage: TranscriptStorage {
     private let diarizer: any TranscriptDiarizer
     /// `diarizer` runs the after-call pass over the call track.
     public init(diarizer: any TranscriptDiarizer) { self.diarizer = diarizer }
     /// Opening starts the diarizer's model loading, so it downloads during the call.
-    public func open(at url: Foundation.URL, names: RecordingNames, sink: any LogSink) async throws -> OpenedTranscript {
+    public func open(at url: Foundation.URL, names: RecordingNames, origin: TranscriptOrigin, sink: any LogSink) async throws -> OpenedTranscript {
         await diarizer.prepare()
         var format = TranscriptFormat()
-        let initial = try format.render([])
+        let initial = try format.render([], origin: origin.rendering(.init()))
         let file = try await TranscriptFile(url: url, initialBytes: initial.chunks, binding: DiskTranscriptBinding())
         // Opening has no live write revision; the first saved speaker block starts at one.
-        let writer = WritingTranscript(file: file, format: TranscriptFormat(), names: names, sink: sink)
+        let writer = WritingTranscript(file: file, format: TranscriptFormat(), names: names, origin: origin, sink: sink)
         let pass = AfterCallPass(writer: writer, track: url.deletingLastPathComponent().appendingPathComponent("call.caf"), names: names, diarizer: diarizer, sink: sink)
         return OpenedTranscript(writer: writer, pass: pass, names: names)
     }

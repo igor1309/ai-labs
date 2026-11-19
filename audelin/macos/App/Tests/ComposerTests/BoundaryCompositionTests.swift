@@ -23,7 +23,8 @@ struct BoundaryCompositionTests {
                 mine: RehearsalRecognizer(SessionRecognizer(name: "unused")),
                 theirs: RehearsalRecognizer(SessionRecognizer(name: "unused")),
                 now: { Date(timeIntervalSince1970: 0) }, timeZone: { .gmt },
-                sleep: { _ in throw CancellationError() }, intervals: testIntervals)
+                sleep: { _ in throw CancellationError() }, intervals: testIntervals,
+                transcriptBuild: testTranscriptBuild)
             boundary.transcripts = FileTranscriptStorage(diarizer: CallDiarizer.unavailable)
             boundary.time = ComposerTime(now: { Date(timeIntervalSince1970: 0) }, timeZone: { .gmt },
                 monotonicNow: { 0 }, sleep: { _ in throw CancellationError() },

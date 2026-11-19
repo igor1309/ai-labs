@@ -37,7 +37,7 @@ struct FinishedTextSwitchTests {
 
         try await withComposeFolder { folder in
             let url = folder.appendingPathComponent("transcript.md")
-            let transcript = try await FileTranscriptStorage(diarizer: CallDiarizer.unavailable).open(at: url, names: RecordingNames(), sink: SilentTranscriptLog())
+            let transcript = try await FileTranscriptStorage(diarizer: CallDiarizer.unavailable).open(at: url, names: RecordingNames(), origin: testTranscriptOrigin, sink: SilentTranscriptLog())
             do {
                 let speaker: CallState.Speaker = onCallSide ? .theirs : .mine
                 var statuses: [CallState.Status] = []
@@ -56,7 +56,7 @@ struct FinishedTextSwitchTests {
                 #expect(final?.status == .finished)
                 let mine = onCallSide ? "continuing" : "first last"
                 let theirs = onCallSide ? "first last" : "continuing"
-                #expect(try String(contentsOf: url, encoding: .utf8)
+                #expect(try transcriptBody(at: url)
                     == "# Transcript\n\n**Me** 00:00:00\n\(mine)\n\n**Them** 00:00:00\n\(theirs)\n")
                 await transcript.writer.close()
             } catch {

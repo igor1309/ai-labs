@@ -81,7 +81,7 @@ struct TranscriptFinalizationPortsTests {
         add(call: "a", to: resources, opened: openedTranscript(bytes: bytes, names: RecordingNames(), diarizer: .unused, sink: log), sink: log)
         let sut = FinalizationReplacement(resources: resources)
         do {
-            try await sut.replace(call: "a", raw, names: liveNames([0: "Boris"]), far: attributedFar, heard: [line("my answer", start: 3)])
+            try await sut.replace(call: "a", raw, names: liveNames([0: "Boris"]), far: attributedFar, heard: [line("my answer", start: 3)], outcomes: .init(cleaning: .done))
             #expect(!fails)
         } catch { #expect(fails && error as? FinalizationFailure == .failed) }
         if fails {
@@ -108,7 +108,7 @@ struct TranscriptFinalizationPortsTests {
         add(call: "a", to: resources, opened: openedTranscript(bytes: bytes, names: names, diarizer: .unused, sink: log), sink: log)
         names.published(liveNames([0: "Boris"]))
         try await FinalizationReplacement(resources: resources).replace(
-            call: "a", raw, names: liveNames([0: "Anna"]), far: nil, heard: [line("my answer", start: 3)])
+            call: "a", raw, names: liveNames([0: "Anna"]), far: nil, heard: [line("my answer", start: 3)], outcomes: .init(cleaning: .done))
         let text = try #require(await bytes.replacements.first)
         #expect(text.contains("- Them: Anna") && !text.contains("Vera") && !text.contains("Boris"))
         await resources.published(call: "a")
@@ -125,11 +125,11 @@ struct TranscriptFinalizationPortsTests {
                 .init(text: line("first", start: 0)), .init(text: line("second", start: 2)),
             ])
             let sut = FinalizationDiarizing(resources: resources)
-            #expect(await sut.diarize(call: "missing", raw) == nil)
+            #expect(await sut.diarize(call: "missing", raw, outcomes: .init()) == nil)
             #expect(samples.all.isEmpty)
-            let far = try #require(await sut.diarize(call: "a", raw))
-            #expect(far.rows == [0: 1, 2: 2])
-            #expect(far.speakers.map(\.id) == ["d0", "d1"])
+            let far = try #require(await sut.diarize(call: "a", raw, outcomes: .init()))
+            #expect(far.far.rows == [0: 1, 2: 2])
+            #expect(far.far.speakers.map(\.id) == ["d0", "d1"])
             #expect(samples.all == [160])
             let text = try #require(await bytes.replacements.first)
             #expect(text.contains("**Them 1** 00:00:00\nfirst"))
@@ -192,7 +192,7 @@ private func line(_ text: String, start: Double) -> TranscriptSegment {
 }
 
 private func openedTranscript(bytes: FinalizationBytes, names: RecordingNames, track: URL? = nil, diarizer: CallDiarizer, sink: any LogSink) -> OpenedTranscript {
-    let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: names, sink: sink)
+    let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: names, origin: testTranscriptOrigin, sink: sink)
     return OpenedTranscript(writer: writer, pass: AfterCallPass(writer: writer, track: track, names: names, diarizer: diarizer, sink: sink), names: names)
 }
 

@@ -135,7 +135,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     func openTranscript(in folder: SessionCallFolder) async throws {
 
         let made = try places(in: folder)
-        let file = try await boundary.transcripts.open(at: made.transcriptURL, names: names, sink: boundary.log)
+        let file = try await boundary.transcripts.open(at: made.transcriptURL, names: names, origin: .init(start: made.start, build: boundary.transcriptBuild), sink: boundary.log)
         transcriptFile = file.writer
         await finalizationResources.add(call: made.url.path, transcript: file, cleanup: TranscriptCleanup(
             recording: CleanupRecording(microphoneURL: made.microphoneURL, callURL: made.callURL),

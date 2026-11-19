@@ -18,7 +18,7 @@ struct SummaryCallsTagsTests {
             try Data("клиент\nКлиент\n\n банк \n".utf8).write(to: root.appendingPathComponent("\(first)/\(TagsFile.name)"))
             try Data([0xFF, 0xFE]).write(to: root.appendingPathComponent("\(second)/\(TagsFile.name)"))
 
-            let listed = try await SummaryCalls(storage: storage(root), deleted: { _ in }).list()
+            let listed = try await SummaryCalls(storage: storage(root), release: testTranscriptBuild.release, deleted: { _ in }).list()
 
             #expect(listed.map(\.tags) == [.known([]), .unreadable, .known(["клиент", "банк"])])
         }
@@ -27,7 +27,7 @@ struct SummaryCallsTagsTests {
     @Test func setTagsWritesThemIntoTheCallsFolder() async throws {
         try await withComposeFolder { root in
             try call(first, in: root)
-            let sut = SummaryCalls(storage: storage(root), deleted: { _ in })
+            let sut = SummaryCalls(storage: storage(root), release: testTranscriptBuild.release, deleted: { _ in })
 
             try await sut.setTags(id: first, tags: ["клиент", "найм"])
 
@@ -40,7 +40,7 @@ struct SummaryCallsTagsTests {
             let titled = "1970.01.01-1000 Встреча с Анной"
             try call(titled, in: root)
             let log = FixtureLog()
-            var sut = SummaryCalls(storage: storage(root), deleted: { _ in })
+            var sut = SummaryCalls(storage: storage(root), release: testTranscriptBuild.release, deleted: { _ in })
             sut.log = log
 
             let id = try #require(try await sut.list().first?.id)

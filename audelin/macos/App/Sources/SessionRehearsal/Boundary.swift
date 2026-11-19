@@ -26,9 +26,10 @@ public func rehearsalBoundary(
     mine: any SpeechRecognizer, theirs: any SpeechRecognizer,
     now: @escaping @Sendable () -> Date, timeZone: @escaping @Sendable () -> TimeZone,
     sleep: @escaping @Sendable (Duration) async throws -> Void,
-    intervals: ProfileIntervals
+    intervals: ProfileIntervals,
+    transcriptBuild: TranscriptBuild
 ) -> ComposerBoundary {
-    ComposerBoundary(capturePersistence: capturePersistence, microphone: RehearsalMicrophone(startCapture: microphone),
+    ComposerBoundary(transcriptBuild: transcriptBuild, capturePersistence: capturePersistence, microphone: RehearsalMicrophone(startCapture: microphone),
         callAudio: RehearsalCallAudio(startCapture: call),
         recognizers: RehearsalRecognizers(mine: mine, theirs: theirs), processes: RehearsalProcesses(),
         access: ComposerAccess(refresh: { true }, reserve: { true }, release: {},

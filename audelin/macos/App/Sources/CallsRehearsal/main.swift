@@ -39,7 +39,9 @@ final class CallsRehearsalDelegate: NSObject, NSApplicationDelegate {
             microphone: { throw RehearsalInput.unavailable }, call: { _ in throw RehearsalInput.unavailable },
             mine: UnusedRecognizer(), theirs: UnusedRecognizer(),
             now: { Date() }, timeZone: { .current }, sleep: { try await Task.sleep(for: $0) },
-            intervals: rehearsalIntervals())
+            intervals: rehearsalIntervals(),
+            // The calls live tests check this release as the merger of what they merge.
+            transcriptBuild: .init(version: "rehearsal", build: "1", mine: "unused", theirs: "unused"))
         boundary.trash = options.trash
         let model = await compose(
             boundary: boundary, preferencesURL: options.preferencesURL,

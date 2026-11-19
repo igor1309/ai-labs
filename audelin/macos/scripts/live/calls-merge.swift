@@ -194,8 +194,9 @@ private struct Fixture {
             try launch(app: app, root: root, name: "failure", run: failing)
             try launch(app: app, root: root, name: "busy", run: refusingWhileBusy)
             try launch(app: app, root: root, name: "recovered", seed: "interrupted-merge", run: recovering)
+            try launch(app: app, root: root, name: "legacy-origin", seed: "legacy-merge", run: legacyMergeOrigins)
             removeFixtures(root)
-            print("PASS: refusing a call without a transcript, merging a cut call with its notes, the far-apart warning, a failed merge, refusing while busy and recovering an interrupted merge")
+            print("PASS: refusing a call without a transcript, merging a cut call with its notes, each original call's origin through a remerge, the far-apart warning, a failed merge, refusing while busy, recovering an interrupted merge and a merge made before origins")
         } catch {
             fputs("FAIL: \(error)\n", stderr)
             if let output { removeFixtures(output) }
@@ -283,6 +284,7 @@ private struct Fixture {
         let transcript = try String(contentsOf: merged.appendingPathComponent("transcript.md"), encoding: .utf8)
         try transcript.write(to: fixture.output.appendingPathComponent("merged-transcript.md"), atomically: true, encoding: .utf8)
         try checkJoined(transcript)
+        try checkOrigins(transcript, versions: ["fixture-a", "fixture-b"], ids: [a, b])
         // A merged call's length is its span, from A's start to B's end.
         _ = try driver.element("calls.select.\(a)", value: { $0.hasPrefix("6:10") })
         guard !FileManager.default.fileExists(atPath: fixture.trash.path) else { throw LiveFailure("A merge moved something to the Trash") }
@@ -297,6 +299,58 @@ private struct Fixture {
         let notes = try String(contentsOf: merged.appendingPathComponent("summary.md"), encoding: .utf8)
         guard notes.contains("Обсудили выпуск Audelin.") else { throw LiveFailure("Merged notes:\n\(notes)") }
         try driver.screenshot("merged-notes", into: fixture.output)
+        try remergeWithLegacyCall(driver, fixture)
+
+    }
+
+    /// The remerge lists A and B once, and the old call D explicitly unknown.
+    @MainActor private static func remergeWithLegacyCall(_ driver: Driver, _ fixture: Fixture) throws {
+        try driver.pressMergeControl()
+        try driver.mark(a, true); try driver.mark(d, true)
+        try driver.press("calls.merge.confirm")
+        try driver.press("calls.merge.anyway")
+        try driver.absent("calls.select.\(d)")
+        let url = fixture.calls.appendingPathComponent("\(a)/transcript.md")
+        _ = try driver.wait("remerge saved") { FileManager.default.fileExists(atPath: fixture.calls.appendingPathComponent("\(a)/\(d)").path) ? true : nil }
+        try checkOrigins(String(contentsOf: url, encoding: .utf8), versions: ["fixture-a", "fixture-b", nil], ids: [a, b, d])
+        try driver.screenshot("remerged-origins", into: fixture.output)
+    }
+
+    /// A legacy merge contributes its original starts, each explicitly unknown.
+    @MainActor private static func legacyMergeOrigins(_ driver: Driver, _ fixture: Fixture) throws {
+        _ = try driver.element("calls.select.\(d)")
+        try driver.pressMergeControl(); try driver.mark(a, true); try driver.mark(d, true)
+        try driver.press("calls.merge.confirm"); try driver.press("calls.merge.anyway")
+        try driver.absent("calls.select.\(d)")
+        _ = try driver.wait("legacy remerge saved") { FileManager.default.fileExists(atPath: fixture.calls.appendingPathComponent("\(a)/\(d)").path) ? true : nil }
+        try checkOrigins(String(contentsOf: fixture.calls.appendingPathComponent("\(a)/transcript.md"), encoding: .utf8),
+                         versions: [nil, nil, nil], ids: [a, b, d])
+        try driver.screenshot("legacy-remerged-origins", into: fixture.output)
+    }
+
+    private static func checkOrigins(_ transcript: String, versions: [String?], ids: [String]) throws {
+        let blocks = transcript.components(separatedBy: "\n---\n")
+        guard transcript.hasPrefix("---\n"), let header = blocks.first,
+              let block = try JSONSerialization.jsonObject(with: Data(header.dropFirst(4).utf8)) as? [String: Any],
+              let origin = block["origin"] as? [String: Any],
+              let calls = origin["calls"] as? [[String: Any]], calls.count == versions.count,
+              let mergedBy = origin["mergedBy"] as? [String: String], mergedBy == ["version": "rehearsal", "build": "1"] else {
+            throw LiveFailure("Missing original calls or merging release: \(transcript)")
+        }
+        let date = DateFormatter()
+        date.locale = Locale(identifier: "en_US_POSIX"); date.timeZone = .current; date.dateFormat = "yyyy.MM.dd-HHmm"
+        for (index, call) in calls.enumerated() {
+            guard let start = call["start"] as? Double, start == date.date(from: ids[index])?.timeIntervalSince1970 else {
+                throw LiveFailure("Original starts are missing, duplicated or out of order")
+            }
+            if let expected = versions[index] {
+                guard let value = call["origin"] as? [String: Any], let hearing = value["hearing"] as? [String: String],
+                      hearing == ["version": expected, "build": "fixture-build"],
+                      value["mine"] as? String == "fixture-mine", value["theirs"] as? String == "fixture-theirs" else {
+                    throw LiveFailure("Wrong original origin at \(ids[index])")
+                }
+            } else if !(call["origin"] is NSNull) { throw LiveFailure("Legacy original must be explicitly unknown") }
+        }
     }
 
     /// A's rows, a gap row, then B's rows, with no remote label shared between the parts.

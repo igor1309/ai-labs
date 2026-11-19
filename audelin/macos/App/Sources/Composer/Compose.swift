@@ -93,7 +93,7 @@ public func compose(
     menu.installFolderPicker(chooseCallsFolder)
     menu.installSettings(AudelinSettings(preferences: SummaryPreferences(storage: preferences),
                                         availability: SummaryAvailability(runtime: runtime), text: { language.language.settings }), present: presentSettings)
-    var disk = SummaryCalls(storage: storage, deleted: { await summaries.forget(call: $0) },
+    var disk = SummaryCalls(storage: storage, release: boundary.transcriptBuild.release, deleted: { await summaries.forget(call: $0) },
                             merged: { call, parts, entries in
                                 await summaries.merged(call: call, parts: parts, entries: entries,
                                                        notesOn: preferences.read().notes.enabled)

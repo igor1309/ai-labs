@@ -2,6 +2,8 @@
 
 ## 2026-11-19
 
+- LAB-1693: Transcript files tell the version, build and models that heard and finished each call; merged transcripts keep every original call’s origin.
+
 - LAB-1685: A call whose transcript was split, copied or edited no longer gets stuck on "Couldn't prepare the summary"; finished summaries leave no job record behind.
 
 - Settings use native macOS switches, grouped in cards as in System Settings, and the window is narrower: 508 pt on every tab.
