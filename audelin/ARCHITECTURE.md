@@ -50,7 +50,7 @@ platform; anything else breaks rule 1. The lanes of
 | Kind | May import | Targets |
 |---|---|---|
 | Machine | nothing | Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, NotesMenu, CallsList, TranscriptFinalization, RecordingConditions, CallNames |
-| Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, LatestText, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch, CallTags |
+| Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, LatestText, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch, CallTags, ReRecognition |
 | Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, TemplateFiles, NotesGeneration, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, TagsFile, AgentsFile, Calls, CallsStorage, Preferences |
 | Shared helper | nothing | SplitRows, CallFolderName, AudioConversion, ModelLoading |
 | UI | GlassLedger, NotesMarkdown, other UI | PanelUI, SettingsUI, MenuBar, CallsListUI, CallsWindowUI, SummaryPreviewUI, NotesMarkdown, GlassLedger |
@@ -651,6 +651,70 @@ root maps each part's origin read back by Transcript format into them; a
 part with no origin is unknown for each of its original calls, whose starts
 **Calls** reads from the part's nested folders, as it already reads their
 tracks for duration. The root hands the merging build to the rendering.
+
+## Making a transcript again
+
+The user has a kept call's transcript made again from its audio by this
+Audelin (`docs/spec/re-recognition/`, `re-recognition-offer/`,
+`previous-transcript/`). Four responsibilities are new: the run as the
+user drives it (offer, waits, cancel, outcome); making one transcript from
+a call's tracks; keeping the replaced transcript beside the current one;
+and telling which transcript a call's notes were made from.
+
+**The run is part of Recordings,** as merging is, not a machine of its
+own. A run, a merge, a restore, a rename, a delete and a folder move all
+act on listed call folders and must exclude one another; one state holds
+them, so each refuses the others with its reason and no second machine
+reads Recordings' phase. Its state holds the call being made again, its
+wait (preparing, hearing with how far, finishing) and the last failure's
+reason; whether a row offers the item is a pure rule over the list it
+holds, with each row's audio presence, original calls included, and the
+idle value it already receives. A recording starting turns that value to
+not idle, and the reducer then stops the run. It owns one new port: make
+this call's transcript again, reporting each wait, then made or why not,
+and stopping when asked. Restoring is a second port on Calls, below. The
+row menu draws the offer and sends the request; it decides nothing.
+
+**Re-recognition** is a plain component (rule 5): per run, in a fixed
+order, it hears each original call's two tracks, has the far side split
+and the microphone side cleaned, carries the old transcript's call-app
+names onto the new speakers, joins the original calls, and saves the new
+transcript as the call's current one. It keeps nothing between runs;
+Recordings holds what is running. Carrying names is its own pure rule over
+speaker times: a name moves only where it and one new speaker overlap
+mostly each other. It owns its ports: hear a track (reporting how far),
+split a call track, clean a microphone side, read the old transcript, and
+publish the new one. The root answers them with the parts a live call's
+finishing already uses: Live text over the recogniser reading Track file,
+the after-call diarizer pass with Speaker attribution, BleedCleanup's
+answers, Transcript format to read and render with this build's origin
+(Transcript origin), and Transcript join for a merged call. It orders the
+same stages as TranscriptFinalization for its own reason: one runs over a
+live recording's stream and shutdown, the other over a kept call's files.
+
+**Calls owns the previous transcript.** It lays it out beside the current
+one in the call's folder and changes the pair in one step, as a merge is
+arranged: recorded before the first file moves, finished or put back when
+Calls starts, so a crash leaves the old pair or the new. Publishing a new
+transcript drops the older previous; restoring swaps the two. Transcript
+file writes the new bytes, never over a file; Transcript format is still
+the only reader and writer of the format, so the previous file is read
+back with the origin it had or none.
+
+**Notes tell their transcript.** When the root submits a transcript to
+SummaryJobs it passes the transcript's identity, a digest of the file it
+read, which Summary files saves with the notes beside the template's. The
+notes read for CallDetail also reports the current transcript's identity
+and whether a previous one exists; CallDetail's reducer marks each set of
+notes whose identity is not current's, and notes without one once a
+previous exists. Replacing or restoring submits nothing to SummaryJobs.
+
+The root constructs Re-recognition and the run port's chain with the rest
+of the calls window's composition, holds them as long as it holds
+Recordings, cancels the chain's task when Recordings asks it to stop, and
+maps TranscriptFinalization's and SummaryJobs' outputs into the idle value
+as for merging. On shutdown Recordings stops a run as it stops its other
+actions and settles once the chain has returned.
 
 ## Bleed cleanup
 
