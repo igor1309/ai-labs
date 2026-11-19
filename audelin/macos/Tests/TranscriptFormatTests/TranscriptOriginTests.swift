@@ -99,6 +99,29 @@ struct TranscriptOriginTests {
         #expect(saved.segments == [.init(side: .mine, start: 1, settled: "kept", pending: "")])
     }
 
+    @Test func anUnclosedBlockDoesNotCloseOnARuleInTheTranscript() {
+        let saved = TranscriptFormat.read("---\nbroken without closing delimiter\n# Transcript\n\n**Me** 00:00:01\nfirst\n\n---\n\n**Me** 00:00:02\nsecond\n")
+        #expect(saved.origin == nil)
+        #expect(saved.segments.map(\.settled) == ["first\n\n---", "second"])
+    }
+
+    @Test func savedKeysOfFinishingStagesAndMergingStayAsWritten() throws {
+        let release = TranscriptFormat.Release(version: "1.0", build: "42")
+        let origin = TranscriptFormat.Origin(calls: [
+            .init(start: fixtureStart, origin: .init(hearing: release, mine: "mine", theirs: "theirs",
+                split: .done(diarizer: "vbx", release: release), cleaning: .init(outcome: .nothingKept, release: release))),
+            .init(start: fixtureStart.addingTimeInterval(60), origin: .init(hearing: release, mine: "mine", theirs: "theirs",
+                split: .nothingKept(release: release), cleaning: .init(outcome: .skipped, release: release))),
+            .init(start: fixtureStart.addingTimeInterval(120), origin: .init(hearing: release, mine: "mine", theirs: "theirs",
+                split: .skipped(release: release), cleaning: .init(outcome: .done, release: release))),
+            .init(start: fixtureStart.addingTimeInterval(180), origin: nil),
+        ], mergedBy: .init(version: "1.1", build: "43"))
+        let saved = stagesFrontMatter + "# Transcript\n\nNo text was heard.\n"
+        #expect(TranscriptFormat.read(saved).origin == origin)
+        var format = TranscriptFormat()
+        #expect(try text(format.render([], origin: origin)) == saved)
+    }
+
     @Test func failedRenderingDoesNotChangeThePreviousOrigin() throws {
         var format = TranscriptFormat()
         _ = try format.render(count: 1, finalCount: 1, origin: fixtureOrigin) { _ in .init(side: .mine, start: 1, settled: "kept", pending: "") }
@@ -133,6 +156,107 @@ private let fixtureFrontMatter = """
         "start" : 1800000000
       }
     ]
+  },
+  "schemaVersion" : 1
+}
+---
+
+
+"""
+
+private let stagesFrontMatter = """
+---
+{
+  "origin" : {
+    "calls" : [
+      {
+        "origin" : {
+          "cleaning" : {
+            "outcome" : "nothingKept",
+            "release" : {
+              "build" : "42",
+              "version" : "1.0"
+            }
+          },
+          "hearing" : {
+            "build" : "42",
+            "version" : "1.0"
+          },
+          "mine" : "mine",
+          "split" : {
+            "done" : {
+              "diarizer" : "vbx",
+              "release" : {
+                "build" : "42",
+                "version" : "1.0"
+              }
+            }
+          },
+          "theirs" : "theirs"
+        },
+        "start" : 1800000000
+      },
+      {
+        "origin" : {
+          "cleaning" : {
+            "outcome" : "skipped",
+            "release" : {
+              "build" : "42",
+              "version" : "1.0"
+            }
+          },
+          "hearing" : {
+            "build" : "42",
+            "version" : "1.0"
+          },
+          "mine" : "mine",
+          "split" : {
+            "nothingKept" : {
+              "release" : {
+                "build" : "42",
+                "version" : "1.0"
+              }
+            }
+          },
+          "theirs" : "theirs"
+        },
+        "start" : 1800000060
+      },
+      {
+        "origin" : {
+          "cleaning" : {
+            "outcome" : "done",
+            "release" : {
+              "build" : "42",
+              "version" : "1.0"
+            }
+          },
+          "hearing" : {
+            "build" : "42",
+            "version" : "1.0"
+          },
+          "mine" : "mine",
+          "split" : {
+            "skipped" : {
+              "release" : {
+                "build" : "42",
+                "version" : "1.0"
+              }
+            }
+          },
+          "theirs" : "theirs"
+        },
+        "start" : 1800000120
+      },
+      {
+        "origin" : null,
+        "start" : 1800000180
+      }
+    ],
+    "mergedBy" : {
+      "build" : "43",
+      "version" : "1.1"
+    }
   },
   "schemaVersion" : 1
 }

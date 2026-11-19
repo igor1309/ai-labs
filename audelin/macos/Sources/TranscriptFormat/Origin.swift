@@ -88,10 +88,12 @@ extension TranscriptFormat {
         let normalized = markdown.replacingOccurrences(of: "\r\n", with: "\n")
         guard normalized.hasPrefix("---\n") else { return (normalized, nil) }
         let rest = normalized.dropFirst(4)
-        guard let end = rest.range(of: "\n---\n") else {
+        let header = rest.range(of: "# Transcript\n", options: .anchored)
+            ?? rest.range(of: "\n# Transcript\n")
+        // The block closes before the header; a rule inside the transcript never closes it.
+        let searched = rest[..<(header?.upperBound ?? rest.endIndex)]
+        guard let end = searched.range(of: "\n---\n") else {
             // A broken block must not turn metadata into transcript or note entries.
-            let header = rest.range(of: "# Transcript\n", options: .anchored)
-                ?? rest.range(of: "\n# Transcript\n")
             return (header.map { String(rest[$0.lowerBound...]) } ?? "", nil)
         }
         let body = String(rest[end.upperBound...])
