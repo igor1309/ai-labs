@@ -401,6 +401,7 @@ extension SettingsView {
             .accessibilityHidden(true)
 
             SettingsSwitch(title: label, identifier: id, isOn: isOn, set: set)
+                .controlSize(.small)
                 .fixedSize()
         }
     }

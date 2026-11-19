@@ -3,7 +3,8 @@ import SwiftUI
 
 /// The native on/off switch System Settings uses. It shows the state it is
 /// given: a click reports the flipped value and puts the switch back until a
-/// new state arrives.
+/// new state arrives. Its size comes from SwiftUI's `controlSize`, which
+/// overrides the control's own; System Settings uses `.small`.
 struct SettingsSwitch: NSViewRepresentable {
     var title: String
     var identifier: String
@@ -14,7 +15,6 @@ struct SettingsSwitch: NSViewRepresentable {
 
     func makeNSView(context: Context) -> NSSwitch {
         let control = NSSwitch()
-        control.controlSize = .small
         control.target = context.coordinator
         control.action = #selector(Coordinator.flip(_:))
         control.setContentHuggingPriority(.required, for: .horizontal)
