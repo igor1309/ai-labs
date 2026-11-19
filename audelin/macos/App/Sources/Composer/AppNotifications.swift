@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import os
 import Recording
 import SummaryJobs
 
@@ -47,11 +48,12 @@ func recordingNotification(from old: RecordingState.Phase, to new: RecordingStat
     }
 }
 
-/// Notes notifications for calls whose job was running and has now settled. A call first seen
-/// already settled (recovered at launch) is not announced.
+/// Notes notifications for calls whose job was running and has now settled. A call that settles
+/// straight out of recovery (its saved notes or a failed load at launch) was not running, so it is
+/// not announced, nor is a call first seen already settled.
 func notesNotifications(from old: [String: SummariesStage], to new: [String: SummariesStage]) -> [AppNotification] {
     new.keys.sorted().compactMap { call in
-        guard let before = old[call], let after = new[call], before != after, !settled(before) else { return nil }
+        guard let before = old[call], let after = new[call], before != after, !quiet(before) else { return nil }
         switch after {
         case .succeeded: return .notesReady(call: call)
         case .failed: return .notesFailed(call: call)
@@ -60,9 +62,9 @@ func notesNotifications(from old: [String: SummariesStage], to new: [String: Sum
     }
 }
 
-private func settled(_ stage: SummariesStage) -> Bool {
+private func quiet(_ stage: SummariesStage) -> Bool {
     switch stage {
-    case .succeeded, .failed, .interrupted, .unavailable, .observed, .choosing, .selecting: true
+    case .recovering, .waiting, .succeeded, .failed, .interrupted, .unavailable, .observed, .choosing, .selecting: true
     default: false
     }
 }
@@ -73,11 +75,18 @@ private func settled(_ stage: SummariesStage) -> Bool {
     stages: @escaping @MainActor () -> [String: SummariesStage],
     post: @escaping @MainActor (AppNotification) -> Void
 ) -> Task<Void, Never> {
-    Task {
+    let log = Logger(subsystem: "dev.igor1309.audelin", category: "notifications")
+    return Task {
         var last = (phase(), stages())
         for await now in Observations({ (phase(), stages()) }) {
-            if let note = recordingNotification(from: last.0, to: now.0) { post(note) }
-            notesNotifications(from: last.1, to: now.1).forEach(post)
+            for (call, stage) in now.1 where last.1[call] != stage {
+                log.info("notes stage call=\(call, privacy: .public) from=\(last.1[call].map { "\($0)" } ?? "none", privacy: .public) to=\(String(describing: stage), privacy: .public)")
+            }
+            let notes = (recordingNotification(from: last.0, to: now.0).map { [$0] } ?? []) + notesNotifications(from: last.1, to: now.1)
+            for note in notes {
+                log.info("post \(String(describing: note), privacy: .public)")
+                post(note)
+            }
             last = now
         }
     }
