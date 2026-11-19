@@ -32,11 +32,11 @@ extension TranscriptFormat.Speaker: JoinSpeaker {
 /// transcript's entries for its notes.
 func mergeCalls(ids: [String], storage: CallsStorage, binding: any TranscriptFileBinding) async throws -> (id: String, entries: [Job.Entry]) {
     let listed = Dictionary(try await storage.list().map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-    var parts: [TranscriptJoin.Part<TranscriptFormat.Segment, TranscriptFormat.Speaker>] = []
+    var parts: [TranscriptJoin.Part<TranscriptFormat.Segment, TranscriptFormat.Speaker, Never>] = []
     for id in ids {
         guard let call = listed[id], let length = call.duration else { throw CallsFailure.unknownLength(id: id) }
         let saved = TranscriptFormat.read(String(decoding: try await storage.savedTranscript(id: id), as: UTF8.self))
-        parts.append(.init(start: call.start, length: length, rows: saved.segments, speakers: saved.speakers))
+        parts.append(.init(start: call.start, length: length, rows: saved.segments, speakers: saved.speakers, originals: []))
     }
     let joined = TranscriptJoin.join(parts)
     let segments = joined.items.map { item -> TranscriptFormat.Segment in

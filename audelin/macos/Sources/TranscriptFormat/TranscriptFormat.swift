@@ -67,7 +67,7 @@ public struct TranscriptFormat: Sendable {
     public struct Rendering: Sendable {
 
         public let chunks: [Data]
-        /// Immutable leading bytes, absent for no text or a speaker-name block.
+        /// Immutable leading bytes, including origin; absent for no text, names or a changed origin.
         public let finalLength: Int?
     }
 
@@ -86,23 +86,36 @@ public struct TranscriptFormat: Sendable {
     private var revision = 0
     private static let noText = "# Transcript\n\nNo text was heard.\n"
 
+    private var previousOrigin: Origin?
+    private var hasRendered = false
+
     public init() {}
 
-    public mutating func render(_ segments: [Segment], speakers: [Speaker] = []) throws -> Rendering {
+    public mutating func render(_ segments: [Segment], speakers: [Speaker] = [], origin: Origin? = nil) throws -> Rendering {
 
-        try render(count: segments.count, finalCount: 0, speakers: speakers) { segments[$0] }
+        try render(count: segments.count, finalCount: 0, speakers: speakers, origin: origin) { segments[$0] }
     }
 
     /// Asks only for entries after those already final. Final entries must never change.
     public mutating func render(count: Int, finalCount: Int, speakers: [Speaker] = [], segment: (Int) -> Segment) throws -> Rendering {
 
+        try render(count: count, finalCount: finalCount, speakers: speakers, origin: nil, segment: segment)
+    }
+
+    /// A changed origin invalidates the file's retained prefix, even when its byte count is unchanged.
+    public mutating func render(count: Int, finalCount: Int, speakers: [Speaker] = [], origin: Origin?, segment: (Int) -> Segment) throws -> Rendering {
+
+        let frontMatter = try Self.frontMatter(origin)
+        let originChanged = hasRendered && previousOrigin != origin
         self.speakers = speakers
         revision += 1
         if lone != finalLone { try rebuildFinalText() }
         try renderSegments(count: count, finalCount: finalCount, segment: segment)
         let (prefix, suffix, noText) = text()
-        let length = !noText && self.finalCount > 0 && speakers.isEmpty ? prefix.count : nil
-        return Rendering(chunks: [prefix, suffix], finalLength: length)
+        let length = !noText && self.finalCount > 0 && speakers.isEmpty && !originChanged ? frontMatter.count + prefix.count : nil
+        previousOrigin = origin
+        hasRendered = true
+        return Rendering(chunks: [frontMatter, prefix, suffix], finalLength: length)
     }
 
     private mutating func renderSegments(count: Int, finalCount: Int, segment: (Int) -> Segment) throws {
@@ -173,7 +186,7 @@ public struct TranscriptFormat: Sendable {
     /// A saved transcript's parts with words, each labelled with its speaker's name as `namedLabel` does.
     public static func namedEntries(_ markdown: String) -> [Entry] {
 
-        let (parts, speakers) = parts(markdown)
+        let (parts, speakers, _) = parts(markdown)
         return parts.filter { $0.gap == nil }.map { part in
             let index = part.label == "Them" ? (speakers.count == 1 ? 0 : nil)
                 : part.label.hasPrefix("Them ") ? Int(part.label.dropFirst("Them ".count)).map { $0 - 1 } : nil
@@ -222,8 +235,11 @@ public struct TranscriptFormat: Sendable {
 
         public let segments: [Segment]
         public let speakers: [Speaker]
+        public let origin: Origin?
 
-        public init(segments: [Segment], speakers: [Speaker]) { self.segments = segments; self.speakers = speakers }
+        public init(segments: [Segment], speakers: [Speaker], origin: Origin? = nil) {
+            self.segments = segments; self.speakers = speakers; self.origin = origin
+        }
     }
 
     /// Reads back what rendering needs to render a saved transcript again. A `Them N`
@@ -231,7 +247,7 @@ public struct TranscriptFormat: Sendable {
     /// speaker's, or none. Words come back settled, as final text was rendered.
     public static func read(_ markdown: String) -> Saved {
 
-        let (parts, speakers) = parts(markdown)
+        let (parts, speakers, origin) = parts(markdown)
         let ids = speakers.map(\.id)
         let segments = parts.map { part -> Segment in
             if let length = part.gap { return .gap(at: part.start, length: length) }
@@ -245,12 +261,12 @@ public struct TranscriptFormat: Sendable {
             }
             return Segment(side: .theirs, start: part.start, settled: part.words, pending: "", filledInLater: part.later, speaker: speaker)
         }
-        return Saved(segments: segments, speakers: speakers)
+        return Saved(segments: segments, speakers: speakers, origin: origin)
     }
 
     private struct Part { let label: String; let start: Double; let later: Bool; let words: String; var gap: Double? = nil }
 
-    private static func parts(_ markdown: String) -> (parts: [Part], speakers: [Speaker]) {
+    private static func parts(_ markdown: String) -> (parts: [Part], speakers: [Speaker], origin: Origin?) {
 
         var parts: [Part] = []
         var speakers: [Speaker] = []
@@ -263,7 +279,7 @@ public struct TranscriptFormat: Sendable {
             } else if !words.isEmpty { parts.append(Part(label: part.label, start: part.start, later: part.later, words: words)) }
             current = nil
         }
-        let normalized = markdown.replacingOccurrences(of: "\r\n", with: "\n")
+        let (normalized, origin) = frontMatter(markdown)
         var inSpeakers = false
         for line in normalized.split(separator: "\n", omittingEmptySubsequences: false) {
             if inSpeakers {
@@ -279,7 +295,7 @@ public struct TranscriptFormat: Sendable {
             }
         }
         close()
-        return (parts, speakers)
+        return (parts, speakers, origin)
     }
 
     /// A gap row's text, `Cut off for HH:MM:SS.`, read back as seconds.

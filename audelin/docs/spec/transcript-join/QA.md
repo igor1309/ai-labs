@@ -43,4 +43,6 @@ B's; a row without a speaker keeps none. Evidence:
 
 A part of originals at 10:00 and 10:20 with distinct opaque origins, and a
 part at 10:10, given in reverse: the joined originals are 10:00, 10:10,
-10:20, each origin equal to what was given. Evidence: Missing.
+10:20, each origin equal to what was given. Evidence:
+`TranscriptJoinTests.originalCallsInterleaveByStartWithTheirOpaqueOrigins()`
+and `equalOriginalStartsKeepTheirGivenOrderAndUnknownOriginsPassThrough()`.

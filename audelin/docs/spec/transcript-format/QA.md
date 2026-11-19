@@ -87,14 +87,21 @@ A gap of 120 s at 480 s renders at 00:08:00 as cut off for two minutes and reads
 A fixture origin renders as front matter written out in the test, before
 `# Transcript`, the rest as without origin, and reads back equal (S-11's
 fixture gains it). Over two live renderings the told length covers the
-origin and the first starts the second. Evidence: Missing.
+origin and the first starts the second. Evidence:
+`TranscriptOriginTests.originRendersAboveTextAndCountsInTheFinalPrefix()`;
+`finishingOutcomesUnknownCallsAndMergingReleaseRoundTrip()` and
+`hostileOriginValuesCannotBecomeTranscriptOrNotes()` cover saved stages, unknown origins and escaping.
 
 ## S-15 A changed origin is not kept as final
 
 A rendering with final parts, then one with another origin of the same
 length: it tells no final length. Saved through the transcript file in a
-composition test, the file reads back the new origin, whole. Evidence: Missing.
+composition test, the file reads back the new origin, whole. Evidence:
+`TranscriptOriginTests.changedOriginNeverKeepsAFinalPrefix()` and
+`TranscriptRenderingTests.changedOriginReplacesTheTranscriptFileWhole()`.
 
 ## S-14 A transcript without origin reads as before
 
-A canonical transcript saved before origins reads back with no origin and renders again equal to it. Evidence: Missing.
+A canonical transcript saved before origins reads back with no origin and renders again equal to it. Evidence:
+`TranscriptOriginTests.transcriptWithoutOriginReadsAndRendersAsBefore()`;
+`malformedFrontMatterReadsWithoutOrigin(prefix:)` covers malformed front matter.

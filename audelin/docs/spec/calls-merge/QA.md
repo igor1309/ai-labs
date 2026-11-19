@@ -87,4 +87,6 @@ unreadable the error names B and every file is where it was (Evidence:
 
 A seeded merge made before origins, holding a merged part of two calls and
 a plain call: its read gives the three leaf starts in order, each once. A
-plain call's read gives its own start, a separate case. Evidence: Missing.
+plain call's read gives its own start, a separate case. Evidence:
+`CallsMergeTests.S12_aMergedPartsOriginalLeafStartsReadInOrderOnce()` and
+`S12_aPlainPartsOriginalStartIsItsOwn()`.
