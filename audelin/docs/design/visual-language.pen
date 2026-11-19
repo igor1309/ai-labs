@@ -35434,110 +35434,71 @@
                       }
                     },
                     {
-                      "id": "N3qKiz",
-                      "type": "ref",
-                      "ref": "W8h2bZ",
-                      "name": "Row Язык",
+                      "type": "frame",
+                      "id": "N09bG",
+                      "name": "Group",
                       "width": "fill_container",
-                      "descendants": {
-                        "jasWr": {
-                          "content": "Язык"
-                        },
-                        "X4Fk5p": {
-                          "type": "frame",
-                          "id": "ZMHdx",
-                          "name": "Control",
+                      "fill": "$card",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "children": [
+                        {
+                          "id": "N09bL",
+                          "type": "ref",
+                          "ref": "prow1",
+                          "name": "Row Язык",
                           "width": "fill_container",
-                          "layout": "vertical",
-                          "gap": "$space-6",
+                          "descendants": {
+                            "prowN": {
+                              "content": "Язык"
+                            },
+                            "prowT": {
+                              "content": "Сейчас русский — язык macOS. Если язык macOS не русский и не английский, Audelin на английском."
+                            },
+                            "prowB/pbtnL": {
+                              "content": "Системный"
+                            }
+                          }
+                        },
+                        {
+                          "type": "frame",
+                          "id": "N09bD",
+                          "name": "Divider",
+                          "width": "fill_container",
+                          "padding": [
+                            0,
+                            "$space-12"
+                          ],
                           "children": [
                             {
-                              "id": "MACkx",
-                              "type": "ref",
-                              "ref": "rT0HO",
-                              "name": "Language picker",
+                              "type": "rectangle",
+                              "id": "N09bR",
+                              "name": "Rule",
+                              "fill": "$rule",
                               "width": "fill_container",
-                              "descendants": {
-                                "JMakE/uluhv": {
-                                  "content": "Системный"
-                                },
-                                "tQ8hK/OdXwE": {
-                                  "content": "Русский"
-                                },
-                                "sni1W/OdXwE": {
-                                  "content": "English"
-                                }
-                              }
-                            },
-                            {
-                              "type": "text",
-                              "id": "BN4GO",
-                              "name": "Language hint",
-                              "fill": "$gutter",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "Сейчас русский — язык macOS. Если язык macOS не русский и не английский, Audelin на английском.",
-                              "lineHeight": 1.45,
-                              "fontFamily": "$font-ui",
-                              "fontSize": "$type-small",
-                              "fontWeight": "normal"
+                              "height": 1
                             }
                           ]
-                        }
-                      }
-                    },
-                    {
-                      "id": "GswV1",
-                      "type": "ref",
-                      "ref": "W8h2bZ",
-                      "name": "Row Оформление",
-                      "width": "fill_container",
-                      "descendants": {
-                        "jasWr": {
-                          "content": "Оформление"
                         },
-                        "X4Fk5p": {
-                          "type": "frame",
-                          "id": "rTDdt",
-                          "name": "Control",
+                        {
+                          "id": "N09bA",
+                          "type": "ref",
+                          "ref": "prow1",
+                          "name": "Row Оформление",
                           "width": "fill_container",
-                          "layout": "vertical",
-                          "gap": "$space-6",
-                          "children": [
-                            {
-                              "id": "PEUVz",
-                              "type": "ref",
-                              "ref": "rT0HO",
-                              "name": "Appearance picker",
-                              "width": "fill_container",
-                              "descendants": {
-                                "JMakE/uluhv": {
-                                  "content": "Системное"
-                                },
-                                "tQ8hK/OdXwE": {
-                                  "content": "Светлое"
-                                },
-                                "sni1W/OdXwE": {
-                                  "content": "Тёмное"
-                                }
-                              }
+                          "descendants": {
+                            "prowN": {
+                              "content": "Оформление"
                             },
-                            {
-                              "type": "text",
-                              "id": "kHRzW",
-                              "name": "Appearance hint",
-                              "fill": "$gutter",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "Как в macOS.",
-                              "lineHeight": 1.45,
-                              "fontFamily": "$font-ui",
-                              "fontSize": "$type-small",
-                              "fontWeight": "normal"
+                            "prowT": {
+                              "content": "Как в macOS."
+                            },
+                            "prowB/pbtnL": {
+                              "content": "Системное"
                             }
-                          ]
+                          }
                         }
-                      }
+                      ]
                     }
                   ]
                 }
@@ -35612,110 +35573,216 @@
                       }
                     },
                     {
-                      "id": "YAXYQ",
-                      "type": "ref",
-                      "ref": "W8h2bZ",
-                      "name": "Row Language",
+                      "type": "frame",
+                      "id": "NejaG",
+                      "name": "Group",
                       "width": "fill_container",
-                      "descendants": {
-                        "jasWr": {
-                          "content": "Language"
-                        },
-                        "X4Fk5p": {
-                          "type": "frame",
-                          "id": "kOJDC",
-                          "name": "Control",
+                      "fill": "$card",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "children": [
+                        {
+                          "id": "NejaL",
+                          "type": "ref",
+                          "ref": "prow1",
+                          "name": "Row Language",
                           "width": "fill_container",
-                          "layout": "vertical",
-                          "gap": "$space-6",
+                          "descendants": {
+                            "prowN": {
+                              "content": "Language"
+                            },
+                            "prowT": {
+                              "content": "Now English: Audelin has no Deutsch, the macOS language."
+                            },
+                            "prowB/pbtnL": {
+                              "content": "System"
+                            }
+                          }
+                        },
+                        {
+                          "type": "frame",
+                          "id": "NejaD",
+                          "name": "Divider",
+                          "width": "fill_container",
+                          "padding": [
+                            0,
+                            "$space-12"
+                          ],
                           "children": [
                             {
-                              "id": "HuaIs",
-                              "type": "ref",
-                              "ref": "rT0HO",
-                              "name": "Language picker",
+                              "type": "rectangle",
+                              "id": "NejaR",
+                              "name": "Rule",
+                              "fill": "$rule",
                               "width": "fill_container",
-                              "descendants": {
-                                "JMakE/uluhv": {
-                                  "content": "System"
-                                },
-                                "tQ8hK/OdXwE": {
-                                  "content": "Русский"
-                                },
-                                "sni1W/OdXwE": {
-                                  "content": "English"
-                                }
-                              }
-                            },
-                            {
-                              "type": "text",
-                              "id": "PW3s5",
-                              "name": "Language hint",
-                              "fill": "$gutter",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "Now English: Audelin has no Deutsch, the macOS language.",
-                              "lineHeight": 1.45,
-                              "fontFamily": "$font-ui",
-                              "fontSize": "$type-small",
-                              "fontWeight": "normal"
+                              "height": 1
                             }
                           ]
+                        },
+                        {
+                          "id": "oHZfE",
+                          "type": "ref",
+                          "ref": "prow1",
+                          "name": "Row Appearance",
+                          "width": "fill_container",
+                          "descendants": {
+                            "prowN": {
+                              "content": "Appearance"
+                            },
+                            "prowT": {
+                              "content": "As in macOS."
+                            },
+                            "prowB/pbtnL": {
+                              "content": "System"
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "gHov",
+              "name": "general-hover-light",
+              "theme": {
+                "mode": "light"
+              },
+              "reusable": true,
+              "width": 556,
+              "fill": "$back",
+              "layout": "vertical",
+              "padding": "$space-24",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "gvarBch",
+                  "name": "Settings content",
+                  "width": 508,
+                  "fill": "$win",
+                  "layout": "vertical",
+                  "gap": "$space-24",
+                  "padding": "$space-24",
+                  "children": [
+                    {
+                      "id": "gvarBth",
+                      "type": "ref",
+                      "ref": "Cb0Qc",
+                      "name": "Settings tabs",
+                      "width": "fill_container",
+                      "descendants": {
+                        "ctTw8": {
+                          "fill": "$segThumb",
+                          "effect": {
+                            "type": "shadow",
+                            "shadowType": "outer",
+                            "color": "$segShadow",
+                            "offset": {
+                              "x": 0,
+                              "y": 1
+                            },
+                            "blur": 2
+                          }
+                        },
+                        "ctTw8/EWsWH": {
+                          "content": "General",
+                          "fill": "$text",
+                          "fontWeight": "500"
+                        },
+                        "nor3c": {
+                          "fill": "#00000000",
+                          "effect": []
+                        },
+                        "nor3c/EWsWH": {
+                          "content": "Recording",
+                          "fill": "$text",
+                          "fontWeight": "normal"
+                        },
+                        "cUhH9": {
+                          "fill": "#00000000",
+                          "effect": []
+                        },
+                        "cUhH9/EWsWH": {
+                          "content": "Call summaries",
+                          "fill": "$text",
+                          "fontWeight": "normal"
                         }
                       }
                     },
                     {
-                      "id": "v3CSL8",
-                      "type": "ref",
-                      "ref": "W8h2bZ",
-                      "name": "Row Appearance",
+                      "type": "frame",
+                      "id": "gBgh",
+                      "name": "Group",
                       "width": "fill_container",
-                      "descendants": {
-                        "jasWr": {
-                          "content": "Appearance"
-                        },
-                        "X4Fk5p": {
-                          "type": "frame",
-                          "id": "nMo3e",
-                          "name": "Control",
+                      "fill": "$card",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "children": [
+                        {
+                          "id": "gBlh",
+                          "type": "ref",
+                          "ref": "prow1",
+                          "name": "Row Language",
                           "width": "fill_container",
-                          "layout": "vertical",
-                          "gap": "$space-6",
+                          "descendants": {
+                            "prowN": {
+                              "content": "Language"
+                            },
+                            "prowT": {
+                              "content": "Now English: Audelin has no Deutsch, the macOS language."
+                            },
+                            "prowB": {
+                              "fill": "$chip"
+                            },
+                            "prowB/pbtnL": {
+                              "content": "System"
+                            },
+                            "prowB/pbtnK": {
+                              "fill": "#00000000"
+                            }
+                          }
+                        },
+                        {
+                          "type": "frame",
+                          "id": "gBrh",
+                          "name": "Divider",
+                          "width": "fill_container",
+                          "padding": [
+                            0,
+                            "$space-12"
+                          ],
                           "children": [
                             {
-                              "id": "XohD0",
-                              "type": "ref",
-                              "ref": "rT0HO",
-                              "name": "Appearance picker",
+                              "type": "rectangle",
+                              "id": "gBrlh",
+                              "name": "Rule",
+                              "fill": "$rule",
                               "width": "fill_container",
-                              "descendants": {
-                                "JMakE/uluhv": {
-                                  "content": "System"
-                                },
-                                "tQ8hK/OdXwE": {
-                                  "content": "Light"
-                                },
-                                "sni1W/OdXwE": {
-                                  "content": "Dark"
-                                }
-                              }
-                            },
-                            {
-                              "type": "text",
-                              "id": "hh14D",
-                              "name": "Appearance hint",
-                              "fill": "$gutter",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "As in macOS.",
-                              "lineHeight": 1.45,
-                              "fontFamily": "$font-ui",
-                              "fontSize": "$type-small",
-                              "fontWeight": "normal"
+                              "height": 1
                             }
                           ]
+                        },
+                        {
+                          "id": "gBah",
+                          "type": "ref",
+                          "ref": "prow1",
+                          "name": "Row Appearance",
+                          "width": "fill_container",
+                          "descendants": {
+                            "prowN": {
+                              "content": "Appearance"
+                            },
+                            "prowT": {
+                              "content": "As in macOS."
+                            },
+                            "prowB/pbtnL": {
+                              "content": "System"
+                            }
+                          }
                         }
-                      }
+                      ]
                     }
                   ]
                 }
@@ -35790,110 +35857,71 @@
                       }
                     },
                     {
-                      "id": "NFzuw",
-                      "type": "ref",
-                      "ref": "W8h2bZ",
-                      "name": "Row Language",
+                      "type": "frame",
+                      "id": "sFj7G",
+                      "name": "Group",
                       "width": "fill_container",
-                      "descendants": {
-                        "jasWr": {
-                          "content": "Language"
-                        },
-                        "X4Fk5p": {
-                          "type": "frame",
-                          "id": "MyCLZ",
-                          "name": "Control",
+                      "fill": "$card",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "children": [
+                        {
+                          "id": "sFj7L",
+                          "type": "ref",
+                          "ref": "prow1",
+                          "name": "Row Language",
                           "width": "fill_container",
-                          "layout": "vertical",
-                          "gap": "$space-6",
+                          "descendants": {
+                            "prowN": {
+                              "content": "Language"
+                            },
+                            "prowT": {
+                              "content": "macOS uses Русский."
+                            },
+                            "prowB/pbtnL": {
+                              "content": "English"
+                            }
+                          }
+                        },
+                        {
+                          "type": "frame",
+                          "id": "sFj7D",
+                          "name": "Divider",
+                          "width": "fill_container",
+                          "padding": [
+                            0,
+                            "$space-12"
+                          ],
                           "children": [
                             {
-                              "id": "S0NlN0",
-                              "type": "ref",
-                              "ref": "NkCta",
-                              "name": "Language picker",
+                              "type": "rectangle",
+                              "id": "sFj7R",
+                              "name": "Rule",
+                              "fill": "$rule",
                               "width": "fill_container",
-                              "descendants": {
-                                "dwQBW/OdXwE": {
-                                  "content": "System"
-                                },
-                                "a6vwAN/OdXwE": {
-                                  "content": "Русский"
-                                },
-                                "ZANJ0/uluhv": {
-                                  "content": "English"
-                                }
-                              }
-                            },
-                            {
-                              "type": "text",
-                              "id": "e5hlrs",
-                              "name": "Language hint",
-                              "fill": "$gutter",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "macOS uses Русский.",
-                              "lineHeight": 1.45,
-                              "fontFamily": "$font-ui",
-                              "fontSize": "$type-small",
-                              "fontWeight": "normal"
+                              "height": 1
                             }
                           ]
-                        }
-                      }
-                    },
-                    {
-                      "id": "rljDH",
-                      "type": "ref",
-                      "ref": "W8h2bZ",
-                      "name": "Row Appearance",
-                      "width": "fill_container",
-                      "descendants": {
-                        "jasWr": {
-                          "content": "Appearance"
                         },
-                        "X4Fk5p": {
-                          "type": "frame",
-                          "id": "qwBUK",
-                          "name": "Control",
+                        {
+                          "id": "sFj7A",
+                          "type": "ref",
+                          "ref": "prow1",
+                          "name": "Row Appearance",
                           "width": "fill_container",
-                          "layout": "vertical",
-                          "gap": "$space-6",
-                          "children": [
-                            {
-                              "id": "D5V2c",
-                              "type": "ref",
-                              "ref": "rT0HO",
-                              "name": "Appearance picker",
-                              "width": "fill_container",
-                              "descendants": {
-                                "JMakE/uluhv": {
-                                  "content": "System"
-                                },
-                                "tQ8hK/OdXwE": {
-                                  "content": "Light"
-                                },
-                                "sni1W/OdXwE": {
-                                  "content": "Dark"
-                                }
-                              }
+                          "descendants": {
+                            "prowN": {
+                              "content": "Appearance"
                             },
-                            {
-                              "type": "text",
-                              "id": "EImMB",
-                              "name": "Appearance hint",
-                              "fill": "$gutter",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "As in macOS.",
-                              "lineHeight": 1.45,
-                              "fontFamily": "$font-ui",
-                              "fontSize": "$type-small",
-                              "fontWeight": "normal"
+                            "prowT": {
+                              "content": "As in macOS."
+                            },
+                            "prowB/pbtnL": {
+                              "content": "System"
                             }
-                          ]
+                          }
                         }
-                      }
+                      ]
                     }
                   ]
                 }
@@ -35968,110 +35996,71 @@
                       }
                     },
                     {
-                      "id": "DArg8",
-                      "type": "ref",
-                      "ref": "W8h2bZ",
-                      "name": "Row Язык",
+                      "type": "frame",
+                      "id": "fXSJG",
+                      "name": "Group",
                       "width": "fill_container",
-                      "descendants": {
-                        "jasWr": {
-                          "content": "Язык"
-                        },
-                        "X4Fk5p": {
-                          "type": "frame",
-                          "id": "pFKQ5",
-                          "name": "Control",
+                      "fill": "$card",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "children": [
+                        {
+                          "id": "fXSJL",
+                          "type": "ref",
+                          "ref": "prow1",
+                          "name": "Row Язык",
                           "width": "fill_container",
-                          "layout": "vertical",
-                          "gap": "$space-6",
+                          "descendants": {
+                            "prowN": {
+                              "content": "Язык"
+                            },
+                            "prowT": {
+                              "content": "Язык macOS — English."
+                            },
+                            "prowB/pbtnL": {
+                              "content": "Русский"
+                            }
+                          }
+                        },
+                        {
+                          "type": "frame",
+                          "id": "fXSJD",
+                          "name": "Divider",
+                          "width": "fill_container",
+                          "padding": [
+                            0,
+                            "$space-12"
+                          ],
                           "children": [
                             {
-                              "id": "sd304",
-                              "type": "ref",
-                              "ref": "ksNeX",
-                              "name": "Language picker",
+                              "type": "rectangle",
+                              "id": "fXSJR",
+                              "name": "Rule",
+                              "fill": "$rule",
                               "width": "fill_container",
-                              "descendants": {
-                                "yGGGs/OdXwE": {
-                                  "content": "Системный"
-                                },
-                                "nO9lR/uluhv": {
-                                  "content": "Русский"
-                                },
-                                "C7H5c/OdXwE": {
-                                  "content": "English"
-                                }
-                              }
-                            },
-                            {
-                              "type": "text",
-                              "id": "sw1fY",
-                              "name": "Language hint",
-                              "fill": "$gutter",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "Язык macOS — English.",
-                              "lineHeight": 1.45,
-                              "fontFamily": "$font-ui",
-                              "fontSize": "$type-small",
-                              "fontWeight": "normal"
+                              "height": 1
                             }
                           ]
-                        }
-                      }
-                    },
-                    {
-                      "id": "z7rDYX",
-                      "type": "ref",
-                      "ref": "W8h2bZ",
-                      "name": "Row Оформление",
-                      "width": "fill_container",
-                      "descendants": {
-                        "jasWr": {
-                          "content": "Оформление"
                         },
-                        "X4Fk5p": {
-                          "type": "frame",
-                          "id": "mH6YD",
-                          "name": "Control",
+                        {
+                          "id": "fXSJA",
+                          "type": "ref",
+                          "ref": "prow1",
+                          "name": "Row Оформление",
                           "width": "fill_container",
-                          "layout": "vertical",
-                          "gap": "$space-6",
-                          "children": [
-                            {
-                              "id": "BhR2H",
-                              "type": "ref",
-                              "ref": "rT0HO",
-                              "name": "Appearance picker",
-                              "width": "fill_container",
-                              "descendants": {
-                                "JMakE/uluhv": {
-                                  "content": "Системное"
-                                },
-                                "tQ8hK/OdXwE": {
-                                  "content": "Светлое"
-                                },
-                                "sni1W/OdXwE": {
-                                  "content": "Тёмное"
-                                }
-                              }
+                          "descendants": {
+                            "prowN": {
+                              "content": "Оформление"
                             },
-                            {
-                              "type": "text",
-                              "id": "e7jlOW",
-                              "name": "Appearance hint",
-                              "fill": "$gutter",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "Как в macOS.",
-                              "lineHeight": 1.45,
-                              "fontFamily": "$font-ui",
-                              "fontSize": "$type-small",
-                              "fontWeight": "normal"
+                            "prowT": {
+                              "content": "Как в macOS."
+                            },
+                            "prowB/pbtnL": {
+                              "content": "Системное"
                             }
-                          ]
+                          }
                         }
-                      }
+                      ]
                     }
                   ]
                 }
@@ -36146,110 +36135,71 @@
                       }
                     },
                     {
-                      "id": "yHZp6",
-                      "type": "ref",
-                      "ref": "W8h2bZ",
-                      "name": "Row Язык",
+                      "type": "frame",
+                      "id": "q6QCG",
+                      "name": "Group",
                       "width": "fill_container",
-                      "descendants": {
-                        "jasWr": {
-                          "content": "Язык"
-                        },
-                        "X4Fk5p": {
-                          "type": "frame",
-                          "id": "DDLHx",
-                          "name": "Control",
+                      "fill": "$card",
+                      "cornerRadius": "$radius-card",
+                      "layout": "vertical",
+                      "children": [
+                        {
+                          "id": "q6QCL",
+                          "type": "ref",
+                          "ref": "prow1",
+                          "name": "Row Язык",
                           "width": "fill_container",
-                          "layout": "vertical",
-                          "gap": "$space-6",
+                          "descendants": {
+                            "prowN": {
+                              "content": "Язык"
+                            },
+                            "prowT": {
+                              "content": "Сейчас русский — язык macOS. Если язык macOS не русский и не английский, Audelin на английском."
+                            },
+                            "prowB/pbtnL": {
+                              "content": "Системный"
+                            }
+                          }
+                        },
+                        {
+                          "type": "frame",
+                          "id": "q6QCD",
+                          "name": "Divider",
+                          "width": "fill_container",
+                          "padding": [
+                            0,
+                            "$space-12"
+                          ],
                           "children": [
                             {
-                              "id": "AWxXC",
-                              "type": "ref",
-                              "ref": "rT0HO",
-                              "name": "Language picker",
+                              "type": "rectangle",
+                              "id": "q6QCR",
+                              "name": "Rule",
+                              "fill": "$rule",
                               "width": "fill_container",
-                              "descendants": {
-                                "JMakE/uluhv": {
-                                  "content": "Системный"
-                                },
-                                "tQ8hK/OdXwE": {
-                                  "content": "Русский"
-                                },
-                                "sni1W/OdXwE": {
-                                  "content": "English"
-                                }
-                              }
-                            },
-                            {
-                              "type": "text",
-                              "id": "T93lW",
-                              "name": "Language hint",
-                              "fill": "$gutter",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "Сейчас русский — язык macOS. Если язык macOS не русский и не английский, Audelin на английском.",
-                              "lineHeight": 1.45,
-                              "fontFamily": "$font-ui",
-                              "fontSize": "$type-small",
-                              "fontWeight": "normal"
+                              "height": 1
                             }
                           ]
-                        }
-                      }
-                    },
-                    {
-                      "id": "XtSRT",
-                      "type": "ref",
-                      "ref": "W8h2bZ",
-                      "name": "Row Оформление",
-                      "width": "fill_container",
-                      "descendants": {
-                        "jasWr": {
-                          "content": "Оформление"
                         },
-                        "X4Fk5p": {
-                          "type": "frame",
-                          "id": "PQ1fa",
-                          "name": "Control",
+                        {
+                          "id": "q6QCA",
+                          "type": "ref",
+                          "ref": "prow1",
+                          "name": "Row Оформление",
                           "width": "fill_container",
-                          "layout": "vertical",
-                          "gap": "$space-6",
-                          "children": [
-                            {
-                              "id": "zoeby",
-                              "type": "ref",
-                              "ref": "rT0HO",
-                              "name": "Appearance picker",
-                              "width": "fill_container",
-                              "descendants": {
-                                "JMakE/uluhv": {
-                                  "content": "Системное"
-                                },
-                                "tQ8hK/OdXwE": {
-                                  "content": "Светлое"
-                                },
-                                "sni1W/OdXwE": {
-                                  "content": "Тёмное"
-                                }
-                              }
+                          "descendants": {
+                            "prowN": {
+                              "content": "Оформление"
                             },
-                            {
-                              "type": "text",
-                              "id": "PPerF",
-                              "name": "Appearance hint",
-                              "fill": "$gutter",
-                              "textGrowth": "fixed-width",
-                              "width": "fill_container",
-                              "content": "Как в macOS.",
-                              "lineHeight": 1.45,
-                              "fontFamily": "$font-ui",
-                              "fontSize": "$type-small",
-                              "fontWeight": "normal"
+                            "prowT": {
+                              "content": "Как в macOS."
+                            },
+                            "prowB/pbtnL": {
+                              "content": "Системное"
                             }
-                          ]
+                          }
                         }
-                      }
+                      ]
                     },
                     {
                       "id": "RNtSt",
@@ -36349,6 +36299,15 @@
               }
             },
             {
+              "id": "gHovD",
+              "type": "ref",
+              "ref": "gHov",
+              "name": "general-hover-dark",
+              "theme": {
+                "mode": "dark"
+              }
+            },
+            {
               "id": "U8rQY",
               "type": "ref",
               "ref": "sFj7c",
@@ -36382,8 +36341,166 @@
           "id": "A1boMu",
           "name": "General behavior",
           "width": 1100,
-          "height": 200,
-          "content": "General. Window content only; the native title bar is not drawn. The first tab holds Language (System / Русский / English) and Appearance (System / Light / Dark), each a three-part segmented control across the row; language names are written in their own language. System language uses the first macOS preferred language Audelin supports and English otherwise. A change applies at once to every window, the panel and the menu bar, with no relaunch and no confirmation. The grey line under Language names the language System gives, or the macOS language when one is forced. Language covers UI text only: transcription, summaries and call folders do not change. Tabs, Language, Appearance and the debug chunk size are one native-style segmented control in one size. Mouse clicks a segment; Tab focuses the control and rings its selected segment in the accent colour, with no ring around the control; the arrow keys move between segments. macOS only; no phone or tablet layout. AGENTS.md: while the recordings root has no AGENTS.md, General shows a fourth row «Для ИИ-агентов» / \"For AI agents\" with \"Нет файла AGENTS.md\", a grey hint and Button/Secondary «Создать AGENTS.md», which writes the file. When the file exists the row is hidden. Open: wording and behaviour if writing fails."
+          "height": 240,
+          "content": "General. Window content only; the native title bar is not drawn. The first tab holds Language (System / Русский / English) and Appearance (System / Light / Dark), two rows of one grouped card: the title and grey hint on the left, a pop-up button with the current choice on the right that opens a native menu of the three choices. At rest the button shows the value and a chevrons chip with no background; on hover the whole button takes the chip fill and the chevrons lose theirs; language names are written in their own language. System language uses the first macOS preferred language Audelin supports and English otherwise. A change applies at once to every window, the panel and the menu bar, with no relaunch and no confirmation. The grey line under Language names the language System gives, or the macOS language when one is forced. Language covers UI text only: transcription, summaries and call folders do not change. Mouse: a click opens the menu, a click on an item chooses it. Keyboard: Tab reaches the button with the native focus ring; Space opens the menu, arrows move, Return chooses, Escape closes. macOS only; no phone or tablet layout. AGENTS.md: while the recordings root has no AGENTS.md, General shows a third row, under the card, «Для ИИ-агентов» / \"For AI agents\" with \"Нет файла AGENTS.md\", a grey hint and Button/Secondary «Создать AGENTS.md», which writes the file. When the file exists the row is hidden. Open: wording and behaviour if writing fails."
+        },
+        {
+          "type": "frame",
+          "id": "cmpVar",
+          "name": "Settings pop-up — components",
+          "layout": "vertical",
+          "gap": "$space-24",
+          "children": [
+            {
+              "type": "frame",
+              "id": "pbtn1",
+              "name": "Popup button",
+              "reusable": true,
+              "fill": "#00000000",
+              "cornerRadius": "$radius-control",
+              "gap": "$space-6",
+              "padding": [
+                "$space-2",
+                "$space-2",
+                "$space-2",
+                "$space-8"
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "pbtnL",
+                  "name": "Value",
+                  "fill": "$text",
+                  "content": "Automatic",
+                  "lineHeight": 1.45,
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "pbtnK",
+                  "name": "Chevron chip",
+                  "fill": "$chip",
+                  "cornerRadius": "$radius-control",
+                  "padding": "$space-2",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "pbtnI",
+                      "name": "Chevrons",
+                      "width": 12,
+                      "height": 12,
+                      "icon": "chevrons-up-down",
+                      "library": "lucide",
+                      "fill": "$sub"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "pbtnH",
+              "name": "Popup button/Hover",
+              "reusable": true,
+              "fill": "$chip",
+              "cornerRadius": "$radius-control",
+              "gap": "$space-6",
+              "padding": [
+                "$space-2",
+                "$space-2",
+                "$space-2",
+                "$space-8"
+              ],
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "id": "pbtnHL",
+                  "name": "Value",
+                  "fill": "$text",
+                  "content": "Automatic",
+                  "lineHeight": 1.45,
+                  "fontFamily": "$font-ui",
+                  "fontSize": "$type-small",
+                  "fontWeight": "normal"
+                },
+                {
+                  "type": "frame",
+                  "id": "pbtnHK",
+                  "name": "Chevron chip",
+                  "fill": "#00000000",
+                  "cornerRadius": "$radius-control",
+                  "padding": "$space-2",
+                  "children": [
+                    {
+                      "type": "icon",
+                      "id": "pbtnHI",
+                      "name": "Chevrons",
+                      "width": 12,
+                      "height": 12,
+                      "icon": "chevrons-up-down",
+                      "library": "lucide",
+                      "fill": "$sub"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "prow1",
+              "name": "Settings row/Popup",
+              "reusable": true,
+              "width": 460,
+              "gap": "$space-16",
+              "padding": "$space-12",
+              "children": [
+                {
+                  "type": "frame",
+                  "id": "prowL",
+                  "name": "Text",
+                  "width": "fill_container",
+                  "layout": "vertical",
+                  "gap": "$space-2",
+                  "children": [
+                    {
+                      "type": "text",
+                      "id": "prowN",
+                      "name": "Name",
+                      "fill": "$text",
+                      "content": "Language",
+                      "lineHeight": 1.45,
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-body",
+                      "fontWeight": "500"
+                    },
+                    {
+                      "type": "text",
+                      "id": "prowT",
+                      "name": "Hint",
+                      "fill": "$gutter",
+                      "textGrowth": "fixed-width",
+                      "width": "fill_container",
+                      "content": "Hint",
+                      "lineHeight": 1.45,
+                      "fontFamily": "$font-ui",
+                      "fontSize": "$type-small",
+                      "fontWeight": "normal"
+                    }
+                  ]
+                },
+                {
+                  "id": "prowB",
+                  "type": "ref",
+                  "ref": "pbtn1",
+                  "name": "Popup"
+                }
+              ]
+            }
+          ]
         }
       ]
     },
@@ -47815,7 +47932,7 @@
           "name": "Segmented control",
           "width": "fill_container",
           "height": 0,
-          "content": "One segmented control for every segmented choice in the app: Settings tabs, Language, Appearance, debug chunk size, and the notes' Предыдущие / Текущие switch. Track: segTrack, radius-control, 2 pt padding. Selected: segThumb with segShadow, radius-thumb, medium label; never an accent fill. All labels use text. No outlines and no rings: keyboard focus draws nothing on the control, neither around a segment nor around the track."
+          "content": "One segmented control for every segmented choice in the app: Settings tabs, debug chunk size, and the notes' Предыдущие / Текущие switch. Track: segTrack, radius-control, 2 pt padding. Selected: segThumb with segShadow, radius-thumb, medium label; never an accent fill. All labels use text. No outlines and no rings: keyboard focus draws nothing on the control, neither around a segment nor around the track."
         }
       ]
     },

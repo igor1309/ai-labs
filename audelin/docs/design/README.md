@@ -121,8 +121,9 @@ from instances.
 | Hotkey field | `ysLzd` | `Keys` |
 | Alert | `OCKfD` | `H`, `Body`; buttons "Primary action" (destructive by default; swap for Button/Primary when the action is not destructive) and "Cancel" |
 | Calls row, /Hover | `yFtkD`, `uMMD6` | `Date`, `Title`, `Duration`, `Audio`, `Dot`, pin; Hover adds the row tint and shows Delete (a Button/Destructive in the error tint) |
-| Segment/Selected, /Default; Segmented/First, /Second, /Third | on the board "Glass Ledger — call notes components" | each segment's `Label`; the variant names the selected segment. Settings tabs, Language, Appearance, the debug chunk size ([general settings brief](general-settings.md)) and the notes' Предыдущие / Текущие switch ([notes templates brief](notes-templates.md)) all use them |
+| Segment/Selected, /Default; Segmented/First, /Second, /Third | on the board "Glass Ledger — call notes components" | each segment's `Label`; the variant names the selected segment. Settings tabs, the debug chunk size ([general settings brief](general-settings.md)) and the notes' Предыдущие / Текущие switch ([notes templates brief](notes-templates.md)) all use them |
 | Settings row | `W8h2bZ` | `Name`; replace `Control` with the row's control |
+| Popup button, /Hover; Settings row/Popup | `pbtn1`, `pbtnH`, `prow1` | `Value`; the row's `Name`, `Hint` and `Popup`. Language and Appearance in General ([general settings brief](general-settings.md)) |
 | Live panel | `c0qJn` | The glass panel shell; replace `Body` with the header, banners and log |
 | Added late | `HIqfu` | `Late label`; the group of minutes filled in after live text is switched on mid-call |
 | Switch/On, /Off | `ufHXu`, `zhXsW` | `Label` |
