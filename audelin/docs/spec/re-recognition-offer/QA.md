@@ -6,7 +6,7 @@ item's enabled state and its reason.
 
 ## S-1 A kept call offers it
 
-A fixture with both tracks and made notes, Audelin idle: the item is enabled, after Переименовать.
+A fixture with both tracks, Audelin idle: the item is enabled, after Переименовать.
 Evidence: Missing.
 
 ## S-2 One track missing
@@ -26,7 +26,7 @@ Evidence: Missing.
 
 ## S-5 Audelin busy
 
-Three runs: recording, notes being made, a calls-folder move: the item is disabled with each reason.
+Four runs: recording, notes being made, a calls-folder move, a held restore: the item is disabled with each reason.
 Evidence: Missing.
 
 ## S-6 Renaming the call being made again
@@ -47,4 +47,19 @@ Evidence: Missing.
 ## S-9 Another call is used as usual
 
 During a held run, rename another call: its folder carries the new name.
+Evidence: Missing.
+
+## S-10 Same place without notes
+
+A fixture with notes and one without: the item is at the same index after Переименовать in both menus.
+Evidence: Missing.
+
+## S-11 A merge under way
+
+Hold a merge: the item is disabled with the reason.
+Evidence: Missing.
+
+## S-12 Merging during a run
+
+Hold a run, then confirm a merge: it is refused with the reason, and no folder moved.
 Evidence: Missing.

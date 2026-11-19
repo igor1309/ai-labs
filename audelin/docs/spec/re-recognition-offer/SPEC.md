@@ -10,7 +10,10 @@ Oracle: the owner's rulings on LAB-1694.
 - **The item is always in the row menu, after Переименовать,** whatever
   the call's notes: the design brief's notes items come and go with the
   notes (`../../design/calls-list.md`), so the item has its own place.
-- **It needs Audelin idle,** as merging does (`../merge-calls/SPEC.md`).
+- **It needs Audelin idle,** as merging does (`../merge-calls/SPEC.md`),
+  and no merge, restore or other run under way. Each of these refuses to
+  start while one of the others runs, saying why, checked when it is
+  asked for: each moves or rewrites a call's folder.
 - **It needs all the call's audio;** missing audio names the missing
   tracks, and in a merged call the original call missing them.
 - **While a call is made again, renaming, deleting and restoring it are
@@ -21,7 +24,7 @@ Oracle: the owner's rulings on LAB-1694.
 Feature: When a call's transcript can be made again
 
   Scenario: S-1 A kept call offers it
-    Given a call with all its audio and notes, and Audelin idle
+    Given a call with all its audio and Audelin idle
     When I open the call's row menu
     Then I can ask to make its transcript again
 
@@ -44,6 +47,21 @@ Feature: When a call's transcript can be made again
     Given Audelin is not idle
     When I open a call's row menu
     Then I cannot ask to make its transcript again, and I can read why
+
+  Scenario: S-10 Same place without notes
+    Given a call without notes and one with them
+    When I open each call's row menu
+    Then I can find the item in the same place, after Переименовать
+
+  Scenario: S-11 A merge under way
+    Given calls are being merged
+    When I open a call's row menu
+    Then I cannot ask to make its transcript again, and I can read why
+
+  Scenario: S-12 Merging during a run
+    Given a call's transcript is being made again
+    When I confirm a merge
+    Then I cannot merge, and I can read why
 
   Scenario: S-6 Renaming the call being made again
     Given a call's transcript is being made again

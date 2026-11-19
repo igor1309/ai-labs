@@ -16,15 +16,16 @@ Oracle: the owner's rulings on LAB-1694.
   re-recognition drops the older one.
 - **Restoring swaps the two in one step,** from the call's row menu, so
   neither is lost and no end, a crash included, leaves a mix. It needs
-  Audelin idle, as re-recognition does, so no notes are being made.
+  Audelin idle and no merge or run under way (`../re-recognition-offer/SPEC.md`).
 - **Notes are never made again by themselves:** that sends the transcript
   to a provider, the user's choice (`../call-summaries/SPEC.md`).
   Replacing or restoring starts no request.
 - **Notes are marked by the transcript they were made from:** marked when
   it is not current, unmarked when it is current again. Notes made before
   this feature, whose transcript is unknown, are marked once the
-  transcript is replaced: they cannot have been made from the new one.
-  Making notes again always reads the current transcript.
+  transcript is replaced, and stay marked after a restore until made
+  again. Previous and Current notes each carry their own mark. Making
+  notes again always reads the current transcript.
 
 ```gherkin
 Feature: The transcript a re-recognition replaced
@@ -68,6 +69,16 @@ Feature: The transcript a re-recognition replaced
     Given a call's notes were made from the transcript that is current now
     When I read the notes
     Then I see no mark about an earlier transcript
+
+  Scenario: S-10 Older notes after a restore
+    Given a call's older notes were marked when its transcript was made again
+    When I restore the previous transcript
+    Then I can still see the notes marked
+
+  Scenario: S-11 Each set of notes has its own mark
+    Given a call's Previous notes were made from an earlier transcript and its Current notes from the current one
+    When I switch between them
+    Then I can see the mark on Previous only
 
   Scenario: S-9 Older notes after a replacement
     Given a call's notes were made before Audelin told notes' transcripts
