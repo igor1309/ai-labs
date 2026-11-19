@@ -23,6 +23,7 @@ struct AppNotificationsTests {
         #expect(notesNotifications(from: ["a": .succeeded], to: ["a": .succeeded]).isEmpty)
         #expect(notesNotifications(from: ["a": .observed], to: ["a": .succeeded]).isEmpty)
         #expect(notesNotifications(from: [:], to: ["a": .succeeded]).isEmpty)
+        #expect(notesNotifications(from: ["a": .recovering, "b": .recovering], to: ["a": .succeeded, "b": .failed]).isEmpty)
     }
 
     @Test func textFollowsLanguage() {
