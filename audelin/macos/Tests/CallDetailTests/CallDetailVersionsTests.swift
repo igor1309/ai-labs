@@ -95,7 +95,7 @@ struct CallDetailVersionsTests {
 
     @Test(arguments: [CallDetailState.Call.Summary.Badge.pending, .none])
     func cancelTargetsTheDisplayedBusyCallWhileAnotherReadIsPending(badge: CallDetailState.Call.Summary.Badge) async {
-        let reducer = CallDetailReducer(progress: { "remaking " + $0 }, failure: { "failure \($0)" })
+        let reducer = CallDetailReducer(progress: { "remaking " + $0 }, failure: { "failure \($0)" }, transcriptMark: { "mark \($0)" })
         let shown = makeShown(badge: .pending)
         var other = shown.selected!
         other.id = "other"; other.summary.badge = badge
@@ -123,7 +123,7 @@ struct CallDetailVersionsTests {
 
     @Test func progressFormattingIsInjectedAndRunsOnlyForProgress() {
         let spy = FormatSpy()
-        let reducer = CallDetailReducer(progress: spy.format, failure: { "failure \($0)" })
+        let reducer = CallDetailReducer(progress: spy.format, failure: { "failure \($0)" }, transcriptMark: { "mark \($0)" })
         #expect(spy.calls.withLock { $0 } == [])
         _ = reducer.reduce(makeShown(), .versionChosen(.current))
         _ = reducer.reduce(makeReading(), .readFinished(id: "call", revision: 4, result: .read(makePair())))
@@ -137,7 +137,7 @@ struct CallDetailVersionsTests {
         let calls = Mutex<[CallDetailFailure]>([])
         let reducer = CallDetailReducer(progress: { $0 }, failure: { reason in
             calls.withLock { $0.append(reason) }; return "formatted quota reason"
-        })
+        }, transcriptMark: { "mark \($0)" })
         #expect(calls.withLock { $0 }.isEmpty)
         _ = reducer.reduce(makeShown(), .versionChosen(.current))
         _ = reducer.reduce(makeReading(), .readFinished(id: "call", revision: 4, result: .read(makePair())))
@@ -188,7 +188,7 @@ private func makeReading(version: CallNotesVersion = .current, badge: CallDetail
 private func assert(_ state: CallDetailState, _ event: CallDetailEvent, delivers effect: CallDetailEffect? = nil,
                     sourceLocation: SourceLocation = #_sourceLocation, mutation: (inout CallDetailState) -> Void = { _ in }) {
     var expected = state; mutation(&expected)
-    let result = CallDetailReducer(progress: { "remaking " + $0 }, failure: { "failure \($0)" }).reduce(state, event)
+    let result = CallDetailReducer(progress: { "remaking " + $0 }, failure: { "failure \($0)" }, transcriptMark: { "mark \($0)" }).reduce(state, event)
     #expect(result.0 == expected, sourceLocation: sourceLocation)
     #expect(result.1 == effect, sourceLocation: sourceLocation)
 }

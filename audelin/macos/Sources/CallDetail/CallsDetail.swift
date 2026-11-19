@@ -4,14 +4,23 @@ public struct CallNotes: Equatable, Sendable {
     public var made: String?
     public var templateID: String
     public var templateName: String
-    public init(text: String, made: String?, templateID: String = "Default", templateName: String = "Default") {
+    public var transcriptIdentity: String?
+    public init(text: String, made: String?, templateID: String = "Default", templateName: String = "Default",
+                transcriptIdentity: String? = nil) {
         self.text = text; self.made = made; self.templateID = templateID; self.templateName = templateName
+        self.transcriptIdentity = transcriptIdentity
     }
 }
 public struct CallNotesPair: Equatable, Sendable {
     public var previous: CallNotes?
     public var current: CallNotes
-    public init(previous: CallNotes? = nil, current: CallNotes) { self.previous = previous; self.current = current }
+    public var currentTranscriptIdentity: String?
+    public var hasPreviousTranscript: Bool
+    public init(previous: CallNotes? = nil, current: CallNotes, currentTranscriptIdentity: String? = nil,
+                hasPreviousTranscript: Bool = false) {
+        self.previous = previous; self.current = current
+        self.currentTranscriptIdentity = currentTranscriptIdentity; self.hasPreviousTranscript = hasPreviousTranscript
+    }
 }
 public enum CallNotesVersion: Equatable, Sendable { case previous, current }
 
@@ -38,12 +47,19 @@ public struct CallsDetail: Equatable, Sendable {
     public var template: String?
     public var progress: String?
     public var failure: String?
+    public var previousTranscriptMark: String?
+    public var currentTranscriptMark: String?
+    /// The mark for the version currently shown.
+    public var transcriptMark: String?
 
     public init(id: String, title: String, date: String, duration: String, content: Content,
                 pair: CallNotesPair? = nil, version: CallNotesVersion = .current, template: String? = nil,
-                progress: String? = nil, failure: String? = nil) {
+                progress: String? = nil, failure: String? = nil, previousTranscriptMark: String? = nil,
+                currentTranscriptMark: String? = nil, transcriptMark: String? = nil) {
         self.id = id; self.title = title; self.date = date; self.duration = duration; self.content = content
         self.pair = pair; self.version = version; self.template = template; self.progress = progress; self.failure = failure
+        self.previousTranscriptMark = previousTranscriptMark; self.currentTranscriptMark = currentTranscriptMark
+        self.transcriptMark = transcriptMark
     }
 }
 

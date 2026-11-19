@@ -134,7 +134,7 @@ public final class AudelinCalls {
         self.summaryBadges = summaryBadges
         self.notes = notes
         let handler = CallDetailEffectHandler(notes: { @MainActor id in try await notes(id) })
-        detailModel = ObservableModel(initialState: .init(), reduce: CallDetailReducer(progress: { previewText()(.remaking, $0) }, failure: { previewText()(failurePhrase($0)) }).reduce,
+        detailModel = ObservableModel(initialState: .init(), reduce: CallDetailReducer(progress: { previewText()(.remaking, $0) }, failure: { previewText()(failurePhrase($0)) }, transcriptMark: { _ in "Notes from another transcript" }).reduce,
                                       handleEffect: { effect in oneEvent { await handler.handle(effect) } })
         self.inputs = inputs; self.timeZone = timeZone; self.now = now; self.recordingState = recordingState
         self.location = location; self.openFolder = openFolder; self.present = present
