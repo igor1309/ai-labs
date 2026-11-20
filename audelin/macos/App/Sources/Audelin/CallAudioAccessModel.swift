@@ -1,4 +1,5 @@
 import CallAudioAccess
+import Composer
 import Foundation
 import IMRxObservation
 
@@ -10,16 +11,18 @@ actor CallAudioAccessModel {
     private var changes: Task<Void, Never>?
     private let device: @Sendable () async -> UInt32?
     private let now: @Sendable () -> Double
+    private let sink: any LogSink
 
-    init(device: @escaping @Sendable () async -> UInt32?, now: @escaping @Sendable () -> Double) {
-        self.device = device; self.now = now
+    init(device: @escaping @Sendable () async -> UInt32?, now: @escaping @Sendable () -> Double, sink: any LogSink) {
+        self.device = device; self.now = now; self.sink = sink
     }
 
     func start(probe: @escaping @Sendable () async -> AccessEvidence,
                sleep: @escaping @Sendable (Duration) async throws -> Void, changes: AsyncStream<Void>) {
         guard model == nil, !feed.finished else { return }
         model = SyncModel(initialState: AccessState(), reduce: AccessReducer.reduce)
-        doer = AccessDoer(probe: probe, device: device, now: now, sleep: sleep, send: { [weak self] in await self?.send($0) })
+        doer = AccessDoer(probe: probe, device: device, now: now, sleep: sleep,
+                          send: loggingCallAudioMeasurements({ [weak self] in await self?.send($0) }, sink: sink))
         self.changes = Task { [weak self] in
             for await _ in changes { await self?.send(.invalidated) }
         }

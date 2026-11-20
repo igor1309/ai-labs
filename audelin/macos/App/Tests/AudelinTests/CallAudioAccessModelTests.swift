@@ -1,10 +1,25 @@
 import CallAudioAccess
+import Composer
 import Synchronization
 import Testing
 @testable import Audelin
 
 @Suite(.timeLimit(.minutes(1)))
 struct CallAudioAccessModelTests {
+    @Test func anOutputChangeDuringMeasurementLogsTheRefusalAndItsReason() async {
+        let rig = AccessModelRig()
+        let model = await rig.model()
+        let request = await model.prepareRefresh(now: 100, device: 10)
+        await rig.started()
+        rig.output.withLock { $0 = 20 }
+        rig.complete()
+        #expect(await request.value() == false)
+        #expect(rig.sink.entries.withLock { $0 } == [
+            .init(category: .conditions, message: "call audio probe kind=refused", error: "output changed during measurement"),
+        ])
+        await model.end()
+    }
+
     @Test func freshRefreshReturnsWithoutPublication() async {
         let rig = AccessModelRig()
         let model = await rig.model()
@@ -113,12 +128,14 @@ struct CallAudioAccessModelTests {
 }
 
 private final class AccessModelRig: Sendable {
+    let sink = AccessLogSink()
+    let output = Mutex<UInt32?>(10)
     let time = Mutex(100.0)
     let probes = Mutex(0)
     let starts = AsyncStream<Void>.makeStream()
     let results = AsyncStream<Void>.makeStream()
     func model() async -> CallAudioAccessModel {
-        let model = CallAudioAccessModel(device: { 10 }, now: { [self] in time.withLock { $0 } })
+        let model = CallAudioAccessModel(device: { [self] in output.withLock { $0 } }, now: { [self] in time.withLock { $0 } }, sink: sink)
         await model.start(probe: { [self] in
             probes.withLock { $0 += 1 }; starts.continuation.yield(())
             for await _ in results.stream { return .heard }
@@ -128,4 +145,9 @@ private final class AccessModelRig: Sendable {
     }
     func started() async { for await _ in starts.stream { return } }
     func complete() { results.continuation.yield(()) }
+}
+
+private final class AccessLogSink: LogSink {
+    let entries = Mutex<[LogEntry]>([])
+    func write(_ entry: LogEntry) { entries.withLock { $0.append(entry) } }
 }

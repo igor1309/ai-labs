@@ -3,15 +3,27 @@ import Testing
 
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingCallAudioRetryTests {
-    @Test(arguments: [UInt64(1), 2])
-    func aCallRefusalKeepsItsAttemptWhileReleasing_state(_ id: UInt64) {
-        assert(makeAudioPreparing(id), .callAudioPrepared(id: id, ready: false, liveText: false)) {
+    @Test(arguments: [UInt64(1), 2], [false, true])
+    func aCallRefusalKeepsItsAttemptWhileReleasing_state(_ id: UInt64, _ audioMissing: Bool) {
+        let preparing = makeState(makeAudioPreparing(id)) { if audioMissing { $0.missing = [.callAudioAccess] } }
+        assert(preparing, .callAudioPrepared(id: id, ready: false, liveText: false)) {
             $0.missing = [.callAudioAccess]; $0.callAudioWait = id; $0.stage = .releasing
         }
+        let refused = reducer.reduce(preparing, .callAudioPrepared(id: id, ready: false, liveText: false)).0
+        assert(refused, .callAudioReleased(id: id)) { $0.stage = .releasingClaim }
+        let releasing = reducer.reduce(refused, .callAudioReleased(id: id)).0
+        assert(releasing, .sessionReported(id: id, .ended)) {
+            $0.phase = .idle; $0.stage = nil; $0.folderToken = nil; $0.session = nil; $0.sessionBeganDuringCall = false
+        }
     }
-    @Test(arguments: [UInt64(1), 2])
-    func aCallRefusalKeepsItsAttemptWhileReleasing_effect(_ id: UInt64) {
-        assert(makeAudioPreparing(id), .callAudioPrepared(id: id, ready: false, liveText: false), delivers: .releaseCallAudio(id: id))
+    @Test(arguments: [UInt64(1), 2], [false, true])
+    func aCallRefusalKeepsItsAttemptWhileReleasing_effect(_ id: UInt64, _ audioMissing: Bool) {
+        let preparing = makeState(makeAudioPreparing(id)) { if audioMissing { $0.missing = [.callAudioAccess] } }
+        assert(preparing, .callAudioPrepared(id: id, ready: false, liveText: false), delivers: .releaseCallAudio(id: id))
+        let refused = reducer.reduce(preparing, .callAudioPrepared(id: id, ready: false, liveText: false)).0
+        assert(refused, .callAudioReleased(id: id), delivers: .releaseFolder(id: id, token: 7))
+        let releasing = reducer.reduce(refused, .callAudioReleased(id: id)).0
+        assert(releasing, .sessionReported(id: id, .ended), delivers: .waitForCallAudio(id: id))
     }
 
     @Test func callAudioReleaseStillReleasesTheFolderBeforeWaiting_state() {
@@ -92,11 +104,15 @@ struct RecordingCallAudioRetryTests {
         assert(makeRetriedPiecesStarting(), .session(id: 2, .captureFinished(.call, error: nil)), delivers: nil)
     }
 
-    @Test func aHandStartDuringAMoveReplacesTheCallAudioWait_state() {
-        assert(makeState(makeAudioWaiting()) { $0.folderMoving = true }, .userStart) { $0.callAudioWait = nil; $0.pendingStart = .hand }
+    @Test(arguments: [false, true])
+    func aHandStartDuringAMoveReplacesTheCallAudioWait_state(_ retryDeferred: Bool) {
+        let waiting = makeState(makeAudioWaiting()) { $0.folderMoving = true; if retryDeferred { $0.pendingStart = .call } }
+        assert(waiting, .userStart) { $0.callAudioWait = nil; $0.pendingStart = .hand }
     }
-    @Test func aHandStartDuringAMoveReplacesTheCallAudioWait_effect() {
-        assert(makeState(makeAudioWaiting()) { $0.folderMoving = true }, .userStart, delivers: nil)
+    @Test(arguments: [false, true])
+    func aHandStartDuringAMoveReplacesTheCallAudioWait_effect(_ retryDeferred: Bool) {
+        let waiting = makeState(makeAudioWaiting()) { $0.folderMoving = true; if retryDeferred { $0.pendingStart = .call } }
+        assert(waiting, .userStart, delivers: nil)
     }
 
     @Test(arguments: cancellationEvents)
@@ -166,10 +182,59 @@ struct RecordingCallAudioRetryTests {
     @Test func aTimerCannotSkipClaimRelease_effect() { assert(makeAudioClaimReleasing(), .callAudioRetry(id: 1), delivers: nil) }
 
     @Test func aRetryDuringAMoveWaitsForTheMove_state() {
-        assert(makeState(makeAudioWaiting()) { $0.folderMoving = true }, .callAudioRetry(id: 1)) { $0.callAudioWait = nil; $0.pendingStart = .call }
+        assert(makeState(makeAudioWaiting()) { $0.folderMoving = true }, .callAudioRetry(id: 1)) { $0.pendingStart = .call }
     }
     @Test func aRetryDuringAMoveWaitsForTheMove_effect() {
         assert(makeState(makeAudioWaiting()) { $0.folderMoving = true }, .callAudioRetry(id: 1), delivers: nil)
+    }
+
+    @Test func theMoveEndingResumesTheDeferredRetry_state() {
+        assert(makeAudioWaitingForMove(), .conditionChanged(.callsFolder, available: true)) {
+            $0.folderMoving = false; $0.moveEnds = 1; $0.pendingStart = nil; $0.callAudioWait = nil
+            $0.phase = .beginning; $0.stage = .claiming; $0.claimSince = 1; $0.lastSessionID = 2
+            $0.session = .init(id: 2, origin: .call); $0.sessionBeganDuringCall = true
+        }
+    }
+    @Test func theMoveEndingResumesTheDeferredRetry_effect() {
+        assert(makeAudioWaitingForMove(), .conditionChanged(.callsFolder, available: true), delivers: .claimFolder(id: 2))
+    }
+
+    @Test(arguments: cancellationEvents)
+    func anEndedRetryDeferredByAMoveCannotResume_state(_ event: RecordingEvent) {
+        let waiting = makeAudioWaiting()
+        assert(waiting, .callsFolderMoving) { $0.folderMoving = true }
+        let moving = reducer.reduce(waiting, .callsFolderMoving).0
+        assert(moving, .callAudioRetry(id: 1)) { $0.pendingStart = .call }
+        let deferred = reducer.reduce(moving, .callAudioRetry(id: 1)).0
+        assert(deferred, event) {
+            cancelWait(&$0, event); $0.pendingStart = nil
+            if event == .conditionChanged(.callsFolder, available: false) { $0.folderMoving = false; $0.moveEnds = 1 }
+        }
+        let cancelled = reducer.reduce(deferred, event).0
+        assert(cancelled, .conditionChanged(.callsFolder, available: true)) {
+            if $0.folderMoving { $0.folderMoving = false; $0.moveEnds += 1 }
+            $0.missing.remove(.callsFolder)
+        }
+        var restored = reducer.reduce(cancelled, .conditionChanged(.callsFolder, available: true)).0
+        if case let .conditionChanged(condition, _) = event {
+            assert(restored, .conditionChanged(condition, available: true)) { $0.missing.remove(condition) }
+            restored = reducer.reduce(restored, .conditionChanged(condition, available: true)).0
+        }
+        assert(restored, .conditionChanged(.callAudioAccess, available: true)) { $0.missing.remove(.callAudioAccess) }
+        restored = reducer.reduce(restored, .conditionChanged(.callAudioAccess, available: true)).0
+        assert(restored, .callAudioRetry(id: 1))
+    }
+    @Test(arguments: cancellationEvents)
+    func anEndedRetryDeferredByAMoveCannotResume_effect(_ event: RecordingEvent) {
+        var state = makeAudioWaiting()
+        var events: [RecordingEvent] = [.callsFolderMoving, .callAudioRetry(id: 1), event,
+                                      .conditionChanged(.callsFolder, available: true)]
+        if case let .conditionChanged(condition, _) = event { events.append(.conditionChanged(condition, available: true)) }
+        events += [.conditionChanged(.callAudioAccess, available: true), .callAudioRetry(id: 1)]
+        for event in events {
+            assert(state, event, delivers: nil)
+            state = reducer.reduce(state, event).0
+        }
     }
 }
 
@@ -217,4 +282,8 @@ private func makeRetriedPiecesStarting() -> RecordingState {
     makeState(makeAudioPreparing(2)) {
         $0.stage = .pieces; $0.pieces = makeRecordingPieces(); $0.pieces?.phase = .bringingUp; $0.pieces?.callCapture = .starting
     }
+}
+
+private func makeAudioWaitingForMove() -> RecordingState {
+    makeState(makeAudioWaiting()) { $0.folderMoving = true; $0.pendingStart = .call }
 }

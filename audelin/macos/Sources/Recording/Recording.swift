@@ -76,7 +76,7 @@ public struct RecordingState: Equatable, Sendable {
         }
     }
 
-    /// The refused call attempt whose retry is waiting, including while its claims are released.
+    /// The refused call attempt whose retry is waiting, including claim release and folder moves.
     public var callAudioWait: UInt64?
     public var pendingStart: Origin?
     public var automatic: Bool
@@ -331,7 +331,6 @@ public struct RecordingReducer: Sendable {
             return state
         case let .callAudioRetry(id):
             guard state.callAudioWait == id, state.phase == .idle else { return state }
-            state.callAudioWait = nil
             if state.folderMoving { state.pendingStart = .call; return state }
             return begin(&state, origin: .call)
         case .shutdown:
@@ -399,7 +398,10 @@ public struct RecordingReducer: Sendable {
             }
             if available { state.missing.remove(condition) }
             else { state.missing.insert(condition) }
-            if !available, condition != .callAudioAccess { state.callAudioWait = nil }
+            if !available, condition != .callAudioAccess {
+                if state.callAudioWait != nil { state.pendingStart = nil }
+                state.callAudioWait = nil
+            }
             if available, condition == .callAudioAccess, let id = state.callAudioWait, state.phase == .idle {
                 return policy(state, .callAudioRetry(id: id))
             }

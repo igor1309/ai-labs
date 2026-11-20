@@ -2,6 +2,7 @@ import CallAudioAccess
 import Composer
 import Foundation
 import Recording
+import Synchronization
 import Testing
 
 /// What the composed application writes to the boundary's log sink.
@@ -9,11 +10,14 @@ import Testing
 struct LoggingTests {
 
     @Test(arguments: [AccessEvidence.heard, .silent, .refused("capture deadline"), .refused("tap creation failed")])
-    func probeAnswersKeepTheirEvidenceAndLogEveryNonHeardAnswer(_ evidence: AccessEvidence) async {
+    func measurementsKeepTheirEvidenceAndLogEveryNonHeardAnswer(_ evidence: AccessEvidence) async {
         let sink = FixtureLog()
-        let measure = loggingCallAudioProbe({ evidence }, sink: sink)
-        #expect(await measure() == evidence)
-        #expect(await measure() == evidence)
+        let sent = Mutex<[AccessEvent]>([])
+        let send = loggingCallAudioMeasurements({ event in sent.withLock { $0.append(event) } }, sink: sink)
+        let event = AccessEvent.measured(generation: 1, evidence: evidence, device: 10, at: 100)
+        await send(event)
+        await send(event)
+        #expect(sent.withLock { $0 } == [event, event])
         let expected: [LogEntry]
         switch evidence {
         case .heard: expected = []
@@ -21,6 +25,16 @@ struct LoggingTests {
         case let .refused(reason): expected = [.init(category: .conditions, message: "call audio probe kind=refused", error: reason)]
         }
         #expect(sink.entries.all == expected + expected)
+    }
+
+    @Test(arguments: [AccessEvent.refresh(now: 100, device: 10), .invalidated, .expired(generation: 1), .recording(true, now: 100, device: 10)])
+    func otherAccessEventsAreForwardedWithoutMeasurementLogs(_ event: AccessEvent) async {
+        let sink = FixtureLog()
+        let sent = Mutex<[AccessEvent]>([])
+        let send = loggingCallAudioMeasurements({ event in sent.withLock { $0.append(event) } }, sink: sink)
+        await send(event)
+        #expect(sent.withLock { $0 } == [event])
+        #expect(sink.entries.all.isEmpty)
     }
 
     @Test func everyPortLogsItsCallAndOutcomeAndKeepsPathsInTheirOwnField() async throws {

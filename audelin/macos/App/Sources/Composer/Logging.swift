@@ -80,17 +80,18 @@ private extension String {
 }
 
 /// Logs each non-heard measurement, including repeated answers, before access policy uses it.
-public func loggingCallAudioProbe(
-    _ probe: @escaping @Sendable () async -> AccessEvidence, sink: any LogSink
-) -> @Sendable () async -> AccessEvidence {
-    {
-        let evidence = await probe()
-        switch evidence {
-        case .heard: break
-        case .silent: sink.write(.init(category: .conditions, message: "call audio probe kind=silent"))
-        case let .refused(reason):
-            sink.write(.init(category: .conditions, message: "call audio probe kind=refused", error: reason))
+public func loggingCallAudioMeasurements(
+    _ send: @escaping @Sendable (AccessEvent) async -> Void, sink: any LogSink
+) -> @Sendable (AccessEvent) async -> Void {
+    { event in
+        if case let .measured(_, evidence, _, _) = event {
+            switch evidence {
+            case .heard: break
+            case .silent: sink.write(.init(category: .conditions, message: "call audio probe kind=silent"))
+            case let .refused(reason):
+                sink.write(.init(category: .conditions, message: "call audio probe kind=refused", error: reason))
+            }
         }
-        return evidence
+        await send(event)
     }
 }
