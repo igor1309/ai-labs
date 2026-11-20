@@ -152,15 +152,20 @@ public struct SummaryPreviewView: View {
                 if names.isEmpty {
                     Text(text(.noTags)).foregroundStyle(tokens.gutter)
                     Text("·").foregroundStyle(tokens.gutter)
-                } else {
+                }
+                // Framed like the editing field, outline clear, so editing keeps the line's height and the chips' place.
+                HStack(spacing: tokens.space6) {
                     ForEach(names, id: \.self) { chip($0, removable: false) }
+                    Button { event(.editTags) } label: {
+                        Text(text(names.isEmpty ? .addTags : .editTags)).foregroundStyle(tokens.me)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("preview.editTags")
+                    .accessibilityLabel(text(names.isEmpty ? .addTags : .editTags))
                 }
-                Button { event(.editTags) } label: {
-                    Text(text(names.isEmpty ? .addTags : .editTags)).foregroundStyle(tokens.me)
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("preview.editTags")
-                .accessibilityLabel(text(names.isEmpty ? .addTags : .editTags))
+                .padding(.horizontal, tokens.space6).padding(.vertical, tokens.space4)
+                .fixedSize()
+                .overlay(RoundedRectangle(cornerRadius: tokens.radiusControl).stroke(.clear))
             case let .editing(field):
                 tagsField(field)
                 if field.saving {
@@ -387,7 +392,11 @@ private struct TagEntry: View {
                 .focused($focused)
                 .disabled(disabled)
                 .onSubmit { event(.submitTags) }
-                .onExitCommand { event(.cancelTags) }
+                // The field editor takes Esc as its own cancel, so `onExitCommand` never fires here.
+                .onKeyPress(.escape) {
+                    event(.cancelTags)
+                    return .handled
+                }
                 .onKeyPress(.tab) {
                     guard !completion.isEmpty else { return .ignored }
                     event(.completeTag)

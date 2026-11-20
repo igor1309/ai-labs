@@ -148,6 +148,12 @@ extension Driver {
 
     /// Focuses the detail's tags field and types a tag and Return into the app as key events.
     func enterTag(_ tag: String) throws {
+        try typeTag(tag)
+        key(36)
+    }
+
+    /// Focuses the detail's tags field and types a tag into it without submitting.
+    func typeTag(_ tag: String) throws {
         let entry = try element("preview.tagEntry")
         let error = AXUIElementSetAttributeValue(entry, kAXFocusedAttribute as CFString, kCFBooleanTrue)
         guard error == .success else { throw LiveFailure("Focus preview.tagEntry: \(error.rawValue)") }
@@ -156,8 +162,9 @@ extension Driver {
         }
         for character in tag.utf16 { key(0, unicode: [character]) }
         _ = try element("preview.tagEntry", value: { $0 == tag })
-        key(36)
     }
+
+    func pressEscape() { key(53) }
 
     private func key(_ code: CGKeyCode, unicode: [UniChar] = []) {
         for down in [true, false] {
@@ -203,7 +210,7 @@ private struct Fixture {
             print("Artifacts: \(root.path)")
             try launch(app: app, root: root, name: "tags", run: tagging)
             removeFixtures(root)
-            print("PASS: tagging calls from the detail, filtering by the strip and merging tagged calls")
+            print("PASS: cancelling a tag edit with Esc, tagging calls from the detail, filtering by the strip and merging tagged calls")
         } catch {
             fputs("FAIL: \(error)\n", stderr)
             if let output { removeFixtures(output) }
@@ -244,12 +251,19 @@ private struct Fixture {
         guard !FileManager.default.fileExists(atPath: fixture.calls.appendingPathComponent("AGENTS.md").path) else { throw LiveFailure("AGENTS.md appeared in the calls folder; only the Settings button may write it") }
     }
 
-    /// A gets «клиент» and B «банк» from the detail, written to their folders and shown in
-    /// their rows and the strip. The «банк» chip keeps only B; off again, A returns. A and
+    /// Esc closes the tags field without writing what was typed. A gets «клиент» and B «банк»
+    /// from the detail, written to their folders and shown in their rows and the strip. The «банк» chip keeps only B; off again, A returns. A and
     /// B merged keep both tags.
     @MainActor private static func tagging(_ driver: Driver, _ fixture: Fixture) throws {
         _ = try driver.element("calls.select.\(d)")
         try driver.absent("calls.tagStrip")
+        try driver.press("calls.select.\(a)")
+        try driver.press("preview.editTags")
+        try driver.typeTag("отмена")
+        driver.pressEscape()
+        try driver.absent("preview.tagEntry")
+        _ = try driver.element("preview.editTags")
+        guard fixture.tags(a) == nil else { throw LiveFailure("Esc wrote \(a)'s tags") }
         for (id, tag) in [(a, "клиент"), (b, "банк")] {
             try driver.press("calls.select.\(id)")
             try driver.press("preview.editTags")
