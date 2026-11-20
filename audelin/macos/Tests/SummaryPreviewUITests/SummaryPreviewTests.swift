@@ -187,7 +187,7 @@ struct SummaryPreviewTests {
     private var retryLocation: NSPoint { NSPoint(x: size.width / 2, y: 195) }
 
     /// «✨ Сделать» or «Отменить», the action in the line under the header.
-    private var lineActionLocation: NSPoint { NSPoint(x: 140, y: size.height - 118) }
+    private var lineActionLocation: NSPoint { NSPoint(x: 140, y: size.height - 126) }
 
     /// «Добавить» at the end of the tags line under the header.
     private var tagsActionLocation: NSPoint { NSPoint(x: 130, y: size.height - 74) }
