@@ -1,3 +1,4 @@
+import CallAudioAccess
 import Composer
 import Foundation
 import Recording
@@ -6,6 +7,21 @@ import Testing
 /// What the composed application writes to the boundary's log sink.
 @Suite(.timeLimit(.minutes(1)))
 struct LoggingTests {
+
+    @Test(arguments: [AccessEvidence.heard, .silent, .refused("capture deadline"), .refused("tap creation failed")])
+    func probeAnswersKeepTheirEvidenceAndLogEveryNonHeardAnswer(_ evidence: AccessEvidence) async {
+        let sink = FixtureLog()
+        let measure = loggingCallAudioProbe({ evidence }, sink: sink)
+        #expect(await measure() == evidence)
+        #expect(await measure() == evidence)
+        let expected: [LogEntry]
+        switch evidence {
+        case .heard: expected = []
+        case .silent: expected = [.init(category: .conditions, message: "call audio probe kind=silent")]
+        case let .refused(reason): expected = [.init(category: .conditions, message: "call audio probe kind=refused", error: reason)]
+        }
+        #expect(sink.entries.all == expected + expected)
+    }
 
     @Test func everyPortLogsItsCallAndOutcomeAndKeepsPathsInTheirOwnField() async throws {
 

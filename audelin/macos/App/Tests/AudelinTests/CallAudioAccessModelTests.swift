@@ -122,7 +122,7 @@ private final class AccessModelRig: Sendable {
         await model.start(probe: { [self] in
             probes.withLock { $0 += 1 }; starts.continuation.yield(())
             for await _ in results.stream { return .heard }
-            return .refused
+            return .refused("cancelled")
         }, sleep: { _ in throw CancellationError() }, changes: AsyncStream { $0.finish() })
         return model
     }

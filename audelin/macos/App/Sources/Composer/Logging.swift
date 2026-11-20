@@ -1,3 +1,4 @@
+import CallAudioAccess
 import Foundation
 import Recording
 
@@ -76,4 +77,20 @@ struct StateLog: Sendable {
 
 private extension String {
     var nilIfEmpty: String? { isEmpty ? nil : self }
+}
+
+/// Logs each non-heard measurement, including repeated answers, before access policy uses it.
+public func loggingCallAudioProbe(
+    _ probe: @escaping @Sendable () async -> AccessEvidence, sink: any LogSink
+) -> @Sendable () async -> AccessEvidence {
+    {
+        let evidence = await probe()
+        switch evidence {
+        case .heard: break
+        case .silent: sink.write(.init(category: .conditions, message: "call audio probe kind=silent"))
+        case let .refused(reason):
+            sink.write(.init(category: .conditions, message: "call audio probe kind=refused", error: reason))
+        }
+        return evidence
+    }
 }

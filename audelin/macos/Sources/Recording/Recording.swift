@@ -76,6 +76,8 @@ public struct RecordingState: Equatable, Sendable {
         }
     }
 
+    /// The refused call attempt whose retry is waiting, including while its claims are released.
+    public var callAudioWait: UInt64?
     public var pendingStart: Origin?
     public var automatic: Bool
     public var missing: Set<RecordingCondition>
@@ -134,6 +136,8 @@ public struct RecordingState: Equatable, Sendable {
 
 public enum RecordingEvent: Equatable, Sendable {
 
+    /// The five-second wait for this refused attempt has ended.
+    case callAudioRetry(id: UInt64)
     case callStarted
     case callEnded
     case userStart
@@ -156,6 +160,7 @@ public enum RecordingEvent: Equatable, Sendable {
 
 public enum RecordingEffect: Equatable, Sendable {
 
+    case waitForCallAudio(id: UInt64)
     case claimFolder(id: UInt64)
     case releaseFolder(id: UInt64, token: UInt64)
     case prepareCallAudio(id: UInt64)
@@ -179,6 +184,19 @@ public struct RecordingReducer: Sendable {
 
     public func reduce(_ state: RecordingState, _ event: RecordingEvent) -> (RecordingState, RecordingEffect?) {
 
+        let (next, effect) = transition(state, event)
+        // Start the clock only after both claims have been released.
+        if effect == nil, state.session != nil, next.session == nil, let id = next.callAudioWait {
+            if !next.missing.contains(.callAudioAccess) {
+                return advance(Self.policy(next, .callAudioRetry(id: id)))
+            }
+            return (next, .waitForCallAudio(id: id))
+        }
+        return (next, effect)
+    }
+
+    private func transition(_ state: RecordingState, _ event: RecordingEvent) -> (RecordingState, RecordingEffect?) {
+
         var state = state
         if let id = state.session?.id {
             switch event {
@@ -189,7 +207,14 @@ public struct RecordingReducer: Sendable {
                 state.stage = .releasingClaim
                 return (state, .releaseFolder(id: id, token: token))
             case let .callAudioPrepared(reported, ready, liveText) where reported == id && state.stage == .preparing:
-                if !ready { state.missing.insert(.callAudioAccess) }
+                if !ready {
+                    state.missing.insert(.callAudioAccess)
+                    if state.phase != .ending, state.session?.origin == .call,
+                       state.callOn, state.automatic, !state.heldForCall, state.shutdown == nil,
+                       state.missing == [.callAudioAccess] {
+                        state.callAudioWait = id
+                    }
+                }
                 guard ready, state.phase != .ending else { return Self.release(&state, id) }
                 state.stage = .pieces
                 return advancePieces(state, id, .begin(liveText: liveText))
@@ -304,7 +329,13 @@ public struct RecordingReducer: Sendable {
         switch event {
         case .callAudioPrepared, .session, .folderClaimed, .callAudioReleased:
             return state
+        case let .callAudioRetry(id):
+            guard state.callAudioWait == id, state.phase == .idle else { return state }
+            state.callAudioWait = nil
+            if state.folderMoving { state.pendingStart = .call; return state }
+            return begin(&state, origin: .call)
         case .shutdown:
+            state.callAudioWait = nil
             guard state.shutdown == nil else { return state }
             state.pendingStart = nil
             state.pendingCall = false
@@ -327,6 +358,7 @@ public struct RecordingReducer: Sendable {
 
         case .callEnded:
             guard state.callOn else { return state }
+            state.callAudioWait = nil
             state.callOn = false
             state.heldForCall = false
             state.pendingCall = false
@@ -335,10 +367,11 @@ public struct RecordingReducer: Sendable {
             return end(&state)
 
         case .userStart:
-            if state.folderMoving, state.shutdown == nil { state.pendingStart = .hand; return state }
+            if state.folderMoving, state.shutdown == nil { state.callAudioWait = nil; state.pendingStart = .hand; return state }
             return begin(&state, origin: .hand)
 
         case .userStop:
+            state.callAudioWait = nil
             state.pendingStart = nil
             if state.callOn { state.heldForCall = true }
             state.pendingCall = false
@@ -347,6 +380,7 @@ public struct RecordingReducer: Sendable {
         case let .automaticChanged(enabled):
             state.automatic = enabled
             if !enabled {
+                state.callAudioWait = nil
                 state.pendingCall = false
                 if state.pendingStart == .call { state.pendingStart = nil }
             }
@@ -365,6 +399,10 @@ public struct RecordingReducer: Sendable {
             }
             if available { state.missing.remove(condition) }
             else { state.missing.insert(condition) }
+            if !available, condition != .callAudioAccess { state.callAudioWait = nil }
+            if available, condition == .callAudioAccess, let id = state.callAudioWait, state.phase == .idle {
+                return policy(state, .callAudioRetry(id: id))
+            }
             if !available && (condition == .callsFolder || condition == .room) {
                 return end(&state)
             }
@@ -397,6 +435,7 @@ public struct RecordingReducer: Sendable {
         // Call-audio evidence is refreshed while preparing, including when the last reading failed.
         guard state.shutdown == nil, !state.folderMoving, state.phase == .idle, state.missing.subtracting([.callAudioAccess]).isEmpty else { return state }
         state.pendingStart = nil
+        state.callAudioWait = nil
         state.callID = nil
         state.lastSessionID += 1
         state.session = .init(id: state.lastSessionID, origin: origin)
@@ -421,6 +460,7 @@ public struct RecordingReducer: Sendable {
 /// Dispatches each Recording effect to its collaborator and answers with the event it ends in.
 public final class RecordingEffectHandler: Sendable {
 
+    private let sleep: @Sendable (Duration) async -> Void
     private let claimFolder: @Sendable () async -> CallsFolderAnswer
     private let releaseFolder: @Sendable (UInt64) async -> Void
     private let prepareCallAudio: @Sendable () async -> Bool
@@ -431,13 +471,15 @@ public final class RecordingEffectHandler: Sendable {
     /// `liveText` reads the preference a session begins with; `runPiece` runs one piece's work
     /// for the session with that id and answers with its result; `claimFolder` takes the calls-folder
     /// claim for a recording and `releaseFolder` releases the token it granted.
-    public init(claimFolder: @escaping @Sendable () async -> CallsFolderAnswer,
+    public init(sleep: @escaping @Sendable (Duration) async -> Void,
+                claimFolder: @escaping @Sendable () async -> CallsFolderAnswer,
                 releaseFolder: @escaping @Sendable (UInt64) async -> Void,
                 prepareCallAudio: @escaping @Sendable () async -> Bool,
                 liveText: @escaping @Sendable () -> Bool,
                 releaseCallAudio: @escaping @Sendable () async -> Void,
                 runPiece: @escaping @Sendable (UInt64, SessionEffect) async -> SessionEvent) {
 
+        self.sleep = sleep
         self.claimFolder = claimFolder
         self.releaseFolder = releaseFolder
         self.prepareCallAudio = prepareCallAudio
@@ -449,6 +491,9 @@ public final class RecordingEffectHandler: Sendable {
     public func handle(_ effect: RecordingEffect) async -> RecordingEvent {
 
         switch effect {
+        case let .waitForCallAudio(id):
+            await sleep(.seconds(5))
+            return .callAudioRetry(id: id)
         case let .claimFolder(id):
             return .folderClaimed(id: id, await claimFolder())
         case let .releaseFolder(id, token):

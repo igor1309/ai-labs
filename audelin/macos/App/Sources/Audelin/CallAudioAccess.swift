@@ -4,17 +4,17 @@ import CallAudioProbe
 import Composer
 import Foundation
 
-func makeCallAudioAccess() async -> AccessPolicy {
+func makeCallAudioAccess(sink: any LogSink) async -> AccessPolicy {
     let environment = OutputEnvironment(native: .live, center: NSWorkspace.shared.notificationCenter)
     let probe = CallAudioProbe(hardware: .live)
     let model = CallAudioAccessModel(device: { await environment.device() }, now: { ProcessInfo.processInfo.systemUptime })
-    await model.start(probe: {
+    await model.start(probe: loggingCallAudioProbe({
         switch await probe.measure() {
         case .heard: .heard
         case .silent: .silent
-        case .refused: .refused
+        case let .refused(reason): .refused(reason)
         }
-    }, sleep: { try await ContinuousClock().sleep(for: $0) }, changes: environment.changes)
+    }, sink: sink), sleep: { try await ContinuousClock().sleep(for: $0) }, changes: environment.changes)
     return await model.policy()
 }
 

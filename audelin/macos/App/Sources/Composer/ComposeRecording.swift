@@ -27,7 +27,7 @@ func composeRecording(
         StateLog(sink: sink).recording(state)
     }
     log(initial)
-    let model = await makeRecording(initial: initial, log: log, folderClaim: folderClaim, callAudioReady: {
+    let model = await makeRecording(initial: initial, log: log, folderClaim: folderClaim, sleep: { try? await boundary.time.sleep($0) }, callAudioReady: {
         guard await access.refresh() else { return false }
         return await access.reserve()
     }, liveText: { preferences.read().liveText }, callAudioReleased: { await access.release() },
