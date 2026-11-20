@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 public struct Heading: Codable, Equatable, Sendable {
@@ -53,10 +54,22 @@ public struct Files: Sendable {
     }
 
     private func prepare() throws {
+        let shipped = [(Self.builtInDefault, Self.earlierDefaults), (Self.shippedDaily, Self.earlierDailies)]
         if try disk.createFolder(folder) {
-            try disk.write(Self.encode(Self.builtInDefault), to: folder.appendingPathComponent("Default.md"))
-            try disk.write(Self.encode(Self.shippedDaily), to: folder.appendingPathComponent("Daily.md"))
+            for (template, _) in shipped { try disk.write(Self.encode(template), to: file(template.name)) }
+            return
         }
+        // A file still holding an earlier shipped text was never edited; it follows the shipped one.
+        for (template, earlier) in shipped {
+            guard let text = try? disk.read(file(template.name)), let current = try? Self.parse(text),
+                  current.name == template.name, current.headings == template.headings,
+                  earlier.contains(Self.digest(current.instructions)) else { continue }
+            try disk.write(Self.encode(template), to: file(template.name))
+        }
+    }
+    private func file(_ name: String) -> URL { folder.appendingPathComponent(name + ".md") }
+    static func digest(_ instructions: String) -> String {
+        SHA256.hash(data: Data(instructions.utf8)).map { String(format: "%02x", $0) }.joined()
     }
     public func list() -> Catalogue {
         var entries: [Entry] = []

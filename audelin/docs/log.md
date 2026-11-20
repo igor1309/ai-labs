@@ -2,6 +2,7 @@
 
 ## 2026-11-20
 
+- LAB-1731: Default and Daily template files you never edited now follow the shipped text, so prompt fixes reach notes; edited files are left alone.
 - LAB-1719: A call whose start finds call audio unavailable is no longer lost: Audelin tries again every five seconds while the call is on and starts recording as soon as call audio is heard. Every failed call-audio check is logged with its reason.
 
 ## 2026-11-19

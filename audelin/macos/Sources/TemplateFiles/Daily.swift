@@ -1,4 +1,6 @@
 extension Files {
+    /// SHA-256 of the instructions of every earlier shipped Daily; see `earlierDefaults`.
+    static let earlierDailies: Set<String> = []
     static let shippedDaily = Template(name: "Daily", instructions: """
     Write a concise handoff for the next daily meeting in the transcript's language, retaining English
     technical terms. Focus on what to pick up next, not a recap or a speaker-by-speaker account.
