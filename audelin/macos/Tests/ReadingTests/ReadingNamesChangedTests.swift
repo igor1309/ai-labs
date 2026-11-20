@@ -1,7 +1,7 @@
 import Reading
 import Testing
 
-struct ReadingNamesConfirmedTests {
+struct ReadingNamesChangedTests {
     @Test(arguments: [0, 1, 3], [false, true])
     func tentativeNamesReplaceOnlyTheLatestTextUpdate(sealed: Int, empty: Bool) {
         let spy = RenderingSpy()
@@ -37,6 +37,26 @@ struct ReadingNamesConfirmedTests {
             rename(&$0, at: 1, name: nil, confirmed: false)
         }
         #expect(spy.layoutCalls.isEmpty)
+    }
+
+    @Test(arguments: [false, true])
+    func aNamedEntrySealedByATextUpdateKeepsTheLayoutRevision(confirmed: Bool) {
+        let state = makeWaitingForText(confirmed: confirmed)
+        let text = remote(7)
+        let row = ReadingState.Entry(id: 0, time: "layout time", speaker: .theirs, settled: "x")
+        let output = makeListening(entries: [text], rows: [.entry(row)], displayIDs: [0], sealed: 1)
+        let spy = RenderingSpy(result: { $0 = snapshot(output) })
+        let update = ReadingTextUpdate(status: .listening, entries: [text])
+        assert(state, .textUpdated(update), delivers: nil, using: makeReducer(spy)) {
+            $0.anchors = output.anchors
+            $0.nextDisplayID = output.nextDisplayID
+            $0.text = output.text
+            $0.rendered = output.rendered
+            $0.lines = output.lines
+            $0.latestText = [text.id]
+            rename(&$0, at: 0, name: "Later", confirmed: confirmed, mapped: false)
+        }
+        #expect(spy.layoutCalls == [.init(value: snapshot(state), change: .text(update))])
     }
 
     @Test(arguments: [false, true])
@@ -156,14 +176,14 @@ private func remote(_ id: Int) -> ReadingTextUpdate.Entry {
     .init(id: .init(speaker: .theirs, localID: id), start: Double(id), end: Double(id + 1), settled: "x")
 }
 
-private func rename(_ state: inout ReadingState, at row: Int, name: String?, confirmed: Bool, place: Int? = nil) {
+private func rename(_ state: inout ReadingState, at row: Int, name: String?, confirmed: Bool, place: Int? = nil, mapped: Bool = true) {
     guard case var .entry(entry) = state.lines.rows[row] else { Issue.record("expected entry"); return }
     entry.name = name
     entry.nameConfirmed = confirmed
     if let place { entry.remoteSpeaker = place }
     let key = state.rendered.ordered[row]
     state.rendered.entries[key] = entry
-    if state.lines.rows[row] != .entry(entry), row < state.lines.rows.sealed.count { state.lines.layout += 1 }
+    if state.lines.rows[row] != .entry(entry), mapped, row < state.lines.rows.sealed.count { state.lines.layout += 1 }
     state.lines.rows[row] = .entry(entry)
     state.log = .lines(state.lines)
 }

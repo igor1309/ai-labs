@@ -56,8 +56,9 @@ public struct ReadingReducer: Sendable {
             state.status = update.status
             let previousID = state.nextDisplayID
             state.latestText = update.entries.map(\.id)
+            let mapped = state.lines.rows.sealed.count
             layOut(&state, .text(update))
-            nameEntries(&state, ids: state.latestText)
+            identifySpeakers(&state, ids: state.latestText, mapped: mapped)
             if !state.lines.followsLive { state.lines.newBelow += state.nextDisplayID - previousID }
         case let .hold(held):
             if !state.lines.holds.contains(held) { state.lines.holds.append(held) }
@@ -72,18 +73,12 @@ public struct ReadingReducer: Sendable {
             state.names = names
             state.namesConfirmed = confirmed
             let ids = confirmed ? Array(state.rendered.entries.sealed.keys) + Array(state.rendered.entries.tail.keys) : state.latestText
-            nameEntries(&state, ids: ids)
+            identifySpeakers(&state, ids: ids, mapped: state.lines.rows.sealed.count)
         case let .speakersFound(places):
             state.speakerPlaces = places
-            func place(_ entries: inout [ReadingTextUpdate.Entry.ID: ReadingState.Entry]) {
-                for (id, entry) in entries where id.speaker == .theirs {
-                    var entry = entry
-                    entry.remoteSpeaker = places[id.localID]
-                    entries[id] = entry
-                }
+            for id in Array(state.rendered.entries.sealed.keys) + Array(state.rendered.entries.tail.keys) {
+                if let entry = state.rendered.entries[id] { state.rendered.entries[id] = identified(entry, id, in: state) }
             }
-            place(&state.rendered.entries.sealed)
-            place(&state.rendered.entries.tail)
             if state.rendered.prepared { rebuildLayout(&state) }
         case .jumpToLive:
             state.lines.followsLive = true
@@ -101,13 +96,24 @@ public struct ReadingReducer: Sendable {
         return (state, nil)
     }
 
-    private func nameEntries(_ state: inout ReadingState, ids: [ReadingTextUpdate.Entry.ID]) {
+    /// A remote entry's name, its confirmation and its speaker place, from the latest sets.
+    private func identified(_ entry: ReadingState.Entry, _ id: ReadingTextUpdate.Entry.ID, in state: ReadingState) -> ReadingState.Entry {
+        guard id.speaker == .theirs else { return entry }
+        var entry = entry
+        entry.name = state.names[id.localID]
+        entry.nameConfirmed = state.namesConfirmed && entry.name != nil
+        entry.remoteSpeaker = state.speakerPlaces[id.localID]
+        return entry
+    }
+
+    /// Identifies the given entries in place. Rows below `mapped` were sealed before
+    /// this event and the panel may have mapped them, so changing one remaps that prefix;
+    /// rows sealed by this event are new to the panel.
+    private func identifySpeakers(_ state: inout ReadingState, ids: [ReadingTextUpdate.Entry.ID], mapped: Int) {
         for id in ids where id.speaker == .theirs {
-            guard var entry = state.rendered.entries[id] else { continue }
-            entry.name = state.names[id.localID]
-            entry.nameConfirmed = state.namesConfirmed && entry.name != nil
-            entry.remoteSpeaker = state.speakerPlaces[id.localID]
-            guard state.rendered.entries[id] != entry else { continue }
+            guard let current = state.rendered.entries[id] else { continue }
+            let entry = identified(current, id, in: state)
+            guard current != entry else { continue }
             state.rendered.entries[id] = entry
             guard let location = state.rendered.locations[id] else { continue }
             if let index = location.lateEntry, case var .late(group) = state.lines.rows[location.row] {
@@ -116,8 +122,7 @@ public struct ReadingReducer: Sendable {
             } else {
                 state.lines.rows[location.row] = .entry(entry)
             }
-            // A name can change after text is final; the panel must remap that prefix.
-            if location.row < state.lines.rows.sealed.count { state.lines.layout += 1 }
+            if location.row < mapped { state.lines.layout += 1 }
         }
     }
 
