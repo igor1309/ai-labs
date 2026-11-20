@@ -144,6 +144,15 @@ struct RecordingEffectHandlerTests {
         #expect(await event == .callAudioPrepared(id: 3, ready: ready, liveText: true))
     }
 
+    @Test func aCallAudioWaitSleepsFiveSecondsBeforeRetryingItsAttempt() async {
+        let (sut, spies) = makeHandler()
+        async let event = sut.handle(.waitForCallAudio(id: 3))
+        await spies.sleep.complete()
+        #expect(await event == .callAudioRetry(id: 3))
+        #expect(await spies.delays.calls == [.seconds(5)])
+        #expect(await spies.prepare.count == 0)
+    }
+
     @Test func releaseAnswersThatCallAudioIsReleased() async {
         let (sut, spies) = makeHandler()
         async let event = sut.handle(.releaseCallAudio(id: 3))
@@ -179,6 +188,8 @@ struct RecordingEffectHandlerTests {
 }
 
 private struct HandlerSpies {
+    let sleep = CallSpy<Void>()
+    let delays = Delays()
     let claim = CallSpy<CallsFolderAnswer>()
     let releaseClaim = CallSpy<Void>()
     let releasedTokens = Tokens()
@@ -186,6 +197,11 @@ private struct HandlerSpies {
     let release = CallSpy<Void>()
     let piece = CallSpy<SessionEvent>()
     let pieceCalls = PieceCalls()
+}
+
+actor Delays {
+    private(set) var calls: [Duration] = []
+    func record(_ duration: Duration) { calls.append(duration) }
 }
 
 actor Tokens {
@@ -201,7 +217,10 @@ actor PieceCalls {
 
 private func makeHandler() -> (RecordingEffectHandler, HandlerSpies) {
     let spies = HandlerSpies()
-    let sut = RecordingEffectHandler(claimFolder: { [claim = spies.claim] in await claim.call() },
+    let sut = RecordingEffectHandler(sleep: { delay in
+                                         await spies.delays.record(delay)
+                                         await spies.sleep.call()
+                                     }, claimFolder: { [claim = spies.claim] in await claim.call() },
                                      releaseFolder: { [release = spies.releaseClaim, tokens = spies.releasedTokens] token in
                                          await tokens.record(token)
                                          await release.call()

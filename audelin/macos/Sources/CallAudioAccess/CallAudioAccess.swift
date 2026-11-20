@@ -2,7 +2,8 @@ import Foundation
 import Synchronization
 
 public enum AccessEvidence: Equatable, Sendable {
-    case heard, silent, refused
+    case heard, silent
+    case refused(String)
 }
 
 public struct AccessState: Equatable, Sendable {
@@ -118,7 +119,7 @@ public final class AccessDoer: Sendable {
                     let after = await device()
                     let at = now()
                     await send(.measured(generation: generation,
-                        evidence: before == output && after == output ? evidence : .refused,
+                        evidence: before == output && after == output ? evidence : .refused("output changed during measurement"),
                         device: after, at: at))
                 }
             }

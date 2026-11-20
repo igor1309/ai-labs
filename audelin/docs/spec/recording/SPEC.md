@@ -55,6 +55,18 @@ effect handler, and its result comes back as a Recording event.
   new start. The reservation is released once the pieces are down, or when a
   pending start is stopped or refused. Compose subscribes to the published
   access condition and maps it for the menu; it does not identify start events.
+- **A call's start refused only for call audio tries again during the call.**
+  When a call's start gets a false readiness answer and nothing else is
+  missing, Recording keeps the start waiting for call audio. Five seconds
+  later, by its clock, it asks for readiness again, and goes on asking
+  every five seconds until an answer is true, when the recording begins as
+  any call's start does. Call audio published as available begins it at
+  once. Each try takes the calls-folder claim as any start does and
+  releases it with a false answer. The wait ends with no recording when the
+  call ends, the user stops, automatic recording is turned off, another
+  condition goes missing or Recording shuts down. A start by hand refused
+  for call audio does not wait: the user sees what is missing and starts
+  again.
 - **A Session that cannot record is ended,** named until the next.
 - **A side that fails while recording is named until the next recording
   begins.** The Session tells which: a lost access or a failed capture on
@@ -267,4 +279,34 @@ Feature: Deciding when a call is recorded
     Given a start is taking the calls folder
     When the user stops and then the claim is granted
     Then I can see the calls folder released and no call audio asked for
+
+  Scenario: S-35 A call's start refused for call audio tries again
+    Given a call started and its readiness answer was false
+    When five seconds pass and readiness answers true
+    Then I can read that a recording begun by the call runs
+
+  Scenario: S-36 Call audio coming back begins a waiting call's start
+    Given a call's start waits for call audio
+    When call audio is published as available
+    Then I can see readiness asked for at once, and a recording begins when it answers true
+
+  Scenario: S-37 A call's start goes on waiting while call audio is missing
+    Given a call's start waits for call audio
+    When five seconds pass and readiness answers false again
+    Then I can read that no recording runs and that call audio is missing, and see the next try five seconds later
+
+  Scenario: S-38 The wait for call audio ends with the call, a stop or automatic off
+    Given a call's start waits for call audio
+    When the call ends, the user stops, or automatic recording is turned off
+    Then I can read that no recording runs and see no further try
+
+  Scenario: S-39 Another missing condition or shutdown ends the wait
+    Given a call's start waits for call audio
+    When the calls folder or room goes missing, or Recording shuts down
+    Then I can read that no recording runs and see no further try
+
+  Scenario: S-40 A start by hand refused for call audio does not wait
+    Given no call is on
+    When the user starts and readiness answers false
+    Then I can read that no recording runs, that call audio is missing, and see no further try
 ```

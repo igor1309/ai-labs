@@ -75,7 +75,7 @@ struct CallAudioAccessTests {
     }
 
     @Test func measuredEvidenceControlsPublication() {
-        for evidence: AccessEvidence in [.heard, .silent, .refused] {
+        for evidence: AccessEvidence in [.heard, .silent, .refused("capture failed")] {
             assert(makeProbingState(), .measured(generation: 1, evidence: evidence, device: 10, at: 100)) {
                 $0.phase = .idle; $0.evidence = evidence; $0.measuredAt = 100
                 $0.ready = evidence == .heard; $0.published = evidence == .heard
@@ -125,7 +125,7 @@ struct AccessDoerTests {
             rig.time.withLock { $0 = 200 }
             if changed { rig.output.withLock { $0 = 20 } }
             rig.finishProbe()
-            #expect(await rig.next() == .measured(generation: 1, evidence: changed ? .refused : .heard, device: changed ? 20 : 10, at: 200))
+            #expect(await rig.next() == .measured(generation: 1, evidence: changed ? .refused("output changed during measurement") : .heard, device: changed ? 20 : 10, at: 200))
             doer.end()
         }
     }

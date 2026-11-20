@@ -24,6 +24,10 @@ is fresh enough. Neither guesses permission from a quiet call.
   other than float32 PCM, insufficient callbacks or coverage, the 3 s
   deadline or cancellation returns `refused(reason)`. Cleanup failures also
   refuse. Every answer follows cleanup, including cancellation.
+- Every answer other than `heard` is logged with its kind, and a refusal
+  with its reason, so a start held back for call audio can be explained
+  from the log. The access policy keeps the reason as far as the log; the
+  start gate reads only the kind.
 - Native work is serialized on a dispatch queue outside the main thread
   and Swift's cooperative pool. IO only scans samples and updates atomics;
   it does no allocation, waiting, property access or dispatch.
@@ -59,6 +63,8 @@ is fresh enough. Neither guesses permission from a quiet call.
   automatic start waits for release and checks readiness again.
 - Recording uses its existing missing-call-audio condition and menu entry.
   There is no new interface, and no test of silence during an ongoing call.
+  A call's start refused for call audio asks for readiness again every five
+  seconds while the call is on (Recording), so each try runs one probe.
 
 ```gherkin
 Feature: Establishing call audio access by reception
@@ -95,6 +101,11 @@ Feature: Establishing call audio access by reception
     When another call arrives
     Then no probe runs until the old captures have ended
     And any deferred start rechecks evidence before beginning
+
+  Scenario: A refusal is logged with its reason
+    Given a measurement that refuses
+    When the application checks access
+    Then the log reads the refusal and its reason
 ```
 
 ## Measured limits

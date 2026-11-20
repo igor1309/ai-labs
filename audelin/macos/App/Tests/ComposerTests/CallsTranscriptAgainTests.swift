@@ -1,12 +1,45 @@
 import CallsListUI
 import Foundation
+import Observation
 import Recording
 import Recordings
+import SettingsUI
 import Testing
 @testable import Composer
 
 @MainActor
+@Suite(.timeLimit(.minutes(1)))
 struct CallsTranscriptAgainTests {
+    @Test(arguments: [RecordingsEvent.transcriptReported(request: 1, .made),
+                      .transcriptReported(request: 1, .stopped), .transcriptReported(request: 1, .failed("hearing failed")),
+                      .transcriptRestored("A"), .transcriptRestoreFailed(id: "A", reason: "restore failed")])
+    func terminalUpdatesSelectTheirCallThroughTheStateStream(_ event: RecordingsEvent) async {
+        var state = RecordingsState(calls: [call("A"), call("B")], transcriptRun: .init(id: "A", request: 1),
+                                    transcriptRequest: 1, selectedCallID: "A")
+        switch event {
+        case .transcriptRestored, .transcriptRestoreFailed: state.phase = .restoring("A"); state.transcriptRun = nil
+        default: break
+        }
+        let updates = AsyncStream<RecordingsState>.makeStream()
+        defer { updates.continuation.finish() }
+        updates.continuation.yield(state)
+        let calls = AudelinCalls(inputs: .init(state: { state }, send: { _ in }, states: { updates.stream }),
+                                timeZone: .gmt, now: { .distantPast }, recordingState: { .init() },
+                                location: { _ in Issue.record("Unexpected location"); return URL(fileURLWithPath: "/unused") },
+                                openFolder: { _ in Issue.record("Unexpected open"); return false }, present: {})
+        for await detail in Observations({ calls.detail }) where detail?.id == "A" { break }
+        await calls.send(.select("B"))
+        for await detail in Observations({ calls.detail }) where detail?.id == "B" { break }
+        #expect(calls.state.selectedID == "B")
+
+        state = recordingsReducer { SettingsText(language: .russian) }.reduce(state, event).0
+        updates.continuation.yield(state)
+
+        for await detail in Observations({ calls.detail }) where detail?.id == "A" { break }
+        #expect(calls.state.selectedID == "A")
+        #expect(calls.detail?.id == "A")
+    }
+
     @Test func offersKeepTheirReasonsAndRestorePresence() {
         let state = RecordingsState(calls: [call("A", previous: true), call("B", previous: false)], transcriptOffers: [
             "A": .init(run: .unavailable(.missingTracks([.init(id: "inner", track: .call)]), message: "inner call missing"), restore: .available),
@@ -59,7 +92,7 @@ struct CallsTranscriptAgainTests {
     @Test func transcriptIntentsReachRecordingsWithTheirCall() async {
         let state = RecordingsState(calls: [call("A"), call("B")])
         var sent: [RecordingsEvent] = []
-        let calls = AudelinCalls(inputs: .init(state: { state }, send: { sent.append($0) }),
+        let calls = AudelinCalls(inputs: .init(state: { state }, send: { sent.append($0) }, states: { AsyncStream { $0.yield(state); $0.finish() } }),
                                 timeZone: .gmt, now: { .distantPast }, recordingState: { .init() },
                                 location: { _ in Issue.record("Unexpected location"); return URL(fileURLWithPath: "/unused") },
                                 openFolder: { _ in Issue.record("Unexpected open"); return false }, present: {})

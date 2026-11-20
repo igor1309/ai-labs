@@ -20,6 +20,24 @@ import TranscriptFormat
 
 @Suite(.timeLimit(.minutes(1)))
 struct TranscriptAgainCompositionTests {
+    @Test @MainActor func recordingsPublishesEachWaitAndTerminalStateInOrder() async {
+        let initial = RecordingsState(transcriptRun: .init(id: "A", request: 1), transcriptRequest: 1, selectedCallID: "A")
+        let inputs = makeRecordings(handler: .init(calls: UnusedCalls(), transcriptAgain: chain(hear: { _, _ in
+            Issue.record("Unexpected recognition"); return .init(words: [], model: "unused")
+        }), reserve: { nil }, release: { _ in }, storeFolder: { _ in }, describe: { String(describing: $0) }),
+                                    text: { SettingsText(language: .russian) }, initial: initial)
+        var updates = inputs.states().makeAsyncIterator()
+        inputs.send(.transcriptReported(request: 1, .waiting(.finishing)))
+        inputs.send(.transcriptReported(request: 1, .stopped))
+
+        #expect(await updates.next() == initial)
+        #expect(await updates.next()?.transcriptRun?.wait == .finishing)
+        let terminal = await updates.next()
+        #expect(terminal?.transcriptRun == nil)
+        #expect(terminal?.selectedCallID == "A")
+        #expect(terminal?.transcriptRequest == 1)
+    }
+
     @Test func reportsCarryTheRequestIntoRecordings() async {
         let chain = chain(hear: { _, report in await report(0.4); return .init(words: [], model: "model") })
         let handler = RecordingsEffectHandler(calls: UnusedCalls(), transcriptAgain: chain, reserve: { nil }, release: { _ in },

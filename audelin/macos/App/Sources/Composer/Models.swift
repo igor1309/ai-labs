@@ -37,6 +37,7 @@ func oneEvent<Event: Sendable>(_ handle: @escaping @Sendable () async -> Event) 
 func makeRecording(
     initial: RecordingState, log: @escaping @Sendable (RecordingState) -> Void,
     folderClaim: RecordingFolderClaim,
+    sleep: @escaping @Sendable (Duration) async -> Void,
     callAudioReady: @escaping @Sendable () async -> Bool,
     liveText: @escaping @Sendable () -> Bool,
     callAudioReleased: @escaping @Sendable () async -> Void,
@@ -44,7 +45,7 @@ func makeRecording(
     status: @escaping @Sendable (SessionState) -> RecordingSessionStatus
 ) -> RecordingInputs {
 
-    let handler = RecordingEffectHandler(claimFolder: folderClaim.take, releaseFolder: folderClaim.release,
+    let handler = RecordingEffectHandler(sleep: sleep, claimFolder: folderClaim.take, releaseFolder: folderClaim.release,
                                          prepareCallAudio: callAudioReady, liveText: liveText,
                                          releaseCallAudio: callAudioReleased, runPiece: runPiece)
     let model = RecordingModel(initial: initial, reducer: RecordingReducer(session: SessionReducer.reduce, status: status),
@@ -104,9 +105,17 @@ func makeTermination(claimFolder: @escaping @Sendable () async -> UInt64?, relea
 @MainActor
 func makeRecordings(handler: RecordingsEffectHandler, text: @escaping @Sendable () -> SettingsText,
                     initial: RecordingsState = .init()) -> RecordingsInputs {
-    let model = ObservableModel(initialState: initial, reduce: recordingsReducer(text).reduce,
+    let feed = StateFeed<RecordingsState>()
+    let reducer = recordingsReducer(text)
+    let model = ObservableModel(initialState: initial, reduce: { state, event in
+        let result = reducer.reduce(state, event)
+        // Selection consumes transitions; observation may coalesce a run's start and end.
+        if result.0 != state { feed.publish(result.0) }
+        return result
+    },
                                 handleEffect: handler.handle)
-    return RecordingsInputs(state: { model.state }, send: { model.event($0) })
+    return RecordingsInputs(state: { model.state }, send: { model.event($0) },
+                            states: { feed.subscribe(from: model.state) })
 }
 
 /// The calls list machine, with its text in the language `text` gives when it writes.
