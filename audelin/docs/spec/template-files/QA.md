@@ -84,3 +84,16 @@ reason. Evidence: `TemplateFilesTests.brokenFilesAreVisibleUnchangedAndDefaultSt
 
 Drive: fixture with metadata and an empty body; list; read back the reason.
 Evidence: `TemplateFilesTests.brokenFilesAreVisibleUnchangedAndDefaultStillResolves`.
+
+## S-18 An unedited earlier shipped file is brought up to date
+
+Drive: temp folder holding a Default file with the 2026-11-15 shipped instructions and the
+shipped headings; resolve Default; read back the current shipped Default in both the
+resolution and the file. Daily has had one text, so it has no earlier one to test. Evidence:
+`ShippedTemplateUpdateTests.anUneditedEarlierShippedFileIsBroughtUpToDate`.
+
+## S-19 An edited shipped file is kept
+
+Drive: as S-18 with one word of the earlier text changed, and with changed headings; resolve;
+read back the file unchanged and its own instructions. Evidence:
+`ShippedTemplateUpdateTests.anEditedShippedFileIsKept`.
