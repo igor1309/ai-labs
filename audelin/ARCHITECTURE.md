@@ -50,7 +50,7 @@ platform; anything else breaks rule 1. The lanes of
 | Kind | May import | Targets |
 |---|---|---|
 | Machine | nothing | Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, NotesMenu, CallsList, TranscriptFinalization, RecordingConditions, CallNames |
-| Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, LatestText, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch, CallTags, ReRecognition, NameCarry |
+| Plain component or operator | a shared helper | TranscriptLayout, CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, LatestText, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch, CallTags, ReRecognition, NameCarry |
 | Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, TemplateFiles, NotesGeneration, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, TagsFile, AgentsFile, Calls, CallsStorage, Preferences |
 | Shared helper | nothing | SplitRows, CallFolderName, AudioConversion, ModelLoading |
 | UI | GlassLedger, NotesMarkdown, other UI | PanelUI, SettingsUI, MenuBar, CallsListUI, CallsWindowUI, SummaryPreviewUI, NotesMarkdown, GlassLedger |
@@ -769,13 +769,38 @@ failed diarization leaves the far side as one "Them". When the pass runs
 in the app's flow, and how the speakers are labelled and shown, belong to
 the transcript, summary and panel.
 
+## Reading
+
+Reading is the machine that says what the panel shows. Its reason to
+change is how a call's text is read. One machine lives as long as the app
+and displays one call at a time: opening a call resets it, and input for
+any other call is ignored. A call stays displayed after its recording ends,
+still taking its confirmed names and speaker places, until the next call
+opens. Its state holds the call's entries, the names by remote row,
+whether they are confirmed, whether capture has begun, the instant it
+began and the first time of each problem; it keeps text that arrives
+before capture and shows an empty log until capture begins. Reading has no
+effects. It lays out its rows through TranscriptLayout, a pure component
+it calls from its reducer.
+
+Time is given, never read: compose stamps each recording change, tick and
+fault report with an instant on one monotonic clock, and Reading and
+CallNames each start their clock from the first instant recording is on.
+Neither machine asks the other for the time.
+
+The root subscribes call text, CallNames' names and the Session's state to
+Reading's events, keyed by call, and maps Reading's state to the panel's in
+the chosen language. The mapping keeps the rows it built for the current
+layout so a long call is not mapped again from the start; it is a cache of
+a pure mapping, and a fresh mapping gives the same panel state.
+
 ## Call names
 
 CallNames is a machine with one responsibility: the names of each call's
 far-side rows. Its reason to change is how call-app evidence becomes a
 name. One machine lives as long as the app and holds every call by key: a
-call is kept after its recording ends, until its final transcript is
-published, since its after-call pass may run while another recording has
+call is kept after its recording ends, until its finalization ends, with
+or without a transcript, since its after-call pass may run while another recording has
 begun. For each call its state holds the evidence it kept from Zoom and the
 browser extension, each row's name, the participant IDs the transcript
 uses, whether the names are confirmed, and whether the call app is being
@@ -783,7 +808,14 @@ watched. The reducer names a row through an injected matcher
 (`LiveNames.match`) and confirms names through an injected after-call
 rule (`AfterCallNames.names`), both in SpeakerNaming.
 
-Its effect handler watches and closes the call-app sources. Two adapters in
+Time reaches it as instants on the monotonic clock, as for Reading.
+
+Its effect handler watches and closes the call-app sources; each watch,
+and each source's stop acknowledgement, carries its call's id, so ending
+one call never stops another's watch. The browser adapter keeps one
+listener for the app, since its socket path is shared, with one receiver
+and clock calibration per connection, and routes each connection's
+observations to every call watch subscribed. Two adapters in
 the composer answer that port: the Zoom observer reports who speaks on
 Zoom's side, and the browser observer reports the extension's events and
 connections.
