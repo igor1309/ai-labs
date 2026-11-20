@@ -11,7 +11,7 @@ import SettingsUI
 func makeReading() -> ReadingInputs {
 
     let model = ObservableModel<ReadingState, ReadingEvent, Never>(
-        initialState: .init(), reduce: ReadingReducer.reduce, handleEffect: noEvents
+        initialState: .init(), reduce: readingReducer().reduce, handleEffect: noEvents
     )
     return ReadingInputs(state: { model.state }, send: { model.event($0) })
 }

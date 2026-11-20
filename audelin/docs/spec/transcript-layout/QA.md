@@ -1,16 +1,16 @@
 # Transcript layout — QA
 
-Driven today through Reading's reducer with spy formatters, reading back the
-rows; the tests move with the component when it is extracted.
+Driven directly through TranscriptLayout with caller-owned storage, reading
+back its rows, anchors and locations. Evidence names are in TranscriptLayoutTests.
 
 ## S-1 Both speakers settle in call order
-Evidence: `callOrderGivesEachSpeakerItsOwnRow`, `settlingKeepsIDsTimesAndOrder`.
+Evidence: `TranscriptLayoutTests.callOrderGivesEachSpeakerItsOwnRow`, `TranscriptLayoutTests.settlingKeepsIDsTimesAndOrder`.
 
 ## S-2 Recovered speech belongs where it was said
-Evidence: `consecutiveLateEntriesGroupInCallOrder`.
+Evidence: `TranscriptLayoutTests.consecutiveLateEntriesGroupInCallOrder`.
 
 ## S-3 A gap sits where the side went missing
-Evidence: `gapsSplitLateGroupsAtTheirTime`, `lateTextKeepsTheGapAtItsTime`.
+Evidence: `TranscriptLayoutTests.gapsSplitLateGroupsAtTheirTime`, `TranscriptLayoutTests.lateTextKeepsTheGapAtItsTime`.
 
 ## S-4 A reused speech slot belongs at its new time
-Evidence: `reusedSlotGetsAFreshTimeAndID`.
+Evidence: `TranscriptLayoutTests.reusedSlotGetsAFreshTimeAndID`.

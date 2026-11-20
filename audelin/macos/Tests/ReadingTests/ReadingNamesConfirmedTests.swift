@@ -9,14 +9,12 @@ struct ReadingNamesConfirmedTests {
 
         let spy = RenderingSpy()
         assert(makeTentative(sealed: sealed), .namesConfirmed([1: "Anna K."]), delivers: nil, using: makeReducer(spy)) {
-            $0.lines.layout = 1
-            let rows: [ReadingState.Row] = [.entry(anna("line(1.0)", name: "Anna K.", confirmed: true)), .entry(boris("line(3.0)", name: nil))]
-            $0.lines.rows = .init(sealed: Array(rows.prefix(sealed)), tail: Array(rows.dropFirst(sealed)))
             $0.rendered.entries[annaText.id] = anna("line(1.0)", name: "Anna K.", confirmed: true)
             $0.rendered.entries[borisText.id] = boris("line(3.0)", name: nil)
             $0.log = .lines($0.lines)
         }
         #expect(spy.calls == [])
+        #expect(spy.layoutCalls.map(\.change) == [.rebuild])
     }
 }
 

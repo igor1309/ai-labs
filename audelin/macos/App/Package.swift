@@ -92,6 +92,7 @@ let package = Package(
         .target(
             name: "Composer",
             dependencies: [
+                .product(name: "TranscriptLayout", package: "macos"),
                 .product(name: "LatestText", package: "macos"),
                 .product(name: "RecordingConditions", package: "macos"),
                 .product(name: "CallDetail", package: "macos"),
