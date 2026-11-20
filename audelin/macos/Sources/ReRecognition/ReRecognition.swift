@@ -15,8 +15,8 @@ public struct ReRecognition: Sendable {
 
     /// Hear awaits each progress callback in order; ports return only after their work ends.
     /// Nil split/clean results mean nothing kept. Read uses only the current transcript,
-    /// never archived original calls. Publishing replaces the current/previous pair atomically
-    /// and must settle its commit even if this task is cancelled during the call.
+    /// never archived original calls. Publishing may throw CancellationError during preparation;
+    /// once moving the current/previous pair begins it must settle that commit even if cancelled.
     public init(
         hear: @escaping @Sendable (String, Fraction) async throws -> Heard,
         split: @escaping @Sendable (OriginalCall, [Word]) async throws -> Split?,
@@ -29,7 +29,7 @@ public struct ReRecognition: Sendable {
         self.readOld = readOld; self.names = names; self.publish = publish
     }
 
-    /// Cancelling the caller's task stops before publication, after the port in flight returns.
+    /// Cancellation stops before the pair starts moving, after the port in flight returns.
     /// Originals are a nonempty, flat list ordered by start, including merges of merges.
     /// Publish owns joining and rendering, so this component never handles transcript format.
     public func run(call: String, originals: [OriginalCall], build: Build, report: @escaping Report) async -> Outcome {
@@ -95,6 +95,7 @@ public struct ReRecognition: Sendable {
             try await publish(call, transcript)
             return .made
         } catch {
+            if error is CancellationError { return .stopped }
             return .failed(original: originals.count == 1 ? originals[0].id : nil, reason: String(describing: error))
         }
     }

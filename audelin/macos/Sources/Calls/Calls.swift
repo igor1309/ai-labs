@@ -132,6 +132,34 @@ public struct Calls: Sendable {
         return (knownLength ? end : nil, missing)
     }
 
+    /// A recorded leaf's tracks and timing, in chronological order for a kept call.
+    public struct Original: Equatable, Sendable {
+        public let id: String
+        public let start: Date
+        public let duration: TimeInterval
+        public let callTrack: URL
+        public let microphoneTrack: URL
+    }
+
+    public func originals(id: String) throws -> [Original] {
+        operation.lock(); defer { operation.unlock() }
+        let url = try location(id: id)
+        guard let name = CallFolderName(url.lastPathComponent, timeZone: timeZone) else { throw POSIXError(.EINVAL) }
+        return try originals(in: url, name: name).sorted { $0.start < $1.start }
+    }
+
+    private func originals(in url: URL, name: CallFolderName) throws -> [Original] {
+        let hasTrack = Track.allCases.contains { (try? values(url.appendingPathComponent($0.rawValue + ".caf"))) != nil }
+        if hasTrack {
+            guard let length = try audio(in: url, name: name).duration else { throw CallsFailure.unknownLength(id: name.id) }
+            return [.init(id: name.id, start: name.start, duration: length,
+                          callTrack: url.appendingPathComponent("call.caf"), microphoneTrack: url.appendingPathComponent("microphone.caf"))]
+        }
+        let parts = try folders(in: url)
+        guard !parts.isEmpty else { throw CallsFailure.unknownLength(id: name.id) }
+        return try parts.flatMap { try originals(in: $0.0, name: $0.1) }
+    }
+
     /// Resolves afresh, including when the title has changed in Finder.
     public func location(id: String) throws -> URL {
         operation.lock(); defer { operation.unlock() }
@@ -244,6 +272,8 @@ public struct Calls: Sendable {
             let newCurrent = after.appendingPathComponent("transcript.md")
             try write(previous, newCurrent)
             try copy(current, after.appendingPathComponent(Self.previousTranscript))
+            // Cancellation is admitted until the first move; the pair then settles as one commit.
+            try Task.checkCancellation()
             try rename(current, before.appendingPathComponent("transcript.md"))
             if hadPrevious { try rename(previous, before.appendingPathComponent(Self.previousTranscript)) }
             try rename(newCurrent, current)
@@ -254,6 +284,7 @@ public struct Calls: Sendable {
             if try exists(prepared.appendingPathComponent("transcripts")) {
                 try putBackTranscripts(from: prepared)
             } else { try removeIfPresent(prepared) }
+            if error is CancellationError { throw error }
             throw failure
         }
     }
@@ -608,7 +639,7 @@ public struct CallsDisk: Sendable {
     var children: @Sendable (URL) throws -> [URL]
     var values: @Sendable (URL) throws -> URLResourceValues
     var copy: @Sendable (URL, URL) throws -> Void
-    var rename: @Sendable (URL, URL) throws -> Void
+    public var rename: @Sendable (URL, URL) throws -> Void
     /// Moves a folder to the Trash of its volume, whole or not at all.
     public var trash: @Sendable (URL) throws -> Void
     var remove: @Sendable (URL) throws -> Void

@@ -297,12 +297,12 @@ private func phase(_ id: String, in root: URL) async throws -> String? {
 @MainActor private func detail(_ calls: AudelinCalls, _ matches: (CallsDetail?) -> Bool) async {
     for await value in Observations({ calls.detail }) where matches(value) { return }
 }
-@MainActor func withNotesComposition(automatic: Bool = false, _ body: (ComposeFixture, NotesHTTP) async throws -> Void) async throws {
+@MainActor func withNotesComposition(automatic: Bool = false, configure: @MainActor (inout ComposerBoundary) -> Void = { _ in }, _ body: (ComposeFixture, NotesHTTP) async throws -> Void) async throws {
     try await withComposeFolder { root in
         let http = NotesHTTP()
         let runtime = controlledRuntime(http)
         let rig = try await ComposeFixture.make(root: root,
-            preferences: Preferences(notes: .init(enabled: automatic, speakers: false, primary: notesRuntime), automaticRecording: false, callsFolder: root), summaryRuntime: runtime)
+            preferences: Preferences(notes: .init(enabled: automatic, speakers: false, primary: notesRuntime), automaticRecording: false, callsFolder: root), summaryRuntime: runtime, configure: configure)
         do { try await body(rig, http); await rig.finish() }
         catch { await rig.finish(); throw error }
     }

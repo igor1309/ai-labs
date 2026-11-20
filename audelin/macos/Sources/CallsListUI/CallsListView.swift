@@ -101,22 +101,28 @@ public struct CallsListView: View {
         }
     }
 
-    /// A waiting row keeps its Cancel reachable; any other row stays one button.
-    @ViewBuilder private func rowButton(_ row: CallsListState.Row) -> some View {
-        if row.transcriptWait == nil {
-            rowButtonBody(row)
-        } else {
-            rowButtonBody(row).accessibilityElement(children: .contain)
-        }
-    }
-
-    private func rowButtonBody(_ row: CallsListState.Row) -> some View {
+    private func rowButton(_ row: CallsListState.Row) -> some View {
         Button { click(row) } label: { rowContent(row).contentShape(.rect) }
             .buttonStyle(.plain)
             .accessibilityIdentifier("calls.select.\(row.id)")
             .accessibilityLabel(row.displayTitle)
             .accessibilityValue(rowValue(row))
             .accessibilityAction(.showMenu) { showMenu(row) }
+            .overlayPreferenceValue(TranscriptActionAnchors.self) { anchors in
+                GeometryReader { proxy in
+                    ForEach(anchors, id: \.identifier) { anchor in
+                        let bounds = proxy[anchor.bounds]
+                        TranscriptActionTarget(title: anchor.title, identifier: anchor.identifier, action: anchor.action)
+                            .frame(width: bounds.width, height: bounds.height)
+                            .accessibilityElement()
+                            .accessibilityIdentifier(anchor.identifier)
+                            .accessibilityLabel(anchor.title)
+                            .accessibilityAddTraits(.isButton)
+                            .accessibilityAction { anchor.action() }
+                            .position(x: bounds.midX, y: bounds.midY)
+                    }
+                }
+            }
             .simultaneousGesture(TapGesture(count: 2).onEnded { if !state.busy, state.merge == nil { event(.open(row.id)) } })
             .overlay {
                 RowMenuTarget(identifier: "calls.row.\(row.id)", select: { if state.merge == nil { event(.select(row.id)) } },
@@ -133,7 +139,10 @@ public struct CallsListView: View {
     private func rowValue(_ row: CallsListState.Row) -> String {
         // The row is one accessibility element, so its visible transcript match belongs in its value.
         let snippet = row.match?.snippet.map { [$0.place, $0.text] } ?? []
-        let value = ([row.duration] + row.tags.map { "#" + $0 } + snippet).joined(separator: ", ")
+        let wait = row.transcriptWait.map { wait in
+            [wait.message] + (wait.progress.map { [Int(($0 * 100).rounded()).formatted(.percent)] } ?? [])
+        } ?? []
+        let value = ([row.duration] + row.tags.map { "#" + $0 } + wait + snippet).joined(separator: ", ")
         guard let merge = state.merge else { return value }
         return value + ", " + text(merge.marked.contains(row.id) ? .markOn : .markOff)
     }
@@ -211,20 +220,36 @@ public struct CallsListView: View {
                 Text(wait.message).foregroundStyle(tokens.sub).truncationMode(.tail)
                 ProgressView(value: progress).progressViewStyle(TranscriptProgressStyle(tokens: tokens))
                     .frame(maxWidth: tokens.space32 + tokens.space32)
-                    .accessibilityIdentifier("calls.transcriptProgress.\(id)")
+                    // The row's value carries the progress; an indicator here would replace the row's role.
+                    .accessibilityHidden(true)
             } else {
-                ProgressView().controlSize(.mini)
+                ProgressView().controlSize(.mini).accessibilityHidden(true)
                 Text(wait.message).foregroundStyle(tokens.sub).truncationMode(.tail)
             }
             Spacer(minLength: 0)
-            transcriptAction(text(.transcriptCancel), identifier: "calls.cancelTranscript.\(id)") { event(.cancelTranscriptAgain) }
+            rowTranscriptAction(text(.transcriptCancel), identifier: "calls.cancelTranscript.\(id)") { event(.cancelTranscriptAgain) }
         }
-        .accessibilityIdentifier("calls.transcriptWait.\(id)")
     }
 
     private func transcriptAction(_ title: String, identifier: String, action: @escaping () -> Void) -> some View {
         Text(title).foregroundStyle(tokens.me).fixedSize().accessibilityHidden(true)
-            .overlay { TranscriptActionTarget(title: title, identifier: identifier, action: action) }
+            .overlay {
+                TranscriptActionTarget(title: title, identifier: identifier, action: action)
+                    .accessibilityElement()
+                    .accessibilityIdentifier(identifier)
+                    .accessibilityLabel(title)
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityAction { action() }
+            }
+    }
+
+    private func rowTranscriptAction(_ title: String, identifier: String, action: @escaping () -> Void) -> some View {
+        // Drawn inside the row's button; its target is placed over it from outside the button,
+        // so assistive apps reach it as a button of its own.
+        Text(title).foregroundStyle(tokens.me).fixedSize().accessibilityHidden(true)
+            .anchorPreference(key: TranscriptActionAnchors.self, value: .bounds) {
+                [TranscriptActionAnchor(identifier: identifier, title: title, action: action, bounds: $0)]
+            }
     }
 
     private func transcriptBanner(_ banner: CallsListState.TranscriptBanner) -> some View {
@@ -548,4 +573,17 @@ private struct TranscriptProgressStyle: ProgressViewStyle {
         }
         .frame(height: tokens.space4)
     }
+}
+
+
+struct TranscriptActionAnchor {
+    let identifier: String
+    let title: String
+    let action: () -> Void
+    let bounds: Anchor<CGRect>
+}
+
+struct TranscriptActionAnchors: PreferenceKey {
+    static var defaultValue: [TranscriptActionAnchor] { [] }
+    static func reduce(value: inout [TranscriptActionAnchor], nextValue: () -> [TranscriptActionAnchor]) { value += nextValue() }
 }

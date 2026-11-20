@@ -12,9 +12,9 @@ public enum CallsFixture {
     public static let length: TimeInterval = 10
 
     /// Writes A and B with transcripts and notes, C with a track only and D with a transcript only, into `calls`.
-    public static func seedMerge(in calls: URL) async throws {
-        try await call(a, in: calls, words: ["Часть один.", "Ответ один."], version: "fixture-a")
-        try await call(b, in: calls, words: ["Часть два.", "Ответ два."], version: "fixture-b")
+    public static func seedMerge(in calls: URL, origins: Bool = true) async throws {
+        try await call(a, in: calls, words: ["Часть один.", "Ответ один."], version: origins ? "fixture-a" : nil)
+        try await call(b, in: calls, words: ["Часть два.", "Ответ два."], version: origins ? "fixture-b" : nil)
         try await call(c, in: calls, words: nil)
         try await call(d, in: calls, words: ["Другой звонок.", "Ответ."], notes: false)
     }
@@ -22,7 +22,8 @@ public enum CallsFixture {
     /// The merge fixture with A's microphone track beside its call track. The two differ, at a
     /// steady `microphoneLevel` against the call's silence, so a recogniser can tell which it heard.
     public static func seedTranscriptAgain(in calls: URL) async throws {
-        try await seedMerge(in: calls)
+        try await seedMerge(in: calls, origins: false)
+        try Data("# Transcript\n\n**Me** 00:00:00\nOlder previous.\n".utf8).write(to: calls.appendingPathComponent(a + "/transcript-previous.md"))
         let track = try await TrackFile(url: calls.appendingPathComponent(a, isDirectory: true).appendingPathComponent("microphone.caf"))
         try await track.write([Float](repeating: microphoneLevel, count: Int(length * TrackFile.sampleRate)), sampleRate: TrackFile.sampleRate)
         try await track.close()

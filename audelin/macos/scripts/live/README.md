@@ -8,7 +8,7 @@ no component test reaches.
 | Script (from `audelin/macos`) | Proves |
 |---|---|
 | `sh scripts/live-calls-summary.sh` | A call's template menu refreshes and makes notes; regeneration rotates or replaces versions; switching, keeping, edited templates, failure reasons and cancellation preserve the shown pair; a call whose transcript tells no origin reads with its notes; notes are made from the said words without the origin. |
-| `sh scripts/live-calls-transcript-again.sh` | Transcript menu offers and disabled reasons for missing tracks and busy Audelin; a fixture run publishes both newly heard sides, keeps the old bytes as previous and restores them without changing notes. |
+| `sh scripts/live-calls-transcript-again.sh` | Transcript menu offers and disabled reasons for missing tracks and busy Audelin; a fixture run publishes both newly heard sides and restores the previous bytes without changing notes; held-wait cancellation, hearing/loading/swap failure and retry, Quit at every wait, and kill during publish/restore followed by startup recovery. |
 | `sh scripts/live-calls-merge.sh` | Merging calls in the calls window, end to end (below). |
 | `sh scripts/live-calls-tags.sh` | Tags typed in the detail are written to the call's folder and shown in its row and the strip; a chip filters the list; merged calls keep both parts' tags. |
 | `sh scripts/live-calls-rename.sh` | Renaming a call in the list: Return saves without opening the folder; clicking, right-clicking or arrowing to another row saves; Escape cancels (below). |
@@ -116,3 +116,17 @@ accessibility.
 
 The scenarios fail if the list's key handler takes Return while a rename is open.
 The run keeps screenshots of the editing, saved and cancelled states.
+
+## Making a transcript again
+
+The transcript rehearsal starts A with a current transcript without origin, an
+older previous and legacy notes. A new recognizer is acquired for each track.
+The driver writes `hold-preparing`, `hold-hearing`, `hold-finishing` or
+`hold-publishing`; `reached-<stage>` reports the corresponding suspension.
+Removing the hold releases it. Cancellation and application Quit also end waits.
+`fail-preparing` fails model acquisition; `fail-swap` fails once after the
+first transcript move. `kill-swap` stops the process after that move and writes
+`reached-swap`, letting the driver kill it before any rollback or commit.
+Relaunch passes no seed and uses the same calls and journal. Each recovery
+checks the complete pair, no active run, no recovery files, unchanged notes and
+no notes-provider request. The existing merge rehearsal uses its own seed.

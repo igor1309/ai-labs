@@ -28,7 +28,7 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
     private let makeCalls: @Sendable (URL) -> Calls
     // Every operation, including summary writes through withFolder, takes this turn,
     // so one waiting for a long folder move suspends instead of blocking a thread.
-    private let turn = Turn()
+    private let operation: CallsStorageGuard
     private let published = Mutex<(state: CallsTransaction, watchers: [UUID: AsyncStream<CallsTransaction>.Continuation])>((.idle, [:]))
     /// The calls-folder claim: the current grant, if any, and the last token handed out.
     let folderClaim = Mutex<(holder: (CallsFolderHolder, CallsFolderToken)?, lastToken: UInt64)>((nil, 0))
@@ -37,7 +37,9 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
     /// `makeCalls` opens the calls of one folder; `readPart` reads a resolved call folder for merging.
     public init(folder: URL, journal: URL?, writeJournal: @escaping @Sendable (CallsJournal, URL) throws -> Void = CallsStorage.writeAtomically,
                 readPart: @escaping @Sendable (URL, String) throws -> Part,
-                makeCalls: @escaping @Sendable (URL) -> Calls) {
+                makeCalls: @escaping @Sendable (URL) -> Calls,
+                operation: CallsStorageGuard = .serial()) {
+        self.operation = operation
         state = Mutex(State(recordingFolder: directory(folder)))
         self.readPart = readPart
         self.journal = journal; self.writeJournal = writeJournal; self.makeCalls = makeCalls
@@ -146,8 +148,10 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
             return try operation(location(id: call, state: state))
         }
     }
-    private func perform<Value: Sendable>(_ work: () throws -> Value) async throws -> Value {
-        try await turn.run(work)
+    private func perform<Value: Sendable>(_ kind: CallsStorageGuard.Operation = .access, _ work: () throws -> Value) async throws -> Value {
+        try await operation.take(kind)
+        defer { operation.give() }
+        return try work()
     }
     private func list(_ state: State) throws -> [Calls.Call] {
         var result = try makeCalls(state.recordingFolder).list().filter {
@@ -214,13 +218,18 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
         try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).savedTranscript(id: id) } }
     }
 
+    /// Resolves original recordings through the same disk binding as listing.
+    public func originals(id: String) async throws -> [Calls.Original] {
+        try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).originals(id: id) } }
+    }
+
     /// Publishes within the same turn as every read and mutation of this call.
     public func publishTranscript(id: String, write: @escaping @Sendable (URL) throws -> Void) async throws {
-        try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).publishTranscript(id: id, write: write) } }
+        try await perform(.publishTranscript) { [self] in try folder(call: id) { try Task.checkCancellation(); try makeCalls($0.deletingLastPathComponent()).publishTranscript(id: id, write: write) } }
     }
 
     public func restorePreviousTranscript(id: String) async throws {
-        try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).restorePreviousTranscript(id: id) } }
+        try await perform(.restorePreviousTranscript) { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).restorePreviousTranscript(id: id) } }
     }
     /// Reads a merge part within the same turn that resolves its folder.
     public func part(id: String) async throws -> Part {

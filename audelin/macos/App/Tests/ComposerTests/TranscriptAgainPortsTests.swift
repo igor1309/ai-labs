@@ -1,4 +1,7 @@
 import CallDiarizer
+@testable import Calls
+import CallsStorage
+import TranscriptFile
 import Foundation
 import LiveText
 import Recordings
@@ -12,6 +15,38 @@ import TranscriptFormat
 /// recogniser, and the split and cleanup steps get and give what a live call's finishing does.
 @Suite(.timeLimit(.minutes(1)))
 struct TranscriptAgainPortsTests {
+    @Test func originalDiscoveryUsesTheStoresInjectedDisk() async throws {
+        try await withComposeFolder { root in
+            let id = "1970.01.01-1000", folder = root.appendingPathComponent(id)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let sample = root.appendingPathComponent("sample")
+            try Data().write(to: sample)
+            var disk = CallsDisk.system
+            disk.values = { url in
+                try CallsDisk.system.values(url.pathExtension == "caf" ? sample : url)
+            }
+            let storage = CallsStorage(folder: root, journal: nil, readPart: { _, _ in throw ScriptFailure.failed },
+                makeCalls: { [disk] in Calls(folder: $0, timeZone: .gmt, duration: { _ in 7 }, transcript: transcriptLines, disk: disk) })
+            let boundary = rehearsalBoundary(capturePersistence: .recorded,
+                microphone: { throw ScriptFailure.failed }, call: { _ in throw ScriptFailure.failed },
+                mine: RehearsalRecognizer(SessionRecognizer(name: "unused")), theirs: RehearsalRecognizer(SessionRecognizer(name: "unused")),
+                now: { .distantPast }, timeZone: { .gmt }, sleep: { _ in throw CancellationError() },
+                intervals: testIntervals, transcriptBuild: testTranscriptBuild)
+            let ports = TranscriptAgainPorts(storage: storage, boundary: boundary, binding: DiskTranscriptBinding())
+            let originals = try await ports.originals(id)
+            #expect(originals.count == 1)
+            let original = try #require(originals.first)
+            #expect(original.id == id)
+            #expect(original.duration == 7)
+            #expect(original.start == 0)
+            let far = URL(fileURLWithPath: original.farTrack), microphone = URL(fileURLWithPath: original.microphoneTrack)
+            #expect(far.lastPathComponent == "call.caf")
+            #expect(microphone.lastPathComponent == "microphone.caf")
+            #expect(far.deletingLastPathComponent().resolvingSymlinksInPath().path == folder.resolvingSymlinksInPath().path)
+            #expect(microphone.deletingLastPathComponent().resolvingSymlinksInPath().path == folder.resolvingSymlinksInPath().path)
+        }
+    }
+
     @Test(arguments: [CallDiarizer.Model.nemotron, .vbx])
     func splitAndCleanRebuildTheCallInSpeakerTurns(model: CallDiarizer.Model) async throws {
         try await withComposeFolder { root in
@@ -86,6 +121,41 @@ struct TranscriptAgainPortsTests {
         }
     }
 
+    enum Ambiguity: CaseIterable { case equal, unequal, twoNames }
+
+    @Test(arguments: Ambiguity.allCases)
+    func ambiguousOldNamesStayUnnamedInThePublishedTranscript(ambiguity: Ambiguity) async throws {
+        try await withComposeFolder { root in
+            let id = "1970.01.01-1000", folder = root.appendingPathComponent(id)
+            try await FixtureTrack.write(far: 1, microphone: 2, seconds: 10, in: folder)
+            var format = TranscriptFormat()
+            var rows = [TranscriptFormat.Segment(side: .theirs, start: 0, settled: "old A", pending: "", speaker: "a")]
+            if ambiguity == .twoNames { rows.append(.init(side: .theirs, start: 2, settled: "old B", pending: "", speaker: "b")) }
+            rows.append(.init(side: .mine, start: 4, settled: "old microphone", pending: ""))
+            let old = try format.render(rows, speakers: [.init(id: "a", name: "Ada", state: "confirmed"), .init(id: "b", name: "Bea", state: "confirmed")]).chunks.reduce(Data(), +)
+            try old.write(to: folder.appendingPathComponent("transcript.md"))
+            let words: [SpeechWord]
+            let turns: [CallDiarizer.Turn]
+            switch ambiguity {
+            case .equal:
+                words = [.init("first", start: 0, end: 2), .init("second", start: 2, end: 4)]
+                turns = [.init(speaker: 0, start: 0, end: 2), .init(speaker: 1, start: 2, end: 4)]
+            case .unequal:
+                words = [.init("first", start: 0, end: 2.5), .init("second", start: 2.5, end: 4), .init("again", start: 5, end: 10)]
+                turns = [.init(speaker: 0, start: 0, end: 2.5), .init(speaker: 1, start: 2.5, end: 4), .init(speaker: 0, start: 5, end: 10)]
+            case .twoNames:
+                words = [.init("one", start: 0, end: 4)]
+                turns = [.init(speaker: 0, start: 0, end: 4)]
+            }
+            let chain = transcriptAgain(root: root, recognizers: TrackRecognizers(answers: [1: words, 2: []]),
+                diarizer: TrackDiarizer(model: .nemotron, calls: Values(), turns: { _ in turns }), cleaning: { _ in [] }, hearing: { _ in nil })
+            #expect(await reports(chain.run(id: id, request: 1)).last == .made)
+            let saved = TranscriptFormat.read(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8))
+            #expect(!saved.speakers.isEmpty && saved.speakers.allSatisfy { $0.name == nil })
+            #expect(saved.segments.filter { $0.side == .theirs }.map(\.settled).joined(separator: " ") == words.map(\.text).joined(separator: " "))
+        }
+    }
+
     private let oldTranscript = Data("# Transcript\n\n**Me** 00:00:00\nOld words.\n".utf8)
 
     private struct Row: Equatable {
@@ -108,7 +178,7 @@ struct TranscriptAgainPortsTests {
         boundary.bleedHearing = HearingStub(perform: hearing)
         boundary.log = FixtureLog()
         return Composer.transcriptAgain(storage: callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash), boundary: boundary,
-                                        timeZone: .gmt, describe: { String(describing: $0) })
+                                        describe: { String(describing: $0) })
     }
 
     private func reports(_ stream: AsyncStream<TranscriptReport>) async -> [TranscriptReport] {

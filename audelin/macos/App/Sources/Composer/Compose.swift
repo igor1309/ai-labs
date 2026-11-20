@@ -44,7 +44,7 @@ public func compose(
     let processes = CoreAudioProcesses(binding: BoundaryProcesses(base: boundary.processes),
                                        clock: BoundaryCallClock(time: boundary.time))
     let timeZone = boundary.time.timeZone()
-    let storage = callsStorage(folder: preferences.read().callsFolder, timeZone: timeZone, journal: preferencesURL.deletingLastPathComponent().appendingPathComponent("summary-folders.json"), trash: boundary.trash)
+    let storage = callsStorage(folder: preferences.read().callsFolder, timeZone: timeZone, journal: preferencesURL.deletingLastPathComponent().appendingPathComponent("summary-folders.json"), trash: boundary.trash, disk: boundary.callsDisk, operation: boundary.callsOperation)
     do { try await storage.restore() } catch { boundary.log.write(.init(category: .calls, message: "calls-folder recovery failed")) }
     let runtime = summaryRuntime ?? SummaryRuntime.Runtime(
         process: ProcessRunner(now: boundary.time.monotonicNow, deadline: 120, outputLimit: 4 * 1024 * 1024, observe: { _ in }),
@@ -102,7 +102,7 @@ public func compose(
                             })
     disk.log = boundary.log
     let moveClaim = MoveFolderClaim(storage: storage)
-    let recordings = makeRecordings(handler: RecordingsEffectHandler(calls: disk, transcriptAgain: transcriptAgain(storage: storage, boundary: boundary, timeZone: timeZone,
+    let recordings = makeRecordings(handler: RecordingsEffectHandler(calls: disk, transcriptAgain: transcriptAgain(storage: storage, boundary: boundary,
                                           describe: { language.language.settings.callsFailure($0) }),
                                       reserve: moveClaim.take, release: moveClaim.release,
                                       storeFolder: { destination in

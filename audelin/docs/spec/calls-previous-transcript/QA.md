@@ -72,5 +72,20 @@ Evidence: `CallsPreviousTranscriptTests.S13_restoringBringsBackTheIdentity`.
 
 ## S-14 A read during a change finds a whole pair
 
-Hold a publish at each move and read the call's transcripts: the read answers only after the change, with the new pair whole; the same for a held restore.
-Evidence: `CallsPreviousTranscriptTests.S14_aReadDuringAChangeFindsAWholePair`.
+Admit each read API (text, saved transcript, list and merge part) to the
+occupied production storage turn while publication or restore is held.
+The admission report comes after queue registration, before the change is
+released. No read reaches disk until then; its answer describes the whole
+new pair. The app uses this boundary across its separate Calls instances.
+Evidence: `CallsStorageTranscriptAdmissionTests.S14_readAdmissionDuringAChangeWaitsForTheWholePair`.
+
+Original discovery is exercised through a virtual tree supplied by the disk
+binding in `CallsOriginalsTests.discoveryUsesItsDiskAndStopsAtRecordedLeaves`.
+The injected disk is carried through storage and Composer in
+`TranscriptAgainPortsTests.originalDiscoveryUsesTheStoresInjectedDisk`.
+Nested app wiring and complete origins are checked by
+`TranscriptAgainCompositionTests.nestedOriginalsKeepTheirOffsetsAndListingMetadata`.
+Cancellation before moving and during the swap is checked by
+`CallsPreviousTranscriptTests.cancellationAfterWritingBeforeTheFirstMoveKeepsThePair`
+and `cancellationDuringTheSwapSettlesTheNewPair`; cancellation while queued is
+checked by `CallsStorageTranscriptAdmissionTests.cancellationQueuedForPublicationKeepsBothTranscripts`.

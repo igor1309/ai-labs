@@ -263,7 +263,9 @@ private let a = "2024.01.01-1000", b = "2024.01.01-1006", d = "2024.01.01-1030"
                 try live.screenshot("restored", into: root)
                 process.terminate()
                 _ = try live.wait("app termination") { process.isRunning ? nil : true }
-                print("PASS: transcript menu availability, missing tracks and busy reasons, fixture recognition keeping the previous bytes, and restore")
+                live.stop()
+                try scenarios(executable: process.executableURL!, artifacts: root)
+                print("PASS: held-wait cancellation, failure and retry, quit/relaunch, kill/recovery of publication and restore; transcript menu availability, missing tracks and busy reasons, fixture recognition keeping the previous bytes, and restore")
             } catch {
                 try? live.screenshot("failure", into: root)
                 throw error
@@ -274,4 +276,195 @@ private let a = "2024.01.01-1000", b = "2024.01.01-1006", d = "2024.01.01-1030"
         }
     }
 
+    @MainActor private static func scenarios(executable: URL, artifacts: URL) throws {
+        for stage in ["preparing", "hearing", "finishing", "publishing"] {
+            try withSession("cancel-" + stage, executable: executable, artifacts: artifacts) { session in
+                let before = try session.pair()
+                try session.mark("hold-" + stage)
+                try session.run()
+                try session.reached(stage)
+                _ = try session.live.element("calls.cancelTranscript.\(a)")
+                if stage == "hearing" { _ = try session.live.element("calls.select.\(a)", value: { $0.contains("%") }) }
+                guard try session.pair() == before else { throw LiveFailure("A held run changed the saved pair") }
+                try session.live.screenshot("cancel-" + stage, into: artifacts)
+                try session.live.press("calls.cancelTranscript.\(a)")
+                try session.waitIdle()
+                guard !descendants(session.live.root).contains(where: { string($0, kAXIdentifierAttribute) == "calls.transcriptBanner" }) else {
+                    throw LiveFailure("Cancellation showed an error banner")
+                }
+                guard try session.pair() == before else { throw LiveFailure("Cancellation changed the saved pair at " + stage) }
+                try session.expectClean()
+            }
+            try withSession("quit-" + stage, executable: executable, artifacts: artifacts) { session in
+                let before = try session.pair()
+                try session.mark("hold-" + stage)
+                try session.run()
+                try session.reached(stage)
+                try session.quit()
+                try session.unmark("hold-" + stage)
+                try session.launch(seed: false)
+                guard try session.pair() == before else { throw LiveFailure("Quitting changed the saved pair at " + stage) }
+                try session.waitIdle()
+                try session.expectClean()
+            }
+        }
+        for failure in ["loading", "track", "swap"] {
+            try withSession("failure-" + failure, executable: executable, artifacts: artifacts) { session in
+                let before = try session.pair()
+                let track = session.calls.appendingPathComponent(a + "/call.caf")
+                let audio = try Data(contentsOf: track)
+                switch failure {
+                case "loading": try session.mark("fail-preparing")
+                case "track": try session.mark("hold-preparing")
+                default: try session.mark("fail-swap")
+                }
+                try session.run()
+                if failure == "track" {
+                    try session.reached("preparing")
+                    try Data("undecodable CAF".utf8).write(to: track)
+                    try session.unmark("hold-preparing")
+                }
+                _ = try session.live.element("calls.retryTranscript.\(a)")
+                let reason = descendants(try session.live.element("calls.transcriptBanner")).map {
+                    string($0, kAXValueAttribute) + string($0, kAXTitleAttribute)
+                }.joined(separator: " ")
+                guard !reason.isEmpty, try session.pair() == before else { throw LiveFailure("Failure lost its reason or saved pair") }
+                if failure == "loading", !reason.contains("Fixture preparing failed") { throw LiveFailure("Loading failure reason was lost") }
+                if failure == "track", !reason.contains(a) { throw LiveFailure("Hearing failure did not name its original call") }
+                try session.live.screenshot("failure-" + failure, into: artifacts)
+                try session.unmark("fail-preparing")
+                try audio.write(to: track)
+                try session.live.press("calls.retryTranscript.\(a)")
+                try session.waitMade(old: before[0]!)
+                try session.expectClean()
+                try session.quit()
+                try session.launch(seed: false)
+                let made = try session.pair()
+                guard made[1] == before[0], made[0] != before[0] else { throw LiveFailure("Retry did not survive relaunch") }
+                try session.restore()
+                _ = try session.live.wait("restore completed") { try session.pair() == [before[0], made[0]] ? true : nil }
+                try session.quit()
+                try session.launch(seed: false)
+                guard try session.pair() == [before[0], made[0]] else { throw LiveFailure("Restore did not survive relaunch") }
+            }
+        }
+        try withSession("failed-restore", executable: executable, artifacts: artifacts) { session in
+            let before = try session.pair()
+            try session.mark("fail-swap")
+            try session.restore()
+            _ = try session.live.element("calls.transcriptBanner")
+            guard try session.pair() == before else { throw LiveFailure("Failed restore changed its pair") }
+            try session.restore()
+            _ = try session.live.wait("restore retried") { try session.pair() == [before[1], before[0]] ? true : nil }
+            try session.expectClean()
+        }
+        for restoring in [false, true] {
+            try withSession(restoring ? "kill-restore" : "kill-publish", executable: executable, artifacts: artifacts) { session in
+                let before = try session.pair()
+                try session.mark("kill-swap")
+                if restoring { try session.restore() } else { try session.run() }
+                try session.reached("swap")
+                kill(session.process.processIdentifier, SIGKILL)
+                session.process.waitUntilExit()
+                session.live.stop()
+                try session.unmark("kill-swap")
+                try session.launch(seed: false)
+                let pair = try session.pair()
+                let wholeNew = restoring ? pair == [before[1], before[0]] : pair[0] != nil && pair[0] != before[0] && pair[1] == before[0]
+                guard pair == before || wholeNew else { throw LiveFailure("Startup exposed a partial pair") }
+                try session.waitIdle()
+                try session.expectClean()
+                try session.live.screenshot(restoring ? "recovered-restore" : "recovered-publication", into: artifacts)
+            }
+        }
+    }
+
+    @MainActor private static func withSession(_ name: String, executable: URL, artifacts: URL, body: (TranscriptSession) throws -> Void) throws {
+        let session = try TranscriptSession(executable: executable, fixture: artifacts.appendingPathComponent("fixture/" + name))
+        defer { session.stop() }
+        do { try body(session) }
+        catch { try? session.live.screenshot("failure-" + name, into: artifacts); throw error }
+    }
+
+}
+
+
+@MainActor private final class TranscriptSession {
+    let executable: URL, fixture: URL, calls: URL, state: URL, control: URL
+    private(set) var process = Process()
+    private(set) var live: Driver!
+    private var notes = Data()
+    init(executable: URL, fixture: URL) throws {
+        self.executable = executable; self.fixture = fixture
+        calls = fixture.appendingPathComponent("calls"); state = fixture.appendingPathComponent("state")
+        control = state.appendingPathComponent("control")
+        for folder in [calls, control] { try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true) }
+        try mark("transcript-fixture")
+        do {
+            try launch(seed: true)
+            notes = try Data(contentsOf: calls.appendingPathComponent(a + "/summary.md"))
+        } catch { stop(); throw error }
+    }
+    func launch(seed: Bool) throws {
+        process = Process()
+        process.executableURL = executable
+        process.arguments = ["--calls", calls.path, "--state", state.path, "--trash", fixture.appendingPathComponent("trash").path]
+            + (seed ? ["--seed", "transcript-again"] : [])
+        try process.run()
+        live = try Driver(process: process, folders: [calls, control])
+        _ = try live.element("calls.select.\(a)")
+        try live.watch(calls.appendingPathComponent(a))
+    }
+    func mark(_ name: String) throws { try Data().write(to: control.appendingPathComponent(name), options: .atomic) }
+    func unmark(_ name: String) throws {
+        let url = control.appendingPathComponent(name)
+        if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+    }
+    func reached(_ stage: String) throws {
+        _ = try live.wait("held " + stage) { FileManager.default.fileExists(atPath: self.control.appendingPathComponent("reached-" + stage).path) ? true : nil }
+    }
+    func pair() throws -> [Data?] {
+        try ["transcript.md", "transcript-previous.md"].map { name in
+            let url = calls.appendingPathComponent(a + "/" + name)
+            return FileManager.default.fileExists(atPath: url.path) ? try Data(contentsOf: url) : nil
+        }
+    }
+    func run() throws {
+        try live.showMenu(a)
+        try live.choose(live.menuItem("calls.transcriptAgain.\(a)", enabled: true))
+    }
+    func restore() throws {
+        try live.showMenu(a)
+        try live.choose(live.menuItem("calls.restoreTranscript.\(a)", enabled: true))
+    }
+    func waitMade(old: Data) throws {
+        _ = try live.wait("publication completed") {
+            let pair = try self.pair()
+            return pair[0] != nil && pair[0] != old && pair[1] == old ? true : nil
+        }
+        try waitIdle()
+    }
+    func waitIdle() throws {
+        _ = try live.wait("no transcript run") {
+            descendants(self.live.root).contains { string($0, kAXIdentifierAttribute) == "calls.cancelTranscript.\(a)" } ? nil : true
+        }
+    }
+    func expectClean() throws {
+        _ = try live.wait("recovery files retired") {
+            let names = try FileManager.default.contentsOfDirectory(atPath: self.calls.path)
+            return names.contains(where: { $0.hasPrefix(".audelin-") }) ? nil : true
+        }
+        guard try Data(contentsOf: calls.appendingPathComponent(a + "/summary.md")) == notes else { throw LiveFailure("Transcript action changed notes") }
+        guard !(try FileManager.default.contentsOfDirectory(atPath: control.path)).contains(where: { $0.hasPrefix("request-") }) else { throw LiveFailure("Transcript action requested notes") }
+    }
+    func quit() throws {
+        guard NSRunningApplication(processIdentifier: process.processIdentifier)?.terminate() == true else { throw LiveFailure("Could not request app Quit") }
+        _ = try live.wait("app Quit settled") { self.process.isRunning ? nil : true }
+        process.waitUntilExit()
+        live.stop()
+    }
+    func stop() {
+        if process.isRunning { kill(process.processIdentifier, SIGKILL); process.waitUntilExit() }
+        live?.stop()
+    }
 }

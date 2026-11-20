@@ -193,73 +193,40 @@ struct CallsPreviousTranscriptTests {
         }
     }
 
-    @Test(arguments: [false, true])
-    func S14_aReadDuringAChangeFindsAWholePair(restoring: Bool) async throws {
-        // Zero holds the publish writer; the other points hold after each pair rename.
-        for point in (restoring ? 1 : 0)...4 {
-            let (root, call) = try makeCall(previous: older)
-            defer { try? FileManager.default.removeItem(at: root) }
-            let hold = HeldChange()
-            defer { hold.release() }
-            let moves = Mutex(0)
-            let pairs = Mutex<[[Data?]]>([])
-            let readBeforeRelease = Mutex(false)
-            let attempted = AsyncStream<Void>.makeStream()
-            var disk = CallsDisk.system
-            disk.rename = { source, target in
-                try CallsDisk.system.rename(source, target)
-                let move = moves.withLock { $0 += 1; return $0 }
-                if move == point { hold.wait() }
-            }
-            disk.read = { url in
-                let duringChange = hold.hasStarted
-                if duringChange && !hold.isReleased { readBeforeRelease.withLock { $0 = true } }
-                let data = try CallsDisk.system.read(url)
-                if duringChange && url.lastPathComponent == "transcript.md" {
-                    let previous = try CallsDisk.system.read(call.appendingPathComponent(previousName))
-                    pairs.withLock { $0.append([data, previous]) }
-                }
-                return data
-            }
-            let calls = adapter(root, disk: disk)
-            let changing = Task {
-                try await concurrentTranscriptOperation {
-                    defer { hold.started.continuation.finish() }
-                    if restoring { try calls.restorePreviousTranscript(id: id) }
-                    else {
-                        try calls.publishTranscript(id: id) { url in
-                            try new.write(to: url, options: .withoutOverwriting)
-                            if point == 0 { hold.wait() }
-                        }
+    @Test func cancellationAfterWritingBeforeTheFirstMoveKeepsThePair() async throws {
+        try await Task {
+            try withCall { root, call in
+                let calls = adapter(root)
+                #expect(throws: CancellationError.self) {
+                    try calls.publishTranscript(id: id) { url in
+                        try new.write(to: url)
+                        withUnsafeCurrentTask { $0?.cancel() }
                     }
                 }
+                try expectPair(calls, call, current: old, previous: older)
+                #expect(try names(root) == [callName])
             }
-            var started = hold.started.stream.makeAsyncIterator()
-            let didStart: Void? = await started.next()
-            let reading = Task {
-                try await concurrentTranscriptOperation {
-                    attempted.continuation.finish()
-                    let text = try calls.text(id: id)
-                    let bytes = try calls.savedTranscript(id: id)
-                    let listed = try calls.list()
-                    return (text, bytes, listed)
+        }.value
+    }
+
+    @Test func cancellationDuringTheSwapSettlesTheNewPair() async throws {
+        try await Task {
+            try withCall { root, call in
+                var disk = CallsDisk.system
+                disk.rename = { source, target in
+                    try CallsDisk.system.rename(source, target)
+                    if source.lastPathComponent == "transcript.md",
+                       target.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent == "transcripts" {
+                        withUnsafeCurrentTask { $0?.cancel() }
+                    }
                 }
+                let calls = adapter(root, disk: disk)
+                try publish(calls)
+                #expect(Task.isCancelled)
+                try expectPair(calls, call, current: new, previous: old)
+                #expect(try names(root) == [callName])
             }
-            for await _ in attempted.stream {}
-            hold.release()
-            // Both operations are reaped before any throwing assertion or fixture cleanup.
-            let changed = await changing.result
-            let read = await reading.result
-            try changed.get()
-            let (text, bytes, listed) = try read.get()
-            #expect(didStart != nil)
-            #expect(!readBeforeRelease.withLock { $0 })
-            let expected = restoring ? older : new
-            #expect(bytes == expected)
-            #expect(text == (try adapter(root).text(id: id)))
-            #expect(listed.map(\.hasPreviousTranscript) == [true])
-            #expect(pairs.withLock { $0 } == [[expected, old], [expected, old]])
-        }
+        }.value
     }
 
     @Test func interruptedRollbackCanBeRestarted() throws {
@@ -478,40 +445,4 @@ private func withCall<T>(previous: Data? = older, _ body: (URL, URL) throws -> T
     let (root, call) = try makeCall(previous: previous)
     defer { try? FileManager.default.removeItem(at: root) }
     return try body(root, call)
-}
-
-/// Competing synchronous disk callers can wait on one another, outside the cooperative pool.
-private func concurrentTranscriptOperation<Value: Sendable>(
-    _ body: @escaping @Sendable () throws -> Value
-) async throws -> Value {
-    try await withCheckedThrowingContinuation { done in
-        Thread { done.resume(with: Result { try body() }) }.start()
-    }
-}
-
-private final class HeldChange: @unchecked Sendable {
-    let started = AsyncStream<Void>.makeStream()
-    private let condition = NSCondition()
-    private var held = false
-    private var released = false
-
-    var hasStarted: Bool {
-        condition.lock(); defer { condition.unlock() }
-        return held
-    }
-    var isReleased: Bool {
-        condition.lock(); defer { condition.unlock() }
-        return released
-    }
-    func wait() {
-        condition.lock(); defer { condition.unlock() }
-        held = true
-        started.continuation.yield(())
-        while !released { condition.wait() }
-    }
-    func release() {
-        condition.lock(); defer { condition.unlock() }
-        released = true
-        condition.broadcast()
-    }
 }

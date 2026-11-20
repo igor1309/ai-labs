@@ -1,6 +1,7 @@
 import Foundation
 import BleedCleanup
 import Calls
+import CallsStorage
 
 /// Audio at the composition's edge, before recording or recognition owns it.
 public struct CaptureBuffer: Equatable, Sendable {
@@ -145,6 +146,9 @@ public struct ComposerBoundary: Sendable {
     /// Opens the browser extension's channel for one recording, or gives nil
     /// when it cannot; speakers then stay unnamed unless Zoom names them.
     public var browser: @Sendable () -> BrowserChannel?
+    /// Disk operations and the shared admission boundary for kept calls.
+    public var callsDisk: CallsDisk = .system
+    public var callsOperation: CallsStorageGuard = .serial()
     /// Moves a deleted call's folder to the Trash.
     public var trash: @Sendable (URL) throws -> Void
 

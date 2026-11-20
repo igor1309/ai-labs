@@ -147,6 +147,17 @@ public final class AudelinCalls {
         }
         notesConnections = [
             Task { @MainActor [weak self] in
+                var seen: TranscriptSelection?
+                for await selection in Observations({ TranscriptSelection(inputs.state()) }) {
+                    guard let self, let id = selection.id, selection != seen else { continue }
+                    seen = selection
+                    _ = await syncRows()
+                    await sendList(.select(id))
+                    selectDetail()
+                    detailModel.event(.transcriptChanged(id: id))
+                }
+            },
+            Task { @MainActor [weak self] in
                 var seen: TranscriptChange?
                 for await change in Observations({ inputs.state().transcriptChanged }) {
                     guard let self, let change, change != seen else { continue }
@@ -666,5 +677,19 @@ private func transcriptBanner(_ failure: RecordingsState.Failure?, text: CallsLi
     case .transcriptStopped:
         return .init(style: .info, title: text(.transcriptStopped),
                      message: failure.reason + " " + text(.transcriptPreserved))
+    }
+}
+
+/// Requests and terminal outcomes each select again, even when they concern the same call.
+private struct TranscriptSelection: Equatable {
+    let id: String?
+    let request: Int
+    let running: Bool
+    let restoring: Bool
+    init(_ state: RecordingsState) {
+        id = state.selectedCallID
+        request = state.transcriptRequest
+        running = state.transcriptRun != nil
+        if case .restoring = state.phase { restoring = true } else { restoring = false }
     }
 }

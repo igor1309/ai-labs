@@ -98,3 +98,18 @@ Feature: Keeping the previous transcript
     When I read the call's transcripts
     Then I get them once the change ends, whole
 ```
+
+## Original recordings
+
+`originals(id:)` resolves a call afresh and returns its recorded leaves in
+start order, with each leaf's id, absolute start, duration and two track URLs.
+A folder with either track is a recorded leaf: its children are never listed.
+Other call folders are traversed using the injected disk and the same naming
+and duration rules as listing. A leaf with no known duration fails with its id.
+Calls storage exposes the discovery within its shared operation turn and
+resolves the current owning folder, including after a move.
+
+Publication can be cancelled during preparation and while queued for storage.
+Cancellation immediately before the first pair move leaves both saved files
+unchanged and is reported as cancellation. Once a move begins the change
+settles or rolls back as a whole, regardless of task cancellation.

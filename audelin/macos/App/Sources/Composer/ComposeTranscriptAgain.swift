@@ -1,4 +1,3 @@
-import AVFoundation
 import BleedCleanup
 import Calls
 import CallsStorage
@@ -12,9 +11,9 @@ import TranscriptFile
 import TranscriptFormat
 import TranscriptJoin
 
-func transcriptAgain(storage: CallsStorage, boundary: ComposerBoundary, timeZone: TimeZone,
+func transcriptAgain(storage: CallsStorage, boundary: ComposerBoundary,
                      describe: @escaping @Sendable (any Error) -> String) -> TranscriptAgainChain {
-    let ports = TranscriptAgainPorts(storage: storage, boundary: boundary, timeZone: timeZone, binding: DiskTranscriptBinding())
+    let ports = TranscriptAgainPorts(storage: storage, boundary: boundary, binding: DiskTranscriptBinding())
     return TranscriptAgainChain(originals: ports.originals, recognition: ReRecognition(
         hear: ports.hear, split: ports.split, clean: ports.clean, readOld: ports.readOld,
         names: ReRecognition.carryNames, publish: ports.publish),
@@ -25,52 +24,25 @@ func transcriptAgain(storage: CallsStorage, boundary: ComposerBoundary, timeZone
 struct TranscriptAgainPorts: Sendable {
     let storage: CallsStorage
     let boundary: ComposerBoundary
-    let timeZone: TimeZone
     let binding: any TranscriptFileBinding
 
     func originals(_ id: String) async throws -> [ReRecognition.OriginalCall] {
-        try await storage.withFolder(call: id) { folder in
-            let root = try calls(in: folder.deletingLastPathComponent()).list().first { $0.id == id }
-            guard let root else { throw CallsFailure.notFound(id: id) }
-            return try originals(in: folder, call: root, start: root.start).sorted { $0.start < $1.start }
-        }
-    }
-
-    private func calls(in folder: URL) -> Calls {
-        Calls(folder: folder, timeZone: timeZone, duration: TrackFile.duration(at:), transcript: transcriptLines, disk: .system)
-    }
-
-    private func originals(in folder: URL, call: Calls.Call, start: Date) throws -> [ReRecognition.OriginalCall] {
-        let far = folder.appendingPathComponent("call.caf"), microphone = folder.appendingPathComponent("microphone.caf")
-        if FileManager.default.fileExists(atPath: far.path) || FileManager.default.fileExists(atPath: microphone.path) {
-            guard let duration = call.duration else { throw CallsFailure.unknownLength(id: call.id) }
-            return [.init(id: call.id, farTrack: far.path, microphoneTrack: microphone.path,
-                          duration: duration, start: call.start.timeIntervalSince(start))]
-        }
-        let parts = calls(in: folder)
-        return try parts.list().flatMap { part in
-            try originals(in: parts.location(id: part.id), call: part, start: start)
-        }
+        let originals = try await storage.originals(id: id)
+        guard let start = originals.first?.start else { throw CallsFailure.notFound(id: id) }
+        return originals.map { .init(id: $0.id, farTrack: $0.callTrack.path, microphoneTrack: $0.microphoneTrack.path,
+                                     duration: $0.duration, start: $0.start.timeIntervalSince(start)) }
     }
 
     func hear(_ path: String, progress: ReRecognition.Fraction) async throws -> ReRecognition.Heard {
         let url = URL(fileURLWithPath: path)
-        _ = try TrackFile.duration(at: url)
         let mine = url.lastPathComponent == "microphone.caf"
         let side: ComposerSide = mine ? .microphone : .call
         let text = RecognitionStream(recognizerSource: { BoundaryRecognizer(base: try await boundary.recognizers.recognizer(for: side)) })
         do {
             try await text.prepare()
-            let file = try AVAudioFile(forReading: url, commonFormat: .pcmFormatFloat32, interleaved: false)
-            let rate = file.processingFormat.sampleRate
-            guard let buffer = AVAudioPCMBuffer(pcmFormat: file.processingFormat, frameCapacity: 48_000) else { throw TrackFile.Failure.invalidAudio }
-            while file.framePosition < file.length {
-                try Task.checkCancellation()
-                let start = Double(file.framePosition) / rate
-                try file.read(into: buffer)
-                guard buffer.frameLength > 0, let samples = buffer.floatChannelData else { throw TrackFile.Failure.invalidAudio }
-                _ = try await text.hear(.init(start: start, samples: Array(UnsafeBufferPointer(start: samples[0], count: Int(buffer.frameLength))), sampleRate: rate))
-                await progress(Double(file.framePosition) / Double(file.length))
+            try await TrackFile.readSaved(at: url) { chunk in
+                _ = try await text.hear(.init(start: chunk.start, samples: chunk.samples, sampleRate: TrackFile.sampleRate))
+                await progress(chunk.fraction)
             }
             let result = try await text.finish()
             return .init(words: (result.final + result.tail).flatMap(\.words).map(Self.word),
@@ -141,7 +113,7 @@ struct TranscriptAgainPorts: Sendable {
                           mergedBy: transcript.merger.map { .init(version: $0.version, build: $0.number) })).chunks
         try await storage.publishTranscript(id: id) { url in
             let file = try binding.create(at: url)
-            do { for chunk in chunks { try file.write(chunk) }; try file.flush() }
+            do { for chunk in chunks { try Task.checkCancellation(); try file.write(chunk) }; try file.flush() }
             catch { binding.remove(at: url); throw error }
         }
     }
