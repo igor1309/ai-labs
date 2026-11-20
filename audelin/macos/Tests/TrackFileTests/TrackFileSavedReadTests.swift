@@ -22,7 +22,8 @@ struct TrackFileSavedReadTests {
         #expect(read.flatMap(\.samples) == samples)
         #expect(read.map(\.start) == [0, 1, 2])
         #expect(read.map { $0.samples.count } == [48_000, 48_000, 31])
-        #expect(read.map(\.fraction) == [48_000.0 / 96_031, 96_000.0 / 96_031, 1])
+        let fractions: [Double] = [48_000.0 / 96_031, 96_000.0 / 96_031, 1]
+        #expect(read.map(\.fraction) == fractions)
         try await track.close()
     }
 
