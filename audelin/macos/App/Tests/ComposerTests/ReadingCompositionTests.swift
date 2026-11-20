@@ -62,23 +62,35 @@ struct ReadingCompositionTests {
         }
     }
 
-    @Test func aLiveNameIsCaptionedTentativelyOnlyWhereTheSpeakerChanges() async throws {
-
-        var reading = ReadingState()
-        func send(_ event: ReadingEvent) { reading = ReadingReducer.reduce(reading, event).0 }
-        send(.recordingChanged(.on(elapsed: 30)))
-        let snapshot = try await publishedCall(status: .listening, mine: [
-            .init(text: .init(id: 1, start: 10, end: 11, words: [.init("мой", start: 10, end: 11)], settledCount: 1)),
-        ], theirs: [
-            .init(text: .init(id: 1, start: 1, end: 2, words: [.init("раз", start: 1, end: 2)], settledCount: 1)),
-            .init(text: .init(id: 2, start: 3, end: 4, words: [.init("два", start: 3, end: 4)], settledCount: 1)),
-            .init(text: .init(id: 3, start: 5, end: 6, words: [.init("три", start: 5, end: 6)], settledCount: 1)),
-            .init(text: .init(id: 4, start: 12, end: 13, words: [.init("четыре", start: 12, end: 13)], settledCount: 1)),
-        ])
-        send(.textUpdated(readingText(snapshot, names: [1: "Анна", 2: "Анна", 3: "Борис", 4: "Борис"])))
+    @Test func aLiveNameIsCaptionedTentativelyOnlyWhereTheSpeakerChanges() throws {
+        let reading = ReadingState(log: .lines(.init(rows: [
+            .entry(.init(id: 0, time: "00:01", speaker: .theirs, settled: "раз", name: "Анна")),
+            .entry(.init(id: 1, time: "00:03", speaker: .theirs, settled: "два", name: "Анна")),
+            .entry(.init(id: 2, time: "00:05", speaker: .theirs, settled: "три", name: "Борис")),
+            .entry(.init(id: 3, time: "00:10", speaker: .mine, settled: "мой")),
+            .entry(.init(id: 4, time: "00:12", speaker: .theirs, settled: "четыре", name: "Борис")),
+        ])))
         guard case let .lines(lines) = panelState(russianPanel, reading).log else { throw ScriptFailure.failed }
         #expect(lines.entries.map(\.label) == ["Анна", nil, "Борис", nil, "Борис"])
         #expect(lines.entries.filter { $0.label != nil }.allSatisfy { $0.labelIsTentative })
+    }
+
+    @Test(arguments: [false, true])
+    func renamedFinalRowsReachTheCachedPanelMapping(empty: Bool) throws {
+        let text = ReadingTextUpdate.Entry(id: .init(speaker: .theirs, localID: 1), start: 0, end: 1, settled: "final")
+        var reading = ReadingReducer.reduce(.init(), .textUpdated(.init(status: .finished, entries: [text], finalCount: 1))).0
+        reading = ReadingReducer.reduce(reading, .namesChanged([1: "Live"], confirmed: false)).0
+        var rows = MappedRows()
+        guard case let .lines(before) = panelState(russianPanel, reading, rows: &rows).log else { throw ScriptFailure.failed }
+        #expect(before.rows.sealed.count == 1)
+        #expect(before.entries.first?.label == "Live")
+        #expect(before.entries.first?.labelIsTentative == true)
+        reading = ReadingReducer.reduce(reading, .namesChanged(empty ? [:] : [1: "Confirmed"], confirmed: true)).0
+        guard case let .lines(after) = panelState(russianPanel, reading, rows: &rows).log else { throw ScriptFailure.failed }
+        #expect(after.entries.first?.label == (empty ? nil : "Confirmed"))
+        #expect(after.entries.first?.labelIsTentative == false)
+        #expect(after.entries.first?.id == before.entries.first?.id)
+        #expect(after.entries.first?.settled == "final")
     }
 
     @Test(arguments: [PanelLanguage.russian, .english])

@@ -10,7 +10,7 @@ func readingRecording(_ state: SessionState) -> ReadingRecording {
 }
 
 /// Maps the entries from position `from` on; those before it are already final.
-func readingText(_ state: CallState, from: Int = 0, names: [Int: String] = [:]) -> ReadingTextUpdate {
+func readingText(_ state: CallState, from: Int = 0) -> ReadingTextUpdate {
 
     let status: ReadingTextUpdate.Status = switch state.status {
     case .off: .off
@@ -25,8 +25,7 @@ func readingText(_ state: CallState, from: Int = 0, names: [Int: String] = [:]) 
             start: entry.text.start, end: entry.text.end,
             settled: entry.text.settledText,
             pending: entry.text.pendingText,
-            writtenLater: entry.writtenLater,
-            name: entry.speaker == .mine ? nil : names[entry.text.id]
+            writtenLater: entry.writtenLater
         )
     }, from: from, finalCount: state.finalCount)
 }

@@ -30,15 +30,11 @@ public struct ReadingTextUpdate: Equatable, Sendable {
         public let settled: String
         public let pending: String
         public let writtenLater: Bool
-        /// A remote speaker's tentative name, when the call app showed one.
-        public let name: String?
 
         public init(
             id: ID, start: Double, end: Double,
-            settled: String = "", pending: String = "", writtenLater: Bool = false, name: String? = nil
+            settled: String = "", pending: String = "", writtenLater: Bool = false
         ) {
-
-            self.name = name
 
             self.id = id
             self.start = start
@@ -79,9 +75,9 @@ public enum ReadingEvent: Equatable, Sendable {
     case letGo(ReadingState.Held)
     case scrolled(atBottom: Bool, interaction: UUID? = nil)
     case jumpToLive
-    /// The after-call pass: remote entries take these confirmed names by local ID;
-    /// every other remote entry loses its tentative name.
-    case namesConfirmed([Int: String])
+    /// Replaces the name set by remote local ID. Tentative names apply to the latest
+    /// text update and later text; confirmed names apply to every remote entry.
+    case namesChanged([Int: String], confirmed: Bool)
     /// The after-call pass found several remote speakers: remote entries take these
     /// 1-based places by local ID; every other remote entry stays plain Them.
     case speakersFound([Int: Int])

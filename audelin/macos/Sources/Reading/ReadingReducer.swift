@@ -55,7 +55,9 @@ public struct ReadingReducer: Sendable {
             prepareRows(&state)
             state.status = update.status
             let previousID = state.nextDisplayID
+            state.latestText = update.entries.map(\.id)
             layOut(&state, .text(update))
+            nameEntries(&state, ids: state.latestText)
             if !state.lines.followsLive { state.lines.newBelow += state.nextDisplayID - previousID }
         case let .hold(held):
             if !state.lines.holds.contains(held) { state.lines.holds.append(held) }
@@ -65,19 +67,14 @@ public struct ReadingReducer: Sendable {
             if let interaction { state.scrollAcknowledgement = interaction }
             state.lines.followsLive = atBottom
             if atBottom { state.lines.newBelow = 0 }
-        case let .namesConfirmed(names):
-            func confirm(_ entries: inout [ReadingTextUpdate.Entry.ID: ReadingState.Entry]) {
-                for (id, entry) in entries where id.speaker == .theirs {
-                    var entry = entry
-                    entry.name = names[id.localID]
-                    entry.nameConfirmed = entry.name != nil
-                    entries[id] = entry
-                }
-            }
-            confirm(&state.rendered.entries.sealed)
-            confirm(&state.rendered.entries.tail)
-            if state.rendered.prepared { rebuildLayout(&state) }
+        case let .namesChanged(names, confirmed):
+            guard names != state.names || confirmed != state.namesConfirmed else { break }
+            state.names = names
+            state.namesConfirmed = confirmed
+            let ids = confirmed ? Array(state.rendered.entries.sealed.keys) + Array(state.rendered.entries.tail.keys) : state.latestText
+            nameEntries(&state, ids: ids)
         case let .speakersFound(places):
+            state.speakerPlaces = places
             func place(_ entries: inout [ReadingTextUpdate.Entry.ID: ReadingState.Entry]) {
                 for (id, entry) in entries where id.speaker == .theirs {
                     var entry = entry
@@ -102,6 +99,26 @@ public struct ReadingReducer: Sendable {
             state.log = .lines(state.lines)
         }
         return (state, nil)
+    }
+
+    private func nameEntries(_ state: inout ReadingState, ids: [ReadingTextUpdate.Entry.ID]) {
+        for id in ids where id.speaker == .theirs {
+            guard var entry = state.rendered.entries[id] else { continue }
+            entry.name = state.names[id.localID]
+            entry.nameConfirmed = state.namesConfirmed && entry.name != nil
+            entry.remoteSpeaker = state.speakerPlaces[id.localID]
+            guard state.rendered.entries[id] != entry else { continue }
+            state.rendered.entries[id] = entry
+            guard let location = state.rendered.locations[id] else { continue }
+            if let index = location.lateEntry, case var .late(group) = state.lines.rows[location.row] {
+                group.entries[index] = entry
+                state.lines.rows[location.row] = .late(group)
+            } else {
+                state.lines.rows[location.row] = .entry(entry)
+            }
+            // A name can change after text is final; the panel must remap that prefix.
+            if location.row < state.lines.rows.sealed.count { state.lines.layout += 1 }
+        }
     }
 
     private func hasGaps(_ state: ReadingState) -> Bool {

@@ -72,7 +72,7 @@ private struct ReadingLayoutStorage: LayoutStorage {
     }
     func display(_ text: Text, anchor: Anchor, time: String) -> Entry {
         .init(id: anchor.id, time: time, speaker: text.id.speaker,
-              settled: text.settled, pending: text.pending, name: text.name)
+              settled: text.settled, pending: text.pending)
     }
     func text(_ key: Key) -> Text? { value.text[key] }
     func anchor(_ key: Key) -> Anchor? { value.anchors[key].map { .init(id: $0.id, start: $0.start) } }

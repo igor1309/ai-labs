@@ -22,7 +22,7 @@ struct ReadingReducerTests {
     @Test(arguments: [false, true])
     func layoutReceivesExactPayloadAndItsResultBecomesState(followsLive: Bool) {
         let id = ReadingTextUpdate.Entry.ID(speaker: .theirs, localID: 17)
-        let text = ReadingTextUpdate.Entry(id: id, start: 3.9, end: 8, settled: " exact ", pending: " next", writtenLater: true, name: "Anna")
+        let text = ReadingTextUpdate.Entry(id: id, start: 3.9, end: 8, settled: " exact ", pending: " next", writtenLater: true)
         var state = ReadingState(problems: [.init(.microphone, began: 2)], status: .listening,
                                  anchors: [id: .init(id: 5, start: 1)], nextDisplayID: 6, text: [id: text],
                                  lines: .init(rows: [.entry(.init(id: 5, time: "given", speaker: .theirs))],
@@ -42,6 +42,7 @@ struct ReadingReducerTests {
                                    rows: .init(sealed: [.entry(.init(id: 8, time: "stub", speaker: .mine))]), revision: 23)
         let spy = RenderingSpy(result: { $0 = output })
         assert(state, .textUpdated(update), delivers: nil, using: makeReducer(spy)) {
+            $0.latestText = [id]
             $0.anchors = output.anchors
             $0.nextDisplayID = output.nextDisplayID
             $0.text = output.text
@@ -61,6 +62,7 @@ struct ReadingReducerTests {
         let update = ReadingTextUpdate(status: .finished, entries: [])
         assert(initial, .textUpdated(update), delivers: nil, using: makeReducer(spy)) {
             $0.status = .finished
+            $0.latestText = []
             $0.rendered.prepared = true
             $0.lines.layout = 6
             $0.log = .lines($0.lines)

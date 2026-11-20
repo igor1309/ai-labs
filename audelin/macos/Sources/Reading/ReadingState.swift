@@ -215,6 +215,13 @@ public struct ReadingState: Equatable, Sendable {
         }
     }
 
+    /// The latest name set also applies to text that arrives later.
+    public var names: [Int: String] = [:]
+    public var namesConfirmed = false
+    /// Entries carried by the most recent text update, including any now sealed.
+    public var latestText: [ReadingTextUpdate.Entry.ID] = []
+    public var speakerPlaces: [Int: Int] = [:]
+
     public var rendered = Rendered()
 
     // Rendering indexes are derived bookkeeping, not panel state.
@@ -226,6 +233,8 @@ public struct ReadingState: Equatable, Sendable {
             && lhs.scrollAcknowledgement == rhs.scrollAcknowledgement
             && lhs.status == rhs.status && lhs.anchors == rhs.anchors && lhs.nextDisplayID == rhs.nextDisplayID
             && lhs.text == rhs.text && lhs.lines == rhs.lines && lhs.log == rhs.log
+            && lhs.names == rhs.names && lhs.namesConfirmed == rhs.namesConfirmed
+            && lhs.latestText == rhs.latestText && lhs.speakerPlaces == rhs.speakerPlaces
     }
 
     public init(
@@ -234,6 +243,8 @@ public struct ReadingState: Equatable, Sendable {
         problems: [ReadingProblem] = [], status: ReadingTextUpdate.Status = .off,
         anchors: SplitDictionary<ReadingTextUpdate.Entry.ID, Anchor> = [:], nextDisplayID: Int = 0,
         text: SplitDictionary<ReadingTextUpdate.Entry.ID, ReadingTextUpdate.Entry> = [:],
+        names: [Int: String] = [:], namesConfirmed: Bool = false,
+        latestText: [ReadingTextUpdate.Entry.ID] = [], speakerPlaces: [Int: Int] = [:],
         lines: Lines = .init(), rendered: Rendered = .init()
     ) {
 
@@ -246,6 +257,10 @@ public struct ReadingState: Equatable, Sendable {
         self.anchors = anchors
         self.nextDisplayID = nextDisplayID
         self.text = text
+        self.names = names
+        self.namesConfirmed = namesConfirmed
+        self.latestText = latestText
+        self.speakerPlaces = speakerPlaces
         self.lines = lines
         self.rendered = rendered
     }

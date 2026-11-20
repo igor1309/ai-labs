@@ -203,13 +203,12 @@ final class ReadingSubscription {
         let handler = CallNamesEffectHandler(sources: sources { await time.elapsed() })
         let names = ObservableModel(initialState: CallNamesState(), reduce: reducer.reduce, handleEffect: handler.handle)
         self.names = names
-        let shown = ShownText(reading: reading)
         let published = Observations { names.state }
         naming = Task {
             for await state in published {
                 guard !Task.isCancelled else { return }
                 recording.published(state)
-                shown.namesChanged(state.rowNames, confirmed: state.confirmed)
+                reading.send(.namesChanged(state.rowNames, confirmed: state.confirmed))
             }
         }
         let presenter = ReadingPresenter(sink: sink, receive: receive)
@@ -230,7 +229,7 @@ final class ReadingSubscription {
                 let remote = state.entries[mapped...].filter { $0.speaker != .mine }
                     .map { Row(id: $0.text.id, start: $0.text.start, end: $0.text.end) }
                 if !remote.isEmpty, let now = await time.elapsed() { names.event(.rows(remote, now: now)) }
-                shown.show(state, from: mapped)
+                reading.send(.textUpdated(readingText(state, from: mapped)))
                 mapped = state.finalCount
             }
             // The speakers come after the call's last text, so every row they name is shown.
@@ -293,38 +292,6 @@ final class ReadingSubscription {
         timer.cancel()
         observation.cancel()
         naming.cancel()
-    }
-}
-
-/// The text last shown and the names CallNames last published: new text shows the
-/// latest names, and new names show again the text last shown.
-@MainActor
-private final class ShownText {
-
-    private let reading: ReadingInputs
-    private var names: [Int: String] = [:]
-    private var confirmed = false
-    private var last: (state: CallState, from: Int)?
-
-    init(reading: ReadingInputs) { self.reading = reading }
-
-    func show(_ state: CallState, from: Int) {
-
-        last = (state, from)
-        reading.send(.textUpdated(readingText(state, from: from, names: names)))
-    }
-
-    /// Confirmed names replace every live one, so later text cannot bring a live name back.
-    func namesChanged(_ names: [Int: String], confirmed: Bool) {
-
-        guard names != self.names || confirmed != self.confirmed else { return }
-        self.names = names
-        self.confirmed = confirmed
-        if confirmed {
-            reading.send(.namesConfirmed(names))
-        } else if let last {
-            reading.send(.textUpdated(readingText(last.state, from: last.from, names: names)))
-        }
     }
 }
 

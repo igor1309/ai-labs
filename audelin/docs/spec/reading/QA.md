@@ -25,7 +25,8 @@ Evidence: `finishingKeepsWhatWasRead`.
 
 ## S-7 A finished call takes its confirmed names
 A call ended, then its confirmed names: the rows read those names. The
-composer's `AfterCallNamesWiringTests` covers the wiring today. Evidence: Missing in Reading.
+composer's `AfterCallNamesWiringTests` covers the wiring. Evidence:
+`confirmedNamesReachEveryRemoteEntryIncludingAfterRecordingEnds`.
 
 ## S-8 The next call starts clean
 Evidence: Missing.
@@ -36,7 +37,17 @@ Evidence: Missing.
 
 ## S-10 Confirmed names reach final entries
 A final remote entry and a later one, then a confirmed set: both read their
-names; a tentative set names only the later one. Evidence: Missing; `confirmedNamesReplaceTentativeOnesAndUnconfirmedRowsLoseTheirs` covers confirmation.
+names; a tentative set names only the entries of the latest text update,
+including entries sealed by that update. Evidence:
+`tentativeNamesReplaceOnlyTheLatestTextUpdate`,
+`confirmedNamesReachEveryRemoteEntryIncludingAfterRecordingEnds`,
+`confirmedEmptyReplacesAllLiveNames`,
+`namesBeforeTextAreStoredWithoutLayout`, `namesArrivingBeforeTextNameLaterEntries`,
+`laterTextKeepsSpeakerPlacesAndUsesTheReplacementNameSet`,
+`namesReachEntriesInsideWrittenLaterGroups`,
+`confirmationWithTheSameNamesRemovesTentativeMarks`, `identicalNamesChangeNothing`.
+The composer checks the layout and panel cache wiring in
+`renamedFinalRowsReachTheCachedPanelMapping`.
 
 ## S-11 Time runs from the first recording instant
 Recording on at an instant, ticks at later and earlier instants: the time
