@@ -30,7 +30,12 @@ public struct ReadingReducer: Sendable {
                 state.banners = []
                 prepareRows(&state)
                 if wasPrepared && removesGaps { rebuildLayout(&state) }
-            case let .on(elapsed): state.recording = .on(elapsed: recordingTime(elapsed))
+            case let .on(elapsed):
+                state.recording = .on(elapsed: recordingTime(elapsed))
+                if !state.captureBegan {
+                    state.captureBegan = true
+                    state.banners = banners(state)
+                }
             }
         case let .problemsChanged(problems):
             let previous = state.problems
@@ -38,14 +43,7 @@ public struct ReadingReducer: Sendable {
             for problem in problems where !state.problems.contains(where: { $0.kind == problem.kind }) {
                 state.problems.append(problem)
             }
-            if state.problems != previous {
-                state.banners = state.problems.enumerated().sorted {
-                    $0.element.began == $1.element.began ? $0.offset > $1.offset : $0.element.began > $1.element.began
-                }.map { problem in
-                    state.banners.first { $0.kind == problem.element.kind }
-                        ?? .init(kind: problem.element.kind, time: lineTime(problem.element.began))
-                }
-            }
+            if state.captureBegan, state.problems != previous { state.banners = banners(state) }
             let wasPrepared = state.rendered.prepared
             prepareRows(&state)
             if wasPrepared, gapProblems(previous) != gapProblems(state.problems) {
@@ -84,16 +82,30 @@ public struct ReadingReducer: Sendable {
             state.lines.followsLive = true
             state.lines.newBelow = 0
         }
+        state.log = state.captureBegan ? log(state) : .empty
+        return (state, nil)
+    }
+
+    private func log(_ state: ReadingState) -> ReadingState.Log {
         switch state.status {
         case .off:
             let kept = state.lines.rows.isEmpty && state.lines.holds.isEmpty ? nil : state.lines
-            state.log = state.recording == .off ? kept.map(ReadingState.Log.lines) ?? .empty : .liveTextOff(kept: kept)
+            return state.recording == .off ? kept.map(ReadingState.Log.lines) ?? .empty : .liveTextOff(kept: kept)
         case .gettingReady:
-            state.log = state.banners.isEmpty ? .preparing(holds: state.lines.holds) : .lines(state.lines)
+            return state.banners.isEmpty ? .preparing(holds: state.lines.holds) : .lines(state.lines)
         case .listening, .failed, .finished:
-            state.log = .lines(state.lines)
+            return .lines(state.lines)
         }
-        return (state, nil)
+    }
+
+    /// The problems' banners newest first, each keeping the time it first showed.
+    private func banners(_ state: ReadingState) -> [ReadingState.Banner] {
+        state.problems.enumerated().sorted {
+            $0.element.began == $1.element.began ? $0.offset > $1.offset : $0.element.began > $1.element.began
+        }.map { problem in
+            state.banners.first { $0.kind == problem.element.kind }
+                ?? .init(kind: problem.element.kind, time: lineTime(problem.element.began))
+        }
     }
 
     /// A remote entry's name, its confirmation and its speaker place, from the latest sets.

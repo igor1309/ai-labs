@@ -33,7 +33,7 @@ struct ReturningEntryTests {
         let quiet = CallSide(audio: quietAudio, text: ScriptedEngine(script: []), written: TextTrack(chunks: []), sampleRate: 1)
         let text = CallReader(microphone: speaking, call: quiet)
         let reading = Task {
-            var state = ReadingState()
+            var state = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 0))).0
             var shown: [ReadingState.Entry] = []
             for await update in text.updates {
                 state = ReadingReducer.reduce(state, .textUpdated(readingText(update))).0

@@ -157,6 +157,10 @@ public struct ReadingState: Equatable, Sendable {
 
     public var recording: Recording = .off
 
+    /// Recording has been on at least once for this call. Until then the log is empty and no
+    /// banner shows, though text, names and problems are kept; recording off does not clear it.
+    public var captureBegan = false
+
     public var log: Log = .empty
 
     // Anchors keep revisions in place while an entry remains present.
@@ -229,7 +233,8 @@ public struct ReadingState: Equatable, Sendable {
 
         // More text being final is a change, and finding that out need not walk the call.
         lhs.text.sealed.count == rhs.text.sealed.count
-            && lhs.banners == rhs.banners && lhs.recording == rhs.recording && lhs.problems == rhs.problems
+            && lhs.banners == rhs.banners && lhs.recording == rhs.recording && lhs.captureBegan == rhs.captureBegan
+            && lhs.problems == rhs.problems
             && lhs.scrollAcknowledgement == rhs.scrollAcknowledgement
             && lhs.status == rhs.status && lhs.anchors == rhs.anchors && lhs.nextDisplayID == rhs.nextDisplayID
             && lhs.text == rhs.text && lhs.lines == rhs.lines && lhs.log == rhs.log
@@ -239,7 +244,7 @@ public struct ReadingState: Equatable, Sendable {
 
     public init(
         scrollAcknowledgement: UUID? = nil,
-        banners: [Banner] = [], recording: Recording = .off, log: Log = .empty,
+        banners: [Banner] = [], recording: Recording = .off, captureBegan: Bool = false, log: Log = .empty,
         problems: [ReadingProblem] = [], status: ReadingTextUpdate.Status = .off,
         anchors: SplitDictionary<ReadingTextUpdate.Entry.ID, Anchor> = [:], nextDisplayID: Int = 0,
         text: SplitDictionary<ReadingTextUpdate.Entry.ID, ReadingTextUpdate.Entry> = [:],
@@ -251,6 +256,7 @@ public struct ReadingState: Equatable, Sendable {
         self.scrollAcknowledgement = scrollAcknowledgement
         self.banners = banners
         self.recording = recording
+        self.captureBegan = captureBegan
         self.log = log
         self.problems = problems
         self.status = status

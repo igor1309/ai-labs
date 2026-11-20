@@ -45,7 +45,7 @@ private let latest = UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2)
 
 private func makeReading(atBottom: Bool, acknowledgement: UUID) -> ReadingState {
 
-    var state = ReadingState(scrollAcknowledgement: acknowledgement)
+    var state = ReadingState(scrollAcknowledgement: acknowledgement, captureBegan: true)
     state.lines.followsLive = atBottom
     return state
 }

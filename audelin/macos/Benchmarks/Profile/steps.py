@@ -9,7 +9,7 @@ STEPS=[
  ('repeat checks',r'ReadingState\.==|ReadingState\.Lines\.==|Dictionary<>\.==|PanelState\.==|SessionState\.=='),
  ('reducer',r'ReadingReducer|makeReading'),
  ('state log',r'StateLog'),
- ('panel mapping',r'panelState|panelLines|PanelState|ReadingPresenter|AudelinPanel'),
+ ('panel mapping',r'panelState|panelLines|PanelState|AudelinPanel'),
  ('mapping to reading',r'readingText|ReadingTextUpdate|ReadingSubscription|ReadingState'),
  ('call text merge',r'CallText|CallSide'),
  ('side text',r'SideText|SideHearing'),

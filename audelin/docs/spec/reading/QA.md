@@ -33,7 +33,15 @@ Evidence: Missing.
 
 ## S-9 Text before capture waits
 Text, then capture beginning: the log is empty, then shows that text.
-Evidence: Missing.
+Text, names and problems before capture are kept with no banner; recording
+off before or after capture changes nothing about whether it began.
+Evidence: `textBeforeCaptureIsKeptWhileTheLogStaysEmpty`,
+`problemsBeforeCaptureAreKeptWithoutBanners`,
+`namesBeforeCaptureAreKeptWhileTheLogStaysEmpty`,
+`recordingOffBeforeCaptureKeepsTheLogEmpty`,
+`firstCaptureShowsTheKeptTextAndBanners`,
+`recordingOffAfterCaptureBeganKeepsTheLogOpen`,
+`captureBeginningAgainKeepsTheBanners`.
 
 ## S-10 Confirmed names reach final entries
 A final remote entry and a later one, then a confirmed set: both read their

@@ -169,7 +169,7 @@ private func makeNamedReading(sealed: Int, ended: Bool = false) -> ReadingState 
 }
 
 private func makeWaitingForText(confirmed: Bool) -> ReadingState {
-    ReadingState(log: .lines(.init()), status: .listening, names: [7: "Later"], namesConfirmed: confirmed, rendered: .init(prepared: true))
+    ReadingState(captureBegan: true, log: .lines(.init()), status: .listening, names: [7: "Later"], namesConfirmed: confirmed, rendered: .init(prepared: true))
 }
 
 private func remote(_ id: Int) -> ReadingTextUpdate.Entry {

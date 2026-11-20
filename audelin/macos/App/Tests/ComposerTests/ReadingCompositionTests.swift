@@ -38,7 +38,7 @@ struct ReadingCompositionTests {
         for atBottom in [false, true] {
             let event = try #require(readingEvent(.scrolled(atBottom: atBottom, interaction: interaction)))
             #expect(event == .scrolled(atBottom: atBottom, interaction: interaction))
-            var reading = ReadingReducer.reduce(.init(), .textUpdated(.init(status: .listening, entries: [
+            var reading = ReadingReducer.reduce(.init(captureBegan: true), .textUpdated(.init(status: .listening, entries: [
                 .init(id: .init(speaker: .mine, localID: 1), start: 0, end: 1, settled: "kept"),
             ]))).0
             reading = ReadingReducer.reduce(reading, event).0
@@ -78,7 +78,7 @@ struct ReadingCompositionTests {
     @Test(arguments: [false, true])
     func renamedFinalRowsReachTheCachedPanelMapping(empty: Bool) throws {
         let text = ReadingTextUpdate.Entry(id: .init(speaker: .theirs, localID: 1), start: 0, end: 1, settled: "final")
-        var reading = ReadingReducer.reduce(.init(), .textUpdated(.init(status: .finished, entries: [text], finalCount: 1))).0
+        var reading = ReadingReducer.reduce(.init(captureBegan: true), .textUpdated(.init(status: .finished, entries: [text], finalCount: 1))).0
         reading = ReadingReducer.reduce(reading, .namesChanged([1: "Live"], confirmed: false)).0
         var rows = MappedRows()
         guard case let .lines(before) = panelState(russianPanel, reading, rows: &rows).log else { throw ScriptFailure.failed }

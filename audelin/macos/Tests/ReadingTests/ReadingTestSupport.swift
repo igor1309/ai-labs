@@ -13,7 +13,7 @@ func makeListening(
 ) -> ReadingState {
 
     let lines = ReadingState.Lines(rows: .init(tail: rows))
-    var state = ReadingState(banners: banners, recording: .on(elapsed: "recording(20.0)"), log: .lines(lines),
+    var state = ReadingState(banners: banners, recording: .on(elapsed: "recording(20.0)"), captureBegan: true, log: .lines(lines),
                              problems: problems, status: .listening, nextDisplayID: entries.count,
                              lines: lines, rendered: .init(prepared: true))
     let ids = displayIDs ?? entries.map(\.id.localID)

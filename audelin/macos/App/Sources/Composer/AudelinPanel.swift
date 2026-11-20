@@ -177,10 +177,11 @@ final class ReadingSubscription {
 
     private let reading: ReadingInputs
     private let time: ReadingTime
-    private let presenter: ReadingPresenter
+    private let show: @MainActor @Sendable (ReadingState) async -> Void
     private let text: Task<Void, Never>
     private let timer: Task<Void, Never>
-    private var observation: Task<Void, Never>
+    /// Shows each new reading state; it ends with the last state it showed.
+    private var observation: Task<ReadingState?, Never>
     private let names: ObservableModel<CallNamesState, CallNamesEvent, CallNamesEffect>
     private let naming: Task<Void, Never>
     private var ended = false
@@ -211,16 +212,13 @@ final class ReadingSubscription {
                 reading.send(.namesChanged(state.rowNames, confirmed: state.confirmed))
             }
         }
-        let presenter = ReadingPresenter(sink: sink, receive: receive)
-        self.presenter = presenter
-        await receive(reading.state())
-        let states = Observations { reading.state() }
-        observation = Task {
-            for await state in states {
-                guard !Task.isCancelled else { return }
-                await presenter.show(state)
-            }
+        let show: @MainActor @Sendable (ReadingState) async -> Void = { state in
+            await receive(state)
+            StateLog(sink: sink).reading(state)
         }
+        self.show = show
+        await receive(reading.state())
+        observation = Self.observe(reading, after: nil, show: show)
         names.event(.start)
         self.text = Task {
             var mapped = 0
@@ -274,15 +272,27 @@ final class ReadingSubscription {
         // The model reduces the event later; wait until the state shows it.
         for await state in Observations({ self.reading.state() }) where state.recording == .off { break }
         observation.cancel()
-        await observation.value
-        await presenter.show(reading.state())
+        let shown = await observation.value
+        let last = reading.state()
+        if last != shown { await show(last) }
         // Names keep arriving after the call (the after-call pass confirms them); show each change.
-        let presenter = presenter, reading = reading, states = Observations { reading.state() }
-        observation = Task {
-            for await state in states {
-                guard !Task.isCancelled else { return }
-                await presenter.show(state)
+        observation = Self.observe(reading, after: last, show: show)
+    }
+
+    /// Shows each reading state that differs from the one shown before it, starting after `shown`.
+    private static func observe(
+        _ reading: ReadingInputs, after shown: ReadingState?, show: @escaping @MainActor @Sendable (ReadingState) async -> Void
+    ) -> Task<ReadingState?, Never> {
+
+        let states = Observations { reading.state() }
+        return Task {
+            var shown = shown
+            for await state in states where state != shown {
+                guard !Task.isCancelled else { break }
+                shown = state
+                await show(state)
             }
+            return shown
         }
     }
 
@@ -292,32 +302,6 @@ final class ReadingSubscription {
         timer.cancel()
         observation.cancel()
         naming.cancel()
-    }
-}
-
-/// Presents each distinct reading state once, in the order it was read.
-@MainActor
-private final class ReadingPresenter {
-
-    private let sink: any LogSink
-    private let receive: @Sendable (ReadingState) async -> Void
-    private var shown: ReadingState?
-    private var began = false
-
-    init(sink: any LogSink, receive: @escaping @Sendable (ReadingState) async -> Void) {
-
-        self.sink = sink
-        self.receive = receive
-    }
-
-    func show(_ state: ReadingState) async {
-
-        guard state != shown else { return }
-        shown = state
-        if case .on = state.recording { began = true }
-        // Text starts before capture; retain it without presenting a running log yet.
-        await receive(began ? state : .init())
-        StateLog(sink: sink).reading(state)
     }
 }
 

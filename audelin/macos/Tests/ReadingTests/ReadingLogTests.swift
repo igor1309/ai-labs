@@ -25,7 +25,7 @@ struct ReadingLogTests {
             for (status, stoppedLog, recordingLog) in cases {
                 for (recording, expected) in [(ReadingState.Recording.off, stoppedLog), (.on(elapsed: "given"), recordingLog)] {
                     let spy = RenderingSpy()
-                    let state = ReadingState(recording: recording, status: status, lines: lines)
+                    let state = ReadingState(recording: recording, captureBegan: true, status: status, lines: lines)
                     assert(state, .jumpToLive, delivers: nil, using: makeReducer(spy)) { $0.log = expected }
                     #expect(spy.calls.isEmpty)
                     #expect(spy.layoutCalls.isEmpty)
@@ -34,7 +34,7 @@ struct ReadingLogTests {
             for recording: ReadingState.Recording in [.off, .on(elapsed: "given")] {
                 let spy = RenderingSpy()
                 let state = ReadingState(banners: [.init(kind: .callSilent, time: "given")], recording: recording,
-                                         status: .gettingReady, lines: lines)
+                                         captureBegan: true, status: .gettingReady, lines: lines)
                 assert(state, .jumpToLive, delivers: nil, using: makeReducer(spy)) { $0.log = .lines(lines) }
                 #expect(spy.calls.isEmpty)
                 #expect(spy.layoutCalls.isEmpty)
@@ -65,7 +65,7 @@ struct ReadingLogTests {
     @Test func lettingGoRemovesOnlyTheMatchingHold() {
         let first = ReadingState.Held(entryID: 1, text: "first")
         let second = ReadingState.Held(entryID: 2, text: "second")
-        let state = ReadingState(log: .lines(.init(holds: [first, second])), lines: .init(holds: [first, second]))
+        let state = ReadingState(captureBegan: true, log: .lines(.init(holds: [first, second])), lines: .init(holds: [first, second]))
         let spy = RenderingSpy()
         assert(state, .letGo(first), delivers: nil, using: makeReducer(spy)) {
             $0.lines.holds = [second]

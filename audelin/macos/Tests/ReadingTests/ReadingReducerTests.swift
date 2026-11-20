@@ -13,6 +13,7 @@ struct ReadingReducerTests {
         let spy = RenderingSpy()
         assert(.init(), .recordingChanged(.on(elapsed: 3_661.9)), delivers: nil, using: makeReducer(spy)) {
             $0.recording = .on(elapsed: "recording(3661.9)")
+            $0.captureBegan = true
             $0.log = .liveTextOff(kept: nil)
         }
         #expect(spy.calls == [.recording(3_661.9)])
@@ -23,7 +24,7 @@ struct ReadingReducerTests {
     func layoutReceivesExactPayloadAndItsResultBecomesState(followsLive: Bool) {
         let id = ReadingTextUpdate.Entry.ID(speaker: .theirs, localID: 17)
         let text = ReadingTextUpdate.Entry(id: id, start: 3.9, end: 8, settled: " exact ", pending: " next", writtenLater: true)
-        var state = ReadingState(problems: [.init(.microphone, began: 2)], status: .listening,
+        var state = ReadingState(captureBegan: true, problems: [.init(.microphone, began: 2)], status: .listening,
                                  anchors: [id: .init(id: 5, start: 1)], nextDisplayID: 6, text: [id: text],
                                  lines: .init(rows: [.entry(.init(id: 5, time: "given", speaker: .theirs))],
                                               layout: 4, holds: [.init(entryID: 5, text: "held")], newBelow: 7,
@@ -57,7 +58,7 @@ struct ReadingReducerTests {
     }
 
     @Test func unpreparedLayoutIsPreparedBeforeTextIsSent() {
-        let initial = ReadingState()
+        let initial = ReadingState(captureBegan: true)
         let spy = RenderingSpy(result: { $0.rendered.prepared = true; $0.revision = 6 })
         let update = ReadingTextUpdate(status: .finished, entries: [])
         assert(initial, .textUpdated(update), delivers: nil, using: makeReducer(spy)) {
@@ -76,7 +77,7 @@ struct ReadingReducerTests {
     @Test(arguments: [ReadingTextUpdate.Status.off, .gettingReady, .listening, .failed("unavailable"), .finished])
     func textStatusChoosesTheLog(status: ReadingTextUpdate.Status) {
         let spy = RenderingSpy()
-        var state = ReadingState(status: .listening, rendered: .init(prepared: true))
+        var state = ReadingState(captureBegan: true, status: .listening, rendered: .init(prepared: true))
         state.lines.holds = [.init(entryID: 4, text: " held ")]
         state.log = .lines(state.lines)
         assert(state, .textUpdated(.init(status: status, entries: [])), delivers: nil, using: makeReducer(spy)) {
@@ -94,11 +95,11 @@ struct ReadingReducerTests {
     @Test func holdsPreserveExactTextAndIgnoreDuplicates() {
         let spy = RenderingSpy()
         let held = ReadingState.Held(entryID: 9, text: " exact \n text ")
-        assert(.init(), .hold(held), delivers: nil, using: makeReducer(spy)) {
+        assert(.init(captureBegan: true), .hold(held), delivers: nil, using: makeReducer(spy)) {
             $0.lines.holds = [held]
             $0.log = .lines($0.lines)
         }
-        var state = ReadingState(lines: .init(holds: [held]))
+        var state = ReadingState(captureBegan: true, lines: .init(holds: [held]))
         state.log = .lines(state.lines)
         assert(state, .hold(held), delivers: nil, using: makeReducer(spy))
         assert(state, .letGo(held), delivers: nil, using: makeReducer(spy)) {
@@ -111,7 +112,7 @@ struct ReadingReducerTests {
 
     @Test func scrollingAndJumpingControlFollowingAndNewCount() {
         let spy = RenderingSpy()
-        var state = ReadingState(status: .listening, lines: .init(newBelow: 8, followsLive: false))
+        var state = ReadingState(captureBegan: true, status: .listening, lines: .init(newBelow: 8, followsLive: false))
         state.log = .lines(state.lines)
         for event: ReadingEvent in [.scrolled(atBottom: true), .jumpToLive] {
             assert(state, event, delivers: nil, using: makeReducer(spy)) {
