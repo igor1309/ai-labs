@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-20
+
+- LAB-1719: A call whose start finds call audio unavailable is no longer lost: Audelin tries again every five seconds while the call is on and starts recording as soon as call audio is heard. Every failed call-audio check is logged with its reason.
+
 ## 2026-11-19
 
 - LAB-1693: Transcript files tell the version, build and models that heard and finished each call; merged transcripts keep every original call’s origin.
