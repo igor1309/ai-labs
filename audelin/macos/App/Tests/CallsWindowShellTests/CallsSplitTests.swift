@@ -106,10 +106,13 @@ struct CallsSplitTests {
         let rendered = renderNotes("# Итоги\n\nтекст", style)
 
         #expect(rendered.string == "Итоги\nтекст")
-        #expect(rendered.attribute(.font, at: 0, effectiveRange: nil) as? NSFont == heading)
+        let headingFont = try #require(rendered.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)
+        #expect(headingFont.isEqual(heading))
         let bodyAt = (rendered.string as NSString).range(of: "текст").location
-        #expect(rendered.attribute(.font, at: bodyAt, effectiveRange: nil) as? NSFont == body)
-        #expect(rendered.attribute(.foregroundColor, at: bodyAt, effectiveRange: nil) as? NSColor == .red)
+        let bodyFont = try #require(rendered.attribute(.font, at: bodyAt, effectiveRange: nil) as? NSFont)
+        #expect(bodyFont.isEqual(body))
+        let bodyColor = try #require(rendered.attribute(.foregroundColor, at: bodyAt, effectiveRange: nil) as? NSColor)
+        #expect(bodyColor.isEqual(NSColor.red))
     }
 
     @Test func copyPutsTheNotesMarkdownOnThePasteboard() {

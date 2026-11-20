@@ -118,7 +118,7 @@ struct NotesMenuCompositionTests {
 @MainActor private final class Copies { var values: [String] = [] }
 @MainActor private func makeCalls(preferences: PreferencesStore? = nil, busy: Bool = false, cancelSummary: @escaping (String) async -> Void = { _ in }, copy: @escaping (String) -> Void = { _ in }) -> AudelinCalls {
     let listing = RecordingsState(calls: ["1970.01.01-1000", "1970.01.01-0900"].map { .init(id: $0, title: "Call", start: Date(timeIntervalSince1970: 36_000), duration: 60) })
-    return AudelinCalls(inputs: RecordingsInputs(state: { listing }, send: { _ in }), timeZone: .gmt,
+    return AudelinCalls(inputs: RecordingsInputs(state: { listing }, send: { _ in }, states: { AsyncStream { $0.yield(listing); $0.finish() } }), timeZone: .gmt,
                         now: { Date(timeIntervalSince1970: 40_000) }, recordingState: { .init() },
                         location: { _ in URL(fileURLWithPath: "/unused") }, openFolder: { _ in false }, present: {},
                         summaryBadges: { busy ? ["1970.01.01-1000": .pending, "1970.01.01-0900": .pending] : [:] },

@@ -19,9 +19,12 @@ import Recordings
 struct RecordingsInputs {
     let state: () -> RecordingsState
     let send: (RecordingsEvent) -> Void
+    /// The current state followed by every changed state, in reduction order.
+    let states: () -> AsyncStream<RecordingsState>
 
-    init(state: @escaping () -> RecordingsState, send: @escaping (RecordingsEvent) -> Void) {
-        self.state = state; self.send = send
+    init(state: @escaping () -> RecordingsState, send: @escaping (RecordingsEvent) -> Void,
+         states: @escaping () -> AsyncStream<RecordingsState>) {
+        self.state = state; self.send = send; self.states = states
     }
 }
 
@@ -148,7 +151,8 @@ public final class AudelinCalls {
         notesConnections = [
             Task { @MainActor [weak self] in
                 var seen: TranscriptSelection?
-                for await selection in Observations({ TranscriptSelection(inputs.state()) }) {
+                for await state in inputs.states() {
+                    let selection = TranscriptSelection(state)
                     guard let self, let id = selection.id, selection != seen else { continue }
                     seen = selection
                     _ = await syncRows()

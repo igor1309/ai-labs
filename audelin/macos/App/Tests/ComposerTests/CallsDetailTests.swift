@@ -256,7 +256,7 @@ private struct Unreadable: LocalizedError { var errorDescription: String? { "Ð½Ð
             .init(id: b, title: "B", start: Date(timeIntervalSince1970: 32_400), duration: 120),
         ])
         calls = AudelinCalls(
-            inputs: RecordingsInputs(state: { listing }, send: { [unowned self] in sent.append($0) }),
+            inputs: RecordingsInputs(state: { listing }, send: { [unowned self] in sent.append($0) }, states: { AsyncStream { $0.yield(listing); $0.finish() } }),
             timeZone: .gmt, now: { Date(timeIntervalSince1970: 40_000) }, recordingState: { .init() },
             location: { [unowned self] in folder($0) }, openFolder: { [unowned self] in opened.append($0); return true },
             present: {}, summaryStatuses: { [summaries] in summaries.statuses }, summaryBadges: { [summaries] in summaries.badges },
