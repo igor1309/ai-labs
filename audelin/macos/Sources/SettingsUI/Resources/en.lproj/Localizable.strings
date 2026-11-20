@@ -109,3 +109,12 @@
 "general.languageHintSystem" = "Now English, the macOS language. If macOS uses neither Russian nor English, Audelin is in English.";
 "general.languageHintFallback" = "Now English: Audelin has no %@, the macOS language.";
 "general.languageHintForced" = "macOS uses %@.";
+"transcript.notIdle" = "Audelin is busy. Try again when it is idle.";
+"transcript.actionUnderWay" = "Another call action is under way.";
+"transcript.noPrevious" = "There is no previous transcript.";
+"transcript.callNotFound" = "The call could not be found.";
+"transcript.recordingStarted" = "A recording started.";
+"transcript.running" = "A transcript is being made again for “%@”.";
+"transcript.missingTracks" = "Missing audio: %@.";
+"transcript.callTrack" = "%@: call track";
+"transcript.microphoneTrack" = "%@: microphone track";

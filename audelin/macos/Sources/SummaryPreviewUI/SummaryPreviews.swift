@@ -99,8 +99,16 @@ public enum SummaryPreviews {
         failure.failure = english ? "Request limit exceeded" : "Превышен лимит запросов"
         var off = current
         off.menu?.keeping = false
+        var previousMarked = previous
+        previousMarked.transcriptMark = text(.earlierTranscript)
+        var currentMarked = current
+        currentMarked.transcriptMark = text(.earlierTranscript)
+        var singleMarked = single
+        singleMarked.transcriptMark = text(.earlierTranscript)
         return [("templates-current", current), ("templates-previous", previous), ("templates-single", single),
-                ("templates-empty", empty), ("templates-remaking", remaking), ("templates-failed", failure), ("templates-keep-off", off)]
+                ("templates-empty", empty), ("templates-remaking", remaking), ("templates-failed", failure), ("templates-keep-off", off),
+                ("templates-previous-marked", previousMarked), ("templates-current-marked", currentMarked),
+                ("templates-single-marked", singleMarked)]
     }
 
     public static func brokenTemplateStates(in text: SummaryPreviewText = .init(language: .russian)) -> [(name: String, state: SummaryPreviewState?)] {

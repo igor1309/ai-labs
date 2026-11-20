@@ -9,7 +9,7 @@ public protocol SummariesFiles: Sendable {
     func retry(_ record: SummaryFiles.Record, job: String) async throws -> SummaryFiles.Record
     func start(_ record: SummaryFiles.Record) async throws -> Bool
     func progress(_ record: SummaryFiles.Record) async throws
-    func publish(_ record: SummaryFiles.Record, notes: String, template: Attribution, keeping: Keeping) async throws
+    func publish(_ record: SummaryFiles.Record, notes: String, template: Attribution, keeping: Keeping, transcriptIdentity: String?) async throws
     func discard(_ record: SummaryFiles.Record) async throws
     func release(job: String, call: String, input: String) async
 }
@@ -49,7 +49,7 @@ public struct SummariesFilesPort: SummariesClaims, SummariesRecords, SummariesSt
     }
     public func publish(_ job: Job, notes: String, warning: Bool, keeping: SummariesKeeping) async throws {
         try await files.publish(try Self.record(job, phase: "running", warning: warning), notes: notes, template: job.template.map { .init(id: $0.id, name: $0.name) } ?? .default,
-                                keeping: keeping == .rotation ? .rotation : .replacement)
+                                keeping: keeping == .rotation ? .rotation : .replacement, transcriptIdentity: job.transcriptIdentity)
     }
     /// Saves the job's last stage; only a succeeded or failed job is saved.
     public func save(_ job: Job, stage: SummariesState.Call.Stage, warning: Bool) async throws {
@@ -69,7 +69,7 @@ public struct SummariesFilesPort: SummariesClaims, SummariesRecords, SummariesSt
         let snapshot = try JSONDecoder().decode(Snapshot.self, from: record.snapshot)
         let job = Job(id: record.job, call: record.call, input: record.input, entries: snapshot.entries.map(\.value),
                       speakers: snapshot.speakers, primary: snapshot.primary.value, fallback: snapshot.fallback?.value, template: snapshot.template?.value,
-                      keepPrevious: snapshot.keepPrevious ?? true, requested: snapshot.requested ?? false)
+                      keepPrevious: snapshot.keepPrevious ?? true, requested: snapshot.requested ?? false, transcriptIdentity: snapshot.transcriptIdentity)
         let stages: [String: SummariesState.Call.Stage] = ["pending": .pending, "running": .observed, "interrupted": .interrupted,
                                                            "succeeded": .succeeded, "failed": .failed]
         guard let stage = stages[record.phase] else { throw CocoaError(.fileReadCorruptFile) }

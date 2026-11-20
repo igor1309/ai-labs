@@ -72,11 +72,13 @@ public struct SummariesState<Template: SummariesTemplate>: Equatable, Sendable {
 public struct SummariesSubmission: Equatable, Sendable {
     public var call: String
     public var entries: [Job.Entry]
+    public var transcriptIdentity: String?
     public var finalWrite: Bool
     public var usable: Bool
     /// The user asked for these notes, so they are made even when notes are off.
     public var requested: Bool
-    public init(call: String, entries: [Job.Entry], finalWrite: Bool, usable: Bool, requested: Bool = false) {
+    public init(call: String, entries: [Job.Entry], finalWrite: Bool, usable: Bool, requested: Bool = false, transcriptIdentity: String? = nil) {
+        self.transcriptIdentity = transcriptIdentity
         self.call = call; self.entries = entries; self.finalWrite = finalWrite; self.usable = usable; self.requested = requested
     }
 }
@@ -114,7 +116,7 @@ public enum SummariesEvent<Template: SummariesTemplate>: Equatable, Sendable {
     case loadFailed(String)
     /// A recording's finalized transcript, offered for automatic notes, and whether notes are on; while they are
     /// off the call is dropped at once.
-    case finalized(String, entries: [Job.Entry], finalWrite: Bool, usable: Bool, notesOn: Bool)
+    case finalized(String, entries: [Job.Entry], finalWrite: Bool, usable: Bool, notesOn: Bool, transcriptIdentity: String? = nil)
     /// The stored transcript a request read.
     case submit(SummariesSubmission)
     /// The submission's job, and whether notes are on; the reducer drops an automatic call while they are off.
@@ -309,15 +311,15 @@ public struct SummariesReducer<Template: SummariesTemplate>: Sendable {
         case let .loadFailed(id) where state.calls[id]?.stage == .recovering:
             call = id
             next.calls[id] = .init(stage: .failed)
-        case let .finalized(id, entries, finalWrite, usable, notesOn: true) where state.lifecycle == .accepting && state.calls[id]?.stage == .recovering
+        case let .finalized(id, entries, finalWrite, usable, notesOn: true, transcriptIdentity: identity) where state.lifecycle == .accepting && state.calls[id]?.stage == .recovering
                                                               && state.calls[id]?.submission == nil:
             // Recovery decides whether the saved input still belongs to this transcript.
-            next.calls[id]?.submission = .init(call: id, entries: entries, finalWrite: finalWrite, usable: usable)
+            next.calls[id]?.submission = .init(call: id, entries: entries, finalWrite: finalWrite, usable: usable, transcriptIdentity: identity)
             return (next, nil)
-        case let .finalized(id, entries, finalWrite, usable, notesOn: true) where state.lifecycle == .accepting && state.calls[id]?.stage == .discarding
+        case let .finalized(id, entries, finalWrite, usable, notesOn: true, transcriptIdentity: identity) where state.lifecycle == .accepting && state.calls[id]?.stage == .discarding
                                                               && state.calls[id]?.submission == nil:
             // A merged call's transcript waits for its parts' job to be discarded.
-            next.calls[id]?.submission = .init(call: id, entries: entries, finalWrite: finalWrite, usable: usable)
+            next.calls[id]?.submission = .init(call: id, entries: entries, finalWrite: finalWrite, usable: usable, transcriptIdentity: identity)
             return (next, nil)
         case let .waiting(id, notesOn: true) where state.lifecycle == .accepting && state.calls[id] == nil:
             call = id
@@ -338,13 +340,13 @@ public struct SummariesReducer<Template: SummariesTemplate>: Sendable {
             next.calls[call] = .init(stage: .preparing, requestedTemplate: state.calls[call]?.requestedTemplate ?? "Default", requested: submission.requested,
                                      replacement: state.calls[call]?.replacement, submission: submission)
             effect = .prepare(submission)
-        case let .finalized(id, _, _, _, notesOn: false) where state.calls[id]?.stage == .waiting:
+        case let .finalized(id, _, _, _, notesOn: false, transcriptIdentity: _) where state.calls[id]?.stage == .waiting:
             next.calls[id] = nil
             return (next, nil)
-        case let .finalized(id, entries, finalWrite, usable, notesOn: true) where state.lifecycle == .accepting
+        case let .finalized(id, entries, finalWrite, usable, notesOn: true, transcriptIdentity: identity) where state.lifecycle == .accepting
                                                               && (state.calls[id] == nil || state.calls[id]?.stage == .waiting):
             call = id
-            let submission = SummariesSubmission(call: id, entries: entries, finalWrite: finalWrite, usable: usable)
+            let submission = SummariesSubmission(call: id, entries: entries, finalWrite: finalWrite, usable: usable, transcriptIdentity: identity)
             next.calls[id] = .init(stage: .preparing, submission: submission)
             effect = .prepare(submission)
         case let .prepared(id, job, notesOn) where state.calls[id]?.stage == .preparing:
@@ -378,7 +380,7 @@ public struct SummariesReducer<Template: SummariesTemplate>: Sendable {
             if !owned, [.pending, .failed, .interrupted].contains(saved.stage), let prepared = state.calls[id]?.job,
                prepared.input != saved.job.input {
                 next.calls[id]?.stage = .discarding; next.calls[id]?.replacement = .automatic
-                next.calls[id]?.submission = .init(call: id, entries: prepared.entries, finalWrite: true, usable: true, requested: prepared.requested)
+                next.calls[id]?.submission = .init(call: id, entries: prepared.entries, finalWrite: true, usable: true, requested: prepared.requested, transcriptIdentity: prepared.transcriptIdentity)
                 effect = .discard(saved.job)
             } else if stage == .pending && state.dispatch { next.calls[id]?.stage = .starting; effect = .start(saved.job) }
         case let .started(id, owned) where state.calls[id]?.stage == .starting:

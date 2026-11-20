@@ -140,6 +140,7 @@ from instances.
 | Below everything, y ≥ 24476 | Calls window: list beside the selected call's summary, its states in Light and Dark, the boards "Calls window — shared components" and "Calls window — components" ([brief](calls-list.md)) |
 | Below the merge outcomes, y ≥ 30560 | Notes templates: the board "Notes templates — components", then the regenerate menu, broken templates, Previous / Current and making notes again, Light and Dark ([brief](notes-templates.md)) |
 | Below the notes templates, y 33400–34820, x 0–4640 | Call tags: tags filter, #tag search, editing tags, no tags, Light and Dark ([brief](call-tags.md)) |
+| Below the call tags, y ≥ 35000 | Making a transcript again: the board "Transcript again — components", the menu, the run's waits in its row, failure, stop, the notes mark, Light and Dark ([brief](transcript-again.md)) |
 | Right of Screen 7, x = 2160 | Screen 7b — Installed update: a badge and restart item, not built; Audelin relaunches into an installed update by itself once idle ([brief](app-update.md)) |
 
 Current screens:

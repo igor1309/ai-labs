@@ -19,6 +19,10 @@ struct TranscriptCleanup: Sendable {
     let sink: any LogSink
 
     func run(_ raw: CallState) async -> [TranscriptSegment]? {
+        await run(microphone: words(in: raw, speaker: .mine), call: words(in: raw, speaker: .theirs))
+    }
+
+    func run(microphone: [Word], call: [Word]) async -> [TranscriptSegment]? {
         let replacement = CleanupReplacement()
         let cleanup = BleedCleanup(
             gate: BleedGate(), cleaning: cleaning,
@@ -26,7 +30,7 @@ struct TranscriptCleanup: Sendable {
         )
         let outcome = await LoggingCleanup(base: cleanup, sink: sink).run(
             recording: recording,
-            microphone: words(in: raw, speaker: .mine), call: words(in: raw, speaker: .theirs), duration: duration()
+            microphone: microphone, call: call, duration: duration()
         )
         if case .replaced = outcome {
             return await replacement.heard

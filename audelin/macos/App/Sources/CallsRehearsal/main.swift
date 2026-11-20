@@ -1,4 +1,5 @@
 import AppKit
+import CallDiarizer
 import CallsRehearsalSupport
 import CallsWindowShell
 import Composer
@@ -37,11 +38,35 @@ final class CallsRehearsalDelegate: NSObject, NSApplicationDelegate {
         var boundary = rehearsalBoundary(
             capturePersistence: .recorded,
             microphone: { throw RehearsalInput.unavailable }, call: { _ in throw RehearsalInput.unavailable },
-            mine: UnusedRecognizer(), theirs: UnusedRecognizer(),
+            mine: FixtureRecognizer(enabled: options.seed == .transcriptAgain, text: "Новый текст микрофона:"),
+            theirs: FixtureRecognizer(enabled: options.seed == .transcriptAgain, text: "Новый текст звонка:"),
             now: { Date() }, timeZone: { .current }, sleep: { try await Task.sleep(for: $0) },
             intervals: rehearsalIntervals(),
             // The calls live tests check this release as the merger of what they merge.
             transcriptBuild: .init(version: "rehearsal", build: "1", mine: "unused", theirs: "unused"))
+        let control = TranscriptFileControl(folder: options.controlFolder)
+        boundary.recognizers = FixtureRecognizers(enabled: options.seed == .transcriptAgain ||
+            FileManager.default.fileExists(atPath: options.controlFolder.appendingPathComponent("transcript-fixture").path), control: control)
+        boundary.diarizer = FixtureDiarizer(control: control)
+        let serial = boundary.callsOperation
+        boundary.callsOperation = .init(take: { kind in
+            try await serial.take(kind)
+            do {
+                switch kind {
+                case .publishTranscript: try await control.wait("publishing")
+                case .restorePreviousTranscript: try await control.wait("restoring")
+                case .access: break
+                }
+            } catch { serial.give(); throw error }
+        }, give: serial.give)
+        let system = boundary.callsDisk
+        boundary.callsDisk.rename = { source, target in
+            try system.rename(source, target)
+            if source.lastPathComponent == "transcript.md",
+               target.deletingLastPathComponent().deletingLastPathComponent().lastPathComponent == "transcripts" {
+                try control.movedCurrent()
+            }
+        }
         boundary.trash = options.trash
         let model = await compose(
             boundary: boundary, preferencesURL: options.preferencesURL,
@@ -89,9 +114,48 @@ final class CallsRehearsalDelegate: NSObject, NSApplicationDelegate {
 }
 
 private enum RehearsalInput: Error { case unavailable }
-private struct UnusedRecognizer: SpeechRecognizer {
-    func hear(_ chunk: SpeechAudio) throws -> SpeechHearing { throw RehearsalInput.unavailable }
-    func finish() throws -> SpeechHearing { throw RehearsalInput.unavailable }
+/// Answers with its text and what it heard of the track: how many seconds and the loudest sample,
+/// so a transcript shows which track reached it and whether all of it did. Nothing heard, nothing said.
+private actor FixtureRecognizer: SpeechRecognizer {
+    let enabled: Bool
+    let text: String
+    let control: TranscriptFileControl?
+    private var seconds: Double = 0
+    private var peak: Float = 0
+    init(enabled: Bool, text: String, control: TranscriptFileControl? = nil) { self.enabled = enabled; self.text = text; self.control = control }
+    func hear(_ chunk: SpeechAudio) async throws -> SpeechHearing {
+        guard enabled else { throw RehearsalInput.unavailable }
+        if seconds > 0 { try await control?.wait("hearing") }
+        seconds += Double(chunk.samples.count) / chunk.sampleRate
+        peak = chunk.samples.reduce(peak) { max($0, abs($1)) }
+        return .init(words: [])
+    }
+    func finish() throws -> SpeechHearing {
+        guard enabled else { throw RehearsalInput.unavailable }
+        // One instance hears every track of its side, one run after another.
+        defer { seconds = 0; peak = 0 }
+        guard seconds > 0 else { return .init(words: []) }
+        return .init(words: [.init("\(text) \(Int(seconds.rounded())) с, \(Int((peak * 100).rounded())) %.", start: 1, end: 2)], finalThrough: 2)
+    }
+}
+private struct FixtureRecognizers: RecognizerSource {
+    let enabled: Bool
+    let control: TranscriptFileControl
+    func recognizer(for side: ComposerSide) async throws -> any SpeechRecognizer {
+        try await control.wait("preparing")
+        return FixtureRecognizer(enabled: enabled, text: side == .microphone ? "Новый текст микрофона:" : "Новый текст звонка:", control: control)
+    }
+    func missingModels() -> [String] { [] }
+    func startLoading() -> Task<Void, any Error> { Task {} }
+}
+
+private struct FixtureDiarizer: TranscriptDiarizer {
+    let control: TranscriptFileControl
+    func prepare() async {}
+    func diarize(_ track: URL, speakers: Int?) async throws -> CallDiarizer.Diarization {
+        try await control.wait("finishing")
+        return .init(model: .nemotron, turns: [])
+    }
 }
 
 let options: CallsRehearsalOptions

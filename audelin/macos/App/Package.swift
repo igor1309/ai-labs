@@ -69,6 +69,7 @@ let package = Package(
             name: "CallsRehearsal",
             dependencies: [
                 "Composer", "SessionRehearsal", "CallsWindowShell", "CallsRehearsalSupport",
+                .product(name: "CallDiarizer", package: "macos"),
             ]
         ),
         .target(
@@ -136,6 +137,7 @@ let package = Package(
                 .product(name: "TrackFile", package: "macos"),
                 .product(name: "TranscriptFormat", package: "macos"),
                 .product(name: "TranscriptJoin", package: "macos"),
+                .product(name: "ReRecognition", package: "macos"),
                 .product(name: "TranscriptFile", package: "macos"),
                 .product(name: "TranscriptWriting", package: "macos"),
                 .product(name: "TranscriptFinalization", package: "macos"),

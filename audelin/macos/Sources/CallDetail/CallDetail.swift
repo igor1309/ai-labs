@@ -82,6 +82,7 @@ public enum CallDetailEvent: Equatable, Sendable {
     case selectionChanged(CallDetailState.Call?)
     case summaryChanged(id: String, summary: CallDetailState.Call.Summary)
     case notesChanged(id: String)
+    case transcriptChanged(id: String)
     case readFinished(id: String, revision: Int, result: CallDetailState.Notes)
     /// The user asked to read the selected call in its own window.
     case openRequested(id: String)
@@ -94,8 +95,10 @@ public enum CallDetailEffect: Equatable, Sendable {
 public struct CallDetailReducer: Sendable {
     private let progress: @Sendable (String) -> String
     private let failure: @Sendable (CallDetailFailure) -> String
-    public init(progress: @escaping @Sendable (String) -> String, failure: @escaping @Sendable (CallDetailFailure) -> String) {
-        self.progress = progress; self.failure = failure
+    private let transcriptMark: @Sendable (CallNotesVersion) -> String
+    public init(progress: @escaping @Sendable (String) -> String, failure: @escaping @Sendable (CallDetailFailure) -> String,
+                transcriptMark: @escaping @Sendable (CallNotesVersion) -> String) {
+        self.progress = progress; self.failure = failure; self.transcriptMark = transcriptMark
     }
 
     public func reduce(_ state: CallDetailState, _ event: CallDetailEvent) -> (CallDetailState, CallDetailEffect?) {
@@ -111,6 +114,7 @@ public struct CallDetailReducer: Sendable {
             detail.version = version
             detail.content = .notes(notes.text, made: notes.made)
             detail.template = notes.templateName
+            detail.transcriptMark = version == .current ? detail.currentTranscriptMark : detail.previousTranscriptMark
             state.detail = detail
             state.menuFacts?.template = notes.templateID
             return (state, nil)
@@ -132,7 +136,7 @@ public struct CallDetailReducer: Sendable {
         case let .summaryChanged(id, summary):
             guard state.selected?.id == id, state.selected?.summary != summary else { return (state, nil) }
             state.selected?.summary = summary
-        case let .notesChanged(id):
+        case let .notesChanged(id), let .transcriptChanged(id):
             guard state.selected?.id == id else { return (state, nil) }
         case let .readFinished(id, revision, result):
             guard let call = state.selected, call.id == id, revision == state.revision,
@@ -142,7 +146,9 @@ public struct CallDetailReducer: Sendable {
             let content: CallsDetail.Content
             switch result {
             case let .read(pair):
-                let previous = !state.showCurrentAfterRead && state.detail?.id == id && state.detail?.pair == pair && state.detail?.version == .previous
+                let previous = !state.showCurrentAfterRead && state.detail?.id == id
+                    && state.detail?.pair?.previous == pair.previous && state.detail?.pair?.current == pair.current
+                    && state.detail?.version == .previous
                 version = previous ? .previous : .current
                 let notes = previous ? pair.previous ?? pair.current : pair.current
                 content = .notes(notes.text, made: notes.made)
@@ -165,6 +171,15 @@ public struct CallDetailReducer: Sendable {
                 state.detail?.template = shown.templateName
                 state.detail?.progress = call.summary.badge == .pending ? progress(call.summary.template ?? pair.current.templateName) : nil
                 state.detail?.failure = call.summary.badge == .failed ? call.summary.failure.map(failure) ?? call.summary.status : nil
+                for (version, notes) in [(CallNotesVersion.previous, pair.previous), (.current, pair.current)] {
+                    guard let notes else { continue }
+                    let marked = notes.transcriptIdentity.map { $0 != pair.currentTranscriptIdentity } ?? pair.hasPreviousTranscript
+                    let mark = marked ? transcriptMark(version) : nil
+                    if version == .previous { state.detail?.previousTranscriptMark = mark }
+                    else { state.detail?.currentTranscriptMark = mark }
+                }
+                let shownMark = previous ? state.detail?.previousTranscriptMark : state.detail?.currentTranscriptMark
+                state.detail?.transcriptMark = shownMark
                 state.menuFacts = .init(call: id, hasNotes: true, template: shown.templateID, busy: call.summary.badge == .pending)
             } else {
                 state.menuFacts = .init(call: id, hasNotes: false, template: nil, busy: call.summary.badge == .pending)

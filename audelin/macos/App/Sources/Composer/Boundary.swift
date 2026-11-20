@@ -1,6 +1,7 @@
 import Foundation
 import BleedCleanup
 import Calls
+import CallsStorage
 
 /// Audio at the composition's edge, before recording or recognition owns it.
 public struct CaptureBuffer: Equatable, Sendable {
@@ -137,6 +138,7 @@ public struct ComposerBoundary: Sendable {
     public var time: any ComposerClock
     public var log: any LogSink
     public var intervals: ProfileIntervals
+    public var diarizer: any TranscriptDiarizer
     public var transcripts: any TranscriptStorage
     public var recordings: any RecordingStorage
     /// macOS's preferred languages, most preferred first, as BCP 47 identifiers.
@@ -144,6 +146,9 @@ public struct ComposerBoundary: Sendable {
     /// Opens the browser extension's channel for one recording, or gives nil
     /// when it cannot; speakers then stay unnamed unless Zoom names them.
     public var browser: @Sendable () -> BrowserChannel?
+    /// Disk operations and the shared admission boundary for kept calls.
+    public var callsDisk: CallsDisk = .system
+    public var callsOperation: CallsStorageGuard = .serial()
     /// Moves a deleted call's folder to the Trash.
     public var trash: @Sendable (URL) throws -> Void
 
@@ -153,13 +158,14 @@ public struct ComposerBoundary: Sendable {
                 time: any ComposerClock, log: any LogSink, intervals: ProfileIntervals,
                 recordings: any RecordingStorage, trash: @escaping @Sendable (URL) throws -> Void,
                 bleedCleaning: any MicrophoneCleaning<CleanupRecording, [Float]>,
-                bleedHearing: any CleanedHearing<[Float], [TranscriptSegment]>, transcripts: any TranscriptStorage,
+                bleedHearing: any CleanedHearing<[Float], [TranscriptSegment]>, diarizer: any TranscriptDiarizer, transcripts: any TranscriptStorage,
                 preferredLanguages: @escaping @Sendable () -> [String] = { Locale.preferredLanguages },
                 browser: @escaping @Sendable () -> BrowserChannel? = { nil }) {
         self.transcriptBuild = transcriptBuild
         self.browser = browser
         self.preferredLanguages = preferredLanguages
         self.bleedCleaning = bleedCleaning; self.bleedHearing = bleedHearing
+        self.diarizer = diarizer
         self.transcripts = transcripts
         self.capturePersistence = capturePersistence
         self.microphone = microphone; self.callAudio = callAudio; self.recognizers = recognizers

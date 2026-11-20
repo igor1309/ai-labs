@@ -105,3 +105,12 @@ temporary folder is removed. A nonzero or throwing detach is reported as a
 failure and keeps the folder and its image. Evidence:
 `cancellationAwaitsDetachBeforeRemovingFolder` and
 `failedDetachReportsFailureAndKeepsImage`.
+
+## Saved tracks
+
+`TrackFileSavedReadTests.readsWholeFramesInBoundedChunks` checks every sample,
+chunk start, size and fraction for sealed and open-ended tracks.
+`invalidSavedFileIsRejectedBeforeDeliveringSamples` checks rejection before
+delivery, and `cancellationStopsBeforeTheNextChunk` checks cancellation at a
+consumer suspension. Duration's header and data-length contract tests exercise
+the same validator.

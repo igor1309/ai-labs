@@ -286,7 +286,7 @@ struct CallsTextTests {
             let read = Mutex<[String]>([])
             let lines = [Calls.Text.Line(start: 5, words: "Итак")]
             let text = try adapter(root, transcript: { markdown in read.withLock { $0.append(markdown) }; return lines }).text(id: "2026.11.10-1600")
-            #expect(text == .init(transcript: lines))
+            #expect(text == .init(transcript: lines, identity: "e98ebb9d4889a30a1d022e91f7810ef5530f92f20113de267aaa2394859322fa"))
             #expect(read.withLock { $0 } == ["**Me** 00:00:05\nИтак"])
         }
     }

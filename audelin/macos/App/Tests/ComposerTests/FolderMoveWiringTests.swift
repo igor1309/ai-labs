@@ -76,7 +76,7 @@ struct FolderMoveWiringTests {
         try await withComposition { rig in
             let spy = CallsMoveSpy()
             let claim = MoveFolderClaim(storage: callsStorage(folder: rig.root, timeZone: .gmt, trash: { _ in }))
-            let inputs = makeRecordings(handler: .init(calls: spy, reserve: claim.take, release: claim.release,
+            let inputs = makeRecordings(handler: .init(calls: spy, transcriptAgain: UnexpectedTranscriptAgain(), reserve: claim.take, release: claim.release,
                 storeFolder: { await spy.store($0) }, describe: russianSettings.callsFailure),
                 text: russianSettingsText, initial: .init(callsFolder: rig.root))
             let hold = subscribeMoveHold({ inputs.state().callsFolderAvailable }, to: { await rig.menu.callsFolderMoving($0) })
@@ -119,7 +119,7 @@ struct FolderMoveWiringTests {
         try await withComposition { rig in
             let spy = CallsMoveSpy()
             let claim = MoveFolderClaim(storage: callsStorage(folder: rig.root, timeZone: .gmt, trash: { _ in }))
-            let inputs = makeRecordings(handler: .init(calls: spy, reserve: claim.take, release: claim.release,
+            let inputs = makeRecordings(handler: .init(calls: spy, transcriptAgain: UnexpectedTranscriptAgain(), reserve: claim.take, release: claim.release,
                 storeFolder: { await spy.store($0) }, describe: russianSettings.callsFailure),
                 text: russianSettingsText, initial: .init(callsFolder: rig.root))
             let hold = subscribeMoveHold({ inputs.state().callsFolderAvailable }, to: { await rig.menu.callsFolderMoving($0) })
@@ -270,6 +270,7 @@ private actor CallsMoveSpy: RecordingsCalls {
     func list() -> [RecordedCall] { listings += 1; return [.init(id: "fresh", title: "Fresh", start: .distantPast, duration: nil)] }
     func rename(id: String, title: String) { Issue.record("Unexpected rename") }
     func delete(id: String) { Issue.record("Unexpected delete") }
+    func restorePreviousTranscript(id: String) { Issue.record("Unexpected restore") }
     func merge(ids: [String]) -> String { Issue.record("Unexpected merge"); return "" }
     func setTags(id: String, tags: [String]) { Issue.record("Unexpected tags write") }
 }

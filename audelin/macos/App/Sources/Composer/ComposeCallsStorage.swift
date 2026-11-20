@@ -12,15 +12,16 @@ import TranscriptFormat
 
 /// The calls storage over the system disk, reading audio duration and transcript lines.
 func callsStorage(folder: URL, timeZone: TimeZone, journal: URL? = nil, trash: @escaping @Sendable (URL) throws -> Void,
+                  disk: CallsDisk = .system, operation: CallsStorageGuard = .serial(),
                   writeJournal: @escaping @Sendable (CallsJournal, URL) throws -> Void = CallsStorage.writeAtomically) -> CallsStorage {
-    var disk = CallsDisk.system
+    var disk = disk
     disk.trash = trash
     let makeCalls: @Sendable (URL) -> Calls = { [disk] in
         Calls(folder: $0, timeZone: timeZone, duration: TrackFile.duration(at:), transcript: transcriptLines, disk: disk)
     }
     return CallsStorage(folder: folder, journal: journal, writeJournal: writeJournal,
                         readPart: { folder, id in try storedMergePart(makeCalls(folder.deletingLastPathComponent()), id: id) },
-                        makeCalls: makeCalls)
+                        makeCalls: makeCalls, operation: operation)
 }
 
 /// Translates Calls' persisted part into the storage boundary's merge input.
@@ -93,10 +94,13 @@ struct SummaryCalls: RecordingsCalls {
     func list() async throws -> [RecordedCall] {
         try await storage.list { call, folder in
             let tags: RecordedCall.Tags = (try? TagsFile.read(in: folder)).map { .known(CallTags.normalized($0)) } ?? .unreadable
-            return RecordedCall(id: call.id, title: call.title, start: call.start, duration: call.duration, tags: tags)
+            return RecordedCall(id: call.id, title: call.title, start: call.start, duration: call.duration, tags: tags,
+                                hasPreviousTranscript: call.hasPreviousTranscript,
+                                missingTracks: call.missingTracks.map { .init(id: $0.id, track: $0.track == .call ? .call : .microphone) })
         }
     }
     func rename(id: String, title: String) async throws { try await storage.rename(id: id, title: title) }
+    func restorePreviousTranscript(id: String) async throws { try await storage.restorePreviousTranscript(id: id) }
     func delete(id: String) async throws {
         let call = String(id.prefix("yyyy.MM.dd-HHmm".count))
         do { try await storage.delete(id: id) }

@@ -134,7 +134,7 @@ public final class AudelinCalls {
         self.summaryBadges = summaryBadges
         self.notes = notes
         let handler = CallDetailEffectHandler(notes: { @MainActor id in try await notes(id) })
-        detailModel = ObservableModel(initialState: .init(), reduce: CallDetailReducer(progress: { previewText()(.remaking, $0) }, failure: { previewText()(failurePhrase($0)) }).reduce,
+        detailModel = ObservableModel(initialState: .init(), reduce: CallDetailReducer(progress: { previewText()(.remaking, $0) }, failure: { previewText()(failurePhrase($0)) }, transcriptMark: { _ in previewText()(.earlierTranscript) }).reduce,
                                       handleEffect: { effect in oneEvent { await handler.handle(effect) } })
         self.inputs = inputs; self.timeZone = timeZone; self.now = now; self.recordingState = recordingState
         self.location = location; self.openFolder = openFolder; self.present = present
@@ -146,6 +146,25 @@ public final class AudelinCalls {
             await self?.cancelSummary(call)
         }
         notesConnections = [
+            Task { @MainActor [weak self] in
+                var seen: TranscriptSelection?
+                for await selection in Observations({ TranscriptSelection(inputs.state()) }) {
+                    guard let self, let id = selection.id, selection != seen else { continue }
+                    seen = selection
+                    _ = await syncRows()
+                    await sendList(.select(id))
+                    selectDetail()
+                    detailModel.event(.transcriptChanged(id: id))
+                }
+            },
+            Task { @MainActor [weak self] in
+                var seen: TranscriptChange?
+                for await change in Observations({ inputs.state().transcriptChanged }) {
+                    guard let self, let change, change != seen else { continue }
+                    seen = change
+                    detailModel.event(.transcriptChanged(id: change.id))
+                }
+            },
             Task { @MainActor [weak self] in
                 var seen: [String: String] = [:]
                 for await current in Observations({ publications() }) {
@@ -517,6 +536,7 @@ public final class AudelinCalls {
         let id = recordedCallID(state)
         list.event(.recordingChanged(id: id))
         inputs.send(.recordingChanged(id))
+        if id != nil { inputs.send(.recordingStarted) }
     }
 
     public func send(_ event: CallsListEvent) async {
@@ -524,6 +544,9 @@ public final class AudelinCalls {
         recordingChanged(recordingState())
         let snapshot = await syncRows()
         switch event {
+        case let .makeTranscriptAgain(id), let .retryTranscriptAgain(id): inputs.send(.makeTranscriptAgain(id))
+        case let .restorePreviousTranscript(id): inputs.send(.restorePreviousTranscript(id))
+        case .cancelTranscriptAgain: inputs.send(.cancelTranscriptAgain)
         case let .beginRename(id): await sendList(.beginRename(id))
         case let .editTitle(title): await sendList(.editTitle(title))
         case .cancelRename: await sendList(.cancelRename)
@@ -609,15 +632,64 @@ func callsListState(_ state: RecordingsState, timeZone: TimeZone, now: Date, tex
         let opens = index == 0 || days[index - 1] != day
         return .init(id: call.id, title: call.title, displayTitle: call.title.isEmpty ? format.stamp(call.start) : call.title,
                      day: opens ? .init(title: day, count: format.count(days[index...].prefix { $0 == day }.count)) : nil,
-                     time: format.time(call.start), duration: format.duration(call.duration), editable: call.id != state.recordingID)
+                     time: format.time(call.start), duration: format.duration(call.duration), editable: call.id != state.recordingID && call.id != state.transcriptRun?.id,
+                     transcriptAgain: transcriptOffer(state.transcriptOffers[call.id]?.run, text: text),
+                     restoreTranscript: call.hasPreviousTranscript ? transcriptOffer(state.transcriptOffers[call.id]?.restore, text: text) : nil,
+                     transcriptWait: state.transcriptRun.flatMap { $0.id == call.id ? transcriptWait($0.wait, text: text) : nil })
     }, deleteID: deleteID, deleteBody: state.calls.first { $0.id == deleteID }.map { call in
         text(.deleteBody, call.id + (call.title.isEmpty ? "" : " " + call.title))
-    }, busy: busy || state.isListing, failure: state.failure.map { failure in
-        (failure.id.map { "«\($0)»: " } ?? "") + failure.reason
-    }, merge: merge)
+    }, busy: busy || state.isListing, failure: state.failure.flatMap { failure in
+        guard failure.kind == .action else { return nil }
+        return (failure.id.map { "«\($0)»: " } ?? "") + failure.reason
+    }, merge: merge, transcriptBanner: transcriptBanner(state.failure, text: text))
 }
 
 /// A call's tags; unreadable ones count as none for filtering and showing.
 func knownTags(_ call: RecordedCall) -> [String] {
     if case let .known(tags) = call.tags { tags } else { [] }
+}
+
+private func transcriptOffer(_ offer: TranscriptOffer?, text: CallsListText) -> CallsListState.TranscriptOffer {
+    switch offer {
+    case .available: .available
+    case let .unavailable(_, message): .unavailable(message)
+    case nil: .unavailable(text(.transcriptUnavailable))
+    }
+}
+
+private func transcriptWait(_ wait: TranscriptWait, text: CallsListText) -> CallsListState.TranscriptWait {
+    switch wait {
+    case .preparing: .init(message: text(.transcriptPreparing))
+    case let .hearing(progress): .init(message: text(.transcriptHearing), progress: progress)
+    case .finishing: .init(message: text(.transcriptFinishing))
+    }
+}
+
+private func transcriptBanner(_ failure: RecordingsState.Failure?, text: CallsListText) -> CallsListState.TranscriptBanner? {
+    guard let failure else { return nil }
+    switch failure.kind {
+    case .action: return nil
+    case .transcriptRun:
+        return .init(style: .error, title: text(.transcriptFailed),
+                     message: failure.reason + " " + text(.transcriptPreserved), retryID: failure.id)
+    case .transcriptRestore:
+        return .init(style: .error, title: text(.transcriptRestoreFailed), message: failure.reason)
+    case .transcriptStopped:
+        return .init(style: .info, title: text(.transcriptStopped),
+                     message: failure.reason + " " + text(.transcriptPreserved))
+    }
+}
+
+/// Requests and terminal outcomes each select again, even when they concern the same call.
+private struct TranscriptSelection: Equatable {
+    let id: String?
+    let request: Int
+    let running: Bool
+    let restoring: Bool
+    init(_ state: RecordingsState) {
+        id = state.selectedCallID
+        request = state.transcriptRequest
+        running = state.transcriptRun != nil
+        if case .restoring = state.phase { restoring = true } else { restoring = false }
+    }
 }

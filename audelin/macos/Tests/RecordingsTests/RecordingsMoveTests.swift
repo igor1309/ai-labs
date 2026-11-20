@@ -116,7 +116,7 @@ struct RecordingsMoveTests {
     @Test func formattingIsInjectedAndUsedOnlyWhenMoveValuesChange() {
         let calls = Mutex<[CallsFolderMove]>([])
         let stub = MoveText(title: "title", body: "body", detail: "detail", moved: "moved")
-        let reducer = RecordingsReducer(failureMessage: { _, _ in "" }, moveText: { move in calls.withLock { $0.append(move) }; return stub }, busyMessage: { "busy" })
+        let reducer = RecordingsReducer(failureMessage: { _, _ in "" }, moveText: { move in calls.withLock { $0.append(move) }; return stub }, busyMessage: { "busy" }, transcriptMessage: { _ in "transcript unavailable" })
         #expect(calls.withLock { $0 }.isEmpty)
         let idle = makeState()
         assert(idle, .cancelMove, delivers: nil, using: reducer)
@@ -184,7 +184,7 @@ struct RecordingsMoveTests {
     @Test(arguments: handlerCases)
     fileprivate func handlersDeliverOnlyTheSpysResult(_ test: HandlerCase) async {
         let spy = MoveSpy()
-        let handler = RecordingsEffectHandler(calls: spy,
+        let handler = RecordingsEffectHandler(calls: spy, transcriptAgain: UnusedTranscriptPort(),
             reserve: { if case let .reserved(value) = try? await spy.request(.reserveMove) { return value }; return nil },
             release: { _ = try? await spy.request(.releaseMove(token: $0)) },
             storeFolder: { _ = try await spy.request(.storeFolder($0)) },
@@ -249,6 +249,7 @@ private actor MoveSpy: RecordingsCalls {
     func list() async throws -> [RecordedCall] { throw MoveError() }
     func rename(id: String, title: String) async throws { throw MoveError() }
     func delete(id: String) async throws { throw MoveError() }
+    func restorePreviousTranscript(id: String) async throws { Issue.record("Unexpected restore"); throw MoveError() }
     func merge(ids: [String]) async throws -> String { throw MoveError() }
     func setTags(id: String, tags: [String]) async throws { throw MoveError() }
 }

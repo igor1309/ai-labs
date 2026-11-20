@@ -44,7 +44,7 @@ public func compose(
     let processes = CoreAudioProcesses(binding: BoundaryProcesses(base: boundary.processes),
                                        clock: BoundaryCallClock(time: boundary.time))
     let timeZone = boundary.time.timeZone()
-    let storage = callsStorage(folder: preferences.read().callsFolder, timeZone: timeZone, journal: preferencesURL.deletingLastPathComponent().appendingPathComponent("summary-folders.json"), trash: boundary.trash)
+    let storage = callsStorage(folder: preferences.read().callsFolder, timeZone: timeZone, journal: preferencesURL.deletingLastPathComponent().appendingPathComponent("summary-folders.json"), trash: boundary.trash, disk: boundary.callsDisk, operation: boundary.callsOperation)
     do { try await storage.restore() } catch { boundary.log.write(.init(category: .calls, message: "calls-folder recovery failed")) }
     let runtime = summaryRuntime ?? SummaryRuntime.Runtime(
         process: ProcessRunner(now: boundary.time.monotonicNow, deadline: 120, outputLimit: 4 * 1024 * 1024, observe: { _ in }),
@@ -77,7 +77,8 @@ public func compose(
             if let state = await finalizationForSpeakers.model?.state { await resources.showSpeakers(state) }
             if let id = Calls.id(in: URL(fileURLWithPath: call).lastPathComponent, timeZone: timeZone) {
                 await summaries.send(.finalized(id, entries: transcript.entries, finalWrite: transcript.finalWrite,
-                                                usable: transcript.usable, notesOn: preferences.read().notes.enabled))
+                                                usable: transcript.usable, notesOn: preferences.read().notes.enabled,
+                                                transcriptIdentity: try? await storage.text(id: id).identity))
             }
         }))
     finalizationForSpeakers.model = finalization
@@ -96,11 +97,13 @@ public func compose(
     var disk = SummaryCalls(storage: storage, release: boundary.transcriptBuild.release, deleted: { await summaries.forget(call: $0) },
                             merged: { call, parts, entries in
                                 await summaries.merged(call: call, parts: parts, entries: entries,
-                                                       notesOn: preferences.read().notes.enabled)
+                                                       notesOn: preferences.read().notes.enabled,
+                                                       transcriptIdentity: try? await storage.text(id: call).identity)
                             })
     disk.log = boundary.log
     let moveClaim = MoveFolderClaim(storage: storage)
-    let recordings = makeRecordings(handler: RecordingsEffectHandler(calls: disk,
+    let recordings = makeRecordings(handler: RecordingsEffectHandler(calls: disk, transcriptAgain: transcriptAgain(storage: storage, boundary: boundary,
+                                          describe: { language.language.settings.callsFailure($0) }),
                                       reserve: moveClaim.take, release: moveClaim.release,
                                       storeFolder: { destination in
                                           try await storage.commitFolder(destination) { try preferences.updateCallsFolder(destination) }
@@ -120,12 +123,10 @@ public func compose(
                                   location: { try await storage.location(id: $0) }, openFolder: openCallsFolder,
                                   present: presentCalls, summaryStatuses: { summaries.statuses }, summaryBadges: { summaries.badges },
                                   notes: { id in
-                                      try await summaryFiles.versions(call: id).map { pair in
-                                          func version(_ notes: SummaryFiles.Notes) -> CallNotes {
-                                              .init(text: notes.text, made: made(notes.made), templateID: notes.template.id, templateName: notes.template.name)
-                                          }
-                                          return CallNotesPair(previous: pair.previous.map(version), current: version(pair.current))
-                                      }
+                                      guard let pair = try await summaryFiles.versions(call: id) else { return nil }
+                                      let transcript = try await storage.text(id: id)
+                                      let previous = try await storage.list().first { $0.id == id }?.hasPreviousTranscript ?? false
+                                      return callNotesPair(pair, transcript: transcript, hasPrevious: previous, made: made)
                                   },
                                   makeSummary: { summaries.make(call: $0) },
                                   makeWithTemplate: { summaries.make(call: $0, template: $1) },
@@ -207,4 +208,14 @@ func notesCatalogue(_ catalogue: TemplateFiles.Catalogue) -> NotesMenuState.Cata
         .init(id: $0.reason == nil ? $0.name : "file:/" + ($0.file ?? $0.name), name: $0.name,
               usable: $0.reason == nil, enabled: false, reason: $0.reason, isFile: $0.file != nil)
     }, folderReason: catalogue.folderReason)
+}
+
+func callNotesPair(_ pair: SummaryFiles.Versions, transcript: Calls.Text, hasPrevious: Bool,
+                   made: (Date) -> String) -> CallNotesPair {
+    func version(_ notes: SummaryFiles.Notes) -> CallNotes {
+        .init(text: notes.text, made: made(notes.made), templateID: notes.template.id, templateName: notes.template.name,
+              transcriptIdentity: notes.transcriptIdentity)
+    }
+    return CallNotesPair(previous: pair.previous.map(version), current: version(pair.current),
+                         currentTranscriptIdentity: transcript.identity, hasPreviousTranscript: hasPrevious)
 }

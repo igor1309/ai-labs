@@ -8,7 +8,7 @@ import Testing
 
 @Suite struct SummariesFilesPortTests {
     let job = Job(id: "job", call: "call", input: "input", entries: [.init(label: "A", time: "0", text: "spoken")], speakers: true,
-                  primary: .init(kind: "cli", model: "m", program: "p", endpoint: "", credentialVariable: ""))
+                  primary: .init(kind: "cli", model: "m", program: "p", endpoint: "", credentialVariable: ""), transcriptIdentity: "submitted-transcript")
 
     @Test func claimWritesThePendingJob() async throws {
         let files = FilesFake()
@@ -78,7 +78,7 @@ import Testing
     @Test func publishWritesTheNotes() async throws {
         let files = FilesFake()
         try await makeSUT(files).publish(job, notes: "notes", warning: true, keeping: .rotation)
-        #expect(files.writes == [.publish(try await record(phase: "running", warning: true), "notes", .default, .rotation)])
+        #expect(files.writes == [.publish(try await record(phase: "running", warning: true), "notes", .default, .rotation, "submitted-transcript")])
     }
     @Test(arguments: [(SummariesState.Call.Stage.succeeded, "succeeded"), (.failed, "failed")])
     func saveWritesTheLastStage(stage: SummariesState.Call.Stage, phase: String) async throws {
@@ -118,22 +118,24 @@ import Testing
         files.stored = try #require(files.claimed.first)
         #expect(try await sut.load(call: "call") == saved && saved.job == chosen)
         try await sut.publish(saved.job, notes: "daily notes", warning: false, keeping: keeping ? .rotation : .replacement)
-        guard case let .publish(record, text, template, policy) = try #require(files.writes.last) else {
+        guard case let .publish(record, text, template, policy, identity) = try #require(files.writes.last) else {
             Issue.record("missing publication"); return
         }
         #expect(record.job == chosen.id && text == "daily notes")
         #expect(template == Attribution(id: "daily-id", name: "Daily"))
         #expect(policy == (keeping ? .rotation : .replacement))
+        #expect(identity == "submitted-transcript")
     }
 
     @Test func oldSnapshotsReadWithDefaultKeepingAndNoResolvedTemplate() async throws {
         let files = FilesFake()
         var old = try await record(phase: "pending")
         var snapshot = try #require(try JSONSerialization.jsonObject(with: old.snapshot) as? [String: Any])
-        for key in ["template", "keepPrevious", "requested"] { snapshot[key] = nil }
+        for key in ["template", "keepPrevious", "requested", "transcriptIdentity"] { snapshot[key] = nil }
         old.snapshot = try JSONSerialization.data(withJSONObject: snapshot)
         files.stored = old
-        #expect(try await makeSUT(files).load(call: "call")?.job == job)
+        var expected = job; expected.transcriptIdentity = nil
+        #expect(try await makeSUT(files).load(call: "call")?.job == expected)
     }
 
     @Test func olderTemplateSnapshotsKeepTheirResolvedValue() async throws {
@@ -171,7 +173,7 @@ import Testing
 /// Answers the port's file calls from a stored record and records each call.
 final class FilesFake: SummariesFiles {
     enum Write: Equatable {
-        case start(SummaryFiles.Record), progress(SummaryFiles.Record), publish(SummaryFiles.Record, String, Attribution, Keeping),
+        case start(SummaryFiles.Record), progress(SummaryFiles.Record), publish(SummaryFiles.Record, String, Attribution, Keeping, String?),
                             discard(SummaryFiles.Record), release(job: String, call: String, input: String) }
     private struct Calls {
         var replacementIntents: [Bool] = []
@@ -204,7 +206,7 @@ final class FilesFake: SummariesFiles {
     func notes(call: String) async throws -> SummaryFiles.Notes? { storedNotes }
     func start(_ record: SummaryFiles.Record) async throws -> Bool { try write(.start(record)); return true }
     func progress(_ record: SummaryFiles.Record) async throws { try write(.progress(record)) }
-    func publish(_ record: SummaryFiles.Record, notes: String, template: Attribution, keeping: Keeping) async throws { try write(.publish(record, notes, template, keeping)) }
+    func publish(_ record: SummaryFiles.Record, notes: String, template: Attribution, keeping: Keeping, transcriptIdentity: String?) async throws { try write(.publish(record, notes, template, keeping, transcriptIdentity)) }
     func discard(_ record: SummaryFiles.Record) async throws { try write(.discard(record)) }
     func release(job: String, call: String, input: String) async { calls.withLock { $0.writes.append(.release(job: job, call: call, input: input)) } }
     private func write(_ value: Write) throws {

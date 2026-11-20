@@ -44,11 +44,14 @@ public struct Job: Equatable, Sendable {
     public var id: String
     public var call: String
     public var input: String
+    /// Opaque identity supplied with the submitted transcript.
+    public var transcriptIdentity: String?
     public var entries: [Entry]
     public var speakers: Bool
     public var primary: Runtime
     public var fallback: Runtime?
-    public init(id: String, call: String, input: String, entries: [Entry], speakers: Bool, primary: Runtime, fallback: Runtime? = nil, template: Template? = nil, keepPrevious: Bool = true, requested: Bool = false) {
+    public init(id: String, call: String, input: String, entries: [Entry], speakers: Bool, primary: Runtime, fallback: Runtime? = nil, template: Template? = nil, keepPrevious: Bool = true, requested: Bool = false, transcriptIdentity: String? = nil) {
+        self.transcriptIdentity = transcriptIdentity
         self.template = template; self.keepPrevious = keepPrevious; self.requested = requested
         self.id = id; self.call = call; self.input = input; self.entries = entries
         self.speakers = speakers; self.primary = primary; self.fallback = fallback

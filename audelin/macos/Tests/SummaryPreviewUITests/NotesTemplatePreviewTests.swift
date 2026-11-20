@@ -129,6 +129,25 @@ struct NotesTemplatePreviewTests {
         #expect(events == [.cancelSummary])
     }
 
+    @Test(arguments: [("templates-previous-marked", "templates-previous"), ("templates-current-marked", "templates-current"),
+                      ("templates-single-marked", "templates-single")])
+    func aMarkSitsAboveTheNotesItMarks(marked: String, unmarked: String) throws {
+        for language in SummaryPreviewLanguage.allCases {
+            let text = SummaryPreviewText(language: language)
+            #expect(SummaryPreviews.state(marked, in: text)?.transcriptMark == text(.earlierTranscript))
+            #expect(SummaryPreviews.state(unmarked, in: text)?.transcriptMark == nil)
+            let markedHost = Offscreen.host(view(marked, text: text), size: size)
+            defer { markedHost.window?.isReleasedWhenClosed = false; markedHost.window?.close() }
+            let unmarkedHost = Offscreen.host(view(unmarked, text: text), size: size)
+            defer { unmarkedHost.window?.isReleasedWhenClosed = false; unmarkedHost.window?.close() }
+            let markedNotes = try #require(Offscreen.textView(in: markedHost)), unmarkedNotes = try #require(Offscreen.textView(in: unmarkedHost))
+
+            #expect(markedNotes.string == unmarkedNotes.string)
+            #expect(!markedNotes.string.contains(text(.earlierTranscript)))
+            #expect(notesTop(markedNotes, in: markedHost) > notesTop(unmarkedNotes, in: unmarkedHost) + 8)
+        }
+    }
+
     @Test(.disabled(if: SummaryPreviewTests.textViewDiffers, "text views draw differently across macOS releases"),
           arguments: SummaryPreviews.templateStates().map(\.name), [ColorScheme.light, .dark])
     func drawsTemplateStates(name: String, scheme: ColorScheme) throws {
@@ -152,4 +171,10 @@ struct NotesTemplatePreviewTests {
         SummaryPreviewView(state: SummaryPreviews.state(name, in: text), text: text, event: { _ in }, render: markdown)
     }
     private func descendants(_ view: NSView) -> [NSView] { [view] + view.subviews.flatMap(descendants) }
+    /// How far below the top of the detail the notes start.
+    private func notesTop(_ notes: NSTextView, in host: NSView) -> CGFloat {
+        let scroll = notes.enclosingScrollView ?? notes
+        let frame = scroll.convert(scroll.bounds, to: host)
+        return host.isFlipped ? frame.minY : host.bounds.height - frame.maxY
+    }
 }

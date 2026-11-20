@@ -18,10 +18,11 @@ struct RecordingsTests {
         let listing = makeState { $0.isListing = true }
         assert(listing, .listed(request: 0, [call]), delivers: nil) {
             $0.calls = [call]
+            $0.transcriptOffers = unavailableTranscriptOffers([call])
             $0.isListing = false
         }
         let spy = CallsSpy()
-        await expect(RecordingsEffectHandler(calls: spy, reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { _ in "disk" }), with: .rename(id: "A", title: "New"), toDeliver: .renamed("A"), on: { await spy.complete(.success([])) })
+        await expect(RecordingsEffectHandler(calls: spy, transcriptAgain: UnusedTranscriptPort(), reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { _ in "disk" }), with: .rename(id: "A", title: "New"), toDeliver: .renamed("A"), on: { await spy.complete(.success([])) })
         #expect(await spy.received == [.rename(id: "A", title: "New")])
     }
 
@@ -33,7 +34,7 @@ struct RecordingsTests {
             $0.isListing = true; $0.listRequest = 1
         }
         let spy = CallsSpy()
-        await expect(RecordingsEffectHandler(calls: spy, reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { $0 is DiskFailure ? "disk" : "other" }), with: .rename(id: "A", title: "New"), toDeliver: .renameFailed(id: "A", reason: "disk"), on: { await spy.complete(.failure(DiskFailure())) })
+        await expect(RecordingsEffectHandler(calls: spy, transcriptAgain: UnusedTranscriptPort(), reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { $0 is DiskFailure ? "disk" : "other" }), with: .rename(id: "A", title: "New"), toDeliver: .renameFailed(id: "A", reason: "disk"), on: { await spy.complete(.failure(DiskFailure())) })
     }
 
     @Test func S3_aDeleteWaitsForTheConfirm() {
@@ -60,7 +61,7 @@ struct RecordingsTests {
         }
         for failed in [false, true] {
             let spy = CallsSpy()
-            await expect(RecordingsEffectHandler(calls: spy, reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { _ in "disk" }), with: .delete("A"), toDeliver: failed ? .deleteFailed(id: "A", reason: "disk") : .deleted("A"), on: { await spy.complete(failed ? .failure(DiskFailure()) : .success([])) })
+            await expect(RecordingsEffectHandler(calls: spy, transcriptAgain: UnusedTranscriptPort(), reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { _ in "disk" }), with: .delete("A"), toDeliver: failed ? .deleteFailed(id: "A", reason: "disk") : .deleted("A"), on: { await spy.complete(failed ? .failure(DiskFailure()) : .success([])) })
             #expect(await spy.received == [.delete("A")])
         }
     }
@@ -96,7 +97,7 @@ struct RecordingsTests {
         let call = RecordedCall(id: "A", title: "Zoom", start: .distantPast, duration: nil, tags: .known(["клиент"]))
         for failed in [false, true] {
             let spy = CallsSpy()
-            await expect(RecordingsEffectHandler(calls: spy, reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { _ in "disk" }), with: .list(request: 4), toDeliver: failed ? .listFailed(request: 4, "disk") : .listed(request: 4, [call]), on: { await spy.complete(failed ? .failure(DiskFailure()) : .success([call])) })
+            await expect(RecordingsEffectHandler(calls: spy, transcriptAgain: UnusedTranscriptPort(), reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { _ in "disk" }), with: .list(request: 4), toDeliver: failed ? .listFailed(request: 4, "disk") : .listed(request: 4, [call]), on: { await spy.complete(failed ? .failure(DiskFailure()) : .success([call])) })
             #expect(await spy.received == [.list(request: 0)])
         }
     }
@@ -109,6 +110,7 @@ struct RecordingsTests {
         assert(listing, .listFailed(request: 1, "denied"), delivers: nil)
         assert(listing, .listed(request: 2, [tagged, unreadable]), delivers: nil) {
             $0.calls = [tagged, unreadable]
+            $0.transcriptOffers = unavailableTranscriptOffers([tagged, unreadable])
             $0.isListing = false
         }
     }
@@ -134,7 +136,7 @@ struct RecordingsTests {
         }
         for failed in [false, true] {
             let spy = CallsSpy()
-            await expect(RecordingsEffectHandler(calls: spy, reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { _ in "disk" }),
+            await expect(RecordingsEffectHandler(calls: spy, transcriptAgain: UnusedTranscriptPort(), reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { _ in "disk" }),
                          with: .setTags(request: 7, id: "A", tags: ["клиент"]),
                          toDeliver: failed ? .tagsSetFailed(request: 7, id: "A", reason: "disk") : .tagsSet(request: 7, id: "A"),
                          on: { await spy.complete(failed ? .failure(DiskFailure()) : .success([])) })
@@ -194,13 +196,14 @@ struct RecordingsTests {
         }
     }
 
-    @Test func failureStaysAcrossTheReloadAndClearsAtTheNextAction() {
-        let failed = makeState { $0.failure = .init(id: "A", reason: "disk") }
-        let refreshing = makeState { $0.failure = .init(id: "A", reason: "disk"); $0.isListing = true }
+    @Test(arguments: [RecordingsState.Failure.Kind.action, .transcriptRun, .transcriptStopped, .transcriptRestore])
+    func failureStaysAcrossTheReloadAndClearsAtTheNextAction(kind: RecordingsState.Failure.Kind) {
+        let failed = makeState { $0.failure = .init(id: "A", reason: "disk", kind: kind) }
+        let refreshing = makeState { $0.failure = .init(id: "A", reason: "disk", kind: kind); $0.isListing = true }
         assert(refreshing, .listed(request: 0, []), delivers: nil) { $0.isListing = false }
         assert(refreshing, .listFailed(request: 0, "denied"), delivers: nil) {
             $0.isListing = false
-            $0.failure = .init(id: "A", reason: "disk Не удалось обновить список: denied")
+            $0.failure = .init(id: "A", reason: "disk Не удалось обновить список: denied", kind: kind)
         }
         assert(failed, .clearFailure, delivers: nil) { $0.failure = nil }
         assert(failed, .askDelete("B"), delivers: nil) {
@@ -211,14 +214,14 @@ struct RecordingsTests {
 
     @Test func constructionDoesNotComposeFailure() {
         let spy = FailureMessageSpy(result: "unused")
-        _ = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" })
+        _ = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" }, transcriptMessage: { _ in "transcript unavailable" })
         #expect(spy.calls == [])
     }
 
     @Test(arguments: [nil, "A"] as [String?])
     func refreshFailureUsesInjectedMessageAndKeepsFailureID(_ id: String?) {
         let spy = FailureMessageSpy(result: "composed message")
-        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" })
+        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" }, transcriptMessage: { _ in "transcript unavailable" })
         let state = makeState {
             $0.isListing = true
             $0.failure = .init(id: id, reason: " prior failure ")
@@ -235,7 +238,7 @@ struct RecordingsTests {
     @Test func listFailureWithoutPriorFailureDoesNotComposeMessage() {
         let spy = FailureMessageSpy(result: "unused")
         let state = makeState { $0.isListing = true }
-        assert(state, .listFailed(request: 0, "denied"), delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" })) {
+        assert(state, .listFailed(request: 0, "denied"), delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" }, transcriptMessage: { _ in "transcript unavailable" })) {
             $0.isListing = false
             $0.failure = .init(id: nil, reason: "denied")
         }
@@ -266,7 +269,7 @@ struct RecordingsTests {
         for (state, events) in cases {
             for event in events {
                 let spy = FailureMessageSpy(result: "unused")
-                assert(state, event, delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" }))
+                assert(state, event, delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" }, transcriptMessage: { _ in "transcript unavailable" }))
                 #expect(spy.calls == [])
             }
         }
@@ -274,7 +277,7 @@ struct RecordingsTests {
 
     @Test func unrelatedTransitionsDoNotComposeFailure() {
         let spy = FailureMessageSpy(result: "unused")
-        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" })
+        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" }, transcriptMessage: { _ in "transcript unavailable" })
         let failed = makeState { $0.failure = .init(id: "A", reason: "prior") }
         let asking = makeState { $0.phase = .askingDelete("A"); $0.failure = failed.failure }
         let renaming = makeState { $0.phase = .renaming("A"); $0.failure = failed.failure }
@@ -290,6 +293,7 @@ struct RecordingsTests {
         assert(listing, .listed(request: 0, [call]), delivers: nil, using: reducer) {
             $0.isListing = false
             $0.calls = [call]
+            $0.transcriptOffers = unavailableTranscriptOffers([call])
         }
         assert(failed, .rename(id: "B", title: "New"), delivers: .rename(id: "B", title: "New"), using: reducer) {
             $0.phase = .renaming("B")
@@ -330,14 +334,14 @@ struct RecordingsMergeEffectTests {
     @Test func S5_theHandlerAsksThePortForTheCallsAndDeliversTheMergedCall() async {
         let spy = CallsSpy()
         let merged = RecordedCall(id: "A", title: "", start: .distantPast, duration: 60)
-        await expect(RecordingsEffectHandler(calls: spy, reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { _ in "disk" }),
+        await expect(RecordingsEffectHandler(calls: spy, transcriptAgain: UnusedTranscriptPort(), reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { _ in "disk" }),
                      with: .merge(["A", "B"]), toDeliver: .merged("A"), on: { await spy.complete(.success([merged])) })
         #expect(await spy.received == [.merge(["A", "B"])])
     }
 
     @Test func S11_theHandlerDeliversWhyAMergeFailed() async {
         let spy = CallsSpy()
-        await expect(RecordingsEffectHandler(calls: spy, reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { $0 is DiskFailure ? "disk" : "other" }),
+        await expect(RecordingsEffectHandler(calls: spy, transcriptAgain: UnusedTranscriptPort(), reserve: { 1 }, release: { _ in }, storeFolder: { _ in }, describe: { $0 is DiskFailure ? "disk" : "other" }),
                      with: .merge(["A", "B"]), toDeliver: .mergeFailed("disk"), on: { await spy.complete(.failure(DiskFailure())) })
     }
 }
@@ -345,6 +349,7 @@ struct RecordingsMergeEffectTests {
 private func makeState(_ change: (inout RecordingsState) -> Void = { _ in }) -> RecordingsState {
     var state = RecordingsState()
     change(&state)
+    state.transcriptOffers = unavailableTranscriptOffers(state.calls)
     return state
 }
 
@@ -403,6 +408,7 @@ private actor CallsSpy: RecordingsCalls {
     func list() async throws -> [RecordedCall] { try await call(.list(request: 0)) }
     func rename(id: String, title: String) async throws { _ = try await call(.rename(id: id, title: title)) }
     func delete(id: String) async throws { _ = try await call(.delete(id)) }
+    func restorePreviousTranscript(id: String) async throws { _ = try await call(.restorePreviousTranscript(id)) }
     func prepareMove(to destination: URL) async throws -> [MoveCall] { _ = try await call(.prepareMove(destination)); return [] }
     func move(id: String, to destination: URL) async throws -> Int64 { _ = try await call(.moveCall(id: id, to: destination)); return 0 }
     /// Answers with the first listed call's id as the merged call.
@@ -418,4 +424,10 @@ private actor CallsSpy: RecordingsCalls {
 
 let defaultReducer = RecordingsReducer(failureMessage: { prior, refreshError in
     prior + " Не удалось обновить список: " + refreshError
-}, moveText: stubMoveText, busyMessage: { "busy" })
+}, moveText: stubMoveText, busyMessage: { "busy" }, transcriptMessage: { _ in "transcript unavailable" })
+
+private func unavailableTranscriptOffers(_ calls: [RecordedCall]) -> [String: TranscriptOffers] {
+    Dictionary(uniqueKeysWithValues: calls.map { ($0.id, TranscriptOffers(
+        run: .unavailable(.notIdle, message: "transcript unavailable"),
+        restore: .unavailable(.noPreviousTranscript, message: "transcript unavailable"))) })
+}

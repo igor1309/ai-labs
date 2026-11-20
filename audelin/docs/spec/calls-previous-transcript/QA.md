@@ -1,0 +1,91 @@
+# Calls — the previous transcript — QA
+
+Calls is driven for real on a temp calls folder: fixture call folders,
+merged ones with nested parts, and bytes read back from disk. A failing
+file operation and an interruption come from the file binding's fake, at
+each step of a pair change; restart is a new Calls on the same folder.
+
+## S-1 Publishing keeps the old transcript beside
+
+Publish: the current file holds the new bytes; the previous equals the old bytes.
+Evidence: `CallsPreviousTranscriptTests.S1_publishingKeepsTheOldTranscriptBeside`.
+
+## S-2 Publishing drops an older previous
+
+Publish into a call with a previous: exactly the new and the replaced file remain.
+Evidence: `CallsPreviousTranscriptTests.S2_publishingDropsAnOlderPrevious`.
+
+## S-3 A failed publish leaves the pair
+
+Fail at each step after the first move: both files equal their bytes before; the error is returned.
+Evidence: `CallsPreviousTranscriptTests.S3_aFailedPublishLeavesThePair`.
+
+## S-4 An interrupted publish is settled at start
+
+Interrupt publishing at each step, start a new Calls: the old pair or the new, whole, no stray file.
+Evidence: `CallsPreviousTranscriptTests.S4_anInterruptedPublishIsSettledAtStart`.
+
+## S-5 Restoring swaps the two
+
+Restore: the two files have swapped bytes.
+Evidence: `CallsPreviousTranscriptTests.S5_restoringSwapsTheTwo`.
+
+## S-6 A failed restore leaves the pair
+
+Fail the swap at each step: both files equal their bytes before; the error is returned.
+Evidence: `CallsPreviousTranscriptTests.S6_aFailedRestoreLeavesThePair`.
+
+## S-7 Restoring without a previous is refused
+
+Restore a call with no previous: refused with the reason; the folder unchanged.
+Evidence: `CallsPreviousTranscriptTests.S7_restoringWithoutAPreviousIsRefused`.
+
+## S-8 A listing tells the previous transcript
+
+List: the call with a previous reads has-previous; the other not.
+Evidence: `CallsPreviousTranscriptTests.S8_aListingTellsThePreviousTranscript`.
+
+## S-9 A listing tells missing tracks
+
+List a merged call whose second part lacks its call track: that part and track named.
+Evidence: `CallsPreviousTranscriptTests.S9_aListingTellsMissingTracks`.
+
+## S-10 The transcript's identity follows its bytes
+
+Read, publish changed bytes, read twice: later reads match each other, not the first; publish identical bytes: the identity is unchanged.
+Evidence: `CallsPreviousTranscriptTests.S10_theTranscriptsIdentityFollowsItsBytes`.
+
+## S-11 A merged call's parts are untouched
+
+Publish into a merged call: every part's files byte-identical to before.
+Evidence: `CallsPreviousTranscriptTests.S11_aMergedCallsPartsAreUntouched`.
+
+## S-12 An interrupted restore is settled at start
+
+Interrupt restoring at each step, start a new Calls: the old pair or the swapped pair, whole.
+Evidence: `CallsPreviousTranscriptTests.S12_anInterruptedRestoreIsSettledAtStart`.
+
+## S-13 Restoring brings back the identity
+
+Read A, publish B, restore: the identity equals A's.
+Evidence: `CallsPreviousTranscriptTests.S13_restoringBringsBackTheIdentity`.
+
+## S-14 A read during a change finds a whole pair
+
+Admit each read API (text, saved transcript, list and merge part) to the
+occupied production storage turn while publication or restore is held.
+The admission report comes after queue registration, before the change is
+released. No read reaches disk until then; its answer describes the whole
+new pair. The app uses this boundary across its separate Calls instances.
+Evidence: `CallsStorageTranscriptAdmissionTests.S14_readAdmissionDuringAChangeWaitsForTheWholePair`.
+
+Original discovery is exercised through a virtual tree supplied by the disk
+binding in `CallsOriginalsTests.discoveryUsesItsDiskAndStopsAtRecordedLeaves`.
+The injected disk is carried through storage and Composer in
+`TranscriptAgainPortsTests.originalDiscoveryUsesTheStoresInjectedDisk`.
+Nested app wiring and complete origins are checked by
+`TranscriptAgainCompositionTests.nestedOriginalsKeepTheirOffsetsAndListingMetadata`.
+Cancellation before moving and during the swap is checked by
+`CallsPreviousTranscriptTests.cancellationAfterWritingBeforeTheFirstMoveKeepsThePair`
+and `cancellationDuringTheSwapSettlesTheNewPair`; cancellation while queued is
+checked by `CallsStorageTranscriptAdmissionTests.cancellationQueuedForPublicationKeepsBothTranscripts`.

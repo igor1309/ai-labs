@@ -38,6 +38,7 @@ public struct CallsListView: View {
                 }
             }
             .overlay { if state.rows.isEmpty { placeholder } }
+            if let banner = state.transcriptBanner { transcriptBanner(banner) }
             if let failure = state.failure {
                 Label(failure, systemImage: "exclamationmark.circle")
                     .font(tokens.ui(tokens.typeSmall))
@@ -106,6 +107,22 @@ public struct CallsListView: View {
             .accessibilityIdentifier("calls.select.\(row.id)")
             .accessibilityLabel(row.displayTitle)
             .accessibilityValue(rowValue(row))
+            .accessibilityAction(.showMenu) { showMenu(row) }
+            .overlayPreferenceValue(TranscriptActionAnchors.self) { anchors in
+                GeometryReader { proxy in
+                    ForEach(anchors, id: \.identifier) { anchor in
+                        let bounds = proxy[anchor.bounds]
+                        TranscriptActionTarget(title: anchor.title, identifier: anchor.identifier, action: anchor.action)
+                            .frame(width: bounds.width, height: bounds.height)
+                            .accessibilityElement()
+                            .accessibilityIdentifier(anchor.identifier)
+                            .accessibilityLabel(anchor.title)
+                            .accessibilityAddTraits(.isButton)
+                            .accessibilityAction { anchor.action() }
+                            .position(x: bounds.midX, y: bounds.midY)
+                    }
+                }
+            }
             .simultaneousGesture(TapGesture(count: 2).onEnded { if !state.busy, state.merge == nil { event(.open(row.id)) } })
             .overlay {
                 RowMenuTarget(identifier: "calls.row.\(row.id)", select: { if state.merge == nil { event(.select(row.id)) } },
@@ -122,7 +139,10 @@ public struct CallsListView: View {
     private func rowValue(_ row: CallsListState.Row) -> String {
         // The row is one accessibility element, so its visible transcript match belongs in its value.
         let snippet = row.match?.snippet.map { [$0.place, $0.text] } ?? []
-        let value = ([row.duration] + row.tags.map { "#" + $0 } + snippet).joined(separator: ", ")
+        let wait = row.transcriptWait.map { wait in
+            [wait.message] + (wait.progress.map { [Int(($0 * 100).rounded()).formatted(.percent)] } ?? [])
+        } ?? []
+        let value = ([row.duration] + row.tags.map { "#" + $0 } + wait + snippet).joined(separator: ", ")
         guard let merge = state.merge else { return value }
         return value + ", " + text(merge.marked.contains(row.id) ? .markOn : .markOff)
     }
@@ -156,13 +176,17 @@ public struct CallsListView: View {
 
     /// The row's actions, the same in its context menu and on its keys,
     /// each shown with its key.
-    private func menu(_ row: CallsListState.Row) -> [RowMenuItem?] {
+    func menu(_ row: CallsListState.Row) -> [RowMenuItem?] {
         var items: [RowMenuItem?] = [
             RowMenuItem(title: text(.open), key: "r", modifiers: .command, isEnabled: !state.busy) { event(.open(row.id)) },
         ]
         items.append(RowMenuItem(title: text(.rename), key: "\r", isEnabled: row.editable && !state.busy) {
             event(.beginRename(row.id))
         })
+        items.append(transcriptItem(text(.makeTranscriptAgain), identifier: "calls.transcriptAgain.\(row.id)", offer: row.transcriptAgain) { event(.makeTranscriptAgain(row.id)) })
+        if let offer = row.restoreTranscript {
+            items.append(transcriptItem(text(.restoreTranscript), identifier: "calls.restoreTranscript.\(row.id)", offer: offer) { event(.restorePreviousTranscript(row.id)) })
+        }
         if row.canMakeSummary {
             items.append(RowMenuItem(title: text(.makeSummary), isEnabled: !state.busy) { event(.makeSummary(row.id)) })
         }
@@ -174,6 +198,78 @@ public struct CallsListView: View {
             event(.askDelete(row.id))
         })
         return items
+    }
+
+    /// Assistive apps open a row's menu at the pointer, as a right click would.
+    private func showMenu(_ row: CallsListState.Row) {
+        guard state.merge == nil else { return }
+        event(.select(row.id))
+        popUpRowMenu(identifier: "calls.row.\(row.id)", items: menu(row))
+    }
+
+    private func transcriptItem(_ title: String, identifier: String, offer: CallsListState.TranscriptOffer, action: @escaping () -> Void) -> RowMenuItem {
+        switch offer {
+        case .available: RowMenuItem(title: title, identifier: identifier, action: action)
+        case let .unavailable(reason): RowMenuItem(title: title, identifier: identifier, isEnabled: false, help: reason, action: action)
+        }
+    }
+
+    private func transcriptWait(_ wait: CallsListState.TranscriptWait, id: String) -> some View {
+        HStack(spacing: tokens.space8) {
+            if let progress = wait.progress {
+                Text(wait.message).foregroundStyle(tokens.sub).truncationMode(.tail)
+                ProgressView(value: progress).progressViewStyle(TranscriptProgressStyle(tokens: tokens))
+                    .frame(maxWidth: tokens.space32 + tokens.space32)
+                    // The row's value carries the progress; an indicator here would replace the row's role.
+                    .accessibilityHidden(true)
+            } else {
+                ProgressView().controlSize(.mini).accessibilityHidden(true)
+                Text(wait.message).foregroundStyle(tokens.sub).truncationMode(.tail)
+            }
+            Spacer(minLength: 0)
+            rowTranscriptAction(text(.transcriptCancel), identifier: "calls.cancelTranscript.\(id)") { event(.cancelTranscriptAgain) }
+        }
+    }
+
+    private func transcriptAction(_ title: String, identifier: String, action: @escaping () -> Void) -> some View {
+        Text(title).foregroundStyle(tokens.me).fixedSize().accessibilityHidden(true)
+            .overlay {
+                TranscriptActionTarget(title: title, identifier: identifier, action: action)
+                    .accessibilityElement()
+                    .accessibilityIdentifier(identifier)
+                    .accessibilityLabel(title)
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityAction { action() }
+            }
+    }
+
+    private func rowTranscriptAction(_ title: String, identifier: String, action: @escaping () -> Void) -> some View {
+        // Drawn inside the row's button; its target is placed over it from outside the button,
+        // so assistive apps reach it as a button of its own.
+        Text(title).foregroundStyle(tokens.me).fixedSize().accessibilityHidden(true)
+            .anchorPreference(key: TranscriptActionAnchors.self, value: .bounds) {
+                [TranscriptActionAnchor(identifier: identifier, title: title, action: action, bounds: $0)]
+            }
+    }
+
+    private func transcriptBanner(_ banner: CallsListState.TranscriptBanner) -> some View {
+        HStack(alignment: .top, spacing: tokens.space8) {
+            Image(systemName: banner.style == .error ? "exclamationmark.circle" : "info.circle")
+            VStack(alignment: .leading, spacing: tokens.space4) {
+                Text(banner.title).font(tokens.ui(tokens.typeSmall, .semibold))
+                Text(banner.message).font(tokens.ui(tokens.typeCaption)).foregroundStyle(tokens.sub)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if let id = banner.retryID {
+                transcriptAction(text(.transcriptRetry), identifier: "calls.retryTranscript.\(id)") { event(.retryTranscriptAgain(id)) }
+            }
+        }
+        .lineLimit(nil)
+        .foregroundStyle(banner.style == .error ? tokens.rec : tokens.sub)
+        .padding(.horizontal, tokens.space16).padding(.vertical, tokens.space8)
+        .background(banner.style == .error ? tokens.errBg : tokens.side)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("calls.transcriptBanner")
     }
 
     /// Return renames in a wide window; in a narrow one Return and Space read the call. ⌘R shows the folder in Finder and ⌘⌫ asks to delete the selected call.
@@ -251,7 +347,9 @@ public struct CallsListView: View {
             }
             .frame(height: lineHeight)
             HStack(spacing: tokens.space8) {
-                if let snippet = row.match?.snippet {
+                if let wait = row.transcriptWait {
+                    transcriptWait(wait, id: row.id)
+                } else if let snippet = row.match?.snippet {
                     Text(snippet.place)
                         .font(snippet.placeIsTime ? tokens.data(tokens.typeSmall) : tokens.ui(tokens.typeSmall))
                         .foregroundStyle(tokens.gutter).fixedSize().allowsHitTesting(false)
@@ -266,7 +364,7 @@ public struct CallsListView: View {
                         .fixedSize().allowsHitTesting(false)
                         .accessibilityIdentifier("calls.tags.\(row.id)")
                 }
-                summary(row)
+                if row.transcriptWait == nil { summary(row) }
             }
             .frame(height: lineHeight)
         }
@@ -461,3 +559,31 @@ public struct CallsListView: View {
 /// What the ⌫ key types; SwiftUI's `.delete` is U+0008, which a Mac keyboard does not send.
 private extension KeyEquivalent { static let backspace = KeyEquivalent("\u{7F}") }
 
+/// The system's macOS linear indicator ignores tint; the run uses the ledger's accent.
+private struct TranscriptProgressStyle: ProgressViewStyle {
+    let tokens: GlassLedger
+
+    func makeBody(configuration: Configuration) -> some View {
+        GeometryReader { geometry in
+            RoundedRectangle(cornerRadius: tokens.radiusBar).fill(tokens.chip)
+                .overlay(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: tokens.radiusBar).fill(tokens.me)
+                        .frame(width: geometry.size.width * (configuration.fractionCompleted ?? 0))
+                }
+        }
+        .frame(height: tokens.space4)
+    }
+}
+
+
+struct TranscriptActionAnchor {
+    let identifier: String
+    let title: String
+    let action: () -> Void
+    let bounds: Anchor<CGRect>
+}
+
+struct TranscriptActionAnchors: PreferenceKey {
+    static var defaultValue: [TranscriptActionAnchor] { [] }
+    static func reduce(value: inout [TranscriptActionAnchor], nextValue: () -> [TranscriptActionAnchor]) { value += nextValue() }
+}

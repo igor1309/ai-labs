@@ -40,10 +40,10 @@ import Testing
     @Test func aSubmissionRunsThroughFilesAndGenerationToPublishedNotes() async throws {
         let files = FilesFake()
         let sut = makeSUT(files)
-        sut.send(.finalized("call", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true, notesOn: true))
+        sut.send(.finalized("call", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true, notesOn: true, transcriptIdentity: "submitted-transcript"))
         try await waitUntil("notes are saved") { sut.state.calls["call"]?.stage == .succeeded }
         #expect(files.claimed.map(\.job) == ["job"])
-        #expect(files.writes.contains { if case .publish(_, "notes", .default, .rotation) = $0 { true } else { false } })
+        #expect(files.writes.contains { if case .publish(_, "notes", .default, .rotation, "submitted-transcript") = $0 { true } else { false } })
         #expect(sut.state.calls["call"]?.status == CallsListText(language: .english)(.summaryReady))
         #expect(sut.state.calls["call"]?.badge == SummariesState.Call.Badge.none)
     }
@@ -163,7 +163,7 @@ import Testing
         #expect(!files.writes.contains { if case .publish = $0 { true } else { false } })
         transactions.continuation.yield(.idle)
         try await waitUntil("notes are saved") { sut.state.calls["call"]?.stage == .succeeded }
-        #expect(files.writes.contains { if case .publish(_, "notes", .default, .rotation) = $0 { true } else { false } })
+        #expect(files.writes.contains { if case .publish(_, "notes", .default, .rotation, nil) = $0 { true } else { false } })
     }
     @Test func shutdownReturnsOnceTheMachineHasSettled() async {
         let sut = makeSUT(FilesFake())
