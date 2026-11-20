@@ -38,7 +38,7 @@ private struct ReadingLayoutStorage: LayoutStorage {
 
     init(value: ReadingLayout) {
         self.value = value
-        gaps = value.problems.filter { $0.kind != .callSilent }.map { .init(began: $0.began, content: $0.kind) }
+        gaps = value.problems.map { .init(began: $0.began, content: $0.kind) }
     }
     var prepared: Bool {
         get { value.rendered.prepared }

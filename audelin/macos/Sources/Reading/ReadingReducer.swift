@@ -48,8 +48,7 @@ public struct ReadingReducer: Sendable {
             }
             let wasPrepared = state.rendered.prepared
             prepareRows(&state)
-            if wasPrepared,
-               previous.filter({ $0.kind != .callSilent }) != state.problems.filter({ $0.kind != .callSilent }) {
+            if wasPrepared, gapProblems(previous) != gapProblems(state.problems) {
                 rebuildLayout(&state)
             }
         case let .textUpdated(update):
@@ -106,7 +105,12 @@ public struct ReadingReducer: Sendable {
     }
 
     private func hasGaps(_ state: ReadingState) -> Bool {
-        state.problems.contains { $0.kind != .callSilent }
+        !gapProblems(state.problems).isEmpty
+    }
+
+    /// The problems that leave a gap in the rows: call silence adds only a banner.
+    private func gapProblems(_ problems: [ReadingProblem]) -> [ReadingProblem] {
+        problems.filter { $0.kind != .callSilent }
     }
 
     private func prepareRows(_ state: inout ReadingState) {
@@ -121,7 +125,7 @@ public struct ReadingReducer: Sendable {
     private func layOut(_ state: inout ReadingState, _ change: ReadingLayout.Change) {
         var value = ReadingLayout(anchors: state.anchors, nextDisplayID: state.nextDisplayID,
                                   text: state.text, rendered: state.rendered, rows: state.lines.rows,
-                                  revision: state.lines.layout, problems: state.problems)
+                                  revision: state.lines.layout, problems: gapProblems(state.problems))
         layout(&value, change)
         state.anchors = value.anchors
         state.nextDisplayID = value.nextDisplayID

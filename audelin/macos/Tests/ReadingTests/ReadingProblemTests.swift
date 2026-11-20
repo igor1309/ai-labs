@@ -12,8 +12,20 @@ struct ReadingProblemTests {
         }
         #expect(spy.calls == [.line(8), .line(6), .line(3)])
         var input = snapshot(state)
-        input.problems = problems
+        input.problems = Array(problems.prefix(2))
         #expect(spy.layoutCalls == [.init(value: input, change: .rebuild)])
+    }
+
+    @Test(arguments: [
+        ([ReadingProblem(.callSilent, began: 8)], [ReadingProblem]()),
+        ([.init(.microphone, began: 3)], [.init(.microphone, began: 3)]),
+        ([.init(.microphone, began: 3), .init(.callSilent, began: 8)], [.init(.microphone, began: 3)]),
+    ])
+    func layoutGetsOnlyProblemsThatLeaveAGap(problems: [ReadingProblem], gaps: [ReadingProblem]) {
+        let spy = RenderingSpy()
+        let state = ReadingState()
+        _ = makeReducer(spy).reduce(state, .problemsChanged(problems))
+        #expect(spy.layoutCalls.map(\.value.problems) == [gaps])
     }
 
     @Test func repeatedFaultKeepsItsFirstTimeAndDoesNotLayOutAgain() {
