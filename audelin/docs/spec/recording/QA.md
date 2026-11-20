@@ -209,3 +209,40 @@ Evidence: `aStopDuringTheTakeWaitsForIt_state`, `_effect`; `aGrantAfterAStopIsRe
 ## S-34 Automatic recording turned off drops only a call's waiting start
 
 Evidence: `automaticOffDropsOnlyACallsWaitingStart_state`, `_effect`.
+
+## Waiting for call audio (S-35 to S-40)
+
+Driven as the claim rows are, with a fake readiness port whose answers the
+test sets and a fake clock the test advances; rows read the state, the
+claims taken and released, and the readiness requests.
+
+## S-35 A call's start refused for call audio tries again
+
+A call starts, readiness answers false: idle, call audio missing, the claim
+released. The clock advances five seconds: a claim and a readiness request;
+it answers true and the Session comes up: a recording begun by the call.
+
+## S-36 Call audio coming back begins a waiting call's start
+
+From the wait, call audio is published available: a readiness request
+without the clock advancing; it answers true: a recording begun by the call.
+
+## S-37 A call's start goes on waiting while call audio is missing
+
+From the wait, five seconds and a false answer: idle with call audio
+missing; five more seconds: another request.
+
+## S-38 The wait for call audio ends with the call, a stop or automatic off
+
+From the wait, each of call end, user stop and automatic off, then the
+clock advances: no further request, idle.
+
+## S-39 Another missing condition or shutdown ends the wait
+
+From the wait, each of calls folder lost, room lost and shutdown, then the
+clock advances: no further request, idle.
+
+## S-40 A start by hand refused for call audio does not wait
+
+No call, the user starts, readiness answers false; the clock advances: no
+further request, idle with call audio missing.
