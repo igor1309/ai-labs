@@ -9,7 +9,7 @@ file layout, Mac audio helper and model catalog.
 |---|---|---|
 | Platforms | macOS, menu bar app | macOS 14.4+ (Apple silicon), Windows 10 2004+, Linux AppImage |
 | Stack | Native Swift and SwiftUI, state machines | Electron and TypeScript, small native helpers per OS |
-| Audio | Mic and call as two tracks | Mic (AVAudioEngine, no voice processing) and a global process tap excluding Yogurt's own processes, mixed per meeting |
+| Audio | Mic and call as two tracks | Separate mic (AVAudioEngine, no voice processing) and global process-tap tracks excluding Yogurt's own processes |
 | Live transcript | Floating panel, smooth and selectable, Russian with English terms | whisper.cpp, Apple SpeechAnalyzer on supported Macs; 99 languages |
 | Speakers | Mic side is the owner; after the call the far side is diarized (Nemotron, VBx fallback) into `Them 1`, `Them 2`…, named from Zoom and, through the browser extension, Telemost | Named from Zoom, Teams and Meet, Mac only |
 | Start and stop | Records automatically when Zoom, Telemost or a browser takes the mic, stops when the call ends | Offers to record when a supported call starts, stops when it ends |
@@ -31,13 +31,18 @@ file layout, Mac audio helper and model catalog.
 
 ## Where Audelin differs on purpose
 
-Two tracks instead of one mixed tap keep the owner's side apart without
-diarization. The transcript is tuned for one language mix, and notes go to
+Both recorders keep the owner's mic apart from the call track. Audelin scopes
+the tap to the call app when available, while Yogurt captures other apps
+globally. Audelin's transcript is tuned for one language mix, and notes go to
 a destination the owner pays for knowingly. Audelin does not aim at Windows
 or Linux.
 
-## Open
+## Capture comparison
 
-- Whether Yogurt's tap settings (drift compensation, voice processing off on
-  the mic) differ from Audelin's capture in ways worth adopting; see
-  [system-audio.md](system-audio.md); tracked in Multica.
+The [source comparison](system-audio.md#yogurt-comparison-2026-11-15) is complete.
+Both keep mic voice processing off. Keep Audelin's call-app scope and tap-only
+aggregate; strengthen own-process exclusion on global fallbacks as needed.
+Yogurt adds an output clock and explicit tap drift compensation, and rebuilds
+capture on route/rate changes. Its reported Bluetooth rate mismatch makes
+clock validation and recovery worth adopting after testing Audelin's topology;
+those hardware checks remain open. No capture settings changed in this review.
