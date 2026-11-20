@@ -34,6 +34,7 @@ under the working name wisper.
 | [monthly/](monthly/README.md) | Monthly check of the owner's newest calls: flags speaker bleed and speaker counts the enhancement and diarization reports did not expect |
 | [vad-hallucinations.md](vad-hallucinations.md) | Targeted silent-mic failures: FluidAudio at 0.95 and reference Silero at 0.5 reject both; speech controls and limits before adoption |
 | [transcript-language.md](transcript-language.md), [transcript-language/](transcript-language/) | Where non-Cyrillic text in final transcripts comes from, on 15 calls checked against levels, reference Silero and Amanu: half the microphone's is written on a silent mic |
+| [transcript-engines.md](transcript-engines.md), [transcript-engines/](transcript-engines/) | Final-pass engines on FLEURS, Golos and long tracks with gaps: Parakeet v3 over the whole track beats production windows and Whisper large-v3-turbo, which loops on silence; calls pending |
 | `gallery/` | Site captures and screenshots of the surveyed apps (inventory-a6) |
 | `../design/visual-language.pen` | Glass Ledger's design system, components and Screens 1–8, light and dark |
 | [design/README.md](../design/README.md) | Index of the design file: Glass Ledger's tokens, components, and the frame map |

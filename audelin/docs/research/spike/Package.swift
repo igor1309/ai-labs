@@ -18,6 +18,11 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
         .executableTarget(
+            name: "audelin-final",
+            dependencies: [.product(name: "FluidAudio", package: "FluidAudio")],
+            swiftSettings: [.swiftLanguageMode(.v5)]
+        ),
+        .executableTarget(
             name: "audelin-windows",
             dependencies: [.product(name: "FluidAudio", package: "FluidAudio")],
             swiftSettings: [.swiftLanguageMode(.v5)]
