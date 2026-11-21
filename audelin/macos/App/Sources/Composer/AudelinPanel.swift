@@ -97,21 +97,24 @@ actor AudelinPanel {
             await self?.receive(state, id: id)
         }, intervals: intervals)
         let made = await ReadingSubscription(reading: reading, text: text, speakers: speakers, names: published, now: now, ticks: ticks(), sink: sink,
-                                              handler: callAppHandler()) { state in
+                                              sources: callAppSources()) { state in
             await update(state)
         }
         if current?.id == id { subscription = (id, made) }
         return made
     }
 
-    private func callAppHandler() -> CallNamesEffectHandler {
+    private func callAppSources() -> @Sendable (@escaping @Sendable () async -> Double?) -> [any CallAppObserver] {
 
-        let windows = ZoomWindows()
-        return CallNamesEffectHandler(
-            zoom: ZoomCallObserver(isPermitted: { windows.isPermitted }, windows: { windows.windows() }, now: now,
-                                   sleep: { try await Task.sleep(for: $0) }, knownName: zoomName.read, rememberName: zoomName.remember),
-            browser: BrowserCallObserver(openBrowser: browser, monotonic: now, sleep: sleep, log: sink)
-        )
+        let browser = browser, now = now, sleep = sleep, zoomName = zoomName, sink = sink
+        return { clock in
+            let windows = ZoomWindows()
+            return [
+                ZoomCallObserver(isPermitted: { windows.isPermitted }, windows: { windows.windows() }, clock: clock,
+                                 sleep: { try await Task.sleep(for: $0) }, knownName: zoomName.read, rememberName: zoomName.remember),
+                BrowserCallObserver(openBrowser: browser, clock: clock, monotonic: now, sleep: sleep, log: sink),
+            ]
+        }
     }
 
     /// Takes the recording's reading feed to its end first, so its last text and speakers are shown;
@@ -171,6 +174,8 @@ actor AudelinPanel {
 @MainActor
 final class ReadingSubscription {
 
+    private typealias NamesModel = ObservableModel<CallNamesState, CallNamesEvent, CallNamesEffect>
+
     private let reading: ReadingInputs
     private let now: @Sendable () -> Double
     private let show: @MainActor @Sendable (ReadingState) async -> Void
@@ -178,14 +183,14 @@ final class ReadingSubscription {
     private let timer: Task<Void, Never>
     /// Shows each new reading state; it ends with the last state it showed.
     private var observation: Task<ReadingState?, Never>
-    private let names: ObservableModel<CallNamesState, CallNamesEvent, CallNamesEffect>
+    private let names: NamesModel
     private let naming: Task<Void, Never>
     private var ended = false
 
     init(
         reading: ReadingInputs, text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]>, names recording: RecordingNames,
         now: @escaping @Sendable () -> Double, ticks: AsyncStream<Void>, sink: any LogSink,
-        handler: CallNamesEffectHandler,
+        sources: @Sendable (@escaping @Sendable () async -> Double?) -> [any CallAppObserver],
         receive: @escaping @Sendable (ReadingState) async -> Void
     ) async {
 
@@ -196,7 +201,14 @@ final class ReadingSubscription {
             confirm: { rows, turns, evidence in
                 AfterCallNames.names(rows: rows.map { ($0.id, $0.start, $0.end) }, turns: turns, evidence: evidence)
             })
-        let names = ObservableModel(initialState: CallNamesState(), reduce: reducer.reduce, handleEffect: handler.handle)
+        // The model owns the observers, so their clock reads it through a weak reference.
+        weak var namesForClock: NamesModel?
+        let clock: @MainActor @Sendable () -> Double? = {
+            namesForClock?.state.recordingStart.map { now() - $0 }
+        }
+        let handler = CallNamesEffectHandler(sources: sources(clock))
+        let names = NamesModel(initialState: CallNamesState(), reduce: reducer.reduce, handleEffect: handler.handle)
+        namesForClock = names
         self.names = names
         let published = Observations { names.state }
         naming = Task {

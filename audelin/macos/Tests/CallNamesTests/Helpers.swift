@@ -12,15 +12,9 @@ func makeState(_ update: (inout State) -> Void = { _ in }) -> State {
     return state
 }
 
-func makeRecordingState(_ update: (inout State) -> Void = { _ in }) -> State {
+func makeObservedState(_ update: (inout State) -> Void = { _ in }) -> State {
     makeState {
         $0.recordingStart = 100
-        update(&$0)
-    }
-}
-
-func makeObservedState(_ update: (inout State) -> Void = { _ in }) -> State {
-    makeRecordingState {
         $0.roster = ["Anna"]
         $0.knownNames = ["Anna"]
         $0.spoken = [.init(name: "Anna", start: 1, end: nil)]

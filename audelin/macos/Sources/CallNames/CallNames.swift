@@ -17,8 +17,6 @@ public struct CallNamesState: Equatable, Sendable {
     public var observation: Observation
     /// The first recording-on instant on the monotonic clock.
     public var recordingStart: Double?
-    /// Whether the Zoom watch has been requested for this call.
-    public var watchingZoom: Bool
     /// Names seen by the adapter, including those whose observation was too late to accept.
     public var knownNames: [String]
     /// The adapter's sequence includes events that the observation rejected.
@@ -26,23 +24,19 @@ public struct CallNamesState: Equatable, Sendable {
     public var zoom: Evidence
     public var browser: Evidence
     public var browserConnections: Set<Int>
-    /// Calibrated browser events received while waiting for the recording clock.
-    public var pendingBrowser: [Event]
 
     public init(
         roster: [String] = [], spoken: [Spoken] = [], through: Double = 0,
         rowNames: [Int: String] = [:], participantIDs: [String: String] = [:], participantOrder: [String] = [],
         confirmed: Bool = false, observation: Observation = .idle, recordingStart: Double? = nil,
-        watchingZoom: Bool = false, knownNames: [String] = [], sequence: Int = 0,
-        zoom: Evidence = Evidence(), browser: Evidence = Evidence(), browserConnections: Set<Int> = [],
-        pendingBrowser: [Event] = []
+        knownNames: [String] = [], sequence: Int = 0,
+        zoom: Evidence = Evidence(), browser: Evidence = Evidence(), browserConnections: Set<Int> = []
     ) {
         self.roster = roster; self.spoken = spoken; self.through = through
         self.rowNames = rowNames; self.participantIDs = participantIDs; self.participantOrder = participantOrder
         self.confirmed = confirmed; self.observation = observation; self.knownNames = knownNames; self.sequence = sequence
-        self.recordingStart = recordingStart; self.watchingZoom = watchingZoom
+        self.recordingStart = recordingStart
         self.zoom = zoom; self.browser = browser; self.browserConnections = browserConnections
-        self.pendingBrowser = pendingBrowser
     }
 
     public struct Evidence: Equatable, Sendable {
@@ -113,17 +107,21 @@ public enum ZoomChange: Equatable, Sendable {
 }
 
 public enum CallNamesEvent: Equatable, Sendable {
-    /// Timed inputs use seconds on the composer's monotonic clock; row bounds are already call-relative.
+    /// The recording status at an instant on the monotonic clock.
     case recordingChanged(isOn: Bool, at: Double)
+    /// The Zoom change at the given call time in seconds.
     case zoom(ZoomChange, at: Double)
+    /// The Zoom poll's call time in seconds.
     case tick(now: Double)
+    /// Browser evidence placed on the call clock.
     case browser(Event)
     case browserConnected(Int)
     case browserDisconnected(Int)
+    /// Row bounds are call-relative. `now` is an instant on the monotonic clock.
     case rows([Row], now: Double)
     /// The after-call pass's speaker turns over the closed call, with its remote rows.
     case diarized([DiarizedTurn], rows: [Row])
-    /// The call opened: accept browser connections while capture comes up.
+    /// The call opened: watch its sources while capture comes up.
     case start
     /// The recording ended: stop watching; the names stay.
     case stop
@@ -131,8 +129,8 @@ public enum CallNamesEvent: Equatable, Sendable {
 }
 
 public enum CallNamesEffect: Equatable, Sendable {
-    case observeBrowser
-    case observeZoom
+    /// Watch every call-app source, delivering what each observes.
+    case observe
     /// Close every call-app source.
     case stopObserving
 }
@@ -161,18 +159,12 @@ public struct CallNamesReducer: Sendable {
         case .start:
             guard state.observation == .idle else { return (state, nil) }
             next.observation = .observing
-            return (next, .observeBrowser)
+            return (next, .observe)
 
         case let .recordingChanged(true, instant):
             guard state.recordingStart == nil else { return (state, nil) }
             next.recordingStart = instant
-            if !state.pendingBrowser.isEmpty {
-                next.pendingBrowser = []
-                receiveBrowser(state.pendingBrowser, since: instant, in: &next)
-            }
-            guard state.observation == .observing, !state.watchingZoom else { return (next, nil) }
-            next.watchingZoom = true
-            return (next, .observeZoom)
+            return (next, nil)
 
         case .recordingChanged(false, _):
             next.recordingStart = nil
@@ -181,13 +173,11 @@ public struct CallNamesReducer: Sendable {
         case .stop:
             guard state.observation == .observing else { return (state, nil) }
             next.observation = .stopping
-            next.pendingBrowser = []
             return (next, .stopObserving)
 
         case .observationStopped:
             guard state.observation == .stopping else { return (state, nil) }
             next.observation = .stopped
-            next.watchingZoom = false
             return (next, nil)
 
         case let .rows(rows, instant):
@@ -216,14 +206,11 @@ public struct CallNamesReducer: Sendable {
             return (state.confirming(confirm(rows, turns, evidence)), nil)
 
         case let .browser(event):
-            if let start = state.recordingStart {
-                receiveBrowser(CollectionOfOne(event), since: start, in: &next)
-            } else if state.observation == .observing, !state.watchingZoom, state.browserConnections.contains(event.epoch) {
-                let limit = 1000
-                let indices = next.pendingBrowser.indices.filter { next.pendingBrowser[$0].epoch == event.epoch }
-                if indices.count >= limit, let oldest = indices.first { next.pendingBrowser.remove(at: oldest) }
-                next.pendingBrowser.append(event)
-            }
+            var browser = state.browser.observation
+            browser.receive(event)
+            next.browser = .init(browser)
+            guard next.browser != state.browser else { return (state, nil) }
+            publish(&next)
             return (next, nil)
 
         case let .browserConnected(id):
@@ -233,7 +220,6 @@ public struct CallNamesReducer: Sendable {
 
         case let .browserDisconnected(id):
             guard next.browserConnections.remove(id) != nil else { return (state, nil) }
-            next.pendingBrowser.removeAll { $0.epoch == id }
             publish(&next)
             return (next, nil)
 
@@ -241,13 +227,12 @@ public struct CallNamesReducer: Sendable {
             return (state, nil)
 
         case .zoom, .tick:
-            guard let start = state.recordingStart else { return (state, nil) }
             var zoom = state.zoom.observation
             switch event {
-            case let .zoom(change, instant):
+            case let .zoom(change, time):
                 func send(_ kind: ObservationEvent.Kind) {
                     next.sequence += 1
-                    zoom.receive(.init(epoch: 1, sequence: next.sequence, time: instant - start, kind: kind))
+                    zoom.receive(.init(epoch: 1, sequence: next.sequence, time: time, kind: kind))
                 }
                 switch change {
                 case let .started(name):
@@ -261,25 +246,13 @@ public struct CallNamesReducer: Sendable {
                 case .observed: send(.heartbeat)
                 case .lost: break
                 }
-            case let .tick(instant): zoom.tick(now: instant - start)
+            case let .tick(now): zoom.tick(now: now)
             case .recordingChanged, .rows, .diarized, .browser, .browserConnected, .browserDisconnected, .start, .stop, .observationStopped: break
             }
             next.zoom = .init(zoom)
             if next.zoom != state.zoom { publish(&next) }
             return (next, nil)
         }
-    }
-
-    private func receiveBrowser(_ events: some Sequence<ObservationEvent>, since start: Double, in state: inout State) {
-        var browser = state.browser.observation
-        for var event in events {
-            event.time = max(0, event.time - start)
-            browser.receive(event)
-        }
-        let evidence = State.Evidence(browser)
-        guard evidence != state.browser else { return }
-        state.browser = evidence
-        publish(&state)
     }
 
     @discardableResult

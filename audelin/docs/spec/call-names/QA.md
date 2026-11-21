@@ -7,13 +7,17 @@ call's names and what each fake source was asked to do.
 
 ## S-1 A row takes the name seen when it was said
 Evidence: `rowsPassExactEvidenceToNamingAndUseItsAnswer`,
-`firstRecordingOnStartsTheClockAndWatchesZoom`,
-`firstRecordingOnDeliversZoomObservationsWithTheirInstants`,
+`firstRecordingOnStartsTheClock`,
+`startDeliversReportsInCallTimeFromBothSources`,
 `firstSightAddsRosterNamesInOrderAndOpensIntervals`,
-`calibratedBrowserInstantsBecomeElapsedRosterAndSpeakingEvidence`,
-`bufferedBrowserEvidenceBeforeRecordingIsPlacedAtItsStart`,
+`rosterAndSpeakingUpdateBrowserEvidenceAndPublishedValues`,
 `onlyOpenBrowserConnectionsRaiseThroughUsingTheRowInstant`,
 `recordingOffClearsTheClockAndKeepsEvidenceAndNames`.
+The observers cover `beforeRecordingStartsAPollReportsNothing`,
+`eachPollReportsItsChangesThenATickInCallTime`,
+`aMessageBeforeRecordingStartsIsHeldAndPlacedOnceItStarts` and
+`aClockedConnectionReportsItselfAndItsMessagesInCallTime`. The composer
+checks the wiring in `aConnectedExtensionNamesTheRemoteRow`.
 
 ## S-2 Confirmed names replace live ones
 Evidence: `ConfirmationTests`.

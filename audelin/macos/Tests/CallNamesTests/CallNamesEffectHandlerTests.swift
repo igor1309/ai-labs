@@ -5,41 +5,28 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct CallNamesEffectHandlerTests {
 
-    @Test func startDeliversTheBrowserReports() async {
+    @Test func startDeliversReportsInCallTimeFromBothSources() async {
         let zoom = SourceSpy(), browser = SourceSpy()
-        let sut = CallNamesEffectHandler(zoom: zoom, browser: browser)
+        let sut = CallNamesEffectHandler(sources: [zoom, browser])
         let (reducer, _) = makeSUT()
         let (_, effect) = reducer.reduce(makeState(), .start)
-        await expect(sut, with: effect, toDeliver: .browserConnected(4), on: {
-            browser.report(.browserConnected(4))
-            browser.finish()
+        let zoomReport = CallNamesEvent.zoom(.observed, at: 1.5)
+        let browserReport = CallNamesEvent.browser(.init(epoch: 4, sequence: 1, time: 2, kind: .heartbeat))
+        await expect(sut, with: effect, toDeliver: [zoomReport, browserReport], on: {
+            #expect(zoom.observations == 1 && browser.observations == 1)
+            zoom.report(zoomReport); browser.report(browserReport)
+            zoom.finish(); browser.finish()
         })
-        #expect(zoom.observations == 0 && browser.observations == 1)
-        #expect(zoom.stops == 0 && browser.stops == 0)
-    }
-
-    @Test func firstRecordingOnDeliversZoomObservationsWithTheirInstants() async {
-        let zoom = SourceSpy(), browser = SourceSpy()
-        let sut = CallNamesEffectHandler(zoom: zoom, browser: browser)
-        let (reducer, _) = makeSUT()
-        let state = makeState { $0.observation = .observing }
-        let (_, effect) = reducer.reduce(state, .recordingChanged(isOn: true, at: 100))
-        let report = CallNamesEvent.zoom(.observed, at: 101.5)
-        await expect(sut, with: effect, toDeliver: report, on: {
-            zoom.report(report)
-            zoom.finish()
-        })
-        #expect(zoom.observations == 1 && browser.observations == 0)
         #expect(zoom.stops == 0 && browser.stops == 0)
     }
 
     @Test func stopObservingClosesEverySourceThenDeliversStopped() async {
         let zoom = SourceSpy(), browser = SourceSpy()
-        let sut = CallNamesEffectHandler(zoom: zoom, browser: browser)
+        let sut = CallNamesEffectHandler(sources: [zoom, browser])
         let (reducer, _) = makeSUT()
         let state = makeObservedState { $0.observation = .observing; $0.rowNames = [1: "Anna"] }
         let (_, effect) = reducer.reduce(state, .stop)
-        await expect(sut, with: effect, toDeliver: .observationStopped, on: {})
+        await expect(sut, with: effect, toDeliver: [.observationStopped], on: {})
         #expect(zoom.stops == 1 && browser.stops == 1)
         #expect(zoom.observations == 0 && browser.observations == 0)
     }
@@ -67,12 +54,13 @@ private final class SourceSpy: CallAppObserver {
 }
 
 private func expect(
-    _ sut: CallNamesEffectHandler, with effect: CallNamesEffect?, toDeliver event: CallNamesEvent, on report: () -> Void
+    _ sut: CallNamesEffectHandler, with effect: CallNamesEffect?, toDeliver expected: [CallNamesEvent], on report: () -> Void
 ) async {
     guard let effect else { Issue.record("expected an observation effect"); return }
     let events = sut.handle(effect)
     report()
     var delivered: [CallNamesEvent] = []
     for await event in events { delivered.append(event) }
-    #expect(delivered == [event])
+    #expect(delivered.count == expected.count)
+    for event in expected { #expect(delivered.contains(event)) }
 }

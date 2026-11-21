@@ -9,21 +9,25 @@ banners, names and recording time the state shows.
 Evidence: `repeatedFaultKeepsItsFirstTimeAndDoesNotLayOutAgain`,
 `recordingOffClearsFaultsAndUsesTheRebuiltRows`,
 `faultsAndWarningAreNewestFirstAndOnlyFaultsPersist`.
+The composer checks that the panel shows the gap at its original call time
+in `aLostCaptureReachesThePanelOnItsRecordingClock`.
 
 ## S-2 Silence clears without leaving a gap
 Evidence: `clearingWarningKeepsFaultsWithoutLayingOutAgain`, `layoutGetsOnlyProblemsThatLeaveAGap`.
 
 ## S-3 Held selections stay as selected
-Evidence: `holdsSurviveRevisedText`, `holdsSurviveTheirEntryLeaving`, `letGoRemovesOnlyThatHold`.
+Evidence: `holdsSurviveLayoutChangesAndRecordingTransitions`,
+`holdsPreserveExactTextAndIgnoreDuplicates`, `lettingGoRemovesOnlyTheMatchingHold`.
 
 ## S-4 Scrolling away counts new entries
-Evidence: `newIdentitiesCountBelow`, `settlingIsNotNewBelow`, `jumpToLiveFollowsAndClearsNew`.
+Evidence: `layoutReceivesExactPayloadAndItsResultBecomesState`,
+`scrollingAndJumpingControlFollowingAndNewCount`.
 
 ## S-5 Live text prepares while recording
-Evidence: `gettingReadyKeepsTheRecording`.
+Evidence: `logSelectionKeepsAvailableRowsAndHolds`, `textStatusChoosesTheLog`.
 
 ## S-6 Finishing keeps what was read
-Evidence: `finishingKeepsWhatWasRead`.
+Evidence: `logSelectionKeepsAvailableRowsAndHolds`, `textStatusChoosesTheLog`.
 
 ## S-7 A finished call takes its confirmed names
 A call ended, then its confirmed names: the rows read those names. The
