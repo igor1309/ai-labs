@@ -24,7 +24,7 @@ struct TranscriptFinalizationCompositionTests {
         defer { deliveringClose.end(); acceptClose.end() }
         let text = CallState(status: .finished, entries: [], finalCount: 0)
         let names = CallNamesState(roster: ["Vera"], rowNames: [3: "Vera"])
-        let delivery = subscribeTranscriptFinalization(output.stream) { event in
+        let delivery = subscribeTranscriptFinalization(output.stream, resources: await FinalizationResources()) { event in
             if case .closed(call: "second", names: _) = event {
                 deliveringClose.send()
                 await acceptClose.next()

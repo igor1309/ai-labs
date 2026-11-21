@@ -13,7 +13,7 @@ final class TranscriptFinalizationModel {
     private let model: ObservableModel<State, Event, Effect>
     private let feed = StateFeed<State>()
 
-    init(diarizing: any TranscriptDiarizing<CallState, Transcript.Attributed>,
+    init(diarizing: any TranscriptDiarizing<CallState, CallNamesState, Transcript.Attributed>,
          cleanup: any MicrophoneCleanup<CallState, Transcript.Attributed, [TranscriptSegment]>,
          replacement: any TranscriptReplacement<CallState, CallNamesState, Transcript.Attributed, [TranscriptSegment]>,
          finals: any FinalTranscripts<Job.Entry>) {

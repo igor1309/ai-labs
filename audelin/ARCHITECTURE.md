@@ -568,27 +568,29 @@ made final. TranscriptFinalization is the state machine for that line. It
 answers what each call's transcript is in its final form, for every call
 recorded, whether or not notes are on, and knows nothing of notes: its
 final transcript goes to a receiver port, which the root answers. Its
-state holds each call's stage, writing, diarizing, cleaning, committing,
-then finalized or failed, with the call's last saved text, the speaker
+state holds each call's stage, writing, waiting for speaker evidence,
+diarizing, cleaning, committing, then finalized or failed, with the call's last saved text, the speaker
 names taken when its transcript closed, its attributed far side and its
 cleaned microphone side; whether the latest write succeeded; whether its
 final transcript has been published; whether transcript input has ended; and
 whether a shutdown has settled.
 Its events are the transcript's opening, each live write's success or
-failure, the close with the call's names, each stage's result, each
+failure, the close with the call's names, the call's closed speaker evidence, each stage's result, each
 publication, the end of transcript input and shutdown.
 
 A call whose latest write failed is final as last saved, without further
-work. A saved call is diarized (Remote speakers), then cleaned (Bleed
-cleanup); cleaned microphone text is committed to the file, and a failed
+work. A saved call waits for its speaker evidence after the transcript
+closes, then is diarized (Remote speakers) and cleaned (Bleed cleanup).
+Cleaned microphone text is committed to the file, and a failed
 commit keeps the text as written. A commit renders with the names taken at
 close, read once, so a name published later cannot race it. Each call's
 final transcript, its entries, whether they hold words, and whether the file
 holds the latest text, is published once, and is published when its
 receiver has taken it. Entries come from an injected pure mapping.
 
-On shutdown no new model work starts. A call being cleaned is committed
-as written with its stages left skipped (Transcript origin), and the
+On shutdown no new model work starts. A call waiting for evidence is
+committed as written with both stages skipped. A call being cleaned is committed
+as written with cleaning skipped (Transcript origin), and the
 machine stops its cleanup; a call being diarized or
 committed is final when that file write returns, since both replace the
 file; a call still being written is committed as last saved, its stages skipped, once it closes.
@@ -608,7 +610,8 @@ whole replacements. The root keeps each call's writer, cleanup inputs and
 running cleanup as resource handles until its final transcript is
 published, subscribes the machine to Recording's ordered transcript
 output (each opening, write and close, keyed by call, none dropped), and
-answers the receiver port by handing each final transcript to SummaryJobs
+forwards each call's closed speaker evidence independently. It answers
+the receiver port by handing each final transcript to SummaryJobs
 before it releases the call's handles; it subscribes the panel's speaker
 rows to the machine.
 
@@ -839,8 +842,9 @@ that call; its names stay after it.
 The root sends it each new remote row of a call, and subscribes its names,
 tentative and confirmed, to Reading, which shows them, and to the call's
 names port, which keeps the names last published. The transcript writer
-reads the latest published names. The after-call pass uses the evidence
-from its own closed watch, after the sources close and their reports
-reach CallNames. The pass gives the speaker turns it diarized back through
+reads the latest published names. When a watch's sources close and their
+reports reach CallNames, the root sends that call's evidence to
+TranscriptFinalization, which passes it to the after-call pass. The pass
+gives the speaker turns it diarized back through
 the same port. CallNames keeps early turns until that evidence is ready
 and then confirms the names.

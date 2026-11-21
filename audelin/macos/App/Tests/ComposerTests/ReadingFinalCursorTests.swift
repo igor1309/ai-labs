@@ -134,6 +134,24 @@ struct ReadingFinalCursorTests {
         }
     }
 
+    @Test(arguments: [1, 2])
+    func theNextCallsSealedRowsMatchAFreshMapping(sealed: Int) {
+        func makeCall(_ id: UInt64, count: Int, text: String, name: String) -> ReadingState {
+            let entries: [ReadingState.Row] = (0..<count).map { index in
+                .entry(.init(id: index, time: "00:00", speaker: .theirs, settled: text, name: name, nameConfirmed: true))
+            }
+            return .init(displayedCall: id, log: .lines(.init(rows: .init(sealed: entries), layout: 1)))
+        }
+
+        var cache = MappedRows()
+        let first = makeCall(1, count: 1, text: "first call", name: "Vera")
+        _ = panelState(russianPanel, first, rows: &cache)
+        let opened = readingReducer().reduce(first, .opened(2)).0
+        #expect(panelState(russianPanel, opened, rows: &cache).log == .empty)
+        let second = makeCall(2, count: sealed, text: "second call", name: "Anna")
+        #expect(panelState(russianPanel, second, rows: &cache) == panelState(russianPanel, second))
+    }
+
     @Test func aGapAfterEntriesWentFinalKeepsItsPlace() {
 
         let problem = ReadingUpdate.problemsChanged([.microphone], callSilent: false, at: 120)

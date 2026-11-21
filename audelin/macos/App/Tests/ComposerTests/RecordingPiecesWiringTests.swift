@@ -14,6 +14,7 @@ import Recording
 import SessionRehearsal
 import Synchronization
 import Testing
+import TranscriptFormat
 @testable import Composer
 
 /// What the composed Recording's pieces do, on the boundary an application composes them with.
@@ -129,7 +130,10 @@ struct RecordingPiecesWiringTests {
         let diarizing = Signal(), finishDiarizing = Signal()
         let firstSpeech = Signal(), secondSpeech = Signal()
         defer { diarizing.end(); finishDiarizing.end(); firstSpeech.end(); secondSpeech.end() }
-        let storage = NamesStorage(opens: true, diarizer: GatedNamesDiarizer(entered: diarizing, proceed: finishDiarizing))
+        let storage = NamesStorage(opens: true, diarizer: NamesDiarizer {
+            diarizing.send()
+            await finishDiarizing.next()
+        })
         let hearing = Hearing(words: [Word("привет", start: 2, end: 4)])
         let remotes = Mutex([firstSpeech, secondSpeech].map {
             ScriptRecognizer(hearings: [.success(hearing), .success(Hearing(words: []))], endings: [.success(hearing)], release: $0)
@@ -195,14 +199,38 @@ struct RecordingPiecesWiringTests {
         let first = DelayedWatch(stopping: stopping, close: close)
         let second = DelayedWatch(opened: watchingNext)
         let watches = Mutex([first, second])
-        let storage = NamesStorage(opens: true, diarizer: CallDiarizer.unavailable)
+        let storage = NamesStorage(opens: true, diarizer: NamesDiarizer {})
+        let hearing = Hearing(words: [Word("привет", start: 2, end: 4)])
 
-        try await withPieces(makeWatch: { _ in
+        try await withPieces(liveText: true, makeWatch: { _ in
             CallAppWatch(sources: [watches.withLock { $0.removeFirst() }])
-        }, configure: { $0.transcripts = storage }) { rig in
-            _ = await rig.record()
+        }, configure: { boundary in
+            boundary.transcripts = storage
+            let base = boundary.recognizers
+            boundary.recognizers = FixtureRecognizers(source: {
+                if $0 == .call {
+                    return RehearsalRecognizer(ScriptRecognizer(
+                        hearings: [.success(hearing), .success(Hearing(words: []))], endings: [.success(hearing)]))
+                }
+                return try await base.recognizer(for: $0)
+            }, missing: base.missingModels, load: base.startLoading)
+        }) { rig in
+            let recorded = await rig.record()
+            let firstNames = try #require(storage.ports.all.first)
+            let folder = try #require(recorded.pieces?.recordedFolder?.id)
+            first.updates.continuation.yield(.zoom(.started("Анна"), at: 1))
+            first.updates.continuation.yield(.zoom(.stopped("Анна"), at: 4))
+            try #require(await firstNames.states().first { $0.through == 4 } != nil)
+            try #require(await rig.panel.states().first { state in
+                guard case let .lines(lines) = state.log else { return false }
+                return lines.entries.contains { $0.speaker == .them }
+            } != nil)
             await rig.stop()
             await stopping.next()
+            let closed = try #require(await rig.finalization.states().first { state in
+                state.calls[folder].map { $0.stage != .writing } == true
+            })
+            #expect(closed.calls[folder]?.stage == .waitingForEvidence)
 
             let next = await rig.record()
             #expect(next.session?.id == 2)
@@ -210,10 +238,55 @@ struct RecordingPiecesWiringTests {
             try #require(await names.states().first { $0.recordingStart != nil }?.observation == .pending)
             try #require(await rig.panel.presentations().first { $0.call == 2 && $0.state.recording == .on(elapsed: "00:00:00") } != nil)
 
+            first.updates.continuation.yield(.zoom(.started("Анна"), at: 4.5))
+            first.updates.continuation.yield(.zoom(.stopped("Анна"), at: 9))
+            let late = try #require(await firstNames.states().first { $0.through == 9 })
+            #expect(late.observation == .stopping)
             close.end()
             await watchingNext.next()
             try #require(await names.states().first { $0.observation == .observing } != nil)
+            let finalized = try #require(await rig.finalization.states().first { $0.calls[folder]?.published == true })
+            #expect(finalized.calls[folder]?.outcomes.split == .done(diarizer: "nemotron"))
+            let url = URL(fileURLWithPath: folder).appendingPathComponent("transcript.md")
+            let transcript = try String(contentsOf: url, encoding: .utf8)
+            #expect(TranscriptFormat.namedEntries(transcript).contains(.init(label: "Them (Анна)", start: 2, words: "привет")))
             await rig.stop()
+        }
+    }
+
+    @Test func shutdownSkipsDiarizationWhileTheNamingSourceIsStillClosing() async throws {
+        let stopping = Signal(), close = Signal()
+        defer { stopping.end(); close.end() }
+        let source = DelayedWatch(stopping: stopping, close: close)
+        let diarizations = Values<String>()
+        let storage = NamesStorage(opens: true, diarizer: NamesDiarizer { diarizations.append("started") })
+
+        try await withPieces(liveText: true, makeWatch: { _ in
+            CallAppWatch(sources: [source])
+        }, configure: { $0.transcripts = storage }) { rig in
+            let recorded = await rig.record()
+            let folder = try #require(recorded.pieces?.recordedFolder?.id)
+            try #require(await rig.panel.states().first { state in
+                guard case let .lines(lines) = state.log else { return false }
+                return lines.entries.contains { $0.speaker == .them }
+            } != nil)
+            await rig.stop()
+            await stopping.next()
+            let closed = try #require(await rig.finalization.states().first { state in
+                state.calls[folder].map { $0.stage != .writing } == true
+            }?.calls[folder])
+            try #require(closed.latestWriteSucceeded)
+            try #require(closed.raw?.entries.isEmpty == false)
+
+            await rig.finalization.send(.shutdown)
+            let shuttingDown = try #require(await rig.finalization.states().first { $0.shuttingDown })
+            let skipped = FinishingOutcomes(split: .skipped, cleaning: .skipped)
+            #expect(shuttingDown.calls[folder]?.outcomes == skipped)
+
+            close.end()
+            let published = try #require(await rig.finalization.states().first { $0.calls[folder]?.published == true })
+            #expect(published.calls[folder]?.outcomes == skipped)
+            #expect(diarizations.all.isEmpty)
         }
     }
 
@@ -430,6 +503,7 @@ private extension AsyncThrowingStream<CaptureBuffer, any Error>.Continuation {
 
 private struct PiecesRig: Sendable {
     let recording: RecordingInputs
+    let finalization: TranscriptFinalizationModel
     let resources: FinalizationResources
     let panel: AudelinPanel
     let microphones: Captures
@@ -513,11 +587,11 @@ private func withPieces(
                                                occupiedCallNames: { [] }, callApp: app, processes: processes, boundary: boundary,
                                                panel: panel, finalizationResources: resources,
                                                summaries: SummaryCallbacks(waiting: { waiting.append($0); await onWaiting($0) }))
-        let delivery = consumeTranscript ? subscribeTranscriptFinalization(recording.transcriptOutput, send: { await finalization.send($0) }) : nil
+        let delivery = consumeTranscript ? subscribeTranscriptFinalization(recording.transcriptOutput, resources: resources, send: { await finalization.send($0) }) : nil
         for condition in [RecordingCondition.callAudioAccess, .microphoneAccess, .callsFolder, .room] {
             await recording.send(.conditionChanged(condition, available: true))
         }
-        try await body(PiecesRig(recording: recording, resources: resources, panel: panel, microphones: microphones, calls: calls,
+        try await body(PiecesRig(recording: recording, finalization: finalization, resources: resources, panel: panel, microphones: microphones, calls: calls,
                                  waiting: waiting, published: published, log: log))
         await finalization.send(.shutdown)
         await recording.end()
@@ -558,15 +632,13 @@ private struct NamesStorage: TranscriptStorage {
     }
 }
 
-private struct GatedNamesDiarizer: TranscriptDiarizer {
-    let entered: Signal
-    let proceed: Signal
+private struct NamesDiarizer: TranscriptDiarizer {
+    let report: @Sendable () async -> Void
 
     func prepare() {}
 
     func diarize(_ track: URL, speakers: Int?) async throws -> CallDiarizer.Diarization {
-        entered.send()
-        await proceed.next()
+        await report()
         return .init(model: .nemotron, turns: [.init(speaker: 0, start: 2, end: 4), .init(speaker: 0, start: 5, end: 8)])
     }
 }

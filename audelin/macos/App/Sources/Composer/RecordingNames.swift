@@ -21,13 +21,14 @@ public final class RecordingNames: Sendable {
     /// The names last published.
     func snapshot() -> CallNamesState { latest.withLock { $0 } }
 
-    /// Finalization uses this call's evidence after CallNames has closed and drained its sources.
+    /// The evidence CallNames published after closing and draining its sources.
     @MainActor
-    func awaitClosedEvidence() async -> Bool {
-        guard !Task.isCancelled else { return false }
-        if snapshot().observation == .idle, delivery.withLock({ $0 == nil }) { return true }
-        for await names in states() where names.observation == .stopped { return !Task.isCancelled }
-        return false
+    func closedEvidence() async -> CallNamesState? {
+        guard !Task.isCancelled else { return nil }
+        let current = snapshot()
+        if current.observation == .idle, delivery.withLock({ $0 == nil }) { return current }
+        for await names in states() where names.observation == .stopped { return Task.isCancelled ? nil : names }
+        return nil
     }
 
     func published(_ names: CallNamesState) {

@@ -16,6 +16,35 @@ struct ReadingSpeakersFoundTests {
         #expect(spy.calls == [])
         #expect(spy.layoutCalls.map(\.change) == [.rebuild])
     }
+
+    @Test func endingTextAppliesPendingPlacesToSealedAndMutableLogRows() {
+        var state = makeUnplaced(sealed: 2)
+        state.textEnded = false
+        state.pendingSpeakerPlaces = [1: 1, 2: 2]
+        let placed = shown("given", remote: [1, nil, 2, nil])
+        let spy = RenderingSpy { layout in
+            layout.rows = .init(sealed: placed.prefix(2).map(ReadingState.Row.entry),
+                                tail: placed.dropFirst(2).map(ReadingState.Row.entry))
+            layout.revision = 1
+        }
+
+        assert(state, .textEnded, delivers: nil, using: makeReducer(spy)) {
+            $0.textEnded = true
+            $0.pendingSpeakerPlaces = nil
+            $0.speakerPlaces = [1: 1, 2: 2]
+            for (key, entry) in zip(texts.map(\.id), placed) { $0.rendered.entries[key] = entry }
+            $0.lines.rows = .init(sealed: placed.prefix(2).map(ReadingState.Row.entry),
+                                  tail: placed.dropFirst(2).map(ReadingState.Row.entry))
+            $0.lines.layout = 1
+            $0.log = .lines($0.lines)
+        }
+        #expect(spy.calls.isEmpty)
+        #expect(spy.layoutCalls.map(\.change) == [.rebuild])
+        let requestedPlaces = spy.layoutCalls.map { call in
+            texts.map { call.value.rendered.entries[$0.id]?.remoteSpeaker }
+        }
+        #expect(requestedPlaces == [[1, nil, 2, nil]])
+    }
 }
 
 private let texts = [entry(.theirs, 1, at: 1), entry(.mine, 1, at: 2), entry(.theirs, 2, at: 3), entry(.theirs, 3, at: 5)]

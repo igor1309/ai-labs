@@ -17,63 +17,45 @@ struct AfterCallNamesWiringTests {
     @MainActor
     @Test func turnsReportedEarlyConfirmTheRowAfterTheWatchCloses() async throws {
         let clock = FixtureClock(), channel = FakeBrowserChannel(), names = RecordingNames()
+        defer { clock.finish() }
         let panel = makeAudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals,
                                  browser: { channel.open() }, sleep: { try await Task.sleep(for: $0 * 10_000) }, zoomName: unknownZoomName)
         let text = AsyncStream<CallState>.makeStream()
         panel.begin(id: 1, text: text.stream, names: names)
         panel.sessionChanged(id: 1, SessionState(phase: .recording), at: clock.time.monotonicNow())
         clock.advance(20)
-        try await speakInTurns(channel.connect())
+        try await speakInTurns(channel.connect(), to: names)
+        text.continuation.yield(remote())
+        try #require(await panel.states().first { @Sendable in annaRow(in: $0)?.labelIsTentative == true } != nil)
 
-        var round = 0
-        text.continuation.yield(remote(round))
-        var delivered = false
-        for await shown in panel.states() {
-            guard case let .lines(lines) = shown.log, let row = lines.entries.first else { continue }
-            if row.label == "Анна", !row.labelIsTentative { break }
-            if row.label == "Анна", !delivered {
-                delivered = true
-                await names.diarized(turns, rows: [Row(id: 1, start: 0, end: 4)])
-                panel.sessionChanged(id: 1, .init(phase: .ended, transcript: .closed), at: clock.time.monotonicNow())
-            } else if !delivered {
-                round += 1
-                text.continuation.yield(remote(round))
-            }
-        }
+        #expect(names.snapshot().observation == .observing)
+        await names.diarized(turns, rows: [Row(id: 1, start: 0, end: 4)])
+        panel.sessionChanged(id: 1, .init(phase: .ended, transcript: .closed), at: clock.time.monotonicNow())
+        try #require(await panel.states().first { @Sendable in annaRow(in: $0)?.labelIsTentative == false } != nil)
         text.continuation.finish()
         await names.finalizationEnded()
-        clock.finish()
     }
 
     @MainActor
     @Test func diarizedTurnsAfterTheCallEndsConfirmTheFinishedCall() async throws {
         let clock = FixtureClock(), channel = FakeBrowserChannel(), names = RecordingNames()
+        defer { clock.finish() }
         let panel = makeAudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals,
                                  browser: { channel.open() }, sleep: { try await Task.sleep(for: $0 * 10_000) }, zoomName: unknownZoomName)
         let text = AsyncStream<CallState>.makeStream()
         panel.begin(id: 1, text: text.stream, names: names)
         panel.sessionChanged(id: 1, SessionState(phase: .recording), at: clock.time.monotonicNow())
         clock.advance(20)
-        try await speakInTurns(channel.connect())
+        try await speakInTurns(channel.connect(), to: names)
 
-        var round = 0
-        text.continuation.yield(remote(round))
-        for await shown in panel.states() {
-            guard case let .lines(lines) = shown.log, let row = lines.entries.first else { continue }
-            if row.label == "Анна" { break }
-            round += 1
-            text.continuation.yield(remote(round))
-        }
+        text.continuation.yield(remote())
+        try #require(await panel.states().first { @Sendable in annaRow(in: $0)?.labelIsTentative == true } != nil)
         text.continuation.finish()
         panel.sessionChanged(id: 1, .init(phase: .ended, transcript: .closed), at: clock.time.monotonicNow())
-        clock.finish()
+        try #require(await names.states().first { @Sendable in $0.observation == .stopped } != nil)
 
-        // The pass runs during finalization, after the panel has ended the reading.
         await names.diarized(turns, rows: [Row(id: 1, start: 0, end: 4)])
-        for await shown in panel.states() {
-            guard case let .lines(lines) = shown.log, let row = lines.entries.first else { continue }
-            if row.label == "Анна", !row.labelIsTentative { break }
-        }
+        try #require(await panel.states().first { @Sendable in annaRow(in: $0)?.labelIsTentative == false } != nil)
         await names.finalizationEnded()
     }
 
@@ -222,7 +204,7 @@ private struct GatedWatchSource: CallAppObserver {
 
 /// The browser's clock reads 100 s at call time 20 s; Анна and Борис take turns
 /// over the call's first 16 s.
-private func speakInTurns(_ peer: FakeBrowserPeer) async throws {
+private func speakInTurns(_ peer: FakeBrowserPeer, to names: RecordingNames) async throws {
     var sent = peer.sent.makeAsyncIterator()
     #expect(await sent.next() == BrowserClockReply.ping(0))
     peer.send(#"{"version":1,"ping":0,"at":100000}"#)
@@ -234,6 +216,15 @@ private func speakInTurns(_ peer: FakeBrowserPeer) async throws {
         peer.send(browserMessage(sequence + 1, #"{"type":"speakingStopped","at":\#((start + 4) * 1000),"participantId":"\#(id)"}"#))
         sequence += 2
     }
+    try #require(await names.states().first { @Sendable state in
+        let anna = state.browser.intervals.filter { $0.memberID == "t1" }
+        return anna.map(\.start) == [0, 8] && anna.compactMap(\.end) == [4, 12]
+    } != nil)
+}
+
+private func annaRow(in state: PanelState) -> PanelState.Entry? {
+    guard case let .lines(lines) = state.log else { return nil }
+    return lines.entries.first { $0.label == "Анна" }
 }
 
 /// The pass's turns: speaker 0 where Анна spoke, speaker 1 where Борис did.
@@ -241,11 +232,10 @@ private let turns = [0, 4, 8, 12].enumerated().map {
     DiarizedTurn(speaker: $0.offset % 2, start: Double($0.element), end: Double($0.element + 4))
 }
 
-/// A remote row spoken over the call's first 4 s, while Анна spoke;
-/// `round` changes its pending word so each text is new.
-private func remote(_ round: Int) -> CallState {
+/// A remote row spoken over the call's first 4 s, while Анна spoke.
+private func remote() -> CallState {
     let entry = CallState.Entry(speaker: .theirs, text: .init(id: 1, start: 0, end: 4, words: [
-        .init("привет", start: 0, end: 2), .init("w\(round)", start: 2, end: 4),
+        .init("привет", start: 0, end: 2), .init("всем", start: 2, end: 4),
     ], settledCount: 1), writtenLater: false)
     return .init(status: .listening, entries: .init(tail: [entry]), finalCount: 0)
 }
