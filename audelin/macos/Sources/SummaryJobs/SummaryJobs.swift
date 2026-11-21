@@ -25,6 +25,8 @@ public struct Job: Equatable, Sendable {
     public var template: Template?
     public var keepPrevious: Bool
     public var requested: Bool
+    /// The user's name read when the run was prepared; nil when none.
+    public var userName: String?
     public struct Runtime: Equatable, Sendable {
         public var kind: String
         public var model: String
@@ -50,8 +52,8 @@ public struct Job: Equatable, Sendable {
     public var speakers: Bool
     public var primary: Runtime
     public var fallback: Runtime?
-    public init(id: String, call: String, input: String, entries: [Entry], speakers: Bool, primary: Runtime, fallback: Runtime? = nil, template: Template? = nil, keepPrevious: Bool = true, requested: Bool = false, transcriptIdentity: String? = nil) {
-        self.transcriptIdentity = transcriptIdentity
+    public init(id: String, call: String, input: String, entries: [Entry], speakers: Bool, primary: Runtime, fallback: Runtime? = nil, template: Template? = nil, keepPrevious: Bool = true, requested: Bool = false, transcriptIdentity: String? = nil, userName: String? = nil) {
+        self.transcriptIdentity = transcriptIdentity; self.userName = userName
         self.template = template; self.keepPrevious = keepPrevious; self.requested = requested
         self.id = id; self.call = call; self.input = input; self.entries = entries
         self.speakers = speakers; self.primary = primary; self.fallback = fallback

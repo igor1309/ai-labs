@@ -52,7 +52,8 @@ public func rehearsalBoundary(
             }
         }), log: RehearsalLog(), intervals: intervals, recordings: FileRecordingStorage(), trash: ComposerBoundary.systemTrash, bleedCleaning: RehearsalCleaning(),
         bleedHearing: CleanupHearing(recognizers: RehearsalRecognizers(mine: mine, theirs: theirs)),
-        diarizer: diarizer, transcripts: FileTranscriptStorage(diarizer: diarizer))
+        diarizer: diarizer, transcripts: FileTranscriptStorage(diarizer: diarizer),
+        accountName: { "" })
 }
 
 private struct RehearsalMicrophone: MicrophoneSource {

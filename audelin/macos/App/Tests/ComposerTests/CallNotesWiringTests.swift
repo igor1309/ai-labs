@@ -373,6 +373,21 @@ private actor HeldNotesLocation: Locations {
 }
 
 extension CallNotesWiringTests {
+    @Test func notesNameTheUserByTheMacAccountWithoutAZoomName() async throws {
+        try await withNotesComposition(configure: { $0.accountName = { "Igor Malyarov" } }) { rig, http in
+            let calls = try #require(rig.menu.calls)
+            try savedCall(a, in: rig.root)
+            await rig.menu.perform(.showCalls); await rows(calls, count: 1)
+            await calls.send(.read(a)); await calls.send(detail: .makeSummary)
+            await http.started.next()
+            #expect(await http.bodies.first?.contains("[3.0] Igor Malyarov: saved words") == true)
+            try await http.succeed()
+            await detail(calls) { if case .notes = $0?.content { true } else { false } }
+            let transcript = try String(contentsOf: rig.folder(a).appendingPathComponent("transcript.md"), encoding: .utf8)
+            #expect(!transcript.contains("Igor Malyarov"))
+        }
+    }
+
     @Test(arguments: [true, false])
     func chosenTemplateMakesNotesAgainWithTheCapturedKeepChoice(keeping: Bool) async throws {
         try await withNotesComposition { rig, http in

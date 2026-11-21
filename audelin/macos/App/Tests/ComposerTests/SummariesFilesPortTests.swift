@@ -113,7 +113,7 @@ import Testing
         let files = FilesFake(), sut = makeSUT(files)
         var chosen = job
         chosen.template = .init(id: "daily-id", name: "Daily", value: NotesGeneration.Template(name: "Daily", instructions: "saved instructions", headings: [[.init("Day", required: false)]]))
-        chosen.keepPrevious = keeping; chosen.requested = true
+        chosen.keepPrevious = keeping; chosen.requested = true; chosen.userName = "Игорь"
         let saved = try await sut.claim(chosen).saved
         files.stored = try #require(files.claimed.first)
         #expect(try await sut.load(call: "call") == saved && saved.job == chosen)
@@ -131,11 +131,24 @@ import Testing
         let files = FilesFake()
         var old = try await record(phase: "pending")
         var snapshot = try #require(try JSONSerialization.jsonObject(with: old.snapshot) as? [String: Any])
-        for key in ["template", "keepPrevious", "requested", "transcriptIdentity"] { snapshot[key] = nil }
+        for key in ["template", "keepPrevious", "requested", "transcriptIdentity", "userName"] { snapshot[key] = nil }
         old.snapshot = try JSONSerialization.data(withJSONObject: snapshot)
         files.stored = old
         var expected = job; expected.transcriptIdentity = nil
         #expect(try await makeSUT(files).load(call: "call")?.job == expected)
+    }
+
+    @Test func aSnapshotSavedBeforeTheNameReadsAsNoName() async throws {
+        let files = FilesFake()
+        var named = job; named.userName = "Игорь"
+        _ = try await makeSUT(files).claim(named)
+        var old = try #require(files.claimed.first)
+        var snapshot = try #require(try JSONSerialization.jsonObject(with: old.snapshot) as? [String: Any])
+        #expect(snapshot["userName"] as? String == "Игорь")
+        snapshot["userName"] = nil
+        old.snapshot = try JSONSerialization.data(withJSONObject: snapshot)
+        files.stored = old
+        #expect(try await makeSUT(files).load(call: "call")?.job.userName == nil)
     }
 
     @Test func olderTemplateSnapshotsKeepTheirResolvedValue() async throws {

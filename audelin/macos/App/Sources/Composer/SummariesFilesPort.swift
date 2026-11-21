@@ -69,7 +69,7 @@ public struct SummariesFilesPort: SummariesClaims, SummariesRecords, SummariesSt
         let snapshot = try JSONDecoder().decode(Snapshot.self, from: record.snapshot)
         let job = Job(id: record.job, call: record.call, input: record.input, entries: snapshot.entries.map(\.value),
                       speakers: snapshot.speakers, primary: snapshot.primary.value, fallback: snapshot.fallback?.value, template: snapshot.template?.value,
-                      keepPrevious: snapshot.keepPrevious ?? true, requested: snapshot.requested ?? false, transcriptIdentity: snapshot.transcriptIdentity)
+                      keepPrevious: snapshot.keepPrevious ?? true, requested: snapshot.requested ?? false, transcriptIdentity: snapshot.transcriptIdentity, userName: snapshot.userName)
         let stages: [String: SummariesState.Call.Stage] = ["pending": .pending, "running": .observed, "interrupted": .interrupted,
                                                            "succeeded": .succeeded, "failed": .failed]
         guard let stage = stages[record.phase] else { throw CocoaError(.fileReadCorruptFile) }
