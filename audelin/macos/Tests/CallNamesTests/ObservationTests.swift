@@ -30,7 +30,7 @@ struct ObservationTests {
         #expect(spy.requests.isEmpty)
     }
 
-    @Test(arguments: [State.Observation.observing, .stopping, .stopped])
+    @Test(arguments: [State.Observation.pending, .observing, .stopping, .stopped])
     func startOnceWatchingOrAfterIsIgnored(observation: State.Observation) {
         let (sut, _) = makeSUT()
         let state = makeModel(makeState { $0.observation = observation })
@@ -54,8 +54,11 @@ struct ObservationTests {
 
     @Test func closedSourcesEndTheObservation() {
         let (sut, _) = makeSUT()
-        assert(makeModel(makeState { $0.observation = .stopping }), .observationStopped(1), using: sut) {
+        var state = makeModel(makeState { $0.observation = .stopping })
+        state.calls[1]?.reportsEnded = true
+        assert(state, .observationStopped(1), using: sut) {
             $0.calls[1]?.names.observation = .stopped
+            $0.calls[1]?.sourcesClosed = true
         }
     }
 

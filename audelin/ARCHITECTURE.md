@@ -71,8 +71,6 @@ state inside Recording's state and is not a machine or a module of its own.
 The code does not yet follow rules 4 and 5 everywhere. Each item below
 becomes part of a machine's state, or is shown to be only mapping:
 
-- The panel's composition builds a Reading and a CallNames for each
-  recording and decides what Reading is sent.
 - The menu runs panel presence's reducer and its delay by hand.
 - The composer holds `NewestText` across events.
 
@@ -775,8 +773,9 @@ Reading is the machine that says what the panel shows. Its reason to
 change is how a call's text is read. One machine lives as long as the app
 and displays one call at a time: opening a call resets it, and input for
 any other call is ignored. A call stays displayed after its recording ends,
-still taking its confirmed names and speaker places, until the next call
-opens. Its state holds the call's entries, the names by remote row,
+still taking its final text, confirmed names and speaker places, until the
+next call opens. Reading holds any early speaker places until the call's
+text feed ends. Its state holds the displayed call's id, its entries, the names by remote row,
 whether they are confirmed, whether capture has begun, the instant it
 began and the first time of each problem; it keeps text that arrives
 before capture and shows an empty log until capture begins. Reading has no
@@ -788,9 +787,10 @@ fault report with an instant on one monotonic clock, and Reading and
 CallNames each start their clock from the first instant recording is on.
 Neither machine asks the other for the time.
 
-The root subscribes call text, CallNames' names and the Session's state to
-Reading's events, keyed by call, and maps Reading's state to the panel's in
-the chosen language. The mapping keeps the rows it built for the current
+The root subscribes each call's text, speaker places, names and Session
+state independently. These inputs and the panel's reader actions carry the
+call id. The root maps the displayed log again when the language changes,
+including after recording ends. The mapping keeps the rows it built for the current
 layout so a long call is not mapped again from the start; it is a cache of
 a pure mapping, and a fresh mapping gives the same panel state.
 
@@ -814,8 +814,9 @@ Its effect handler watches and closes the call-app sources; each watch,
 and each source's stop acknowledgement, carries its call's id, so ending
 one call never stops another's watch. The browser adapter opens the
 socket for each call's watch and closes it when that watch stops.
-The previous recording's watch closes the socket before the next
-recording opens it, since the path is shared. Two adapters in
+CallNames keeps the next watch pending until the previous watch
+acknowledges the close, since the socket path is shared. A pending watch
+does not delay the next Session or its panel. Two adapters in
 the composer answer that port: the Zoom observer reports who speaks on
 Zoom's side, and the browser observer reports the extension's events and
 connections.
@@ -837,7 +838,9 @@ that call; its names stay after it.
 
 The root sends it each new remote row of a call, and subscribes its names,
 tentative and confirmed, to Reading, which shows them, and to the call's
-names port, which keeps the names last published. The transcript writer and the after-call
-pass read that port; they never wait for the machine. The pass gives the
-speaker turns it diarized back through the same port, and CallNames
-confirms the names from them and its kept evidence.
+names port, which keeps the names last published. The transcript writer
+reads the latest published names. The after-call pass uses the evidence
+from its own closed watch, after the sources close and their reports
+reach CallNames. The pass gives the speaker turns it diarized back through
+the same port. CallNames keeps early turns until that evidence is ready
+and then confirms the names.

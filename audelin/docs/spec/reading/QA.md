@@ -35,7 +35,9 @@ composer's `AfterCallNamesWiringTests` covers the wiring. Evidence:
 `confirmedNamesReachEveryRemoteEntryIncludingAfterRecordingEnds`.
 
 ## S-8 The next call starts clean
-Evidence: Missing.
+Evidence: `openingTheNextCallClearsTheFinishedCall`,
+`earlierCallsCannotChangeTheDisplayedCall`, and
+`recordingConfirmsTheFinishedCallsNamesWhileTheNextCallRecords`.
 
 ## S-9 Text before capture waits
 Text, then capture beginning: the log is empty, then shows that text.
@@ -72,3 +74,9 @@ second leave the state unchanged. Evidence:
 `laterRecordingOnKeepsTheFirstInstant`, `tickUsesElapsedTimeFromTheFirstRecordingInstant`,
 `earlierTicksAndTicksInTheSameDisplayedSecondDoNothing`,
 `recordingOffClearsFaultsAndUsesTheRebuiltRows`.
+
+## S-12 Speaker places follow the final text
+
+Evidence: `speakerPlacesWaitForTheLastText`,
+`theSessionsSpeakersReachTheRowsOfItsLastText`, and
+`anEndedRecordingStillShowsItsLastTextAndSpeakers`.

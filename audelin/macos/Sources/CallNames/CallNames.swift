@@ -72,6 +72,7 @@ public struct CallNamesState: Equatable, Sendable {
 
     public enum Observation: Equatable, Sendable {
         case idle
+        case pending
         case observing
         /// Stop was asked; the sources are being closed.
         case stopping
@@ -136,10 +137,27 @@ public struct CallNamesModelState: Equatable, Sendable {
     public struct Call: Equatable, Sendable {
         public var names: CallNamesState
         public var watch: CallAppWatch
+        public var reportsEnded: Bool
+        public var sourcesClosed: Bool
+        public var pendingConfirmation: Confirmation?
 
-        public init(names: CallNamesState, watch: CallAppWatch) {
+        public init(names: CallNamesState, watch: CallAppWatch, reportsEnded: Bool = false,
+                    sourcesClosed: Bool = false, pendingConfirmation: Confirmation? = nil) {
             self.names = names
             self.watch = watch
+            self.reportsEnded = reportsEnded
+            self.sourcesClosed = sourcesClosed
+            self.pendingConfirmation = pendingConfirmation
+        }
+    }
+
+    public struct Confirmation: Equatable, Sendable {
+        public var turns: [DiarizedTurn]
+        public var rows: [Row]
+
+        public init(turns: [DiarizedTurn], rows: [Row]) {
+            self.turns = turns
+            self.rows = rows
         }
     }
 }
@@ -151,6 +169,7 @@ public enum CallNamesEvent: Equatable, Sendable {
     /// The recording ended: stop watching; the names stay.
     case stop(UInt64)
     case observationStopped(UInt64)
+    case observationReportsEnded(UInt64)
     /// An opened transcript has a separate finalization signal after Session ends.
     case sessionEnded(UInt64, hasTranscript: Bool)
     /// The call no longer needs names, whether or not it had a transcript.
@@ -185,20 +204,49 @@ public struct CallNamesReducer: Sendable {
         switch event {
         case let .start(id, watch):
             guard state.calls[id] == nil, !state.stoppingWatches.contains(id) else { return (state, nil) }
-            next.calls[id] = .init(names: .init(observation: .observing), watch: watch)
-            return (next, .observe(id, watch))
+            next.calls[id] = .init(names: .init(observation: .pending), watch: watch)
+            let effect = nextWatch(in: &next)
+            return (next, effect)
+        case let .update(id, .diarized(turns, rows)):
+            guard let call = state.calls[id], !turns.isEmpty else { return (state, nil) }
+            switch call.names.observation {
+            case .pending, .observing, .stopping:
+                next.calls[id]?.pendingConfirmation = .init(turns: turns, rows: rows)
+            case .idle, .stopped:
+                next.calls[id]?.names = confirmNames(call.names, turns: turns, rows: rows)
+            }
         case let .update(id, update):
             guard let call = state.calls[id] else { return (state, nil) }
             next.calls[id]?.names = reduce(call.names, update)
         case let .stop(id), let .sessionEnded(id, true):
-            guard let call = state.calls[id], call.names.observation == .observing else { return (state, nil) }
-            next.calls[id]?.names.observation = .stopping
-            return (next, .stopObserving(id, call.watch))
-        case let .observationStopped(id):
-            if state.calls[id]?.names.observation == .stopping {
-                next.calls[id]?.names.observation = .stopped
+            guard let call = state.calls[id] else { return (state, nil) }
+            switch call.names.observation {
+            case .pending:
+                stopped(id, in: &next)
+            case .observing:
+                next.calls[id]?.names.observation = .stopping
+                return (next, .stopObserving(id, call.watch))
+            case .idle, .stopping, .stopped:
+                break
             }
-            next.stoppingWatches.remove(id)
+        case let .observationStopped(id):
+            if let call = state.calls[id], call.names.observation == .stopping {
+                next.calls[id]?.sourcesClosed = true
+                if call.reportsEnded { stopped(id, in: &next) }
+            } else if next.stoppingWatches.remove(id) == nil {
+                return (state, nil)
+            }
+            let effect = nextWatch(in: &next)
+            return (next, effect)
+        case let .observationReportsEnded(id):
+            guard let call = state.calls[id] else { return (state, nil) }
+            switch call.names.observation {
+            case .observing, .stopping:
+                next.calls[id]?.reportsEnded = true
+                if call.sourcesClosed { stopped(id, in: &next) }
+            case .idle, .pending, .stopped:
+                break
+            }
         case let .finalized(id), let .sessionEnded(id, false):
             guard let call = next.calls.removeValue(forKey: id) else { return (state, nil) }
             switch call.names.observation {
@@ -206,12 +254,42 @@ public struct CallNamesReducer: Sendable {
                 next.stoppingWatches.insert(id)
                 return (next, .stopObserving(id, call.watch))
             case .stopping:
-                next.stoppingWatches.insert(id)
-            case .idle, .stopped:
+                if !call.sourcesClosed { next.stoppingWatches.insert(id) }
+            case .idle, .pending, .stopped:
                 break
             }
         }
         return (next, nil)
+    }
+
+    private func nextWatch(in state: inout State) -> Effect? {
+        // Only a source close owns the shared browser socket. Evidence may still be draining.
+        guard state.stoppingWatches.isEmpty,
+              !state.calls.values.contains(where: {
+                  $0.names.observation == .observing || ($0.names.observation == .stopping && !$0.sourcesClosed)
+              }),
+              let id = state.calls.keys.filter({ state.calls[$0]?.names.observation == .pending }).min(),
+              let call = state.calls[id] else { return nil }
+        state.calls[id]?.names.observation = .observing
+        return .observe(id, call.watch)
+    }
+
+    private func stopped(_ id: UInt64, in state: inout State) {
+        guard var call = state.calls[id] else { return }
+        call.names.observation = .stopped
+        if let confirmation = call.pendingConfirmation {
+            call.names = confirmNames(call.names, turns: confirmation.turns, rows: confirmation.rows)
+            call.pendingConfirmation = nil
+        }
+        state.calls[id] = call
+    }
+
+    private func confirmNames(_ state: CallNamesState, turns: [DiarizedTurn], rows: [Row]) -> CallNamesState {
+        guard !state.spoken.isEmpty else { return state }
+        let evidence = CallEvidence(roster: state.roster, spoken: state.spoken.map {
+            .init(name: $0.name, start: $0.start, end: $0.end)
+        }, through: state.through)
+        return state.confirming(confirm(rows, turns, evidence))
     }
 
     private func reduce(_ state: CallNamesState, _ event: CallNamesUpdate) -> CallNamesState {
@@ -243,13 +321,8 @@ public struct CallNamesReducer: Sendable {
             }
             return next
 
-        case let .diarized(turns, rows):
-            // Without speaker turns or call-app evidence there is nothing to confirm: names stay tentative.
-            guard !turns.isEmpty, !state.spoken.isEmpty else { return state }
-            let evidence = CallEvidence(roster: state.roster, spoken: state.spoken.map {
-                .init(name: $0.name, start: $0.start, end: $0.end)
-            }, through: state.through)
-            return state.confirming(confirm(rows, turns, evidence))
+        case .diarized:
+            return state
 
         case let .browser(event):
             var browser = state.browser.observation

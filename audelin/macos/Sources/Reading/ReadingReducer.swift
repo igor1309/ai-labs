@@ -17,9 +17,20 @@ public struct ReadingReducer: Sendable {
     }
 
     public func reduce(_ state: ReadingState, _ event: ReadingEvent) -> (ReadingState, Never?) {
-
-        var state = state
         switch event {
+        case let .opened(id):
+            if let displayedCall = state.displayedCall, id <= displayedCall { return (state, nil) }
+            return (.init(displayedCall: id), nil)
+        case let .update(id, update):
+            guard id == state.displayedCall else { return (state, nil) }
+            return (reduce(state, update), nil)
+        }
+    }
+
+    private func reduce(_ state: ReadingState, _ update: ReadingUpdate) -> ReadingState {
+        let readingEnded = state.sessionEnded && state.feedsEnded
+        var state = state
+        switch update {
         case .recordingChanged(.off, _):
             let removesGaps = hasGaps(state)
             let wasPrepared = state.rendered.prepared
@@ -33,7 +44,7 @@ public struct ReadingReducer: Sendable {
         case let .recordingChanged(.on, instant):
             if state.recordingStart != nil {
                 advanceClock(&state, to: instant)
-                return (state, nil)
+                return state
             }
             state.recordingStart = instant
             state.recording = .on(elapsed: recordingTime(0))
@@ -43,9 +54,9 @@ public struct ReadingReducer: Sendable {
             }
         case let .tick(instant):
             advanceClock(&state, to: instant)
-            return (state, nil)
+            return state
         case let .problemsChanged(kinds, callSilent, instant):
-            guard let start = state.recordingStart else { return (state, nil) }
+            guard let start = state.recordingStart else { return state }
             let previous = state.problems
             if !callSilent { state.problems.removeAll { $0.kind == .callSilent } }
             let elapsed = max(0, instant - start)
@@ -68,11 +79,24 @@ public struct ReadingReducer: Sendable {
             layOut(&state, .text(update))
             identifySpeakers(&state, ids: state.latestText, mapped: mapped)
             if !state.lines.followsLive { state.lines.newBelow += state.nextDisplayID - previousID }
+        case .textEnded:
+            state.textEnded = true
+            if let places = state.pendingSpeakerPlaces {
+                state.pendingSpeakerPlaces = nil
+                placeSpeakers(places, in: &state)
+            }
+        case .sessionEnded:
+            state.sessionEnded = true
+        case .feedsEnded:
+            state.feedsEnded = true
         case let .hold(held):
+            guard !readingEnded else { return state }
             if !state.lines.holds.contains(held) { state.lines.holds.append(held) }
         case let .letGo(held):
+            guard !readingEnded else { return state }
             state.lines.holds.removeAll { $0 == held }
         case let .scrolled(atBottom, interaction):
+            guard !readingEnded else { return state }
             if let interaction { state.scrollAcknowledgement = interaction }
             state.lines.followsLive = atBottom
             if atBottom { state.lines.newBelow = 0 }
@@ -83,17 +107,27 @@ public struct ReadingReducer: Sendable {
             let ids = confirmed ? Array(state.rendered.entries.sealed.keys) + Array(state.rendered.entries.tail.keys) : state.latestText
             identifySpeakers(&state, ids: ids, mapped: state.lines.rows.sealed.count)
         case let .speakersFound(places):
-            state.speakerPlaces = places
-            for id in Array(state.rendered.entries.sealed.keys) + Array(state.rendered.entries.tail.keys) {
-                if let entry = state.rendered.entries[id] { state.rendered.entries[id] = identified(entry, id, in: state) }
+            if state.textEnded {
+                placeSpeakers(places, in: &state)
+            } else {
+                state.pendingSpeakerPlaces = places
             }
-            if state.rendered.prepared { rebuildLayout(&state) }
         case .jumpToLive:
+            guard !readingEnded else { return state }
             state.lines.followsLive = true
             state.lines.newBelow = 0
         }
         state.log = state.captureBegan ? log(state) : .empty
-        return (state, nil)
+        return state
+    }
+
+    private func placeSpeakers(_ places: [Int: Int], in state: inout ReadingState) {
+        guard state.speakerPlaces != places else { return }
+        state.speakerPlaces = places
+        for id in Array(state.rendered.entries.sealed.keys) + Array(state.rendered.entries.tail.keys) {
+            if let entry = state.rendered.entries[id] { state.rendered.entries[id] = identified(entry, id, in: state) }
+        }
+        if state.rendered.prepared { rebuildLayout(&state) }
     }
 
     private func advanceClock(_ state: inout ReadingState, to instant: Double) {

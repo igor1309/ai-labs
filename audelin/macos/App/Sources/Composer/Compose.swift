@@ -33,14 +33,14 @@ public func compose(
 ) async -> AudelinMenu {
     let preferences = PreferencesStore(fileURL: preferencesURL)
     await createDefaultCallsFolder(preferences.read().callsFolder, default: Preferences().callsFolder)
-    let panel = AudelinPanel(now: boundary.time.monotonicNow,
+    let panel = makeAudelinPanel(now: boundary.time.monotonicNow,
                              ticks: boundary.time.ticks, sink: boundary.log, intervals: boundary.intervals,
                              browser: boundary.browser, sleep: boundary.time.sleep,
                              zoomName: ZoomName(read: { preferences.read().zoomName }, remember: { name in
                                  do { try preferences.updateZoomName(name) } catch {
                                      boundary.log.write(.init(category: .calls, message: "zoom name not saved"))
                                  }
-                             }), buildReading: makeReading)
+                             }))
     let processes = CoreAudioProcesses(binding: BoundaryProcesses(base: boundary.processes),
                                        clock: BoundaryCallClock(time: boundary.time))
     let timeZone = boundary.time.timeZone()

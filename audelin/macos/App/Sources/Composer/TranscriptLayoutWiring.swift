@@ -7,12 +7,6 @@ func readingReducer() -> ReadingReducer {
                    lineTime: TranscriptLayoutFormatting.lineTime, layout: layOutTranscript)
 }
 
-extension ReadingReducer {
-    static func reduce(_ state: ReadingState, _ event: ReadingEvent) -> (ReadingState, Never?) {
-        readingReducer().reduce(state, event)
-    }
-}
-
 private func layOutTranscript(_ value: inout ReadingLayout, _ change: ReadingLayout.Change) {
     let layout = TranscriptLayout(lineTime: TranscriptLayoutFormatting.lineTime, span: TranscriptLayoutFormatting.span)
     var storage = ReadingLayoutStorage(value: value)

@@ -33,6 +33,7 @@ public struct CallNamesEffectHandler: Sendable {
                             group.addTask { for await event in stream { output.yield(.update(id, event)) } }
                         }
                     }
+                    output.yield(.observationReportsEnded(id))
                     output.finish()
                 }
                 output.onTermination = { _ in task.cancel() }

@@ -294,7 +294,7 @@ private func finalizationMenu(
     let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
     try preferences.write(Preferences(automaticRecording: false, liveText: liveText, callsFolder: root))
     let processes = CoreAudioProcesses(binding: BoundaryProcesses(base: boundary.processes), clock: BoundaryCallClock(time: boundary.time))
-    let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: boundary.log,
+    let panel = makeAudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: boundary.log,
         intervals: testIntervals, browser: { nil }, sleep: clock.sleep, zoomName: unknownZoomName)
     let storage = callsStorage(folder: root, timeZone: .gmt, trash: { _ in })
     return await AudelinMenu(storage: preferences, folderClaim: RecordingFolderClaim(storage: storage),

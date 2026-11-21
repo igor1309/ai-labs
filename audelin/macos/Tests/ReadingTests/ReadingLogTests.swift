@@ -45,7 +45,7 @@ struct ReadingLogTests {
     @Test func holdsSurviveLayoutChangesAndRecordingTransitions() {
         let held = ReadingState.Held(entryID: 1, text: " exact \n text ")
         let state = ReadingState(status: .listening, lines: .init(holds: [held]), rendered: .init(prepared: true))
-        let events: [ReadingEvent] = [
+        let events: [ReadingUpdate] = [
             .textUpdated(.init(status: .listening, entries: [])),
             .textUpdated(.init(status: .off, entries: [])),
             .textUpdated(.init(status: .gettingReady, entries: [])),
@@ -56,7 +56,9 @@ struct ReadingLogTests {
         ]
         for event in events {
             let spy = RenderingSpy(result: { $0.rows = []; $0.text = [:]; $0.anchors = [:] })
-            let result = makeReducer(spy).reduce(state, event)
+            var call = state
+            call.displayedCall = 1
+            let result = makeReducer(spy).reduce(call, .update(1, event))
             #expect(result.0.lines.holds == [held])
             #expect(result.1 == nil)
         }

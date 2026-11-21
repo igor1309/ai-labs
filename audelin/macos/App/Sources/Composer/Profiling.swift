@@ -12,16 +12,17 @@ public struct ProfileIntervals: Sendable {
 
 }
 
-struct SignpostedPanelUpdate: Sendable {
+@MainActor
+struct SignpostedPanelUpdate {
 
-    let receive: @Sendable (ReadingState) async -> Void
+    let receive: (ReadingState) -> Void
     let intervals: ProfileIntervals
 
-    func callAsFunction(_ state: ReadingState) async {
+    func callAsFunction(_ state: ReadingState) {
 
         let end = intervals.begin("PanelUpdate")
         defer { end() }
-        await receive(state)
+        receive(state)
     }
 }
 

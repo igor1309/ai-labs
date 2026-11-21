@@ -104,7 +104,7 @@ struct ReadingFinalCursorTests {
     }
 
     private func wholeAndCursor(
-        later: Bool, between: (Int) -> ReadingEvent? = { _ in nil }
+        later: Bool, between: (Int) -> ReadingUpdate? = { _ in nil }
     ) -> [(whole: ReadingState, cursor: ReadingState, panel: PanelState)] {
 
         var whole = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on, at: 100)).0
@@ -136,7 +136,7 @@ struct ReadingFinalCursorTests {
 
     @Test func aGapAfterEntriesWentFinalKeepsItsPlace() {
 
-        let problem = ReadingEvent.problemsChanged([.microphone], callSilent: false, at: 120)
+        let problem = ReadingUpdate.problemsChanged([.microphone], callSilent: false, at: 120)
         for step in wholeAndCursor(later: false, between: { $0 == 6 ? problem : nil }) {
             #expect(step.cursor.log == step.whole.log)
             #expect(step.panel == panelState(russianPanel, step.whole))

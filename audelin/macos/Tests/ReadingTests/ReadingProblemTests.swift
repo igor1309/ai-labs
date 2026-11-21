@@ -23,8 +23,9 @@ struct ReadingProblemTests {
     ])
     func layoutGetsOnlyProblemsThatLeaveAGap(kinds: [ReadingProblem.Kind], silent: Bool, gaps: [ReadingProblem]) {
         let spy = RenderingSpy()
-        let state = makeRecordingWithProblems(prepared: false)
-        _ = makeReducer(spy).reduce(state, .problemsChanged(kinds, callSilent: silent, at: 103))
+        var state = makeRecordingWithProblems(prepared: false)
+        state.displayedCall = 1
+        _ = makeReducer(spy).reduce(state, .update(1, .problemsChanged(kinds, callSilent: silent, at: 103)))
         #expect(spy.layoutCalls.map(\.value.problems) == [gaps])
     }
 

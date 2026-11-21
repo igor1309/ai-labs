@@ -6,19 +6,13 @@ import Recording
 import Recordings
 import SettingsUI
 
-/// Each recording's reading model, reducing on the main actor.
+/// The displayed call's Reading model, reducing on the main actor.
 @MainActor
-func makeReading() -> ReadingInputs {
+func makeReading() -> SyncModel<ReadingState, ReadingEvent> {
 
-    let model = ObservableModel<ReadingState, ReadingEvent, Never>(
-        initialState: .init(), reduce: readingReducer().reduce, handleEffect: noEvents
-    )
-    return ReadingInputs(state: { model.state }, send: { model.event($0) })
+    let reducer = readingReducer()
+    return SyncModel(initialState: .init(), reduce: { reducer.reduce($0, $1).0 })
 }
-
-/// The handler for a model without effects. It is generic because the compiler warns on any body
-/// taking `Never`: a closure given it "will never be executed".
-private func noEvents<Effect, Event>(_: Effect) -> AsyncStream<Event> { AsyncStream { $0.finish() } }
 
 /// The stream a model reads from a handler that returns one event.
 func oneEvent<Event: Sendable>(_ handle: @escaping @Sendable () async -> Event) -> AsyncStream<Event> {

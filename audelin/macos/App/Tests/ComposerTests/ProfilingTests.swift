@@ -29,7 +29,7 @@ struct ProfilingTests {
                     return hearing
                 }, onFinish: { calls.append("finish"); return hearing }
             )
-            let panel = SignpostedPanelUpdate(receive: { value in
+            let panel = await SignpostedPanelUpdate(receive: { value in
                 #expect(value == reading)
                 calls.append("panel")
             }, intervals: intervals)

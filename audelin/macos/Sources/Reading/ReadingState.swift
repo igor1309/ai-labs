@@ -1,7 +1,7 @@
 import Foundation
 import SplitRows
 
-/// What one recording's panel shows, with no view or session dependencies.
+/// The displayed call and what its panel shows, with no view or session dependencies.
 public struct ReadingState: Equatable, Sendable {
 
     public enum Recording: Equatable, Sendable {
@@ -151,6 +151,7 @@ public struct ReadingState: Equatable, Sendable {
     public var entryCount: Int { text.count }
 
     /// The latest reader scroll consumed by this state, independent of text updates.
+    public var displayedCall: UInt64?
     public var scrollAcknowledgement: UUID?
 
     public var banners: [Banner] = []
@@ -230,6 +231,10 @@ public struct ReadingState: Equatable, Sendable {
     /// Entries carried by the most recent text update, including any now sealed.
     public var latestText: [ReadingTextUpdate.Entry.ID] = []
     public var speakerPlaces: [Int: Int] = [:]
+    public var textEnded: Bool
+    public var pendingSpeakerPlaces: [Int: Int]?
+    public var sessionEnded: Bool
+    public var feedsEnded: Bool
 
     public var rendered = Rendered()
 
@@ -237,7 +242,8 @@ public struct ReadingState: Equatable, Sendable {
     public static func == (lhs: Self, rhs: Self) -> Bool {
 
         // More text being final is a change, and finding that out need not walk the call.
-        lhs.text.sealed.count == rhs.text.sealed.count
+        lhs.displayedCall == rhs.displayedCall
+            && lhs.text.sealed.count == rhs.text.sealed.count
             && lhs.banners == rhs.banners && lhs.recording == rhs.recording && lhs.captureBegan == rhs.captureBegan
             && lhs.recordingStart == rhs.recordingStart && lhs.lastTick == rhs.lastTick && lhs.problems == rhs.problems
             && lhs.scrollAcknowledgement == rhs.scrollAcknowledgement
@@ -245,10 +251,12 @@ public struct ReadingState: Equatable, Sendable {
             && lhs.text == rhs.text && lhs.lines == rhs.lines && lhs.log == rhs.log
             && lhs.names == rhs.names && lhs.namesConfirmed == rhs.namesConfirmed
             && lhs.latestText == rhs.latestText && lhs.speakerPlaces == rhs.speakerPlaces
+            && lhs.textEnded == rhs.textEnded && lhs.pendingSpeakerPlaces == rhs.pendingSpeakerPlaces
+            && lhs.sessionEnded == rhs.sessionEnded && lhs.feedsEnded == rhs.feedsEnded
     }
 
     public init(
-        scrollAcknowledgement: UUID? = nil,
+        displayedCall: UInt64? = nil, scrollAcknowledgement: UUID? = nil,
         banners: [Banner] = [], recording: Recording = .off, recordingStart: Double? = nil, lastTick: Double? = nil,
         captureBegan: Bool = false, log: Log = .empty,
         problems: [ReadingProblem] = [], status: ReadingTextUpdate.Status = .off,
@@ -256,9 +264,12 @@ public struct ReadingState: Equatable, Sendable {
         text: SplitDictionary<ReadingTextUpdate.Entry.ID, ReadingTextUpdate.Entry> = [:],
         names: [Int: String] = [:], namesConfirmed: Bool = false,
         latestText: [ReadingTextUpdate.Entry.ID] = [], speakerPlaces: [Int: Int] = [:],
+        textEnded: Bool = false, pendingSpeakerPlaces: [Int: Int]? = nil,
+        sessionEnded: Bool = false, feedsEnded: Bool = false,
         lines: Lines = .init(), rendered: Rendered = .init()
     ) {
 
+        self.displayedCall = displayedCall
         self.scrollAcknowledgement = scrollAcknowledgement
         self.banners = banners
         self.recording = recording
@@ -275,6 +286,10 @@ public struct ReadingState: Equatable, Sendable {
         self.namesConfirmed = namesConfirmed
         self.latestText = latestText
         self.speakerPlaces = speakerPlaces
+        self.textEnded = textEnded
+        self.pendingSpeakerPlaces = pendingSpeakerPlaces
+        self.sessionEnded = sessionEnded
+        self.feedsEnded = feedsEnded
         self.lines = lines
         self.rendered = rendered
     }

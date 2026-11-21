@@ -16,12 +16,12 @@ struct BrowserNamesWiringTests {
     @MainActor
     @Test func aConnectedExtensionNamesTheRemoteRow() async throws {
         let clock = FixtureClock(), channel = FakeBrowserChannel()
-        let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals,
+        let panel = makeAudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals,
                                  browser: { channel.open() }, sleep: { try await Task.sleep(for: $0 * 10_000) }, zoomName: unknownZoomName)
         let text = AsyncStream<CallState>.makeStream()
-        let reading = await panel.begin(id: 1, text: text.stream, enableLiveText: {})
-        reading.sessionChanged(SessionState(phase: .recording), at: clock.time.monotonicNow())
-        panel.names.sessionChanged(id: 1, phase: .recording, hasTranscript: true, at: clock.time.monotonicNow())
+        let names = RecordingNames()
+        panel.begin(id: 1, text: text.stream, names: names)
+        panel.sessionChanged(id: 1, SessionState(phase: .recording), at: clock.time.monotonicNow())
         clock.advance(20)
 
         // The browser's clock reads 100 s at call time 20 s.
@@ -37,38 +37,37 @@ struct BrowserNamesWiringTests {
         // text asks for its name again.
         var round = 0
         text.continuation.yield(remote(round))
-        for await shown in await panel.states() {
+        for await shown in panel.states() {
             guard case let .lines(lines) = shown.log, let row = lines.entries.first else { continue }
             if row.label == "Анна" { #expect(row.labelIsTentative); break }
             round += 1
             text.continuation.yield(remote(round))
         }
         text.continuation.finish()
-        await reading.end()
-        await panel.end(id: 1)
+        panel.sessionChanged(id: 1, .init(phase: .ended, transcript: .closed), at: clock.time.monotonicNow())
+        try #require(await names.states().first { @Sendable in $0.observation == .stopped } != nil)
         #expect(channel.stopped)
+        await names.finalizationEnded()
         clock.finish()
     }
 
     @MainActor
     @Test func withoutTheChannelTheRemoteRowStaysUnnamed() async throws {
         let clock = FixtureClock()
-        let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals,
+        let panel = makeAudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals,
                                  browser: { nil }, sleep: { _ in }, zoomName: unknownZoomName)
         let text = AsyncStream<CallState>.makeStream()
-        let reading = await panel.begin(id: 1, text: text.stream, enableLiveText: {})
-        reading.sessionChanged(SessionState(phase: .recording), at: clock.time.monotonicNow())
-        panel.names.sessionChanged(id: 1, phase: .recording, hasTranscript: true, at: clock.time.monotonicNow())
+        panel.begin(id: 1, text: text.stream)
+        panel.sessionChanged(id: 1, SessionState(phase: .recording), at: clock.time.monotonicNow())
         clock.advance(20)
         text.continuation.yield(remote(0))
-        for await shown in await panel.states() {
+        for await shown in panel.states() {
             guard case let .lines(lines) = shown.log, let row = lines.entries.first else { continue }
             #expect(row.label == nil)
             break
         }
         text.continuation.finish()
-        await reading.end()
-        await panel.end(id: 1)
+        panel.sessionChanged(id: 1, .init(phase: .ended), at: clock.time.monotonicNow())
         clock.finish()
     }
 }

@@ -15,68 +15,66 @@ import Testing
 struct AfterCallNamesWiringTests {
 
     @MainActor
-    @Test func diarizedTurnsConfirmTheRowNameWhileReading() async throws {
+    @Test func turnsReportedEarlyConfirmTheRowAfterTheWatchCloses() async throws {
         let clock = FixtureClock(), channel = FakeBrowserChannel(), names = RecordingNames()
-        let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals,
+        let panel = makeAudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals,
                                  browser: { channel.open() }, sleep: { try await Task.sleep(for: $0 * 10_000) }, zoomName: unknownZoomName)
         let text = AsyncStream<CallState>.makeStream()
-        let reading = await panel.begin(id: 1, text: text.stream, names: names, enableLiveText: {})
-        reading.sessionChanged(SessionState(phase: .recording), at: clock.time.monotonicNow())
-        panel.names.sessionChanged(id: 1, phase: .recording, hasTranscript: true, at: clock.time.monotonicNow())
+        panel.begin(id: 1, text: text.stream, names: names)
+        panel.sessionChanged(id: 1, SessionState(phase: .recording), at: clock.time.monotonicNow())
         clock.advance(20)
         try await speakInTurns(channel.connect())
 
         var round = 0
         text.continuation.yield(remote(round))
         var delivered = false
-        for await shown in await panel.states() {
+        for await shown in panel.states() {
             guard case let .lines(lines) = shown.log, let row = lines.entries.first else { continue }
             if row.label == "Анна", !row.labelIsTentative { break }
             if row.label == "Анна", !delivered {
                 delivered = true
                 await names.diarized(turns, rows: [Row(id: 1, start: 0, end: 4)])
+                panel.sessionChanged(id: 1, .init(phase: .ended, transcript: .closed), at: clock.time.monotonicNow())
             } else if !delivered {
                 round += 1
                 text.continuation.yield(remote(round))
             }
         }
         text.continuation.finish()
-        await reading.end()
-        await panel.end(id: 1)
+        await names.finalizationEnded()
         clock.finish()
     }
 
     @MainActor
     @Test func diarizedTurnsAfterTheCallEndsConfirmTheFinishedCall() async throws {
         let clock = FixtureClock(), channel = FakeBrowserChannel(), names = RecordingNames()
-        let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals,
+        let panel = makeAudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals,
                                  browser: { channel.open() }, sleep: { try await Task.sleep(for: $0 * 10_000) }, zoomName: unknownZoomName)
         let text = AsyncStream<CallState>.makeStream()
-        let reading = await panel.begin(id: 1, text: text.stream, names: names, enableLiveText: {})
-        reading.sessionChanged(SessionState(phase: .recording), at: clock.time.monotonicNow())
-        panel.names.sessionChanged(id: 1, phase: .recording, hasTranscript: true, at: clock.time.monotonicNow())
+        panel.begin(id: 1, text: text.stream, names: names)
+        panel.sessionChanged(id: 1, SessionState(phase: .recording), at: clock.time.monotonicNow())
         clock.advance(20)
         try await speakInTurns(channel.connect())
 
         var round = 0
         text.continuation.yield(remote(round))
-        for await shown in await panel.states() {
+        for await shown in panel.states() {
             guard case let .lines(lines) = shown.log, let row = lines.entries.first else { continue }
             if row.label == "Анна" { break }
             round += 1
             text.continuation.yield(remote(round))
         }
         text.continuation.finish()
-        await reading.end()
-        await panel.end(id: 1)
+        panel.sessionChanged(id: 1, .init(phase: .ended, transcript: .closed), at: clock.time.monotonicNow())
         clock.finish()
 
         // The pass runs during finalization, after the panel has ended the reading.
         await names.diarized(turns, rows: [Row(id: 1, start: 0, end: 4)])
-        for await shown in await panel.states() {
+        for await shown in panel.states() {
             guard case let .lines(lines) = shown.log, let row = lines.entries.first else { continue }
             if row.label == "Анна", !row.labelIsTentative { break }
         }
+        await names.finalizationEnded()
     }
 
     @MainActor
@@ -103,11 +101,13 @@ struct AfterCallNamesWiringTests {
         app.sessionChanged(id: 1, phase: .ended, hasTranscript: true, at: 15)
 
         start(2, second, speaker: "Борис", at: 20)
-        for await state in second.states() where !state.rowNames.isEmpty { break }
-        try #require(second.snapshot().rowNames == [1: "Борис"])
-        let secondBeforeConfirmation = second.snapshot()
+        let secondBeforeConfirmation = try #require(await second.states().first { @Sendable in
+            $0.observation == .observing && !$0.rowNames.isEmpty
+        })
+        #expect(secondBeforeConfirmation.rowNames == [1: "Борис"])
 
         await first.diarized([.init(speaker: 0, start: 0, end: 4), .init(speaker: 0, start: 5, end: 9)], rows: [row])
+        try #require(await first.states().first { @Sendable in $0.confirmed } != nil)
         await first.finalizationEnded()
         while await firstSeen.next() != nil {}
         #expect(first.snapshot().rowNames == [1: "Анна"])
@@ -120,8 +120,9 @@ struct AfterCallNamesWiringTests {
     func releasingNamesKeepsTheWatchStoppingUntilItsSourceCloses(hasTranscript: Bool) async throws {
         let source = GatedWatchSource()
         defer { source.stopping.end(); source.close.end(); source.updates.continuation.finish() }
-        let app = ApplicationCallNames(now: { 10 }, makeWatch: { _ in .init(sources: [source]) })
-        let names = RecordingNames()
+        var watches = [CallAppWatch(sources: [source]), CallAppWatch(sources: [])]
+        let app = ApplicationCallNames(now: { 10 }, makeWatch: { _ in watches.removeFirst() })
+        let names = RecordingNames(), next = RecordingNames()
         app.open(id: 1, published: names)
         let states = names.states()
         try #require(await names.states().first { @Sendable in $0.observation == .observing } != nil)
@@ -130,11 +131,39 @@ struct AfterCallNamesWiringTests {
         await source.stopping.next()
         if hasTranscript { await names.finalizationEnded() }
         for await _ in states {}
-        #expect(app.observation(of: 1) == .stopping)
+        app.open(id: 2, published: next)
+        try #require(await next.states().first { @Sendable in $0.observation != .idle }?.observation == .pending)
 
         source.close.end()
-        await app.waitForWatchToStop(1, published: names)
-        #expect(app.observation(of: 1) == nil)
+        try #require(await next.states().first { @Sendable in $0.observation == .observing } != nil)
+        app.send(.finalized(2))
+    }
+
+    @MainActor
+    @Test func afterCallTurnsUseEvidenceOnlyAfterTheSourceCloses() async throws {
+        let source = GatedWatchSource()
+        defer { source.stopping.end(); source.close.end(); source.updates.continuation.finish() }
+        let app = ApplicationCallNames(now: { 10 }, makeWatch: { _ in .init(sources: [source]) })
+        let names = RecordingNames()
+        app.open(id: 1, published: names)
+        app.sessionChanged(id: 1, phase: .recording, hasTranscript: true, at: 0)
+        source.updates.continuation.yield(.zoom(.started("Анна"), at: 0))
+        source.updates.continuation.yield(.zoom(.observed, at: 10))
+        try #require(await names.states().first { @Sendable in $0.through == 10 } != nil)
+
+        app.sessionChanged(id: 1, phase: .ended, hasTranscript: true, at: 10)
+        await source.stopping.next()
+        await names.diarized(turns, rows: [Row(id: 1, start: 0, end: 4)])
+        source.updates.continuation.yield(.zoom(.stopped("Анна"), at: 11))
+        let stillStopping = try #require(await names.states().first { @Sendable in $0.through == 11 })
+        #expect(stillStopping.observation == .stopping)
+        #expect(!stillStopping.confirmed)
+
+        source.close.end()
+        let confirmed = try #require(await names.states().first { @Sendable in $0.confirmed })
+        #expect(confirmed.observation == .stopped)
+        #expect(confirmed.rowNames == [1: "Анна"])
+        await names.finalizationEnded()
     }
 
     @MainActor
@@ -162,8 +191,7 @@ struct AfterCallNamesWiringTests {
         clock.advance(4)
         #expect(await firstClock() == 4)
         app.sessionChanged(id: 1, phase: .ended, hasTranscript: true, at: clock.time.monotonicNow())
-        await app.waitForWatchToStop(1, published: first)
-        #expect(app.observation(of: 1) == .stopped)
+        try #require(await first.states().first { @Sendable in $0.observation == .stopped } != nil)
 
         clock.advance(6)
         app.open(id: 2, published: second)

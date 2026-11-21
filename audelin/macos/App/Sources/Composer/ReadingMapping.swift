@@ -30,7 +30,7 @@ func readingText(_ state: CallState, from: Int = 0) -> ReadingTextUpdate {
     }, from: from, finalCount: state.finalCount)
 }
 
-func readingEvent(_ event: PanelEvent) -> ReadingEvent? {
+func readingEvent(_ event: PanelEvent) -> ReadingUpdate? {
 
     switch event {
     case let .hold(held): .hold(.init(entryID: held.entryID, text: held.text))
@@ -44,6 +44,7 @@ func readingEvent(_ event: PanelEvent) -> ReadingEvent? {
 /// The panel's rows already mapped from a layout's sealed rows, kept between states.
 struct MappedRows {
 
+    var call: UInt64?
     var layout = -1
     var mapped = 0
     var sealed: [PanelState.Row] = []
@@ -60,6 +61,7 @@ func panelState(_ text: (PanelPhrase) -> String, _ state: ReadingState) -> Panel
 /// Maps reading state to what the panel shows; `text` gives the panel's fixed text in its language.
 func panelState(_ text: (PanelPhrase) -> String, _ state: ReadingState, rows: inout MappedRows) -> PanelState {
 
+    if rows.call != state.displayedCall { rows = .init(call: state.displayedCall) }
     let recording: PanelState.Recording = switch state.recording {
     case .off: .off
     case let .on(elapsed): .on(elapsed: elapsed)
@@ -102,7 +104,7 @@ private func panelRow(_ row: ReadingState.Row, text: (PanelPhrase) -> String, pr
 private func panelLines(_ lines: ReadingState.Lines, text: (PanelPhrase) -> String, acknowledgement: UUID?, rows: inout MappedRows) -> PanelState.Lines {
 
     let sealed = lines.rows.sealed
-    if rows.layout != lines.layout || rows.mapped > sealed.count { rows = .init(layout: lines.layout) }
+    if rows.layout != lines.layout || rows.mapped > sealed.count { rows = .init(call: rows.call, layout: lines.layout) }
     if rows.mapped < sealed.count {
         rows.sealed.append(contentsOf: sealed[rows.mapped...].map { panelRow($0, text: text, previous: &rows.previousSpeaker) })
         rows.mapped = sealed.count

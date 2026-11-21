@@ -148,7 +148,7 @@ struct ReadingReducerTests {
         let spy = RenderingSpy()
         var state = ReadingState(captureBegan: true, status: .listening, lines: .init(newBelow: 8, followsLive: false))
         state.log = .lines(state.lines)
-        for event: ReadingEvent in [.scrolled(atBottom: true), .jumpToLive] {
+        for event: ReadingUpdate in [.scrolled(atBottom: true), .jumpToLive] {
             assert(state, event, delivers: nil, using: makeReducer(spy)) {
                 $0.lines.newBelow = 0
                 $0.lines.followsLive = true

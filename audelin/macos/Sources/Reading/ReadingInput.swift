@@ -66,9 +66,17 @@ public enum ReadingRecording: Equatable, Sendable {
 }
 
 public enum ReadingEvent: Equatable, Sendable {
+    case opened(UInt64)
+    case update(UInt64, ReadingUpdate)
+}
+
+public enum ReadingUpdate: Equatable, Sendable {
 
     /// Switching live text is reflected by the update's status.
     case textUpdated(ReadingTextUpdate)
+    case textEnded
+    case sessionEnded
+    case feedsEnded
     /// Instants are seconds on the composer's monotonic clock.
     case recordingChanged(ReadingRecording, at: Double)
     case tick(at: Double)

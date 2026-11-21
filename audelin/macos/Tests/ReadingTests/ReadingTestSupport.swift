@@ -86,6 +86,15 @@ func makeReducer(_ spy: RenderingSpy) -> ReadingReducer {
 }
 
 func assert(
+    _ state: ReadingState, _ update: ReadingUpdate, delivers effect: Never?, using reducer: ReadingReducer,
+    sourceLocation: SourceLocation = #_sourceLocation, _ change: (inout ReadingState) -> Void = { _ in }
+) {
+    var call = state
+    call.displayedCall = 1
+    assert(call, .update(1, update), delivers: effect, using: reducer, sourceLocation: sourceLocation, change)
+}
+
+func assert(
     _ state: ReadingState, _ event: ReadingEvent, delivers effect: Never?, using reducer: ReadingReducer,
     sourceLocation: SourceLocation = #_sourceLocation, _ change: (inout ReadingState) -> Void = { _ in }
 ) {

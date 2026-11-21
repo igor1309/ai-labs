@@ -1,6 +1,5 @@
 import CallNames
 import IMRxObservation
-import Observation
 import Recording
 import SpeakerNaming
 
@@ -10,10 +9,10 @@ final class ApplicationCallNames {
     private let model: ObservableModel<CallNamesModelState, CallNamesEvent, CallNamesEffect>
     private let feed = StateFeed<CallNamesModelState>()
     private let now: @Sendable () -> Double
-    private let makeWatch: (@escaping @Sendable () async -> Double?) -> CallAppWatch
+    private let makeWatch: @MainActor (@escaping @Sendable () async -> Double?) -> CallAppWatch
 
     init(now: @escaping @Sendable () -> Double,
-         makeWatch: @escaping (@escaping @Sendable () async -> Double?) -> CallAppWatch) {
+         makeWatch: @escaping @MainActor (@escaping @Sendable () async -> Double?) -> CallAppWatch) {
         self.now = now
         self.makeWatch = makeWatch
         let reducer = CallNamesReducer(
@@ -32,19 +31,6 @@ final class ApplicationCallNames {
     }
 
     func send(_ event: CallNamesEvent) { model.event(event) }
-
-    func observation(of id: UInt64) -> CallNamesState.Observation? {
-        let state = model.state
-        if state.stoppingWatches.contains(id) { return .stopping }
-        return state.calls[id]?.names.observation
-    }
-
-    func waitForWatchToStop(_ id: UInt64, published: RecordingNames) async {
-        // A watch's start may still be queued. The port publishes its first state or finishes if setup ended without a watch.
-        for await state in published.states() where state.observation != .idle { break }
-        for await observation in Observations({ self.observation(of: id) })
-        where observation != .observing && observation != .stopping { break }
-    }
 
     func sessionChanged(id: UInt64, phase: SessionState.Phase, hasTranscript: Bool, at instant: Double) {
         send(.update(id, .recordingChanged(isOn: phase == .recording, at: instant)))

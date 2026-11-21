@@ -12,6 +12,32 @@ import protocol TranscriptWriting.CallText
 
 struct ReadingCompositionTests {
 
+    @MainActor
+    @Test func anActionFromThePreviousPanelBindingCannotChangeTheNextLog() async throws {
+        try await withComposition(preferences: { .init(automaticRecording: false, liveText: false, callsFolder: $0) }) { rig in
+            try await rig.start()
+            for await shown in Observations({ rig.menu.panelPresentation }) where shown.call == 1 {
+                if case .on = shown.state.recording { break }
+            }
+            let first = panelContentBinding(rig.menu)
+            try await rig.stop()
+            try await rig.start()
+            for await shown in Observations({ rig.menu.panelPresentation }) where shown.call == 2 {
+                if case .on = shown.state.recording { break }
+            }
+            let second = panelContentBinding(rig.menu)
+            let held = PanelState.Held(entryID: 0, text: "second call")
+            await first.event(.hold(.init(entryID: 0, text: "first call"))).value
+            await second.event(.hold(held)).value
+            for await shown in Observations({ rig.menu.panelState }) {
+                guard case let .liveTextOff(kept?) = shown.log, kept.holds.contains(held) else { continue }
+                #expect(kept.holds == [held])
+                break
+            }
+            try await rig.stop()
+        }
+    }
+
     @Test func panelActionsReachTheCurrentReading() async throws {
         try await withComposition { rig in
             try await rig.start()
@@ -157,7 +183,7 @@ struct ReadingCompositionTests {
         }
         #expect(panelState(russianPanel, .init()) == .init(recording: .off, log: .empty))
         var reading = ReadingState()
-        func send(_ event: ReadingEvent) { reading = ReadingReducer.reduce(reading, event).0 }
+        func send(_ event: ReadingUpdate) { reading = ReadingReducer.reduce(reading, event).0 }
         send(.recordingChanged(.on, at: 100))
         send(.tick(at: 162))
         #expect(panelState(russianPanel, reading) == .init(recording: .on(elapsed: "00:01:02"), log: .liveTextOff(kept: nil)))

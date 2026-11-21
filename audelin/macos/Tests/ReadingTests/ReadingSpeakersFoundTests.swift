@@ -22,7 +22,9 @@ private let texts = [entry(.theirs, 1, at: 1), entry(.mine, 1, at: 2), entry(.th
 
 private func makeUnplaced(sealed: Int) -> ReadingState {
 
-    makeListening(entries: texts, rows: rows("given", remote: [nil, nil, nil, nil]), displayIDs: [0, 1, 2, 3], sealed: sealed)
+    var state = makeListening(entries: texts, rows: rows("given", remote: [nil, nil, nil, nil]), displayIDs: [0, 1, 2, 3], sealed: sealed)
+    state.textEnded = true
+    return state
 }
 
 private func rows(_ time: String, remote: [Int?]) -> [ReadingState.Row] { shown(time, remote: remote).map(ReadingState.Row.entry) }

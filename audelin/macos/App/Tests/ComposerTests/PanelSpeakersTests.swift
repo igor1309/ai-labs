@@ -13,23 +13,27 @@ struct PanelSpeakersTests {
     @MainActor
     @Test func theSessionsSpeakersReachTheRowsOfItsLastText() async throws {
         let clock = FixtureClock(), text = AsyncStream<CallState>.makeStream(), speakers = AsyncStream<[Int: Int]>.makeStream()
-        let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals, browser: { nil }, sleep: { _ in }, zoomName: unknownZoomName)
-        let reading = await panel.begin(id: 1, text: text.stream, speakers: speakers.stream, enableLiveText: {})
-        reading.sessionChanged(SessionState(phase: .recording), at: clock.time.monotonicNow())
+        let panel = makeAudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals, browser: { nil }, sleep: { _ in }, zoomName: unknownZoomName)
+        panel.begin(id: 1, text: text.stream, speakers: speakers.stream)
+        panel.sessionChanged(id: 1, SessionState(phase: .recording), at: clock.time.monotonicNow())
         speakers.continuation.yield([1: 1, 2: 2])
         speakers.continuation.finish()
         func far(_ id: Int) -> CallState.Entry {
             .init(speaker: .theirs, text: .init(id: id, start: Double(id), end: Double(id) + 1, words: [.init("far\(id)", start: Double(id), end: Double(id) + 1)], settledCount: 1), writtenLater: false)
         }
         text.continuation.yield(.init(status: .listening, entries: .init(tail: [far(1), far(2)]), finalCount: 2))
+        for await shown in panel.states() {
+            guard case let .lines(lines) = shown.log, lines.entries.count == 2 else { continue }
+            #expect(lines.entries.map(\.remoteSpeaker) == [nil, nil])
+            break
+        }
         text.continuation.finish()
-        for await shown in await panel.states() {
+        for await shown in panel.states() {
             guard case let .lines(lines) = shown.log, lines.entries.contains(where: { $0.remoteSpeaker != nil }) else { continue }
             #expect(lines.entries.map(\.remoteSpeaker) == [1, 2])
             break
         }
-        await reading.end()
-        await panel.end(id: 1)
+        panel.sessionChanged(id: 1, .init(phase: .ended), at: clock.time.monotonicNow())
         clock.finish()
     }
 
@@ -38,24 +42,29 @@ struct PanelSpeakersTests {
     @MainActor
     @Test func anEndedRecordingStillShowsItsLastTextAndSpeakers() async throws {
         let clock = FixtureClock(), text = AsyncStream<CallState>.makeStream(), speakers = AsyncStream<[Int: Int]>.makeStream()
-        let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals, browser: { nil }, sleep: { _ in }, zoomName: unknownZoomName)
-        let reading = await panel.begin(id: 1, text: text.stream, speakers: speakers.stream, enableLiveText: {})
-        reading.sessionChanged(SessionState(phase: .recording), at: clock.time.monotonicNow())
+        let panel = makeAudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals, browser: { nil }, sleep: { _ in }, zoomName: unknownZoomName)
+        panel.begin(id: 1, text: text.stream, speakers: speakers.stream)
+        panel.sessionChanged(id: 1, SessionState(phase: .recording), at: clock.time.monotonicNow())
         func far(_ id: Int) -> CallState.Entry {
             .init(speaker: .theirs, text: .init(id: id, start: Double(id), end: Double(id) + 1, words: [.init("far\(id)", start: Double(id), end: Double(id) + 1)], settledCount: 1), writtenLater: false)
         }
         text.continuation.yield(.init(status: .listening, entries: .init(tail: [far(1), far(2)]), finalCount: 2))
         speakers.continuation.yield([1: 1, 2: 2])
-        let ending = Task { await panel.end(id: 1) }
+        panel.sessionChanged(id: 1, .init(phase: .ended), at: clock.time.monotonicNow())
         text.continuation.finish()
         speakers.continuation.finish()
-        await ending.value
-        for await shown in await panel.states() {
+        for await shown in panel.states() {
             #expect(shown.recording == .off)
-            guard case let .lines(lines) = shown.log else { Issue.record("no rows: \(shown.log)"); break }
+            guard case let .lines(lines) = shown.log, lines.entries.contains(where: { $0.remoteSpeaker != nil }) else { continue }
             #expect(lines.entries.map(\.remoteSpeaker) == [1, 2])
             break
         }
+        panel.languageChanged(.init(language: .english))
+        let translated = try #require(await panel.states().first { @Sendable state in
+            guard case let .lines(lines) = state.log else { return false }
+            return lines.entries.map(\.label) == ["Them 1", "Them 2"]
+        })
+        #expect(translated.recording == .off)
         clock.finish()
     }
 }

@@ -13,7 +13,7 @@ struct CallNamesEffectHandlerTests {
         let (_, effect) = reducer.reduce(.init(), .start(1, watch))
         let zoomReport = CallNamesUpdate.zoom(.observed, at: 1.5)
         let browserReport = CallNamesUpdate.browser(.init(epoch: 4, sequence: 1, time: 2, kind: .heartbeat))
-        await expect(sut, with: effect, toDeliver: [.update(1, zoomReport), .update(1, browserReport)], on: {
+        await expect(sut, with: effect, toDeliver: [.update(1, zoomReport), .update(1, browserReport), .observationReportsEnded(1)], on: {
             #expect(zoom.observations == 1 && browser.observations == 1)
             zoom.report(zoomReport); browser.report(browserReport)
             zoom.finish(); browser.finish()
@@ -32,27 +32,29 @@ struct CallNamesEffectHandlerTests {
         #expect(zoom.stops == 1 && browser.stops == 1)
         #expect(zoom.observations == 0 && browser.observations == 0)
     }
-    @Test func stoppingOneWatchLeavesReportsFromTheOther() async throws {
+    @Test func theAcknowledgedStopStartsOnlyTheNextWatch() async throws {
         let first = SourceSpy(), second = SourceSpy()
         let firstWatch = CallAppWatch(sources: [first]), secondWatch = CallAppWatch(sources: [second])
         let sut = CallNamesEffectHandler()
         let (reducer, _) = makeSUT()
         let (firstState, firstEffect) = reducer.reduce(.init(), .start(1, firstWatch))
-        let (both, secondEffect) = reducer.reduce(firstState, .start(2, secondWatch))
+        let (pending, secondEffect) = reducer.reduce(firstState, .start(2, secondWatch))
+        #expect(secondEffect == nil)
         let firstReports = sut.handle(try #require(firstEffect))
-        let secondReports = sut.handle(try #require(secondEffect))
         defer { first.finish(); second.finish() }
 
-        let (stopping, stop) = reducer.reduce(both, .stop(1))
+        let (stopping, stop) = reducer.reduce(pending, .stop(1))
         var stopped = sut.handle(try #require(stop)).makeAsyncIterator()
         let acknowledgement = try #require(await stopped.next())
         #expect(acknowledgement == .observationStopped(1))
-        let (state, _) = reducer.reduce(stopping, acknowledgement)
-        #expect(state.calls[1]?.names.observation == .stopped)
+        let (state, startNext) = reducer.reduce(stopping, acknowledgement)
         #expect(state.calls[2]?.names.observation == .observing)
         var firstEvents = firstReports.makeAsyncIterator()
+        let drained = try #require(await firstEvents.next())
+        #expect(drained == .observationReportsEnded(1))
         #expect(await firstEvents.next() == nil)
-
+        #expect(reducer.reduce(state, drained).0.calls[1]?.names.observation == .stopped)
+        let secondReports = sut.handle(try #require(startNext))
         let report = CallNamesUpdate.zoom(.started("Boris"), at: 1)
         second.report(report)
         var secondEvents = secondReports.makeAsyncIterator()
@@ -96,4 +98,7 @@ private func expect(
     for await event in events { delivered.append(event) }
     #expect(delivered.count == expected.count)
     for event in expected { #expect(delivered.contains(event)) }
+    if let end = expected.first(where: { if case .observationReportsEnded = $0 { true } else { false } }) {
+        #expect(delivered.last == end)
+    }
 }

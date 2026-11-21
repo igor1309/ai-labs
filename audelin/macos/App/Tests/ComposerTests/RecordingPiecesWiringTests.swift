@@ -6,6 +6,7 @@ import BlockingTestWork
 import CoreAudioProcesses
 import Foundation
 import LiveText
+import Observation
 import PanelUI
 import Preferences
 import Calls
@@ -21,7 +22,7 @@ struct RecordingPiecesWiringTests {
 
     @Test func aRetiredModelCheckLeavesTheActiveCaptureAndReadingInPlace() async throws {
         try await withComposeFolder { root in
-            let clock = FixtureClock(), readings = Values<Bool>()
+            let clock = FixtureClock()
             let microphone = CaptureScript(first: CaptureBuffer(samples: [0.25], sampleRate: 48_000),
                                            last: CaptureBuffer(samples: [0.5], sampleRate: 48_000), fails: false)
             defer { microphone.end(); clock.finish() }
@@ -35,19 +36,20 @@ struct RecordingPiecesWiringTests {
             let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
             try preferences.write(.init(callsFolder: root))
             let processes = CoreAudioProcesses(binding: BoundaryProcesses(base: boundary.processes), clock: BoundaryCallClock(time: boundary.time))
-            let panel = await AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: boundary.log,
-                                           intervals: testIntervals, browser: { nil }, sleep: clock.sleep, zoomName: unknownZoomName,
-                                           buildReading: { readings.append(true); return makeReading() })
+            let panel = await makeAudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: boundary.log,
+                                           intervals: testIntervals, browser: { nil }, sleep: clock.sleep, zoomName: unknownZoomName)
             let output = AsyncStream<RecordingTranscript>.makeStream()
             defer { output.continuation.finish() }
-            let pieces = RecordingPieces(preferences: preferences, occupiedCallNames: { [] }, callApp: RecordingCallApp(),
-                processes: processes, boundary: boundary, send: { _ in }, panel: panel, canWatch: { _ in false },
+            let pieces = await RecordingPieces(preferences: preferences, occupiedCallNames: { [] }, callApp: RecordingCallApp(),
+                processes: processes, boundary: boundary, send: { _ in }, panel: panel,
                 transcriptOutput: output.continuation, finalizationResources: FinalizationResources())
 
+            await pieces.observe(id: 1, .init(phase: .bringingUp), after: nil, at: 0)
             _ = await pieces.run(id: 1, .finishTextFeed)
             _ = await pieces.run(id: 1, .releaseOutput)
-            await pieces.observe(id: 1, .init(phase: .ended), at: 0)
+            await pieces.observe(id: 1, .init(phase: .ended), after: .init(phase: .bringingUp), at: 0)
 
+            await pieces.observe(id: 2, .init(phase: .bringingUp), after: nil, at: 0)
             guard case let .folderFinished(_, folder) = await pieces.run(id: 2, .createFolder) else {
                 Issue.record("expected the second session's folder result"); return
             }
@@ -59,30 +61,12 @@ struct RecordingPiecesWiringTests {
             _ = await pieces.run(id: 1, .checkModels)
             _ = await pieces.run(id: 2, .stopCapture(.microphone))
             #expect(microphone.stops.all == [true])
-            #expect(readings.all.count == 2)
+            #expect(await panel.presentations().first { _ in true }?.call == 2)
 
             _ = await pieces.run(id: 2, .closeTrack(.microphone))
             _ = await pieces.run(id: 2, .finishTextFeed)
             _ = await pieces.run(id: 2, .releaseOutput)
-            await pieces.observe(id: 2, .init(phase: .ended), at: 0)
-        }
-    }
-
-    @Test func stoppingDuringPanelSetupLeavesNoNamingWatch() async throws {
-        let entered = Signal(), proceed = Signal()
-        defer { entered.end(); proceed.end() }
-        try await withPieces(buildReading: {
-            entered.send()
-            await proceed.next()
-            return makeReading()
-        }) { rig in
-            await rig.recording.send(.userStart)
-            await entered.next()
-            await rig.stop()
-            proceed.send()
-            await rig.recording.end()
-            #expect(await rig.panel.names.observation(of: 1) == nil)
-            #expect(rig.microphones.count == 0 && rig.calls.count == 0)
+            await pieces.observe(id: 2, .init(phase: .ended), after: .init(phase: .bringingUp), at: 0)
         }
     }
 
@@ -104,6 +88,7 @@ struct RecordingPiecesWiringTests {
             await rig.stop()
             await waiting.next()
             await publishing.next()
+            let presentations = await rig.panel.presentations()
             clock.advance(100)
             _ = await rig.record()
             try #require(storage.ports.all.count == 2)
@@ -114,13 +99,7 @@ struct RecordingPiecesWiringTests {
             for await _ in firstStates {}
             let folder = try #require(finished.pieces?.recordedFolder?.id)
             #expect(rig.published.all == [folder])
-            clock.advance(3, tick: false)
-            proceed.end()
-
-            for await shown in await rig.panel.states() {
-                if case .on = shown.recording { break }
-            }
-            clock.advance(1)
+            clock.advance(4)
             for await shown in await rig.panel.states() {
                 if case let .on(elapsed) = shown.recording, elapsed != "00:00:00" {
                     #expect(elapsed == "00:00:04")
@@ -132,6 +111,15 @@ struct RecordingPiecesWiringTests {
             var sawSecondStop = false
             for await names in secondStates where names.recordingStart == nil { sawSecondStop = true }
             #expect(sawSecondStop)
+            _ = await rig.record()
+            var sawSecond = false
+            for await shown in presentations {
+                if shown.call == 2, shown.state.recording == .on(elapsed: "00:00:04") { sawSecond = true }
+                if shown.call == 3, case .on = shown.state.recording { break }
+            }
+            #expect(sawSecond)
+            proceed.end()
+            await rig.stop()
         }
     }
 
@@ -183,12 +171,48 @@ struct RecordingPiecesWiringTests {
             #expect(!liveSecond.confirmed)
 
             await diarizing.next()
+            // The first call's finalization is still held when the second call's row is shown.
+            for await shown in await rig.panel.states() {
+                guard case .on = shown.recording, case let .lines(lines) = shown.log,
+                      let row = lines.entries.first(where: { $0.label == "Борис" }) else { continue }
+                #expect(tokens(row.settled + " " + row.pending) == ["привет"])
+                #expect(row.labelIsTentative)
+                break
+            }
             finishDiarizing.end()
             let confirmed = try #require(await firstNames.first { $0.confirmed })
             #expect(confirmed.rowNames == [rowID: "Анна"])
             #expect(second.snapshot().rowNames == [rowID: "Борис"])
             #expect(!second.snapshot().confirmed)
             #expect(!secondChannel.stopped)
+            await rig.stop()
+        }
+    }
+
+    @Test func theNextRecordingAndPanelStartWhileThePreviousWatchStops() async throws {
+        let stopping = Signal(), close = Signal(), watchingNext = Signal()
+        defer { stopping.end(); close.end(); watchingNext.end() }
+        let first = DelayedWatch(stopping: stopping, close: close)
+        let second = DelayedWatch(opened: watchingNext)
+        let watches = Mutex([first, second])
+        let storage = NamesStorage(opens: true, diarizer: CallDiarizer.unavailable)
+
+        try await withPieces(makeWatch: { _ in
+            CallAppWatch(sources: [watches.withLock { $0.removeFirst() }])
+        }, configure: { $0.transcripts = storage }) { rig in
+            _ = await rig.record()
+            await rig.stop()
+            await stopping.next()
+
+            let next = await rig.record()
+            #expect(next.session?.id == 2)
+            let names = try #require(storage.ports.all.last)
+            try #require(await names.states().first { $0.recordingStart != nil }?.observation == .pending)
+            try #require(await rig.panel.presentations().first { $0.call == 2 && $0.state.recording == .on(elapsed: "00:00:00") } != nil)
+
+            close.end()
+            await watchingNext.next()
+            try #require(await names.states().first { $0.observation == .observing } != nil)
             await rig.stop()
         }
     }
@@ -346,7 +370,7 @@ struct RecordingPiecesWiringTests {
 
         try await withPieces { rig in
             _ = await rig.record()
-            await rig.panel.send(.switchLiveTextOn)
+            await rig.recording.sendPanel(.switchLiveTextOn, for: 1, panel: rig.panel)
             await rig.log.wait { wants($0, id: 1) }
             await rig.stop()
         }
@@ -357,12 +381,16 @@ struct RecordingPiecesWiringTests {
 @Suite(.timeLimit(.minutes(1)))
 struct FollowingSessionsTests {
 
+    @MainActor
     @Test func theLiveTextSwitchReachesOnlyTheSessionNowRecording() async throws {
 
         try await withComposition(preferences: { .init(automaticRecording: false, liveText: false, callsFolder: $0) }) { rig in
             try await rig.start()
             try await rig.stop()
             try await rig.start()
+            for await shown in Observations({ rig.menu.panelPresentation }) where shown.call == 2 {
+                if case .on = shown.state.recording { break }
+            }
             await rig.menu.sendPanel(.switchLiveTextOn)
             await rig.log.wait { wants($0, id: 2) }
             #expect(!rig.log.entries.all.contains { wants($0, id: 1) })
@@ -432,7 +460,7 @@ private func withPieces(
     browser: @escaping @Sendable () -> BrowserChannel? = { nil },
     liveText: Bool = false, waiting onWaiting: @escaping @Sendable (URL) async -> Void = { _ in },
     publishing: @escaping @Sendable (String) async -> Void = { _ in },
-    buildReading: @escaping @MainActor @Sendable () async -> ReadingInputs = { makeReading() },
+    makeWatch: (@MainActor @Sendable (@escaping @Sendable () async -> Double?) -> CallAppWatch)? = nil,
     configure: @Sendable (inout ComposerBoundary) -> Void = { _ in },
     _ body: @Sendable (PiecesRig) async throws -> Void
 ) async throws {
@@ -464,8 +492,15 @@ private func withPieces(
         let processes = CoreAudioProcesses(binding: BoundaryProcesses(base: boundary.processes), clock: BoundaryCallClock(time: boundary.time))
         let app = RecordingCallApp()
         app.started("us.zoom.xos")
-        let panel = await AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: log, intervals: testIntervals,
-                                       browser: browser, sleep: clock.sleep, zoomName: unknownZoomName, buildReading: buildReading)
+        let panel: AudelinPanel
+        if let makeWatch {
+            let names = await ApplicationCallNames(now: clock.time.monotonicNow, makeWatch: makeWatch)
+            panel = await AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: log,
+                                      intervals: testIntervals, names: names)
+        } else {
+            panel = await makeAudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: log, intervals: testIntervals,
+                                      browser: browser, sleep: clock.sleep, zoomName: unknownZoomName)
+        }
         let resources = await FinalizationResources()
         let finalization = await TranscriptFinalizationModel(diarizing: FinalizationDiarizing(resources: resources),
             cleanup: FinalizationCleanup(resources: resources), replacement: FinalizationReplacement(resources: resources),
@@ -490,6 +525,24 @@ private func withPieces(
         if delivery == nil { await finalization.send(.inputEnded) }
         await finalization.settled()
         await processes.stop()
+    }
+}
+
+private struct DelayedWatch: CallAppObserver {
+    var opened: Signal? = nil
+    var stopping: Signal? = nil
+    var close: Signal? = nil
+    let updates = AsyncStream<CallNamesUpdate>.makeStream()
+
+    func observe() -> AsyncStream<CallNamesUpdate> {
+        opened?.send()
+        return updates.stream
+    }
+
+    func stop() async {
+        stopping?.send()
+        await close?.next()
+        updates.continuation.finish()
     }
 }
 

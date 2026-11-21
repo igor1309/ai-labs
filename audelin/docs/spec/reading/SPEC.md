@@ -1,17 +1,17 @@
 # Reading
 
-Observer: compose, which feeds the displayed call's text, names, recording
-state, time and reader actions into the reducer, and translates its state
+Observer: compose, which feeds call-keyed text, names, recording state,
+time and reader actions into the reducer, and translates its state
 for the panel. Reading owns no recording, recognition, window or other
 effects; transcript layout lays out its rows.
 
 ## Decided
 
-- One call is displayed at a time. Opening a call resets it; input for
-  another call is ignored. After its recording ends the call stays
-  displayed, still taking its text, names and speaker places, until the
-  next call opens. Grounds: today's panel keeps the finished call until the
-  next recording.
+- One Reading lives as long as the app. It holds the displayed call's id.
+  Opening a later call resets the log, and input for another call is
+  ignored. After its recording ends the call stays displayed, still taking
+  its text, names and speaker places, until the next call opens. The log
+  follows the chosen language even after recording ends.
 - Text before capture begins is kept, and the log shows empty until
   capture first begins; once begun it does not close again for that call.
 - A listening update replaces the text after the last final entry; final
@@ -20,7 +20,7 @@ effects; transcript layout lays out its rows.
 - Names come as one set by remote local id, with whether they are
   confirmed; each set replaces the last. A tentative set names the entries of
   the latest text update and later ones; a confirmed set names every
-  remote entry. Speaker places stay through later text.
+  remote entry. Speaker places take effect after the call's text feed ends.
 - Time comes as instants on one monotonic clock, stamped by compose on
   each recording change, tick and fault report. The first instant recording
   is on starts the clock; recording off stops and clears it. Recording time
@@ -33,7 +33,8 @@ effects; transcript layout lays out its rows.
 - Holds keep the supplied text exactly, oldest first; only letting that
   selection go removes it. Scrolling away pauses following and counts each
   new entry below; reaching the bottom or jumping to live resumes and clears.
-  The latest scroll interaction is acknowledged by its id.
+  The latest scroll interaction is acknowledged by its id. Reader actions
+  stop changing the log once the Session and its feeds have ended.
 - An unread recording shows an empty log. Recording with text off offers
   live text, keeping prior lines. Getting ready shows preparing, with lines
   kept visible while problems are active. Faults and recognition failure
@@ -96,4 +97,9 @@ Feature: Reading the displayed call
     Given recording went on at an instant
     When a later tick and then an earlier one arrive
     Then compose can show the time from that instant, never running back
+
+  Scenario: S-12 Speaker places follow the final text
+    Given speaker places arrive before the call's text feed ends
+    When the final text arrives and the feed ends
+    Then compose can show speaker places on the final rows
 ```

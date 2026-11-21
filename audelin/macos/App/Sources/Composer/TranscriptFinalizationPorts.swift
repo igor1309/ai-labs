@@ -7,6 +7,7 @@ struct FinalizationDiarizing: TranscriptDiarizing {
 
     func diarize(call: String, _ raw: CallState, outcomes: FinishingOutcomes) async -> SavedDiarization<Transcript.Attributed>? {
         guard let resource = await resources.resource(call: call) else { return nil }
+        guard await resource.transcript.names.awaitClosedEvidence() else { return nil }
         let far = await resource.transcript.pass.diarize(call: call, raw, outcomes: outcomes)
         return far
     }

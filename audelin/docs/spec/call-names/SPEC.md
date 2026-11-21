@@ -15,13 +15,15 @@ call's names and whether they are confirmed.
   its name, and a row still unnamed may be named on a later update.
   Grounds: ADR-002 and today's reducer.
 - The after-call turns confirm the names: an empty result clears every live
-  name; missing turns or evidence leave them tentative. Grounds: today's
-  confirmation rule.
+  name. Missing turns or evidence leave them tentative. CallNames uses the
+  evidence after the call's sources close and all their reports arrive.
+  Turns reported earlier are held until then.
 - Each call's watch of the call-app sources is its own: ending one call
   never stops another's. The browser adapter opens the socket for each
   call's watch and closes it when that watch stops. A recording's watch
-  closes the socket before the next recording opens it. Grounds: the
-  socket path is shared.
+  closes the shared socket before the next watch opens it. CallNames holds
+  the next watch pending until the close is acknowledged. The next Session
+  and its panel can start while the watch is pending.
 - Call time comes as instants on one monotonic clock, stamped by compose on
   each recording change, the first instant recording is on starting it, as
   for Reading.
@@ -45,10 +47,11 @@ Feature: Naming each call's far-side rows
     Then compose can read the first call's confirmed names
     And the second call's names are unchanged
 
-  Scenario: S-4 Ending one call leaves the other watched
-    Given the next call is being watched
-    When the previous call's watch stops
-    Then compose can read a live name for a new row of the next call
+  Scenario: S-4 A new recording starts while the previous watch stops
+    Given the previous watch has begun closing
+    When the next call opens
+    Then the next watch is pending while its Session and panel can start
+    And acknowledging the close starts that watch
 
   Scenario: S-5 A finished call is let go
     Given a call's finalization has ended
