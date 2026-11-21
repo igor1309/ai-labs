@@ -45,7 +45,8 @@ actor RecordingPieces {
     /// Runs one piece's work for the recording with that id, building its pieces on its first work.
     func run(id: UInt64, _ effect: SessionEffect) async -> SessionEvent {
 
-        let built = await pieces(for: id)
+        // Recording discards replies whose session id is no longer current.
+        guard let built = await pieces(for: id) else { return .end }
         return await built.handler.handle(effect)
     }
 
@@ -76,9 +77,13 @@ actor RecordingPieces {
         )
     }
 
-    private func pieces(for id: UInt64) async -> Built {
+    private func pieces(for id: UInt64) async -> Built? {
 
-        if let built, built.id == id { return built }
+        if let built {
+            if built.id == id { return built }
+            // Session IDs increase, and effect tasks can arrive after a later session's work.
+            guard built.id < id else { return nil }
+        }
         let pieces = makePieces(id)
         let panel = panel, send = send, canWatch = canWatch
         let feed = pieces.readingText

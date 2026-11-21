@@ -19,6 +19,55 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingPiecesWiringTests {
 
+    @Test func aRetiredModelCheckLeavesTheActiveCaptureAndReadingInPlace() async throws {
+        try await withComposeFolder { root in
+            let clock = FixtureClock(), readings = Values<Bool>()
+            let microphone = CaptureScript(first: CaptureBuffer(samples: [0.25], sampleRate: 48_000),
+                                           last: CaptureBuffer(samples: [0.5], sampleRate: 48_000), fails: false)
+            defer { microphone.end(); clock.finish() }
+            var boundary = rehearsalBoundary(capturePersistence: .recorded,
+                microphone: { try microphone.start() }, call: { _ in throw ScriptFailure.failed },
+                mine: RehearsalRecognizer(SessionRecognizer(name: "mine")), theirs: RehearsalRecognizer(SessionRecognizer(name: "theirs")),
+                now: clock.time.now, timeZone: clock.time.timeZone, sleep: clock.sleep, intervals: testIntervals,
+                transcriptBuild: testTranscriptBuild)
+            boundary.time = clock.time
+            boundary.log = TestLogSink()
+            let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
+            try preferences.write(.init(callsFolder: root))
+            let processes = CoreAudioProcesses(binding: BoundaryProcesses(base: boundary.processes), clock: BoundaryCallClock(time: boundary.time))
+            let panel = await AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: boundary.log,
+                                           intervals: testIntervals, browser: { nil }, sleep: clock.sleep, zoomName: unknownZoomName,
+                                           buildReading: { readings.append(true); return makeReading() })
+            let output = AsyncStream<RecordingTranscript>.makeStream()
+            defer { output.continuation.finish() }
+            let pieces = RecordingPieces(preferences: preferences, occupiedCallNames: { [] }, callApp: RecordingCallApp(),
+                processes: processes, boundary: boundary, send: { _ in }, panel: panel, canWatch: { _ in false },
+                transcriptOutput: output.continuation, finalizationResources: FinalizationResources())
+
+            _ = await pieces.run(id: 1, .finishTextFeed)
+            _ = await pieces.run(id: 1, .releaseOutput)
+            await pieces.observe(id: 1, .init(phase: .ended), at: 0)
+
+            guard case let .folderFinished(_, folder) = await pieces.run(id: 2, .createFolder) else {
+                Issue.record("expected the second session's folder result"); return
+            }
+            let opened = try #require(folder)
+            #expect(await pieces.run(id: 2, .openTrack(.microphone, in: opened)) == .trackFinished(.microphone, error: nil))
+            #expect(await pieces.run(id: 2, .startMicrophoneCapture) == .captureFinished(.microphone, error: nil))
+            #expect(microphone.starts.all == [true])
+
+            _ = await pieces.run(id: 1, .checkModels)
+            _ = await pieces.run(id: 2, .stopCapture(.microphone))
+            #expect(microphone.stops.all == [true])
+            #expect(readings.all.count == 2)
+
+            _ = await pieces.run(id: 2, .closeTrack(.microphone))
+            _ = await pieces.run(id: 2, .finishTextFeed)
+            _ = await pieces.run(id: 2, .releaseOutput)
+            await pieces.observe(id: 2, .init(phase: .ended), at: 0)
+        }
+    }
+
     @Test func stoppingDuringPanelSetupLeavesNoNamingWatch() async throws {
         let entered = Signal(), proceed = Signal()
         defer { entered.end(); proceed.end() }

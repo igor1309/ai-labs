@@ -2,7 +2,6 @@ import BrowserBridge
 import CallNames
 import Foundation
 import LiveText
-import Observation
 import PanelUI
 import Recording
 import SpeakerNaming
@@ -117,17 +116,80 @@ struct AfterCallNamesWiringTests {
     }
 
     @MainActor
-    @Test func sessionEndReleasesNamesWhenNoTranscriptOpened() async {
-        let app = ApplicationCallNames(now: { 10 }, makeWatch: { _ in .init(sources: []) })
+    @Test(arguments: [false, true])
+    func releasingNamesKeepsTheWatchStoppingUntilItsSourceCloses(hasTranscript: Bool) async throws {
+        let source = GatedWatchSource()
+        defer { source.stopping.end(); source.close.end(); source.updates.continuation.finish() }
+        let app = ApplicationCallNames(now: { 10 }, makeWatch: { _ in .init(sources: [source]) })
         let names = RecordingNames()
         app.open(id: 1, published: names)
-        for await observation in Observations({ app.observation(of: 1) }) where observation == .observing { break }
+        let states = names.states()
+        try #require(await names.states().first { @Sendable in $0.observation == .observing } != nil)
 
-        app.sessionChanged(id: 1, phase: .ended, hasTranscript: false, at: 10)
-        for await observation in Observations({ app.observation(of: 1) }) where observation == nil { break }
+        app.sessionChanged(id: 1, phase: .ended, hasTranscript: hasTranscript, at: 10)
+        await source.stopping.next()
+        if hasTranscript { await names.finalizationEnded() }
+        for await _ in states {}
+        #expect(app.observation(of: 1) == .stopping)
+
+        source.close.end()
+        await app.waitForWatchToStop(1, published: names)
         #expect(app.observation(of: 1) == nil)
     }
 
+    @MainActor
+    @Test func watchClockIsNilWhileItsOwnRecordingIsOff() async throws {
+        let clock = FixtureClock(), first = RecordingNames(), second = RecordingNames()
+        var clocks: [@Sendable () async -> Double?] = []
+        let app = ApplicationCallNames(now: clock.time.monotonicNow, makeWatch: {
+            clocks.append($0)
+            return .init(sources: [])
+        })
+        defer {
+            app.send(.finalized(1))
+            app.send(.finalized(2))
+            clock.finish()
+        }
+
+        app.open(id: 1, published: first)
+        let firstClock = try #require(clocks.first)
+        try #require(await first.states().first { @Sendable in $0.observation == .observing } != nil)
+        clock.advance(10)
+        #expect(await firstClock() == nil)
+
+        app.sessionChanged(id: 1, phase: .recording, hasTranscript: true, at: clock.time.monotonicNow())
+        try #require(await first.states().first { @Sendable in $0.recordingStart == 10 } != nil)
+        clock.advance(4)
+        #expect(await firstClock() == 4)
+        app.sessionChanged(id: 1, phase: .ended, hasTranscript: true, at: clock.time.monotonicNow())
+        await app.waitForWatchToStop(1, published: first)
+        #expect(app.observation(of: 1) == .stopped)
+
+        clock.advance(6)
+        app.open(id: 2, published: second)
+        try #require(clocks.count == 2)
+        let secondClock = clocks[1]
+        app.sessionChanged(id: 2, phase: .recording, hasTranscript: true, at: clock.time.monotonicNow())
+        try #require(await second.states().first { @Sendable in $0.recordingStart == 20 } != nil)
+        clock.advance(3)
+        #expect(await secondClock() == 3)
+        #expect(await firstClock() == nil)
+    }
+
+}
+
+private struct GatedWatchSource: CallAppObserver {
+    let stopping = Signal()
+    let close = Signal()
+    let updates = AsyncStream<CallNamesUpdate>.makeStream()
+
+    func observe() -> AsyncStream<CallNamesUpdate> { updates.stream }
+
+    func stop() async {
+        stopping.send()
+        await close.next()
+        updates.continuation.finish()
+    }
 }
 
 /// The browser's clock reads 100 s at call time 20 s; Анна and Борис take turns

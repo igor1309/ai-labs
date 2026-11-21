@@ -19,7 +19,8 @@ The observers cover `beforeRecordingStartsAPollReportsNothing`,
 `aClockedConnectionReportsItselfAndItsMessagesInCallTime`. The
 composer checks the wiring in `aConnectedExtensionNamesTheRemoteRow`,
 `sessionNamesTheRowAndReleasesItsPort`, and
-`readingUsesTheRecordingInstantEvenWhenItsDeliveryWaits`.
+`readingUsesTheRecordingInstantEvenWhenItsDeliveryWaits`. The watch's
+call-time callback is checked in `watchClockIsNilWhileItsOwnRecordingIsOff`.
 
 ## S-2 Confirmed names replace live ones
 Evidence: `ConfirmationTests`.
@@ -34,12 +35,14 @@ Evidence: `endingOneWatchLeavesTheOtherCallNamingItsRows`,
 `stoppingOneWatchLeavesReportsFromTheOther`,
 `stopClosesTheChannelAndEndsTheStream`, and
 `recordingConfirmsTheFinishedCallsNamesWhileTheNextCallRecords`.
+`releasingNamesKeepsTheWatchStoppingUntilItsSourceCloses` checks that the
+next watch still has to wait when the previous names port has finished.
 
 ## S-5 A finished call is let go
 Evidence: `finalizedCallIsReleasedAndLateTurnsAreIgnored`,
 `finalizationReleasesNamesBeforeTheWatchAcknowledgesItsStop`,
 `sessionEndKeepsNamesOnlyIfATranscriptOpened`,
-`sessionEndReleasesNamesWhenNoTranscriptOpened`,
+`releasingNamesKeepsTheWatchStoppingUntilItsSourceCloses`,
 `stoppingDuringPanelSetupLeavesNoNamingWatch`,
 `readingUsesTheRecordingInstantEvenWhenItsDeliveryWaits`, and
 `sessionNamesTheRowAndReleasesItsPort`.
