@@ -43,11 +43,23 @@ func composeRecording(
         for await state in transcriptStates where state.shutdown == .settled { break }
         transcriptOutput.continuation.finish()
     }
+    // Naming follows session phases even while the panel drains the preceding call's speakers.
+    let namingStates = await model.states()
+    let naming = Task {
+        var previous: (id: UInt64, phase: SessionState.Phase)?
+        for await state in namingStates {
+            guard let id = state.session?.id, let session = state.pieces,
+                  previous?.id != id || previous?.phase != session.phase else { continue }
+            previous = (id, session.phase)
+            await panel.namesSessionChanged(id: id, phase: session.phase, hasTranscript: session.transcript != .down)
+        }
+    }
     var recording = RecordingInputs(send: model.send, state: model.state, states: model.states, end: {
         destination.withLock { $0 = nil }
         await model.end()
         await transcriptCompletion.value
         await observation.value
+        await naming.value
     })
     recording.transcriptOutput = transcriptOutput.stream
     let connected = recording

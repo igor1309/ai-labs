@@ -4,8 +4,7 @@ import CallObservation
 import Synchronization
 
 /// The local socket the Audelin browser extension's native host connects to,
-/// opened for one recording: the connections it accepts, and a way to close
-/// it.
+/// with the connections it accepts and a way to close it.
 public struct BrowserChannel: Sendable {
     public var connections: AsyncStream<BrowserConnection>
     public var stop: @Sendable () -> Void
@@ -15,40 +14,137 @@ public struct BrowserChannel: Sendable {
     }
 }
 
-/// Watches the browser extension for one recording: opens its channel and reports
-/// the roster and speaking it sends, placed on the call clock, and which connections
-/// have a clock. When the channel cannot open it reports nothing and its stream ends.
-final class BrowserCallObserver: CallAppObserver {
+/// Owns the app's socket and receiver and fans out their ordered reports.
+final class SharedBrowserObservations: Sendable {
+    private let channel: BrowserChannel?
+    private let listening: Task<Void, Never>?
+    private let feed = BrowserReceiverFeed()
 
-    private let openBrowser: @Sendable () -> BrowserChannel?
-    private let clock: @Sendable () async -> Double?
-    private let monotonic: @Sendable () -> Double
-    private let sleep: @Sendable (Duration) async throws -> Void
-    private let log: any LogSink
-    /// The open channel and its stream, held only so stop can close them.
-    /// The most messages held for one connection before they can be placed; the oldest go first.
-    static let heldLimit = 1000
-    private let open = Mutex<(channel: BrowserChannel, output: AsyncStream<CallNamesEvent>.Continuation)?>(nil)
-
-    /// `clock` gives call time in seconds, or nil before recording starts; `monotonic`
-    /// is the clock in seconds browser round trips are timed by; `sleep` spaces the pings.
-    init(openBrowser: @escaping @Sendable () -> BrowserChannel?, clock: @escaping @Sendable () async -> Double?,
-         monotonic: @escaping @Sendable () -> Double, sleep: @escaping @Sendable (Duration) async throws -> Void,
-         log: any LogSink) {
-        self.openBrowser = openBrowser; self.clock = clock; self.monotonic = monotonic; self.sleep = sleep; self.log = log
+    init(open: @Sendable () -> BrowserChannel?, monotonic: @escaping @Sendable () -> Double,
+         sleep: @escaping @Sendable (Duration) async throws -> Void, log: any LogSink) {
+        channel = open()
+        guard let channel else {
+            log.write(.init(category: .browser, message: "channel unavailable"))
+            listening = nil
+            feed.finish()
+            return
+        }
+        let receiver = BrowserReceiver(connections: channel.connections, now: monotonic, sleep: sleep)
+        listening = Task { [feed] in
+            for await event in receiver.events {
+                feed.publish(event)
+            }
+            feed.finish()
+        }
     }
 
-    func observe() -> AsyncStream<CallNamesEvent> {
-        let (stream, output) = AsyncStream.makeStream(of: CallNamesEvent.self)
-        let log = log
-        guard let opened = openBrowser() else {
-            log.write(.init(category: .browser, message: "channel unavailable"))
-            output.finish()
-            return stream
+    func subscribe() -> BrowserReceiverFeed.Subscription { feed.subscribe() }
+
+    deinit {
+        listening?.cancel()
+        channel?.stop()
+        feed.finish()
+    }
+}
+
+/// A new watch joins already calibrated connections before seeing their next
+/// message. Snapshotting and registration must agree with publication order.
+final class BrowserReceiverFeed: Sendable {
+    struct Subscription: Sendable {
+        let events: AsyncStream<BrowserReceiverEvent>
+        let stop: @Sendable () -> Void
+    }
+
+    private struct State {
+        // The extension may send its only roster before a watch opens. Keep
+        // undelivered messages while their connection is still open.
+        var pending: [Int: [BrowserMessage]] = [:]
+        var clocks: [Int: BrowserClock] = [:]
+        var subscribers: [Int: AsyncStream<BrowserReceiverEvent>.Continuation] = [:]
+        var next = 0
+        var finished = false
+    }
+
+    private let state = Mutex(State())
+
+    func subscribe() -> Subscription {
+        let (stream, output) = AsyncStream<BrowserReceiverEvent>.makeStream()
+        let id = state.withLock { state -> Int? in
+            guard !state.finished else { return nil }
+            for connection in Set(state.clocks.keys).union(state.pending.keys).sorted() {
+                for message in state.pending[connection] ?? [] { output.yield(.message(connection: connection, message)) }
+                if let clock = state.clocks[connection] { output.yield(.clock(connection: connection, clock)) }
+            }
+            state.pending.removeAll()
+            let id = state.next
+            state.next += 1
+            state.subscribers[id] = output
+            return id
         }
-        open.withLock { $0 = (opened, output) }
-        let receiver = BrowserReceiver(connections: opened.connections, now: monotonic, sleep: sleep)
-        let clock = clock, monotonic = monotonic
+        if let id {
+            output.onTermination = { [weak self] _ in self?.remove(id) }
+        } else {
+            output.finish()
+        }
+        return Subscription(events: stream, stop: { [weak self] in
+            if let id { self?.remove(id) }
+            output.finish()
+        })
+    }
+
+    func publish(_ event: BrowserReceiverEvent) {
+        let subscribers = state.withLock { state in
+            switch event {
+            case let .clock(connection, clock): state.clocks[connection] = clock
+            case let .disconnected(connection), let .rejected(connection, _):
+                state.clocks[connection] = nil
+                state.pending[connection] = nil
+            case let .message(connection, message) where state.subscribers.isEmpty:
+                state.pending[connection, default: []].append(message)
+                let excess = state.pending[connection, default: []].count - BrowserCallObserver.heldLimit
+                if excess > 0 { state.pending[connection]?.removeFirst(excess) }
+            case .message: break
+            }
+            return Array(state.subscribers.values)
+        }
+        for output in subscribers { output.yield(event) }
+    }
+
+    func finish() {
+        let subscribers = state.withLock { state in
+            state.finished = true
+            state.clocks.removeAll()
+            state.pending.removeAll()
+            defer { state.subscribers.removeAll() }
+            return Array(state.subscribers.values)
+        }
+        for output in subscribers { output.finish() }
+    }
+
+    private func remove(_ id: Int) { state.withLock { $0.subscribers[id] = nil } }
+}
+
+/// Places the shared receiver's observations on one recording's call clock.
+final class BrowserCallObserver: CallAppObserver {
+    private let browser: SharedBrowserObservations
+    private let clock: @Sendable () async -> Double?
+    private let monotonic: @Sendable () -> Double
+    private let log: any LogSink
+    /// The most messages held for one connection before they can be placed; the oldest go first.
+    static let heldLimit = 1000
+    private let open = Mutex<AsyncStream<CallNamesUpdate>.Continuation?>(nil)
+
+    /// `clock` gives call time in seconds, or nil before recording starts.
+    init(browser: SharedBrowserObservations, clock: @escaping @Sendable () async -> Double?,
+         monotonic: @escaping @Sendable () -> Double, log: any LogSink) {
+        self.browser = browser; self.clock = clock; self.monotonic = monotonic; self.log = log
+    }
+
+    func observe() -> AsyncStream<CallNamesUpdate> {
+        let (stream, output) = AsyncStream.makeStream(of: CallNamesUpdate.self)
+        let subscription = browser.subscribe()
+        open.withLock { $0 = output }
+        let clock = clock, monotonic = monotonic, log = log
         let listening = Task {
             // Each connection's clock, used only to place its messages on the call clock.
             var clocks: [Int: BrowserClock] = [:]
@@ -70,7 +166,7 @@ final class BrowserCallObserver: CallAppObserver {
                 }
                 return []
             }
-            for await event in receiver.events {
+            for await event in subscription.events {
                 switch event {
                 case let .clock(connection, browserClock):
                     if clocks.updateValue(browserClock, forKey: connection) == nil {
@@ -97,7 +193,10 @@ final class BrowserCallObserver: CallAppObserver {
             }
             output.finish()
         }
-        output.onTermination = { _ in listening.cancel() }
+        output.onTermination = { _ in
+            subscription.stop()
+            listening.cancel()
+        }
         return stream
     }
 
@@ -115,8 +214,6 @@ final class BrowserCallObserver: CallAppObserver {
     }
 
     func stop() async {
-        guard let (channel, output) = open.withLock({ open in defer { open = nil }; return open }) else { return }
-        channel.stop()
-        output.finish()
+        open.withLock { open in defer { open = nil }; return open }?.finish()
     }
 }

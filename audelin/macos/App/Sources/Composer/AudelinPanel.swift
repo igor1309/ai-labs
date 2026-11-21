@@ -5,7 +5,6 @@ import Observation
 import PanelUI
 import Reading
 import Recording
-import SpeakerNaming
 import ZoomAccessibility
 
 /// One recording's reading model as the panel uses it; the app makes it on the main actor.
@@ -35,9 +34,7 @@ actor AudelinPanel {
     private let ticks: @Sendable () -> AsyncStream<Void>
     private let intervals: ProfileIntervals
     private let sink: any LogSink
-    private let browser: @Sendable () -> BrowserChannel?
-    private let sleep: @Sendable (Duration) async throws -> Void
-    private let zoomName: ZoomName
+    private let names: ApplicationCallNames
     private var current: (id: UInt64, reading: ReadingInputs, enableLiveText: @Sendable () async -> Void)?
     private var subscription: (id: UInt64, value: ReadingSubscription)?
     /// The finished call's subscription, kept until the next recording so names confirmed
@@ -51,15 +48,21 @@ actor AudelinPanel {
     private var subscribers: [UInt64: AsyncStream<PanelState>.Continuation] = [:]
     private var nextSubscriber: UInt64 = 0
 
-    init(
+    @MainActor init(
         now: @escaping @Sendable () -> Double, ticks: @escaping @Sendable () -> AsyncStream<Void>, sink: any LogSink,
         intervals: ProfileIntervals, browser: @escaping @Sendable () -> BrowserChannel?,
         sleep: @escaping @Sendable (Duration) async throws -> Void, zoomName: ZoomName
     ) {
 
-        self.zoomName = zoomName
-        self.browser = browser
-        self.sleep = sleep
+        let sharedBrowser = SharedBrowserObservations(open: browser, monotonic: now, sleep: sleep, log: sink)
+        self.names = ApplicationCallNames(now: now) { clock in
+            let windows = ZoomWindows()
+            return CallAppWatch(sources: [
+                ZoomCallObserver(isPermitted: { windows.isPermitted }, windows: { windows.windows() }, clock: clock,
+                                 sleep: { try await Task.sleep(for: $0) }, knownName: zoomName.read, rememberName: zoomName.remember),
+                BrowserCallObserver(browser: sharedBrowser, clock: clock, monotonic: now, log: sink),
+            ])
+        }
         self.now = now
         self.ticks = ticks
         self.sink = sink
@@ -96,25 +99,16 @@ actor AudelinPanel {
         let update = SignpostedPanelUpdate(receive: { [weak self] state in
             await self?.receive(state, id: id)
         }, intervals: intervals)
-        let made = await ReadingSubscription(reading: reading, text: text, speakers: speakers, names: published, now: now, ticks: ticks(), sink: sink,
-                                              sources: callAppSources()) { state in
+        let made = await ReadingSubscription(id: id, reading: reading, text: text, speakers: speakers,
+                                              names: names, published: published, now: now, ticks: ticks(), sink: sink) { state in
             await update(state)
         }
         if current?.id == id { subscription = (id, made) }
         return made
     }
 
-    private func callAppSources() -> @Sendable (@escaping @Sendable () async -> Double?) -> [any CallAppObserver] {
-
-        let browser = browser, now = now, sleep = sleep, zoomName = zoomName, sink = sink
-        return { clock in
-            let windows = ZoomWindows()
-            return [
-                ZoomCallObserver(isPermitted: { windows.isPermitted }, windows: { windows.windows() }, clock: clock,
-                                 sleep: { try await Task.sleep(for: $0) }, knownName: zoomName.read, rememberName: zoomName.remember),
-                BrowserCallObserver(openBrowser: browser, clock: clock, monotonic: now, sleep: sleep, log: sink),
-            ]
-        }
+    nonisolated func namesSessionChanged(id: UInt64, phase: SessionState.Phase, hasTranscript: Bool) async {
+        await names.sessionChanged(id: id, phase: phase, hasTranscript: hasTranscript, at: now())
     }
 
     /// Takes the recording's reading feed to its end first, so its last text and speakers are shown;
@@ -174,8 +168,6 @@ actor AudelinPanel {
 @MainActor
 final class ReadingSubscription {
 
-    private typealias NamesModel = ObservableModel<CallNamesState, CallNamesEvent, CallNamesEffect>
-
     private let reading: ReadingInputs
     private let now: @Sendable () -> Double
     private let show: @MainActor @Sendable (ReadingState) async -> Void
@@ -183,41 +175,20 @@ final class ReadingSubscription {
     private let timer: Task<Void, Never>
     /// Shows each new reading state; it ends with the last state it showed.
     private var observation: Task<ReadingState?, Never>
-    private let names: NamesModel
-    private let naming: Task<Void, Never>
+    private let id: UInt64
+    private let names: ApplicationCallNames
     private var ended = false
 
     init(
-        reading: ReadingInputs, text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]>, names recording: RecordingNames,
-        now: @escaping @Sendable () -> Double, ticks: AsyncStream<Void>, sink: any LogSink,
-        sources: @Sendable (@escaping @Sendable () async -> Double?) -> [any CallAppObserver],
-        receive: @escaping @Sendable (ReadingState) async -> Void
+        id: UInt64, reading: ReadingInputs, text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]>,
+        names: ApplicationCallNames, published: RecordingNames, now: @escaping @Sendable () -> Double,
+        ticks: AsyncStream<Void>, sink: any LogSink, receive: @escaping @Sendable (ReadingState) async -> Void
     ) async {
 
+        self.id = id
+        self.names = names
         self.reading = reading
         self.now = now
-        let reducer = CallNamesReducer(
-            name: { LiveNames().match(start: $0, end: $1, roster: $2, activities: $3, through: $4) },
-            confirm: { rows, turns, evidence in
-                AfterCallNames.names(rows: rows.map { ($0.id, $0.start, $0.end) }, turns: turns, evidence: evidence)
-            })
-        // The model owns the observers, so their clock reads it through a weak reference.
-        weak var namesForClock: NamesModel?
-        let clock: @MainActor @Sendable () -> Double? = {
-            namesForClock?.state.recordingStart.map { now() - $0 }
-        }
-        let handler = CallNamesEffectHandler(sources: sources(clock))
-        let names = NamesModel(initialState: CallNamesState(), reduce: reducer.reduce, handleEffect: handler.handle)
-        namesForClock = names
-        self.names = names
-        let published = Observations { names.state }
-        naming = Task {
-            for await state in published {
-                guard !Task.isCancelled else { return }
-                recording.published(state)
-                reading.send(.namesChanged(state.rowNames, confirmed: state.confirmed))
-            }
-        }
         let show: @MainActor @Sendable (ReadingState) async -> Void = { state in
             await receive(state)
             StateLog(sink: sink).reading(state)
@@ -225,14 +196,13 @@ final class ReadingSubscription {
         self.show = show
         await receive(reading.state())
         observation = Self.observe(reading, after: nil, show: show)
-        names.event(.start)
         self.text = Task {
             var mapped = 0
             for await state in text {
                 guard !Task.isCancelled else { return }
                 let remote = state.entries[mapped...].filter { $0.speaker != .mine }
                     .map { Row(id: $0.text.id, start: $0.text.start, end: $0.text.end) }
-                if !remote.isEmpty { names.event(.rows(remote, now: now())) }
+                if !remote.isEmpty { names.send(.update(id, .rows(remote, now: now()))) }
                 reading.send(.textUpdated(readingText(state, from: mapped)))
                 mapped = state.finalCount
             }
@@ -248,21 +218,15 @@ final class ReadingSubscription {
                 reading.send(.tick(at: now()))
             }
         }
-        recording.connect { [weak self] turns, rows in await self?.diarized(turns, rows: rows) }
-    }
-
-    private func diarized(_ turns: [DiarizedTurn], rows: [Row]) { names.event(.diarized(turns, rows: rows)) }
-
-    private func recordingChanged(_ recording: ReadingRecording, at instant: Double) {
-
-        reading.send(.recordingChanged(recording, at: instant))
-        names.event(.recordingChanged(isOn: recording == .on, at: instant))
+        names.open(id: id, published: published) { [weak self] names in
+            self?.reading.send(.namesChanged(names.rowNames, confirmed: names.confirmed))
+        }
     }
 
     func sessionChanged(_ state: SessionState) {
 
         let instant = now()
-        recordingChanged(readingRecording(state), at: instant)
+        reading.send(.recordingChanged(readingRecording(state), at: instant))
         reading.send(.problemsChanged(readingFaultKinds(state), callSilent: state.audioWarning == .callSilent, at: instant))
     }
 
@@ -271,12 +235,15 @@ final class ReadingSubscription {
 
         guard !ended else { return }
         ended = true
-        names.event(.stop)
-        for await state in Observations({ self.names.state }) where state.observation != .observing && state.observation != .stopping { break }
+        names.send(.stop(id))
+        for await observation in Observations({ self.names.observation(of: self.id) })
+        where observation != .observing && observation != .stopping { break }
         await text.value
         timer.cancel()
         await timer.value
-        recordingChanged(.off, at: now())
+        let instant = now()
+        reading.send(.recordingChanged(.off, at: instant))
+        names.send(.update(id, .recordingChanged(isOn: false, at: instant)))
         // The model reduces the event later; wait until the state shows it.
         for await state in Observations({ self.reading.state() }) where state.recording == .off { break }
         observation.cancel()
@@ -309,6 +276,5 @@ final class ReadingSubscription {
         text.cancel()
         timer.cancel()
         observation.cancel()
-        naming.cancel()
     }
 }

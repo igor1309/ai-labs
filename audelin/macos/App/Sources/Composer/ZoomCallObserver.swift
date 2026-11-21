@@ -17,7 +17,7 @@ final class ZoomCallObserver: CallAppObserver {
     private let knownName: @Sendable () -> String?
     private let rememberName: @Sendable (String) -> Void
     /// The open poll's stream, held only so stop can finish it.
-    private let open = Mutex<AsyncStream<CallNamesEvent>.Continuation?>(nil)
+    private let open = Mutex<AsyncStream<CallNamesUpdate>.Continuation?>(nil)
 
     /// `clock` gives call time in seconds, or nil before recording starts.
     init(isPermitted: @escaping @Sendable () -> Bool, windows: @escaping @Sendable () -> [Node],
@@ -27,8 +27,8 @@ final class ZoomCallObserver: CallAppObserver {
         self.knownName = knownName; self.rememberName = rememberName
     }
 
-    func observe() -> AsyncStream<CallNamesEvent> {
-        let (stream, output) = AsyncStream.makeStream(of: CallNamesEvent.self)
+    func observe() -> AsyncStream<CallNamesUpdate> {
+        let (stream, output) = AsyncStream.makeStream(of: CallNamesUpdate.self)
         guard isPermitted() else {
             output.finish()
             return stream

@@ -55,7 +55,9 @@ struct AfterCallPassTests {
         try await withPassTrack { track in
             let names = RecordingNames()
             let heard = Values<[Int]>()
-            names.connect { turns, rows in if !turns.isEmpty { heard.append(rows.map(\.id)) } }
+            names.connect(diarized: { turns, rows in
+                if !turns.isEmpty { heard.append(rows.map(\.id)) }
+            }, finalized: {})
             let (_, _, pass, raw) = try await zoomPass(track: track, binding: Self.alternating, names: names)
             _ = await pass.diarize(call: track.path, raw, outcomes: .init())
             #expect(heard.all == [[1, 2, 3]])

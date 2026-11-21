@@ -11,7 +11,7 @@ struct ZoomCallObserverTests {
         let reads = Mutex(0)
         let sut = ZoomCallObserver(isPermitted: { false }, windows: { reads.withLock { $0 += 1 }; return [] },
                                    clock: { 1 }, sleep: { _ in await Task.yield() }, knownName: { nil }, rememberName: { _ in })
-        var events: [CallNamesEvent] = []
+        var events: [CallNamesUpdate] = []
         for await event in sut.observe() { events.append(event) }
         #expect(events.isEmpty)
         #expect(reads.withLock { $0 } == 0)
@@ -22,7 +22,7 @@ struct ZoomCallObserverTests {
         let times = Mutex([2.0, 2.5, 3.0])
         let sut = ZoomCallObserver(isPermitted: { true }, windows: { readings.withLock { $0.next() } },
                                    clock: { times.withLock { $0.next() } }, sleep: { _ in await Task.yield() }, knownName: { nil }, rememberName: { _ in })
-        var events: [CallNamesEvent] = []
+        var events: [CallNamesUpdate] = []
         for await event in sut.observe() {
             events.append(event)
             if event == .tick(now: 3) { break }
@@ -38,7 +38,7 @@ struct ZoomCallObserverTests {
         let times = Mutex<[Double?]>([nil, 4])
         let sut = ZoomCallObserver(isPermitted: { true }, windows: { meeting(talking: nil) },
                                    clock: { times.withLock { $0.next() } }, sleep: { _ in await Task.yield() }, knownName: { nil }, rememberName: { _ in })
-        var events: [CallNamesEvent] = []
+        var events: [CallNamesUpdate] = []
         for await event in sut.observe() {
             events.append(event)
             if case .tick = event { break }
@@ -49,7 +49,7 @@ struct ZoomCallObserverTests {
     @Test func stopEndsTheStreamWhileThePollWaits() async {
         let sut = ZoomCallObserver(isPermitted: { true }, windows: { [] }, clock: { 1 },
                                    sleep: { _ in try await Task.sleep(for: .seconds(3600)) }, knownName: { nil }, rememberName: { _ in })
-        var events: [CallNamesEvent] = []
+        var events: [CallNamesUpdate] = []
         for await event in sut.observe() {
             events.append(event)
             await sut.stop()
@@ -73,7 +73,7 @@ struct ZoomCallObserverTests {
         let sut = ZoomCallObserver(isPermitted: { true }, windows: { readings.withLock { $0.next() } },
                                    clock: { times.withLock { $0.next() } }, sleep: { _ in await Task.yield() },
                                    knownName: { nil }, rememberName: { name in remembered.withLock { $0.append(name) } })
-        var events: [CallNamesEvent] = []
+        var events: [CallNamesUpdate] = []
         for await event in sut.observe() {
             events.append(event)
             if event == .tick(now: 3) { break }
@@ -86,7 +86,7 @@ struct ZoomCallObserverTests {
         let remembered = Mutex<[String]>([])
         let sut = ZoomCallObserver(isPermitted: { true }, windows: { gallery(["Me", "Anna"], account: nil) }, clock: { 1 },
                                    sleep: { _ in await Task.yield() }, knownName: { "Me" }, rememberName: { name in remembered.withLock { $0.append(name) } })
-        var events: [CallNamesEvent] = []
+        var events: [CallNamesUpdate] = []
         for await event in sut.observe() {
             events.append(event)
             if case .tick = event { break }

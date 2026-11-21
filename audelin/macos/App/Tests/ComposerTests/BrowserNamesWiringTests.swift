@@ -8,7 +8,7 @@ import Testing
 @testable import CallText
 @testable import Composer
 
-/// The panel opens the browser channel for a recording and names a remote row
+/// The panel watches the shared browser channel for a recording and names a remote row
 /// from what the extension reports; without the channel the row stays unnamed.
 @Suite(.timeLimit(.minutes(1)))
 struct BrowserNamesWiringTests {
@@ -21,6 +21,7 @@ struct BrowserNamesWiringTests {
         let text = AsyncStream<CallState>.makeStream()
         let reading = await panel.begin(id: 1, text: text.stream, enableLiveText: {})
         reading.sessionChanged(SessionState(phase: .recording))
+        await panel.namesSessionChanged(id: 1, phase: .recording, hasTranscript: true)
         clock.advance(20)
 
         // The browser's clock reads 100 s at call time 20 s.
@@ -45,7 +46,7 @@ struct BrowserNamesWiringTests {
         text.continuation.finish()
         await reading.end()
         await panel.end(id: 1)
-        #expect(channel.stopped)
+        #expect(!channel.stopped)
         clock.finish()
     }
 
@@ -57,6 +58,7 @@ struct BrowserNamesWiringTests {
         let text = AsyncStream<CallState>.makeStream()
         let reading = await panel.begin(id: 1, text: text.stream, enableLiveText: {})
         reading.sessionChanged(SessionState(phase: .recording))
+        await panel.namesSessionChanged(id: 1, phase: .recording, hasTranscript: true)
         clock.advance(20)
         text.continuation.yield(remote(0))
         for await shown in await panel.states() {

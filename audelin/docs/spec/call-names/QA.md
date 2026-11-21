@@ -16,21 +16,25 @@ Evidence: `rowsPassExactEvidenceToNamingAndUseItsAnswer`,
 The observers cover `beforeRecordingStartsAPollReportsNothing`,
 `eachPollReportsItsChangesThenATickInCallTime`,
 `aMessageBeforeRecordingStartsIsHeldAndPlacedOnceItStarts` and
-`aClockedConnectionReportsItselfAndItsMessagesInCallTime`. The composer
-checks the wiring in `aConnectedExtensionNamesTheRemoteRow`.
+`aClockedConnectionReportsItselfAndItsMessagesInCallTime`,
+`aRosterReceivedBeforeAnyWatchReachesTheNextWatch`, and
+`twoWatchesShareOneConnectionAndPlaceItsMessagesOnTheirOwnClocks`. The
+composer checks the wiring in `aConnectedExtensionNamesTheRemoteRow`.
 
 ## S-2 Confirmed names replace live ones
 Evidence: `ConfirmationTests`.
 
 ## S-3 A finished call is confirmed while the next records
-Two calls held, the same row id in each, turns for the first: only its
-names change. Also through the composer's `AfterCallNamesWiringTests`.
-Evidence: Missing.
+Evidence: `finishedCallIsConfirmedWhileTheNextRecordsWithTheSameRowID` and
+`confirmationReachesOnlyTheFinishedCallsNamesPort`.
 
 ## S-4 Ending one call leaves the other watched
-Two watches, the first stopped, evidence then reported for the second: a
-new row of the second is named. Evidence: Missing.
+Evidence: `endingOneWatchLeavesTheOtherCallNamingItsRows`,
+`stoppingOneWatchLeavesReportsFromTheOther`, and
+`twoWatchesShareOneConnectionAndPlaceItsMessagesOnTheirOwnClocks`.
 
 ## S-5 A finished call is let go
-Finalization ended for a call, then its turns: no names change.
-Evidence: Missing.
+Evidence: `finalizedCallIsReleasedAndLateTurnsAreIgnored`,
+`finalizationReleasesNamesBeforeTheWatchAcknowledgesItsStop`,
+`sessionEndKeepsNamesOnlyIfATranscriptOpened`, and
+`sessionEndReleasesNamesWhenNoTranscriptOpened`.

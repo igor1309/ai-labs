@@ -144,6 +144,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
             }, cleaning: boundary.bleedCleaning, hearing: boundary.bleedHearing, sink: boundary.log
         ), speakers: { [self] rows in await self.readingSpeakers?.yield(rows) }, finishReading: { [self] in
             await self.endReading()
+            await self.names.finalizationEnded()
         })
         transcriptOutput.yield(.opened(call: made.url.path))
     }

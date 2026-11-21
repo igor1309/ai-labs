@@ -5,7 +5,10 @@ struct ObservationTests {
 
     @Test func startWatchesTheCallApp() {
         let (sut, _) = makeSUT()
-        assert(makeState(), .start, using: sut, delivering: .observe) { $0.observation = .observing }
+        let watch = CallAppWatch(sources: [])
+        assert(CallNamesModelState(), .start(1, watch), using: sut, delivering: .observe(1, watch)) {
+            $0.calls[1] = .init(names: makeState { $0.observation = .observing }, watch: watch)
+        }
     }
 
     @Test func firstRecordingOnStartsTheClock() {
@@ -30,29 +33,35 @@ struct ObservationTests {
     @Test(arguments: [State.Observation.observing, .stopping, .stopped])
     func startOnceWatchingOrAfterIsIgnored(observation: State.Observation) {
         let (sut, _) = makeSUT()
-        assert(makeState { $0.observation = observation }, .start, using: sut)
+        let state = makeModel(makeState { $0.observation = observation })
+        assert(state, .start(1, .init(sources: [])), using: sut)
     }
 
     @Test func stopClosesTheSourcesAndKeepsTheNames() {
         let (sut, _) = makeSUT()
-        let state = makeObservedState { $0.observation = .observing; $0.rowNames = [1: "Anna"] }
-        assert(state, .stop, using: sut, delivering: .stopObserving) { $0.observation = .stopping }
+        let watch = CallAppWatch(sources: [])
+        let state = makeModel(makeObservedState { $0.observation = .observing; $0.rowNames = [1: "Anna"] }, watch: watch)
+        assert(state, .stop(1), using: sut, delivering: .stopObserving(1, watch)) {
+            $0.calls[1]?.names.observation = .stopping
+        }
     }
 
     @Test(arguments: [State.Observation.idle, .stopping, .stopped])
     func stopWhenNotWatchingIsIgnored(observation: State.Observation) {
         let (sut, _) = makeSUT()
-        assert(makeState { $0.observation = observation }, .stop, using: sut)
+        assert(makeModel(makeState { $0.observation = observation }), .stop(1), using: sut)
     }
 
     @Test func closedSourcesEndTheObservation() {
         let (sut, _) = makeSUT()
-        assert(makeState { $0.observation = .stopping }, .observationStopped, using: sut) { $0.observation = .stopped }
+        assert(makeModel(makeState { $0.observation = .stopping }), .observationStopped(1), using: sut) {
+            $0.calls[1]?.names.observation = .stopped
+        }
     }
 
     @Test(arguments: [State.Observation.idle, .observing, .stopped])
     func closedSourcesOutsideStoppingAreIgnored(observation: State.Observation) {
         let (sut, _) = makeSUT()
-        assert(makeState { $0.observation = observation }, .observationStopped, using: sut)
+        assert(makeModel(makeState { $0.observation = observation }), .observationStopped(1), using: sut)
     }
 }
