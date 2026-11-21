@@ -173,6 +173,31 @@ SpeakerIdentification continues to validate identity evidence.
 SummarySettings owns editable runtime configuration, rendered validation,
 load and save outcomes, and its preference and availability ports.
 
+### The user's name in notes
+
+Notes name the user instead of the user's side label. This adds no
+component; one value, the user's name, travels the generation line.
+
+- **The root resolves the name.** It answers SummaryJobs' generation
+  preferences port with the user's name: the Zoom name from Preferences,
+  else the Mac account's full name from a one-call OS binding in the root,
+  else no name. The fallback order is a wiring decision, so it lives only
+  in the root.
+- **SummaryJobs captures it per run,** with the template and the keep
+  choice, and keeps it in the durable attempt, so a recovered run and notes
+  already made keep the name they were made with. It passes the name to
+  its identify and make ports and never interprets it.
+- **NotesGeneration names the user in the request.** Its input marks which
+  transcript lines are the user's; given a name, it writes those lines under
+  the name and adds one line saying the user recorded the call. Without a
+  name the request is as before. The root maps the transcript's user label
+  to that mark; NotesGeneration never learns the label.
+- **The speaker-identification request reads the same named lines,** so
+  both model calls see one transcript.
+
+Live text, the transcript file, its format and the call view are unchanged:
+they keep marking the user's lines by side.
+
 ### Published notes and the keep choice
 
 **SummaryFiles** owns all durable attempts and published notes, including

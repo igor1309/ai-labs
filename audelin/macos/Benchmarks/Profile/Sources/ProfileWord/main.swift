@@ -186,7 +186,7 @@ final class Call: @unchecked Sendable {
             mine: RehearsalRecognizer(mine), theirs: RehearsalRecognizer(theirs),
             now: { Date() }, timeZone: { .current }, sleep: { try await ContinuousClock().sleep(for: $0) },
             intervals: rehearsalIntervals(),
-            transcriptBuild: .init(version: "benchmark", build: "1", mine: "mine", theirs: "theirs")
+            transcriptBuild: .init(version: "profile", build: "1", mine: "unused", theirs: "unused")
         )
         composition = try await startRehearsal(boundary: boundary, root: root)
         shown = await composition.panelStates().makeAsyncIterator()

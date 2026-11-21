@@ -108,6 +108,14 @@ jobs:
         working-directory: audelin/macos/PreviewApps
         run: sh ../../scripts/swift-test-bounded.sh 120 -Xswiftc -O --scratch-path ../.build
 
+      # Only the nightly runs the benchmarks; building them here catches an API change they call.
+      - name: Build the benchmarks
+        working-directory: audelin/macos/Benchmarks
+        run: |
+          for pkg in Baseline Profile Speech; do
+            swift build -Xswiftc -O --package-path "$pkg"
+          done
+
       - name: Build the app bundle
         working-directory: audelin/macos
         run: AUDELIN_SIGN_IDENTITY=- AUDELIN_SCRATCH_PATH="$PWD/.build" sh scripts/bundle.sh
