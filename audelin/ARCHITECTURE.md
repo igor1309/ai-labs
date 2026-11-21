@@ -812,10 +812,10 @@ Time reaches it as instants on the monotonic clock, as for Reading.
 
 Its effect handler watches and closes the call-app sources; each watch,
 and each source's stop acknowledgement, carries its call's id, so ending
-one call never stops another's watch. The browser adapter keeps one
-listener for the app, since its socket path is shared, with one receiver
-and clock calibration per connection, and routes each connection's
-observations to every call watch subscribed. Two adapters in
+one call never stops another's watch. The browser adapter opens the
+socket for each call's watch and closes it when that watch stops.
+The previous recording's watch closes the socket before the next
+recording opens it, since the path is shared. Two adapters in
 the composer answer that port: the Zoom observer reports who speaks on
 Zoom's side, and the browser observer reports the extension's events and
 connections.

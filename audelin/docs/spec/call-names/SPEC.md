@@ -18,10 +18,10 @@ call's names and whether they are confirmed.
   name; missing turns or evidence leave them tentative. Grounds: today's
   confirmation rule.
 - Each call's watch of the call-app sources is its own: ending one call
-  never stops another's. The browser adapter keeps one listener for the
-  app, one receiver and clock per connection, and routes observations to
-  each call's watch. Grounds: the socket path is shared, and a connection
-  has one reader.
+  never stops another's. The browser adapter opens the socket for each
+  call's watch and closes it when that watch stops. A recording's watch
+  closes the socket before the next recording opens it. Grounds: the
+  socket path is shared.
 - Call time comes as instants on one monotonic clock, stamped by compose on
   each recording change, the first instant recording is on starting it, as
   for Reading.

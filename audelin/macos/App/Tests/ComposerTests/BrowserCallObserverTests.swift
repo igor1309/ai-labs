@@ -10,8 +10,7 @@ import Testing
 struct BrowserCallObserverTests {
 
     @Test func withoutAChannelNothingIsReportedAndTheStreamEnds() async {
-        let browser = SharedBrowserObservations(open: { nil }, monotonic: { 0 }, sleep: { _ in }, log: FixtureLog())
-        let sut = BrowserCallObserver(browser: browser, clock: { 1 }, monotonic: { 0 }, log: FixtureLog())
+        let sut = BrowserCallObserver(openBrowser: { nil }, clock: { 1 }, monotonic: { 0 }, sleep: { _ in }, log: FixtureLog())
         var events: [CallNamesUpdate] = []
         for await event in sut.observe() { events.append(event) }
         #expect(events.isEmpty)
@@ -20,8 +19,8 @@ struct BrowserCallObserverTests {
     @Test func aClockedConnectionReportsItselfAndItsMessagesInCallTime() async {
         let channel = FakeChannel()
         // Monotonic 50 s is call time 20 s: the call started 30 s into the monotonic clock.
-        let browser = SharedBrowserObservations(open: channel.open, monotonic: { 50 }, sleep: holdPing, log: FixtureLog())
-        let sut = BrowserCallObserver(browser: browser, clock: { 20 }, monotonic: { 50 }, log: FixtureLog())
+        let sut = BrowserCallObserver(openBrowser: { channel.open() }, clock: { 20 }, monotonic: { 50 },
+                                      sleep: { _ in try await Task.sleep(for: .seconds(3600)) }, log: FixtureLog())
         var events = sut.observe().makeAsyncIterator()
         let peer = channel.connect()
         var sent = peer.sent.makeAsyncIterator()
@@ -35,126 +34,14 @@ struct BrowserCallObserverTests {
         #expect(await events.next() == .browserDisconnected(0))
         await sut.stop()
         #expect(await events.next() == nil)
-        #expect(channel.stops == 0)
-    }
-
-    @Test func twoWatchesShareOneConnectionAndPlaceItsMessagesOnTheirOwnClocks() async {
-        let channel = FakeChannel()
-        let browser = SharedBrowserObservations(open: channel.open, monotonic: { 50 }, sleep: holdPing, log: FixtureLog())
-        let first = BrowserCallObserver(browser: browser, clock: { 20 }, monotonic: { 50 }, log: FixtureLog())
-        let second = BrowserCallObserver(browser: browser, clock: { 12 }, monotonic: { 50 }, log: FixtureLog())
-        var firstEvents = first.observe().makeAsyncIterator()
-        let peer = channel.connect()
-        var sent = peer.sent.makeAsyncIterator()
-        #expect(await sent.next() == BrowserClockReply.ping(0))
-        peer.send(#"{"version":1,"ping":0,"at":100000}"#)
-        #expect(await firstEvents.next() == .browserConnected(0))
-        peer.send(message(0, #"{"type":"roster","at":88000,"participants":[{"id":"t1","name":"Анна","isSelf":false}]}"#))
-        peer.send(message(1, #"{"type":"speakingStarted","at":89000,"participantId":"t1"}"#))
-        let roster: Event.Kind = .roster([.init(id: "t1", name: "Анна")])
-        #expect(await firstEvents.next() == .browser(.init(epoch: 0, sequence: 0, time: 8, kind: roster)))
-        #expect(await firstEvents.next() == .browser(.init(epoch: 0, sequence: 1, time: 9, kind: .speaking(memberID: "t1", true))))
-
-        var secondEvents = second.observe().makeAsyncIterator()
-        #expect(await secondEvents.next() == .browserConnected(0))
-        #expect(await secondEvents.next() == .browser(.init(epoch: 0, sequence: 0, time: 0, kind: roster)))
-        #expect(await secondEvents.next() == .browser(.init(epoch: 0, sequence: 1, time: 1, kind: .speaking(memberID: "t1", true))))
-
-        await first.stop()
-        #expect(await firstEvents.next() == nil)
-        peer.send(message(2, #"{"type":"speakingStopped","at":90000,"participantId":"t1"}"#))
-        #expect(await secondEvents.next() == .browser(.init(epoch: 0, sequence: 2, time: 2, kind: .speaking(memberID: "t1", false))))
-        await second.stop()
-        #expect(await secondEvents.next() == nil)
-        #expect(channel.opens == 1 && channel.stops == 0)
-    }
-
-    @Test func aRosterReceivedBeforeAnyWatchReachesTheNextWatch() async throws {
-        let feed = BrowserReceiverFeed()
-        defer { feed.finish() }
-        let roster = try BrowserMessage.decode(Data(message(0,
-            #"{"type":"roster","at":80000,"participants":[{"id":"t1","name":"Анна","isSelf":false}]}"#).utf8))
-        let observation = BrowserReceiverEvent.message(connection: 1, roster)
-        let calibrated = BrowserReceiverEvent.clock(connection: 1, BrowserClock())
-        feed.publish(observation)
-        feed.publish(calibrated)
-
-        let first = feed.subscribe()
-        defer { first.stop() }
-        var firstEvents = first.events.makeAsyncIterator()
-        #expect(await firstEvents.next() == observation)
-        #expect(await firstEvents.next() == calibrated)
-        let second = feed.subscribe()
-        defer { second.stop() }
-        var secondEvents = second.events.makeAsyncIterator()
-        #expect(await secondEvents.next() == observation)
-        #expect(await secondEvents.next() == calibrated)
-    }
-
-    @Test func aJoiningWatchKeepsActiveSpeechAcrossCompletedSpeech() async throws {
-        let feed = BrowserReceiverFeed()
-        defer { feed.finish() }
-        let first = feed.subscribe()
-        defer { first.stop() }
-        let roster = try BrowserMessage.decode(Data(message(0,
-            #"{"type":"roster","at":1000,"participants":[{"id":"t1","name":"Анна","isSelf":false}]}"#).utf8))
-        let speaking = try BrowserMessage.decode(Data(message(1,
-            #"{"type":"speakingStarted","at":2000,"participantId":"t1"}"#).utf8))
-        let otherStarted = try BrowserMessage.decode(Data(message(2,
-            #"{"type":"speakingStarted","at":3000,"participantId":"t2"}"#).utf8))
-        let otherStopped = try BrowserMessage.decode(Data(message(3,
-            #"{"type":"speakingStopped","at":4000,"participantId":"t2"}"#).utf8))
-        for item in [roster, speaking, otherStarted, otherStopped] { feed.publish(.message(connection: 1, item)) }
-
-        let joined = feed.subscribe()
-        let stopped = try BrowserMessage.decode(Data(message(4,
-            #"{"type":"speakingStopped","at":5000,"participantId":"t1"}"#).utf8))
-        feed.publish(.message(connection: 1, stopped))
-        joined.stop()
-        var events = joined.events.makeAsyncIterator()
-        var received = CallObservation()
-        for _ in 0..<3 {
-            guard case let .message(connection, message) = await events.next() else {
-                Issue.record("missing browser report")
-                return
-            }
-            let event = try #require(BrowserObservation.event(message, connection: connection) { $0 / 1000 })
-            received.receive(event)
-        }
-        #expect(received.snapshot.members == [.init(id: "t1", name: "Анна")])
-        #expect(received.snapshot.intervals == [.init(memberID: "t1", start: 2, end: 5)])
-    }
-
-    @Test func aFullBacklogLeavesRoomForTheRoster() async {
-        let feed = BrowserReceiverFeed()
-        defer { feed.finish() }
-        let callID = "12345678901234"
-        let roster = BrowserEvent.roster(at: 0, participants: [.init(id: "t1", name: "Анна", isSelf: false)])
-        feed.publish(.message(connection: 1, .init(callID: callID, sequence: 0, event: roster)))
-        let limit = BrowserCallObserver.heldLimit
-        for sequence in 1...limit {
-            let at = Double(sequence * 1000)
-            let event: BrowserEvent = sequence.isMultiple(of: 2)
-                ? .speakingStopped(at: at, participantID: "t1")
-                : .speakingStarted(at: at, participantID: "t1")
-            feed.publish(.message(connection: 1, .init(callID: callID, sequence: sequence, event: event)))
-        }
-        let joined = feed.subscribe()
-        joined.stop()
-        var messages: [BrowserMessage] = []
-        for await event in joined.events {
-            if case let .message(_, message) = event { messages.append(message) }
-        }
-        #expect(messages.count <= limit)
-        #expect(messages.first?.event == roster)
-        #expect(messages.last?.sequence == limit)
+        #expect(channel.stops == 1)
     }
 
     @Test func aMessageBeforeRecordingStartsIsHeldAndPlacedOnceItStarts() async {
         let channel = FakeChannel()
         let times = Mutex<[Double?]>([nil, 20])
-        let browser = SharedBrowserObservations(open: channel.open, monotonic: { 50 }, sleep: holdPing, log: FixtureLog())
-        let sut = BrowserCallObserver(browser: browser, clock: { times.withLock { $0.count > 1 ? $0.removeFirst() : $0[0] } }, monotonic: { 50 }, log: FixtureLog())
+        let sut = BrowserCallObserver(openBrowser: { channel.open() }, clock: { times.withLock { $0.count > 1 ? $0.removeFirst() : $0[0] } },
+                                      monotonic: { 50 }, sleep: { _ in try await Task.sleep(for: .seconds(3600)) }, log: FixtureLog())
         var events = sut.observe().makeAsyncIterator()
         let peer = channel.connect()
         var sent = peer.sent.makeAsyncIterator()
@@ -170,8 +57,8 @@ struct BrowserCallObserverTests {
 
     @Test func messagesBeforeTheFirstClockReplyAreHeldAndPlacedInOrderOnceItComes() async {
         let channel = FakeChannel()
-        let browser = SharedBrowserObservations(open: channel.open, monotonic: { 50 }, sleep: holdPing, log: FixtureLog())
-        let sut = BrowserCallObserver(browser: browser, clock: { 20 }, monotonic: { 50 }, log: FixtureLog())
+        let sut = BrowserCallObserver(openBrowser: { channel.open() }, clock: { 20 }, monotonic: { 50 },
+                                      sleep: { _ in try await Task.sleep(for: .seconds(3600)) }, log: FixtureLog())
         var events = sut.observe().makeAsyncIterator()
         let peer = channel.connect()
         var sent = peer.sent.makeAsyncIterator()
@@ -190,8 +77,8 @@ struct BrowserCallObserverTests {
     @Test func theLogCountsWhatTheBrowserSendsWithoutNames() async {
         let channel = FakeChannel()
         let log = FixtureLog()
-        let browser = SharedBrowserObservations(open: channel.open, monotonic: { 50 }, sleep: holdPing, log: log)
-        let sut = BrowserCallObserver(browser: browser, clock: { 20 }, monotonic: { 50 }, log: log)
+        let sut = BrowserCallObserver(openBrowser: { channel.open() }, clock: { 20 }, monotonic: { 50 },
+                                      sleep: { _ in try await Task.sleep(for: .seconds(3600)) }, log: log)
         var events = sut.observe().makeAsyncIterator()
         let peer = channel.connect()
         var sent = peer.sent.makeAsyncIterator()
@@ -216,26 +103,22 @@ struct BrowserCallObserverTests {
 
     @Test func theLogSaysWhenTheChannelCannotOpen() async {
         let log = FixtureLog()
-        let browser = SharedBrowserObservations(open: { nil }, monotonic: { 0 }, sleep: { _ in }, log: log)
-        let sut = BrowserCallObserver(browser: browser, clock: { 1 }, monotonic: { 0 }, log: log)
+        let sut = BrowserCallObserver(openBrowser: { nil }, clock: { 1 }, monotonic: { 0 }, sleep: { _ in }, log: log)
         for await _ in sut.observe() {}
         #expect(log.entries.all.map(\.message) == ["channel unavailable"])
     }
 
-    @Test func stopEndsTheWatchAndLeavesTheAppChannelOpen() async {
+    @Test func stopClosesTheChannelAndEndsTheStream() async {
         let channel = FakeChannel()
-        let browser = SharedBrowserObservations(open: channel.open, monotonic: { 0 }, sleep: { _ in }, log: FixtureLog())
-        let sut = BrowserCallObserver(browser: browser, clock: { 1 }, monotonic: { 0 }, log: FixtureLog())
+        let sut = BrowserCallObserver(openBrowser: { channel.open() }, clock: { 1 }, monotonic: { 0 }, sleep: { _ in }, log: FixtureLog())
         let events = sut.observe()
         await sut.stop()
         var delivered: [CallNamesUpdate] = []
         for await event in events { delivered.append(event) }
         #expect(delivered.isEmpty)
-        #expect(channel.stops == 0)
+        #expect(channel.stops == 1)
     }
 }
-
-private func holdPing(_: Duration) async throws { try await Task.sleep(for: .seconds(3600)) }
 
 private func message(_ sequence: Int, _ event: String) -> String {
     #"{"version":1,"callId":"12345678901234","sequence":\#(sequence),"event":\#(event)}"#
@@ -243,15 +126,12 @@ private func message(_ sequence: Int, _ event: String) -> String {
 
 private final class FakeChannel: Sendable {
     private let connections = AsyncStream<BrowserConnection>.makeStream()
-    private let opened = Mutex(0)
     private let stopped = Mutex(0)
 
-    var opens: Int { opened.withLock { $0 } }
     var stops: Int { stopped.withLock { $0 } }
 
     func open() -> BrowserChannel {
-        opened.withLock { $0 += 1 }
-        return BrowserChannel(connections: connections.stream, stop: { [self] in
+        BrowserChannel(connections: connections.stream, stop: { [self] in
             stopped.withLock { $0 += 1 }
             connections.continuation.finish()
         })

@@ -36,7 +36,7 @@ actor AudelinPanel {
     private let sink: any LogSink
     nonisolated let names: ApplicationCallNames
     private let buildReading: @MainActor @Sendable () async -> ReadingInputs
-    private var current: (id: UInt64, reading: ReadingInputs, enableLiveText: @Sendable () async -> Void)?
+    private var current: (id: UInt64, reading: ReadingInputs, names: RecordingNames, enableLiveText: @Sendable () async -> Void)?
     private var opening: UInt64?
     private var subscription: (id: UInt64, value: ReadingSubscription)?
     /// The finished call's subscription, kept until the next recording so names confirmed
@@ -57,13 +57,12 @@ actor AudelinPanel {
         buildReading: @escaping @MainActor @Sendable () async -> ReadingInputs = { makeReading() }
     ) {
 
-        let sharedBrowser = SharedBrowserObservations(open: browser, monotonic: now, sleep: sleep, log: sink)
         self.names = ApplicationCallNames(now: now) { clock in
             let windows = ZoomWindows()
             return CallAppWatch(sources: [
                 ZoomCallObserver(isPermitted: { windows.isPermitted }, windows: { windows.windows() }, clock: clock,
                                  sleep: { try await Task.sleep(for: $0) }, knownName: zoomName.read, rememberName: zoomName.remember),
-                BrowserCallObserver(browser: sharedBrowser, clock: clock, monotonic: now, log: sink),
+                BrowserCallObserver(openBrowser: browser, clock: clock, monotonic: now, sleep: sleep, log: sink),
             ])
         }
         self.now = now
@@ -98,9 +97,13 @@ actor AudelinPanel {
 
         opening = max(opening ?? id, id)
         let reading = await buildReading()
+        if opening == id, let previous = current, previous.id < id {
+            // Recording has ended the previous session. Its browser watch owns the socket path until it closes.
+            await names.waitForWatchToStop(previous.id, published: previous.names)
+        }
         if opening == id {
             finished = nil
-            current = (id, reading, enableLiveText)
+            current = (id, reading, published, enableLiveText)
             mappedRows = .init()
             lastReading = nil
         }
@@ -120,10 +123,11 @@ actor AudelinPanel {
     /// the feed's streams must finish for this to return.
     func end(id: UInt64) async {
 
-        guard current?.id == id else { return }
+        guard let current, current.id == id else { return }
         if let subscription, subscription.id == id { await subscription.value.end() }
-        guard current?.id == id else { return }
-        current = nil
+        else { await names.waitForWatchToStop(id, published: current.names) }
+        guard self.current?.id == id else { return }
+        self.current = nil
         finished = subscription
         subscription = nil
         // The finished call stays readable, with its confirmed names, until the next recording.
@@ -183,6 +187,7 @@ final class ReadingSubscription {
     private var observation: Task<ReadingState?, Never>
     private let id: UInt64
     private let names: ApplicationCallNames
+    private let published: RecordingNames
     private var ended = false
 
     init(
@@ -194,6 +199,7 @@ final class ReadingSubscription {
 
         self.id = id
         self.names = names
+        self.published = published
         self.reading = reading
         self.now = now
         let show: @MainActor @Sendable (ReadingState) async -> Void = { state in
@@ -252,8 +258,7 @@ final class ReadingSubscription {
         guard !ended else { return }
         ended = true
         names.send(.stop(id))
-        for await observation in Observations({ self.names.observation(of: self.id) })
-        where observation != .observing && observation != .stopping { break }
+        await names.waitForWatchToStop(id, published: published)
         await text.value
         timer.cancel()
         await timer.value

@@ -40,7 +40,7 @@ struct RecordingPiecesWiringTests {
     @Test func readingUsesTheRecordingInstantEvenWhenItsDeliveryWaits() async throws {
         let waiting = Signal(), proceed = Signal(), clock = FixtureClock()
         let publishing = Signal(), delivered = Signal()
-        let storage = NamesStorage(opens: true)
+        let storage = NamesStorage(opens: true, diarizer: CallDiarizer.unavailable)
         defer { waiting.end(); proceed.end(); publishing.end(); delivered.end() }
         try await withPieces(clock: clock, waiting: { _ in
             waiting.send()
@@ -86,9 +86,68 @@ struct RecordingPiecesWiringTests {
         }
     }
 
+    @Test func recordingConfirmsTheFinishedCallsNamesWhileTheNextCallRecords() async throws {
+        let clock = FixtureClock()
+        let firstChannel = FakeBrowserChannel(), secondChannel = FakeBrowserChannel()
+        let diarizing = Signal(), finishDiarizing = Signal()
+        let firstSpeech = Signal(), secondSpeech = Signal()
+        defer { diarizing.end(); finishDiarizing.end(); firstSpeech.end(); secondSpeech.end() }
+        let storage = NamesStorage(opens: true, diarizer: GatedNamesDiarizer(entered: diarizing, proceed: finishDiarizing))
+        let hearing = Hearing(words: [Word("привет", start: 2, end: 4)])
+        let remotes = Mutex([firstSpeech, secondSpeech].map {
+            ScriptRecognizer(hearings: [.success(hearing), .success(Hearing(words: []))], endings: [.success(hearing)], release: $0)
+        })
+
+        try await withPieces(clock: clock, browser: {
+            if firstChannel.opens == 0 { return firstChannel.open() }
+            #expect(firstChannel.stopped)
+            return secondChannel.open()
+        }, liveText: true, configure: { boundary in
+            boundary.transcripts = storage
+            let base = boundary.recognizers
+            boundary.recognizers = FixtureRecognizers(source: {
+                if $0 == .call {
+                    let remote = try remotes.withLock { try #require($0.isEmpty ? nil : $0.removeFirst()) }
+                    return RehearsalRecognizer(remote)
+                }
+                return try await base.recognizer(for: $0)
+            }, missing: base.missingModels, load: base.startLoading)
+        }) { rig in
+            _ = await rig.record()
+            let first = try #require(storage.ports.all.first)
+            try await reportSpeaker("Анна", on: firstChannel, to: first, clock: clock)
+            firstSpeech.end()
+            let liveFirst = try #require(await first.states().first { !$0.rowNames.isEmpty })
+            let rowID = try #require(liveFirst.rowNames.keys.first)
+            #expect(liveFirst.rowNames == [rowID: "Анна"])
+            #expect(!liveFirst.confirmed)
+            let firstNames = await first.states()
+            await rig.stop()
+
+            _ = await rig.record()
+            try #require(storage.ports.all.count == 2)
+            let second = try #require(storage.ports.all.last)
+            try await reportSpeaker("Борис", on: secondChannel, to: second, clock: clock)
+            secondSpeech.end()
+            let liveSecond = try #require(await second.states().first { !$0.rowNames.isEmpty })
+            #expect(liveSecond.rowNames == [rowID: "Борис"])
+            #expect(!liveSecond.confirmed)
+
+            await diarizing.next()
+            finishDiarizing.end()
+            let confirmed = try #require(await firstNames.first { $0.confirmed })
+            #expect(confirmed.rowNames == [rowID: "Анна"])
+            #expect(second.snapshot().rowNames == [rowID: "Борис"])
+            #expect(!second.snapshot().confirmed)
+            #expect(!secondChannel.stopped)
+            await rig.stop()
+        }
+    }
+
     @Test(arguments: [true, false])
     func sessionNamesTheRowAndReleasesItsPort(opensTranscript: Bool) async throws {
-        let clock = FixtureClock(), channel = FakeBrowserChannel(), storage = NamesStorage(opens: opensTranscript)
+        let clock = FixtureClock(), channel = FakeBrowserChannel()
+        let storage = NamesStorage(opens: opensTranscript, diarizer: CallDiarizer.unavailable)
         let heard = Signal(), speak = Signal()
         let word = Word("привет", start: 2, end: 4)
         let hearing = Hearing(words: [word])
@@ -387,11 +446,39 @@ private func withPieces(
 
 private struct NamesStorage: TranscriptStorage {
     let opens: Bool
+    let diarizer: any TranscriptDiarizer
     let ports = Values<RecordingNames>()
 
     func open(at url: URL, names: RecordingNames, origin: TranscriptOrigin, sink: any LogSink) async throws -> OpenedTranscript {
         ports.append(names)
         guard opens else { throw ScriptFailure.failed }
-        return try await FileTranscriptStorage(diarizer: CallDiarizer.unavailable).open(at: url, names: names, origin: origin, sink: sink)
+        return try await FileTranscriptStorage(diarizer: diarizer).open(at: url, names: names, origin: origin, sink: sink)
     }
+}
+
+private struct GatedNamesDiarizer: TranscriptDiarizer {
+    let entered: Signal
+    let proceed: Signal
+
+    func prepare() {}
+
+    func diarize(_ track: URL, speakers: Int?) async throws -> CallDiarizer.Diarization {
+        entered.send()
+        await proceed.next()
+        return .init(model: .nemotron, turns: [.init(speaker: 0, start: 2, end: 4), .init(speaker: 0, start: 5, end: 8)])
+    }
+}
+
+private func reportSpeaker(_ name: String, on channel: FakeBrowserChannel, to port: RecordingNames, clock: FixtureClock) async throws {
+    try #require(await port.states().first { $0.recordingStart != nil } != nil)
+    // The browser reads 100 s at call time 10 s. The speaker covers the live row and both diarized turns.
+    clock.advance(10)
+    let peer = channel.connect()
+    var sent = peer.sent.makeAsyncIterator()
+    try #require(await sent.next() == BrowserClockReply.ping(0))
+    peer.send(#"{"version":1,"ping":0,"at":100000}"#)
+    peer.send(browserMessage(0, #"{"type":"roster","at":90000,"participants":[{"id":"t1","name":"\#(name)","isSelf":false}]}"#))
+    peer.send(browserMessage(1, #"{"type":"speakingStarted","at":91000,"participantId":"t1"}"#))
+    peer.send(browserMessage(2, #"{"type":"speakingStopped","at":99000,"participantId":"t1"}"#))
+    try #require(await port.states().first { $0.browser.intervals.first?.end == 9 } != nil)
 }

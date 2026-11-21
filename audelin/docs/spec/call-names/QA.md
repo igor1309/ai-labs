@@ -16,11 +16,7 @@ Evidence: `rowsPassExactEvidenceToNamingAndUseItsAnswer`,
 The observers cover `beforeRecordingStartsAPollReportsNothing`,
 `eachPollReportsItsChangesThenATickInCallTime`,
 `aMessageBeforeRecordingStartsIsHeldAndPlacedOnceItStarts` and
-`aClockedConnectionReportsItselfAndItsMessagesInCallTime`,
-`aRosterReceivedBeforeAnyWatchReachesTheNextWatch`,
-`aJoiningWatchKeepsActiveSpeechAcrossCompletedSpeech`,
-`aFullBacklogLeavesRoomForTheRoster`, and
-`twoWatchesShareOneConnectionAndPlaceItsMessagesOnTheirOwnClocks`. The
+`aClockedConnectionReportsItselfAndItsMessagesInCallTime`. The
 composer checks the wiring in `aConnectedExtensionNamesTheRemoteRow`,
 `sessionNamesTheRowAndReleasesItsPort`, and
 `readingUsesTheRecordingInstantEvenWhenItsDeliveryWaits`.
@@ -29,14 +25,15 @@ composer checks the wiring in `aConnectedExtensionNamesTheRemoteRow`,
 Evidence: `ConfirmationTests`.
 
 ## S-3 A finished call is confirmed while the next records
-Evidence: `finishedCallIsConfirmedWhileTheNextRecordsWithTheSameRowID` and
-`confirmationReachesOnlyTheFinishedCallsNamesPort`.
+Evidence: `finishedCallIsConfirmedWhileTheNextRecordsWithTheSameRowID`,
+`confirmationReachesOnlyTheFinishedCallsNamesPort`, and
+`recordingConfirmsTheFinishedCallsNamesWhileTheNextCallRecords`.
 
 ## S-4 Ending one call leaves the other watched
 Evidence: `endingOneWatchLeavesTheOtherCallNamingItsRows`,
 `stoppingOneWatchLeavesReportsFromTheOther`,
-`twoWatchesShareOneConnectionAndPlaceItsMessagesOnTheirOwnClocks`, and
-`theNextRecordingUsesTheSameListenerAndItsOwnClock`.
+`stopClosesTheChannelAndEndsTheStream`, and
+`recordingConfirmsTheFinishedCallsNamesWhileTheNextCallRecords`.
 
 ## S-5 A finished call is let go
 Evidence: `finalizedCallIsReleasedAndLateTurnsAreIgnored`,

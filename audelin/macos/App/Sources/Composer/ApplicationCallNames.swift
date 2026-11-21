@@ -1,5 +1,6 @@
 import CallNames
 import IMRxObservation
+import Observation
 import Recording
 import SpeakerNaming
 
@@ -36,6 +37,13 @@ final class ApplicationCallNames {
         let state = model.state
         if state.stoppingWatches.contains(id) { return .stopping }
         return state.calls[id]?.names.observation
+    }
+
+    func waitForWatchToStop(_ id: UInt64, published: RecordingNames) async {
+        // A watch's start may still be queued. The port publishes its first state or finishes if setup ended without a watch.
+        for await state in published.states() where state.observation != .idle { break }
+        for await observation in Observations({ self.observation(of: id) })
+        where observation != .observing && observation != .stopping { break }
     }
 
     func sessionChanged(id: UInt64, phase: SessionState.Phase, hasTranscript: Bool, at instant: Double) {
