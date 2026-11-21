@@ -8,9 +8,9 @@ import SummaryRuntime
 @testable import TemplateFiles
 
 /// The app sends one "[time] label: text" line per entry; exports use "**label** time" blocks.
-func entries(_ export: String) -> String {
-    var lines: [String] = [], header: (String, String)?, body: [String] = []
-    func flush() { if let (label, time) = header, !body.isEmpty { lines.append("[\(time)] \(label): " + body.joined(separator: " ")) }; body = [] }
+func entries(_ export: String) -> [Line] {
+    var lines: [Line] = [], header: (String, String)?, body: [String] = []
+    func flush() { if let (label, time) = header, !body.isEmpty { lines.append(Line(time: time, label: label, text: body.joined(separator: " "), isUser: label == "Me")) }; body = [] }
     for raw in export.components(separatedBy: .newlines) {
         let line = raw.trimmingCharacters(in: .whitespaces)
         if line.hasPrefix("**"), let close = line.range(of: "** ", range: line.index(line.startIndex, offsetBy: 2)..<line.endIndex) {
@@ -18,7 +18,7 @@ func entries(_ export: String) -> String {
         } else if header != nil, !line.isEmpty { body.append(line) }
     }
     flush()
-    return lines.joined(separator: "\n")
+    return lines
 }
 
 struct Attempt: TextAttempt {
@@ -47,7 +47,7 @@ struct Attempt: TextAttempt {
             let transcript = entries(try String(contentsOfFile: path, encoding: .utf8))
             let output = URL(fileURLWithPath: path).deletingPathExtension().path + ".daily.\(arguments[0]).md"
             do {
-                let notes = try await generator.notes(transcript: transcript, evidence: "", template: template)
+                let notes = try await generator.notes(lines: transcript, userName: nil, evidence: "", template: template)
                 try notes.write(toFile: output, atomically: true, encoding: .utf8)
                 print("OK \(path) -> \(output)")
             } catch { failed = true; print("FAIL \(path): \(error)") }
