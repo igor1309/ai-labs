@@ -1,6 +1,6 @@
 schema = "agister.agent/v1alpha1"
 runtime = "codex"
-model = "gpt-6.1-sol"
+model = "gpt-6.2-sol"
 model_family = "openai"
 effort = "high"
 fallback = "claude-opus"

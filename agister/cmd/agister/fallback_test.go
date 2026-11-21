@@ -99,7 +99,7 @@ func TestFallbackIsReportedAndRecordedWithoutChaining(t *testing.T) {
 					message = "Go on."
 				}
 				sessions = append(sessions, turn.Session)
-				if turn.Model != "gpt-6.1-sol" || turn.Effort != "low" || turn.Message != message {
+				if turn.Model != "gpt-6.2-sol" || turn.Effort != "low" || turn.Message != message {
 					t.Errorf("primary turn %+v, want message %q on primary model", turn, message)
 				}
 			}
