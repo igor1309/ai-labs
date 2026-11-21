@@ -18,6 +18,15 @@ import Testing
                                              claims: ClaimsSpy(), records: RecordsSpy(), starts: StartsSpy(), storage: StorageSpy(), generation: GenerationsSpy())
         #expect(await handler.handle(.readKeeping(makeJob())) == .keepingRead("call", true, userName: userName))
     }
+    @Test func bothRequestsCarryTheName() async {
+        var job = makeJob(); job.userName = "Игорь"
+        let generation = GenerationsSpy()
+        let handler = SummariesEffectHandler(keeping: { true }, userName: { "Igor M" }, templates: TemplatesSpy(), preparation: PreparationSpy(),
+                                             claims: ClaimsSpy(), records: RecordsSpy(), starts: StartsSpy(), storage: StorageSpy(), generation: generation)
+        _ = await handler.handle(.identify(job))
+        _ = await handler.handle(.notes(job, [], makeTemplate()))
+        #expect(generation.payloads == [.identify(job), .notes(job, [], makeTemplate())])
+    }
     @Test func aLaterNameDoesNotReachAPreparedRun() {
         var job = makeJob(); job.userName = "Игорь"
         let state = makeState(calls: ["call": .init(stage: .selecting, requestedTemplate: "Daily", job: job, requested: true)])
