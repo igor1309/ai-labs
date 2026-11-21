@@ -225,8 +225,11 @@ final class FixtureClock: Sendable {
         pair.continuation.onTermination = { _ in _ = self.state.withLock { $0.ticks.removeValue(forKey: id) } }
         return pair.stream
     }
-    func advance(_ seconds: Double) {
-        let ticks = state.withLock { state in state.now += seconds; return Array(state.ticks.values) }
+    func advance(_ seconds: Double, tick: Bool = true) {
+        let ticks = state.withLock { state in
+            state.now += seconds
+            return tick ? Array(state.ticks.values) : []
+        }
         for output in ticks { output.yield(()) }
     }
     func finish() {

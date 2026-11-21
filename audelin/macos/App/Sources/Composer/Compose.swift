@@ -40,7 +40,7 @@ public func compose(
                                  do { try preferences.updateZoomName(name) } catch {
                                      boundary.log.write(.init(category: .calls, message: "zoom name not saved"))
                                  }
-                             }))
+                             }), buildReading: makeReading)
     let processes = CoreAudioProcesses(binding: BoundaryProcesses(base: boundary.processes),
                                        clock: BoundaryCallClock(time: boundary.time))
     let timeZone = boundary.time.timeZone()

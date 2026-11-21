@@ -34,8 +34,10 @@ actor AudelinPanel {
     private let ticks: @Sendable () -> AsyncStream<Void>
     private let intervals: ProfileIntervals
     private let sink: any LogSink
-    private let names: ApplicationCallNames
+    nonisolated let names: ApplicationCallNames
+    private let buildReading: @MainActor @Sendable () async -> ReadingInputs
     private var current: (id: UInt64, reading: ReadingInputs, enableLiveText: @Sendable () async -> Void)?
+    private var opening: UInt64?
     private var subscription: (id: UInt64, value: ReadingSubscription)?
     /// The finished call's subscription, kept until the next recording so names confirmed
     /// after the call still reach its rows.
@@ -51,7 +53,8 @@ actor AudelinPanel {
     @MainActor init(
         now: @escaping @Sendable () -> Double, ticks: @escaping @Sendable () -> AsyncStream<Void>, sink: any LogSink,
         intervals: ProfileIntervals, browser: @escaping @Sendable () -> BrowserChannel?,
-        sleep: @escaping @Sendable (Duration) async throws -> Void, zoomName: ZoomName
+        sleep: @escaping @Sendable (Duration) async throws -> Void, zoomName: ZoomName,
+        buildReading: @escaping @MainActor @Sendable () async -> ReadingInputs = { makeReading() }
     ) {
 
         let sharedBrowser = SharedBrowserObservations(open: browser, monotonic: now, sleep: sleep, log: sink)
@@ -67,6 +70,7 @@ actor AudelinPanel {
         self.ticks = ticks
         self.sink = sink
         self.intervals = intervals
+        self.buildReading = buildReading
     }
 
     /// Each subscriber immediately receives the current state.
@@ -89,26 +93,27 @@ actor AudelinPanel {
     }
 
     func begin(id: UInt64, text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]> = AsyncStream { $0.finish() },
-               names published: RecordingNames = RecordingNames(), enableLiveText: @escaping @Sendable () async -> Void) async -> ReadingSubscription {
+               names published: RecordingNames = RecordingNames(), canWatch: @escaping @MainActor @Sendable () -> Bool = { true },
+               enableLiveText: @escaping @Sendable () async -> Void) async -> ReadingSubscription {
 
-        let reading = await makeReading()
-        finished = nil
-        current = (id, reading, enableLiveText)
-        mappedRows = .init()
-        lastReading = nil
+        opening = max(opening ?? id, id)
+        let reading = await buildReading()
+        if opening == id {
+            finished = nil
+            current = (id, reading, enableLiveText)
+            mappedRows = .init()
+            lastReading = nil
+        }
         let update = SignpostedPanelUpdate(receive: { [weak self] state in
             await self?.receive(state, id: id)
         }, intervals: intervals)
         let made = await ReadingSubscription(id: id, reading: reading, text: text, speakers: speakers,
-                                              names: names, published: published, now: now, ticks: ticks(), sink: sink) { state in
+                                              names: names, published: published, canWatch: canWatch,
+                                              now: now, ticks: ticks(), sink: sink) { state in
             await update(state)
         }
         if current?.id == id { subscription = (id, made) }
         return made
-    }
-
-    nonisolated func namesSessionChanged(id: UInt64, phase: SessionState.Phase, hasTranscript: Bool) async {
-        await names.sessionChanged(id: id, phase: phase, hasTranscript: hasTranscript, at: now())
     }
 
     /// Takes the recording's reading feed to its end first, so its last text and speakers are shown;
@@ -173,6 +178,7 @@ final class ReadingSubscription {
     private let show: @MainActor @Sendable (ReadingState) async -> Void
     private let text: Task<Void, Never>
     private let timer: Task<Void, Never>
+    private let naming: Task<Void, Never>
     /// Shows each new reading state; it ends with the last state it showed.
     private var observation: Task<ReadingState?, Never>
     private let id: UInt64
@@ -181,7 +187,8 @@ final class ReadingSubscription {
 
     init(
         id: UInt64, reading: ReadingInputs, text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]>,
-        names: ApplicationCallNames, published: RecordingNames, now: @escaping @Sendable () -> Double,
+        names: ApplicationCallNames, published: RecordingNames, canWatch: @MainActor @Sendable () -> Bool,
+        now: @escaping @Sendable () -> Double,
         ticks: AsyncStream<Void>, sink: any LogSink, receive: @escaping @Sendable (ReadingState) async -> Void
     ) async {
 
@@ -195,6 +202,19 @@ final class ReadingSubscription {
         }
         self.show = show
         await receive(reading.state())
+        // Session can reach its terminal phase while the panel is still opening.
+        if canWatch() { names.open(id: id, published: published) }
+        else { published.finish() }
+        let changes = published.states()
+        naming = Task {
+            var previous: CallNamesState?
+            for await names in changes {
+                if names.rowNames != previous?.rowNames || names.confirmed != previous?.confirmed {
+                    reading.send(.namesChanged(names.rowNames, confirmed: names.confirmed))
+                }
+                previous = names
+            }
+        }
         observation = Self.observe(reading, after: nil, show: show)
         self.text = Task {
             var mapped = 0
@@ -218,14 +238,10 @@ final class ReadingSubscription {
                 reading.send(.tick(at: now()))
             }
         }
-        names.open(id: id, published: published) { [weak self] names in
-            self?.reading.send(.namesChanged(names.rowNames, confirmed: names.confirmed))
-        }
     }
 
-    func sessionChanged(_ state: SessionState) {
+    func sessionChanged(_ state: SessionState, at instant: Double) {
 
-        let instant = now()
         reading.send(.recordingChanged(readingRecording(state), at: instant))
         reading.send(.problemsChanged(readingFaultKinds(state), callSilent: state.audioWarning == .callSilent, at: instant))
     }
@@ -243,7 +259,6 @@ final class ReadingSubscription {
         await timer.value
         let instant = now()
         reading.send(.recordingChanged(.off, at: instant))
-        names.send(.update(id, .recordingChanged(isOn: false, at: instant)))
         // The model reduces the event later; wait until the state shows it.
         for await state in Observations({ self.reading.state() }) where state.recording == .off { break }
         observation.cancel()
@@ -275,6 +290,7 @@ final class ReadingSubscription {
 
         text.cancel()
         timer.cancel()
+        naming.cancel()
         observation.cancel()
     }
 }

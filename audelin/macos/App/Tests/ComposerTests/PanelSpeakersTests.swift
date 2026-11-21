@@ -15,7 +15,7 @@ struct PanelSpeakersTests {
         let clock = FixtureClock(), text = AsyncStream<CallState>.makeStream(), speakers = AsyncStream<[Int: Int]>.makeStream()
         let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals, browser: { nil }, sleep: { _ in }, zoomName: unknownZoomName)
         let reading = await panel.begin(id: 1, text: text.stream, speakers: speakers.stream, enableLiveText: {})
-        reading.sessionChanged(SessionState(phase: .recording))
+        reading.sessionChanged(SessionState(phase: .recording), at: clock.time.monotonicNow())
         speakers.continuation.yield([1: 1, 2: 2])
         speakers.continuation.finish()
         func far(_ id: Int) -> CallState.Entry {
@@ -40,7 +40,7 @@ struct PanelSpeakersTests {
         let clock = FixtureClock(), text = AsyncStream<CallState>.makeStream(), speakers = AsyncStream<[Int: Int]>.makeStream()
         let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals, browser: { nil }, sleep: { _ in }, zoomName: unknownZoomName)
         let reading = await panel.begin(id: 1, text: text.stream, speakers: speakers.stream, enableLiveText: {})
-        reading.sessionChanged(SessionState(phase: .recording))
+        reading.sessionChanged(SessionState(phase: .recording), at: clock.time.monotonicNow())
         func far(_ id: Int) -> CallState.Entry {
             .init(speaker: .theirs, text: .init(id: id, start: Double(id), end: Double(id) + 1, words: [.init("far\(id)", start: Double(id), end: Double(id) + 1)], settledCount: 1), writtenLater: false)
         }

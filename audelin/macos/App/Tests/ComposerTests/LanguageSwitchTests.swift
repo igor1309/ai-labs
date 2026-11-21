@@ -40,7 +40,7 @@ struct LanguageSwitchTests {
         let clock = FixtureClock(), text = AsyncStream<CallState>.makeStream()
         let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals, browser: { nil }, sleep: { _ in }, zoomName: unknownZoomName)
         let reading = await panel.begin(id: 1, text: text.stream, enableLiveText: {})
-        reading.sessionChanged(SessionState(health: [.access(.microphone): .accessLost], phase: .recording))
+        reading.sessionChanged(SessionState(health: [.access(.microphone): .accessLost], phase: .recording), at: clock.time.monotonicNow())
         var shown = await panel.states().makeAsyncIterator()
         while let state = await shown.next(), state.banners != [.microphone] {}
         await panel.languageChanged(PanelText(language: .english))

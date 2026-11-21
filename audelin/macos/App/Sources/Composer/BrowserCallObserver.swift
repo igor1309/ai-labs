@@ -56,13 +56,66 @@ final class BrowserReceiverFeed: Sendable {
     }
 
     private struct State {
-        // The extension may send its only roster before a watch opens. Keep
-        // undelivered messages while their connection is still open.
-        var pending: [Int: [BrowserMessage]] = [:]
-        var clocks: [Int: BrowserClock] = [:]
+        var connections: [Int: Connection] = [:]
         var subscribers: [Int: AsyncStream<BrowserReceiverEvent>.Continuation] = [:]
         var next = 0
         var finished = false
+    }
+
+    private struct Connection {
+        var clock: BrowserClock?
+        private var pending: [BrowserMessage] = []
+        private var roster: BrowserMessage?
+        private var speaking: [String: BrowserMessage] = [:]
+        private var lastSequence: Int?
+
+        mutating func receive(_ message: BrowserMessage, deliverLive: Bool) {
+            if deliverLive {
+                remember(message)
+            } else {
+                pending.append(message)
+                if pending.count > BrowserCallObserver.heldLimit { remember(pending.removeFirst()) }
+            }
+        }
+
+        mutating func bootstrap() -> [BrowserMessage] {
+            let limit = BrowserCallObserver.heldLimit
+            // A watch can receive the whole bootstrap before it can place any of it.
+            // Fold older backlog entries into the snapshot to leave room for the roster.
+            while !pending.isEmpty, pending.count + speaking.count + (roster == nil ? 0 : 1) > limit {
+                remember(pending.removeFirst())
+            }
+            let rosterCount = roster == nil ? 0 : 1
+            let starts = speaking.values.sorted { $0.sequence < $1.sequence }.suffix(limit - rosterCount)
+            var messages = (Array(starts) + [roster].compactMap { $0 }).sorted { $0.sequence < $1.sequence }
+            if let lastSequence {
+                // The snapshot already accounts for earlier gaps. End it at the
+                // last received sequence so omitted history does not close live speech.
+                for index in messages.indices {
+                    messages[index].sequence = lastSequence - (messages.count - 1 - index)
+                }
+            }
+            messages.append(contentsOf: pending)
+            for message in pending { remember(message) }
+            pending.removeAll()
+            return messages
+        }
+
+        private mutating func remember(_ message: BrowserMessage) {
+            if let lastSequence, message.sequence != lastSequence + 1 { speaking.removeAll() }
+            lastSequence = message.sequence
+            switch message.event {
+            case .roster:
+                roster = message
+            case .callEnded:
+                roster = message
+                speaking.removeAll()
+            case let .speakingStarted(_, id):
+                if speaking[id] == nil { speaking[id] = message }
+            case let .speakingStopped(_, id):
+                speaking[id] = nil
+            }
+        }
     }
 
     private let state = Mutex(State())
@@ -71,11 +124,12 @@ final class BrowserReceiverFeed: Sendable {
         let (stream, output) = AsyncStream<BrowserReceiverEvent>.makeStream()
         let id = state.withLock { state -> Int? in
             guard !state.finished else { return nil }
-            for connection in Set(state.clocks.keys).union(state.pending.keys).sorted() {
-                for message in state.pending[connection] ?? [] { output.yield(.message(connection: connection, message)) }
-                if let clock = state.clocks[connection] { output.yield(.clock(connection: connection, clock)) }
+            for id in state.connections.keys.sorted() {
+                guard var connection = state.connections[id] else { continue }
+                for message in connection.bootstrap() { output.yield(.message(connection: id, message)) }
+                if let clock = connection.clock { output.yield(.clock(connection: id, clock)) }
+                state.connections[id] = connection
             }
-            state.pending.removeAll()
             let id = state.next
             state.next += 1
             state.subscribers[id] = output
@@ -95,15 +149,11 @@ final class BrowserReceiverFeed: Sendable {
     func publish(_ event: BrowserReceiverEvent) {
         let subscribers = state.withLock { state in
             switch event {
-            case let .clock(connection, clock): state.clocks[connection] = clock
+            case let .clock(connection, clock): state.connections[connection, default: Connection()].clock = clock
             case let .disconnected(connection), let .rejected(connection, _):
-                state.clocks[connection] = nil
-                state.pending[connection] = nil
-            case let .message(connection, message) where state.subscribers.isEmpty:
-                state.pending[connection, default: []].append(message)
-                let excess = state.pending[connection, default: []].count - BrowserCallObserver.heldLimit
-                if excess > 0 { state.pending[connection]?.removeFirst(excess) }
-            case .message: break
+                state.connections[connection] = nil
+            case let .message(connection, message):
+                state.connections[connection, default: Connection()].receive(message, deliverLive: !state.subscribers.isEmpty)
             }
             return Array(state.subscribers.values)
         }
@@ -113,8 +163,7 @@ final class BrowserReceiverFeed: Sendable {
     func finish() {
         let subscribers = state.withLock { state in
             state.finished = true
-            state.clocks.removeAll()
-            state.pending.removeAll()
+            state.connections.removeAll()
             defer { state.subscribers.removeAll() }
             return Array(state.subscribers.values)
         }

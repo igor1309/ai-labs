@@ -36,6 +36,7 @@ func oneEvent<Event: Sendable>(_ handle: @escaping @Sendable () async -> Event) 
 @MainActor
 func makeRecording(
     initial: RecordingState, log: @escaping @Sendable (RecordingState) -> Void,
+    changed: @escaping @MainActor (RecordingState, RecordingState) -> Void,
     folderClaim: RecordingFolderClaim,
     sleep: @escaping @Sendable (Duration) async -> Void,
     callAudioReady: @escaping @Sendable () async -> Bool,
@@ -49,7 +50,7 @@ func makeRecording(
                                          prepareCallAudio: callAudioReady, liveText: liveText,
                                          releaseCallAudio: callAudioReleased, runPiece: runPiece)
     let model = RecordingModel(initial: initial, reducer: RecordingReducer(session: SessionReducer.reduce, status: status),
-                               handler: handler, log: log)
+                               handler: handler, changed: changed, log: log)
     var inputs = RecordingInputs(
         send: { await model.send($0) },
         state: { await model.state },
@@ -66,13 +67,15 @@ final class RecordingModel {
     private let model: ObservableModel<RecordingState, RecordingEvent, RecordingEffect>
     private let feed = StateFeed<RecordingState>()
 
-    init(initial: RecordingState, reducer: RecordingReducer, handler: RecordingEffectHandler, log: @escaping @Sendable (RecordingState) -> Void) {
+    init(initial: RecordingState, reducer: RecordingReducer, handler: RecordingEffectHandler,
+         changed: @escaping @MainActor (RecordingState, RecordingState) -> Void, log: @escaping @Sendable (RecordingState) -> Void) {
 
         let feed = feed
         model = ObservableModel(initialState: initial, reduce: { state, event in
             guard !feed.finished else { return (state, nil) }
             let (next, effect) = reducer.reduce(state, event)
             if next != state {
+                changed(state, next)
                 log(next)
                 feed.publish(next)
             }

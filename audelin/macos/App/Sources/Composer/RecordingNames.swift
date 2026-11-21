@@ -14,13 +14,27 @@ public final class RecordingNames: Sendable {
 
     private let latest = Mutex(CallNamesState())
     private let delivery = Mutex<Delivery?>(nil)
+    private let changes = StateFeed<CallNamesState>()
 
     public init() {}
 
     /// The names last published.
     func snapshot() -> CallNamesState { latest.withLock { $0 } }
 
-    func published(_ names: CallNamesState) { latest.withLock { $0 = names } }
+    func published(_ names: CallNamesState) {
+        latest.withLock { $0 = names }
+        changes.publish(names)
+    }
+
+    /// Reading follows the published names until this call is released.
+    @MainActor
+    func states() -> AsyncStream<CallNamesState> { changes.subscribe(from: snapshot()) }
+
+    @MainActor
+    func finish() {
+        delivery.withLock { $0 = nil }
+        changes.finish()
+    }
 
     /// Connects the recording's CallNames, which takes the pass's speaker turns.
     func connect(diarized: @escaping @Sendable ([DiarizedTurn], [Row]) async -> Void,

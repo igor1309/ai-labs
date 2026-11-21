@@ -12,36 +12,32 @@ actor RecordingPieces {
     private struct Built {
 
         let id: UInt64
-        let pieces: SessionPieces
         let handler: SessionEffectHandler
-    }
-
-    private struct Shown {
-
-        let id: UInt64
-        let reading: ReadingSubscription
-        var previous: ObservedSession?
+        let reading: Task<ReadingSubscription, Never>
     }
 
     nonisolated let panel: AudelinPanel
     private let makePieces: @Sendable (UInt64) -> SessionPieces
     private let send: @Sendable (RecordingEvent) async -> Void
     private let summaries: SummaryCallbacks
+    private let canWatch: @MainActor @Sendable (UInt64) -> Bool
     private let sink: any LogSink
     private var built: Built?
-    private var shown: Shown?
+    private var previous: SessionState?
 
     init(
         preferences: PreferencesStore, occupiedCallNames: @escaping @Sendable () throws -> [String],
         callApp: RecordingCallApp, processes: CoreAudioProcesses,
         boundary: ComposerBoundary,
         send: @escaping @Sendable (RecordingEvent) async -> Void,
-        panel: AudelinPanel, transcriptOutput: AsyncStream<RecordingTranscript>.Continuation, finalizationResources: FinalizationResources, summaries: SummaryCallbacks = .disabled
+        panel: AudelinPanel, canWatch: @escaping @MainActor @Sendable (UInt64) -> Bool,
+        transcriptOutput: AsyncStream<RecordingTranscript>.Continuation, finalizationResources: FinalizationResources, summaries: SummaryCallbacks = .disabled
     ) {
         self.panel = panel
         self.makePieces = composeRecordingPieces(preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: callApp,
                                                  processes: processes, boundary: boundary, transcriptOutput: transcriptOutput, finalizationResources: finalizationResources)
         self.summaries = summaries
+        self.canWatch = canWatch
         self.send = send
         self.sink = boundary.log
     }
@@ -54,15 +50,14 @@ actor RecordingPieces {
     }
 
     /// Shows the current recording's pieces in the panel; called with each Recording state in order.
-    func observe(_ state: RecordingState) async {
+    func observe(id: UInt64, _ pieces: SessionState, at instant: Double) async {
 
-        guard let id = state.session?.id, let pieces = state.pieces else { return }
-        guard let current = shown, current.id == id else { return }
-        let observed = ObservedSession(pieces)
-        guard observed != current.previous else { return }
-        let textWasRunning = current.previous.map { !Self.textStopped($0.value) } ?? true
-        shown?.previous = observed
-        await current.reading.sessionChanged(pieces)
+        guard let built, built.id == id else { return }
+        let reading = await built.reading.value
+        guard self.built?.id == id else { return }
+        let textWasRunning = previous.map { !Self.textStopped($0) } ?? true
+        previous = pieces
+        await reading.sessionChanged(pieces, at: instant)
         StateLog(sink: sink).session(pieces, id: id)
         // Notes show the call as waiting once its text stops; a later finalized transcript supersedes this.
         if textWasRunning, Self.textStopped(pieces), let folder = pieces.recordedFolder {
@@ -85,21 +80,26 @@ actor RecordingPieces {
 
         if let built, built.id == id { return built }
         let pieces = makePieces(id)
-        let made = Built(id: id, pieces: pieces, handler: pieces.handler())
+        let panel = panel, send = send, canWatch = canWatch
+        let feed = pieces.readingText
+        let reading = Task {
+            await panel.begin(id: id, text: feed.text, speakers: feed.speakers, names: pieces.names,
+                              canWatch: { canWatch(id) }, enableLiveText: {
+                await send(.session(id: id, .liveTextChanged(true)))
+            })
+        }
+        let made = Built(id: id, handler: pieces.handler(), reading: reading)
         built = made
-        // The panel follows the recording from its first work, before it can record or take a switch.
-        let feed = await pieces.readingText()
-        let reading = await panel.begin(id: id, text: feed.text, speakers: feed.speakers, names: pieces.names, enableLiveText: { [send] in
-            await send(.session(id: id, .liveTextChanged(true)))
-        })
-        shown = Shown(id: id, reading: reading)
+        previous = nil
         // The pieces' own reports reach Recording in order until the pieces release them, their last work.
-        let events = pieces.events, send = send
+        let events = pieces.events
         // A transcript failure is queued in Recording before the write that found it returns.
         pieces.transcriptFailures.connect(deliver: { await send(.session(id: id, $0)) })
         Task {
             for await event in events { await send(.session(id: id, event)) }
         }
+        // The panel follows the recording from its first work, before it can record or take a switch.
+        _ = await reading.value
         return made
     }
 
@@ -110,7 +110,7 @@ actor RecordingPieces {
 
 // Compare the fields read by the panel mapping, state log and report delivery.
 // Session's private audio tracking can change for every measured window.
-private struct ObservedSession: Equatable {
+struct ObservedSession: Equatable {
 
     let value: SessionState
 

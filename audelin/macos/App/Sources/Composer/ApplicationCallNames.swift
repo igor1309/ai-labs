@@ -45,7 +45,7 @@ final class ApplicationCallNames {
         }
     }
 
-    func open(id: UInt64, published: RecordingNames, show: @escaping @MainActor @Sendable (CallNamesState) -> Void) {
+    func open(id: UInt64, published: RecordingNames) {
         let clock: @MainActor @Sendable () -> Double? = { [weak self] in
             guard let self, let start = model.state.calls[id]?.names.recordingStart else { return nil }
             return now() - start
@@ -58,6 +58,7 @@ final class ApplicationCallNames {
 
         let changes = feed.subscribe(from: model.state)
         Task {
+            defer { published.finish() }
             var previous: CallNamesState?
             for await state in changes {
                 guard let names = state.calls[id]?.names else {
@@ -66,7 +67,6 @@ final class ApplicationCallNames {
                 }
                 guard names != previous else { continue }
                 published.published(names)
-                if names.rowNames != previous?.rowNames || names.confirmed != previous?.confirmed { show(names) }
                 previous = names
             }
         }

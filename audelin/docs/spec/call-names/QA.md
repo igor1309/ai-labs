@@ -17,9 +17,13 @@ The observers cover `beforeRecordingStartsAPollReportsNothing`,
 `eachPollReportsItsChangesThenATickInCallTime`,
 `aMessageBeforeRecordingStartsIsHeldAndPlacedOnceItStarts` and
 `aClockedConnectionReportsItselfAndItsMessagesInCallTime`,
-`aRosterReceivedBeforeAnyWatchReachesTheNextWatch`, and
+`aRosterReceivedBeforeAnyWatchReachesTheNextWatch`,
+`aJoiningWatchKeepsActiveSpeechAcrossCompletedSpeech`,
+`aFullBacklogLeavesRoomForTheRoster`, and
 `twoWatchesShareOneConnectionAndPlaceItsMessagesOnTheirOwnClocks`. The
-composer checks the wiring in `aConnectedExtensionNamesTheRemoteRow`.
+composer checks the wiring in `aConnectedExtensionNamesTheRemoteRow`,
+`sessionNamesTheRowAndReleasesItsPort`, and
+`readingUsesTheRecordingInstantEvenWhenItsDeliveryWaits`.
 
 ## S-2 Confirmed names replace live ones
 Evidence: `ConfirmationTests`.
@@ -30,11 +34,15 @@ Evidence: `finishedCallIsConfirmedWhileTheNextRecordsWithTheSameRowID` and
 
 ## S-4 Ending one call leaves the other watched
 Evidence: `endingOneWatchLeavesTheOtherCallNamingItsRows`,
-`stoppingOneWatchLeavesReportsFromTheOther`, and
-`twoWatchesShareOneConnectionAndPlaceItsMessagesOnTheirOwnClocks`.
+`stoppingOneWatchLeavesReportsFromTheOther`,
+`twoWatchesShareOneConnectionAndPlaceItsMessagesOnTheirOwnClocks`, and
+`theNextRecordingUsesTheSameListenerAndItsOwnClock`.
 
 ## S-5 A finished call is let go
 Evidence: `finalizedCallIsReleasedAndLateTurnsAreIgnored`,
 `finalizationReleasesNamesBeforeTheWatchAcknowledgesItsStop`,
-`sessionEndKeepsNamesOnlyIfATranscriptOpened`, and
-`sessionEndReleasesNamesWhenNoTranscriptOpened`.
+`sessionEndKeepsNamesOnlyIfATranscriptOpened`,
+`sessionEndReleasesNamesWhenNoTranscriptOpened`,
+`stoppingDuringPanelSetupLeavesNoNamingWatch`,
+`readingUsesTheRecordingInstantEvenWhenItsDeliveryWaits`, and
+`sessionNamesTheRowAndReleasesItsPort`.

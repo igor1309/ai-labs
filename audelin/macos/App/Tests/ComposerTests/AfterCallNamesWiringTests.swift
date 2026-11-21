@@ -22,8 +22,8 @@ struct AfterCallNamesWiringTests {
                                  browser: { channel.open() }, sleep: { try await Task.sleep(for: $0 * 10_000) }, zoomName: unknownZoomName)
         let text = AsyncStream<CallState>.makeStream()
         let reading = await panel.begin(id: 1, text: text.stream, names: names, enableLiveText: {})
-        reading.sessionChanged(SessionState(phase: .recording))
-        await panel.namesSessionChanged(id: 1, phase: .recording, hasTranscript: true)
+        reading.sessionChanged(SessionState(phase: .recording), at: clock.time.monotonicNow())
+        panel.names.sessionChanged(id: 1, phase: .recording, hasTranscript: true, at: clock.time.monotonicNow())
         clock.advance(20)
         try await speakInTurns(channel.connect())
 
@@ -54,8 +54,8 @@ struct AfterCallNamesWiringTests {
                                  browser: { channel.open() }, sleep: { try await Task.sleep(for: $0 * 10_000) }, zoomName: unknownZoomName)
         let text = AsyncStream<CallState>.makeStream()
         let reading = await panel.begin(id: 1, text: text.stream, names: names, enableLiveText: {})
-        reading.sessionChanged(SessionState(phase: .recording))
-        await panel.namesSessionChanged(id: 1, phase: .recording, hasTranscript: true)
+        reading.sessionChanged(SessionState(phase: .recording), at: clock.time.monotonicNow())
+        panel.names.sessionChanged(id: 1, phase: .recording, hasTranscript: true, at: clock.time.monotonicNow())
         clock.advance(20)
         try await speakInTurns(channel.connect())
 
@@ -84,40 +84,34 @@ struct AfterCallNamesWiringTests {
     @Test func confirmationReachesOnlyTheFinishedCallsNamesPort() async throws {
         let app = ApplicationCallNames(now: { 40 }, makeWatch: { _ in .init(sources: []) })
         let first = RecordingNames(), second = RecordingNames()
-        let firstChanges = AsyncStream<CallNamesState>.makeStream()
-        let secondChanges = AsyncStream<CallNamesState>.makeStream()
         defer {
-            firstChanges.continuation.finish()
-            secondChanges.continuation.finish()
             app.send(.finalized(1))
             app.send(.finalized(2))
         }
         let row = Row(id: 1, start: 0, end: 4)
-        func start(_ id: UInt64, _ names: RecordingNames, speaker: String, at: Double,
-                   output: AsyncStream<CallNamesState>.Continuation) {
-            app.open(id: id, published: names) { output.yield($0) }
+        func start(_ id: UInt64, _ names: RecordingNames, speaker: String, at: Double) {
+            app.open(id: id, published: names)
             app.sessionChanged(id: id, phase: .recording, hasTranscript: true, at: at)
             app.send(.update(id, .zoom(.started(speaker), at: 0)))
             app.send(.update(id, .zoom(.observed, at: 10)))
             app.send(.update(id, .rows([row], now: at + 10)))
         }
 
-        start(1, first, speaker: "Анна", at: 0, output: firstChanges.continuation)
-        var firstSeen = firstChanges.stream.makeAsyncIterator()
-        _ = await firstSeen.next()
-        try #require(await firstSeen.next()?.rowNames == [1: "Анна"])
+        start(1, first, speaker: "Анна", at: 0)
+        var firstSeen = first.states().makeAsyncIterator()
+        while let state = await firstSeen.next(), state.rowNames.isEmpty {}
+        try #require(first.snapshot().rowNames == [1: "Анна"])
         app.sessionChanged(id: 1, phase: .ended, hasTranscript: true, at: 15)
 
-        start(2, second, speaker: "Борис", at: 20, output: secondChanges.continuation)
-        var secondSeen = secondChanges.stream.makeAsyncIterator()
-        _ = await secondSeen.next()
-        try #require(await secondSeen.next()?.rowNames == [1: "Борис"])
+        start(2, second, speaker: "Борис", at: 20)
+        for await state in second.states() where !state.rowNames.isEmpty { break }
+        try #require(second.snapshot().rowNames == [1: "Борис"])
         let secondBeforeConfirmation = second.snapshot()
 
         await first.diarized([.init(speaker: 0, start: 0, end: 4), .init(speaker: 0, start: 5, end: 9)], rows: [row])
         await first.finalizationEnded()
-        let confirmed = try #require(await firstSeen.next())
-        #expect(confirmed.confirmed && confirmed.rowNames == [1: "Анна"])
+        while await firstSeen.next() != nil {}
+        #expect(first.snapshot().rowNames == [1: "Анна"])
         #expect(first.snapshot().confirmed)
         #expect(second.snapshot() == secondBeforeConfirmation)
     }
@@ -126,7 +120,7 @@ struct AfterCallNamesWiringTests {
     @Test func sessionEndReleasesNamesWhenNoTranscriptOpened() async {
         let app = ApplicationCallNames(now: { 10 }, makeWatch: { _ in .init(sources: []) })
         let names = RecordingNames()
-        app.open(id: 1, published: names, show: { _ in })
+        app.open(id: 1, published: names)
         for await observation in Observations({ app.observation(of: 1) }) where observation == .observing { break }
 
         app.sessionChanged(id: 1, phase: .ended, hasTranscript: false, at: 10)
