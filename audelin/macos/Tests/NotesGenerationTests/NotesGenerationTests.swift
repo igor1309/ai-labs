@@ -41,6 +41,13 @@ import Testing
         #expect(request.contains("Edited marker instruction\nThe owner, Игорь, recorded this call; lines labelled \"Игорь\" are theirs, and every other label is someone else.\n"))
         #expect(!request.contains("Me:"))
     }
+    @Test(arguments: [nil, "Игорь"]) func namedLinesMatchTheNotesRequest(userName: String?) {
+        let lines = [Line(time: "5.04", label: "Them", text: "Привет.", isUser: false),
+                     Line(time: "8.64", label: "Me", text: "Hi.", isUser: true)]
+        let transcript = Generator.transcript(lines: lines, userName: userName)
+        #expect(transcript == "[5.04] Them: Привет.\n[8.64] \(userName ?? "Me"): Hi.")
+        #expect(Generator.request(lines: lines, userName: userName, evidence: "", template: template).hasSuffix("TRANSCRIPT DATA:\n" + transcript))
+    }
     @Test func runtimeFailureIsReturnedWithoutNotes() async {
         let text = AttemptSpy(.failure(.timeout))
         await #expect(throws: AttemptFailure.timeout) { try await Generator(text: text).notes(lines: lines("data"), userName: nil, evidence: "", template: template) }

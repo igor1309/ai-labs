@@ -48,7 +48,7 @@ public struct Generator: Sendable {
     Accepted speaker evidence names a speaker from the conversation; it is a suggestion, so at its first use mark it as inferred, e.g. "Анна (inferred)". Do not manufacture a decision or action.
     """
     public static func request(lines: [Line], userName: String?, evidence: String, template: Template) -> String {
-        let transcript = lines.map { "[\($0.time)] \(label($0, userName)): \($0.text)" }.joined(separator: "\n")
+        let transcript = transcript(lines: lines, userName: userName)
         let recorder = userName.map { "\nThe owner, \($0), recorded this call; lines labelled \"\($0)\" are theirs, and every other label is someone else." } ?? ""
         let headings = template.headings.map { variant in
             variant.map { "## " + $0.name + ($0.required ? " (required)" : " (optional)") }.joined(separator: "\n")
@@ -60,6 +60,10 @@ public struct Generator: Sendable {
     }
     public func notes(lines: [Line], userName: String?, evidence: String, template: Template) async throws -> String {
         try Self.validate(try await text.generate(Self.request(lines: lines, userName: userName, evidence: evidence, template: template)), template: template)
+    }
+    /// The transcript lines the notes request carries, for any other request that reads them.
+    public static func transcript(lines: [Line], userName: String?) -> String {
+        lines.map { "[\($0.time)] \(label($0, userName)): \($0.text)" }.joined(separator: "\n")
     }
     private static func label(_ line: Line, _ userName: String?) -> String {
         line.isUser ? userName ?? line.label : line.label
