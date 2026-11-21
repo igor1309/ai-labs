@@ -24,7 +24,7 @@ struct SummaryGeneration: SummariesGeneration {
                 try await fallback(job) { configuration in
                     let mapping = identities.map { "\($0.label): \($0.name) (\($0.time): \($0.quote))" }.joined(separator: "\n")
                     let generator = NotesGeneration.Generator(text: RuntimeTextAttempt(runtime: runtime, configuration: configuration))
-                    return try await generator.notes(transcript: transcript(job), evidence: mapping, template: template)
+                    return try await generator.notes(lines: lines(job), evidence: mapping, template: template)
                 }
             }
         } catch {
@@ -56,6 +56,9 @@ struct SummaryGeneration: SummariesGeneration {
             sink.write(.init(category: .session, message: "summary primary attempt failed; trying fallback"))
             return try await attempt(runtimeConfiguration(fallback))
         }
+    }
+    private func lines(_ job: Job) -> [NotesGeneration.Line] {
+        job.entries.map { .init(time: $0.time, label: $0.label, text: $0.text, isUser: false) }
     }
     private func transcript(_ job: Job) -> String {
         job.entries.map { "[\($0.time)] \($0.label): \($0.text)" }.joined(separator: "\n")
