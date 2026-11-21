@@ -82,7 +82,8 @@ final class Call: @unchecked Sendable {
             microphone: { [microphone] in microphone.started() }, call: { [call] _ in call.started() },
             mine: RehearsalRecognizer(mine), theirs: RehearsalRecognizer(theirs),
             now: { Date() }, timeZone: { .current }, sleep: { try await ContinuousClock().sleep(for: $0) },
-            intervals: rehearsalIntervals()
+            intervals: rehearsalIntervals(),
+            transcriptBuild: TranscriptBuild(version: "bench", build: "bench", mine: "rehearsal-microphone", theirs: "rehearsal-call")
         )
         composition = try await startRehearsal(boundary: boundary, root: root)
         shown = await composition.panelStates().makeAsyncIterator()
