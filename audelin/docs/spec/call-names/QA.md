@@ -8,19 +8,16 @@ call's names and what each fake source was asked to do.
 ## S-1 A row takes the name seen when it was said
 Evidence: `rowsPassExactEvidenceToNamingAndUseItsAnswer`,
 `firstRecordingOnStartsTheClock`,
-`startDeliversReportsInCallTimeFromBothSources`,
-`firstSightAddsRosterNamesInOrderAndOpensIntervals`,
+`startDeliversMonotonicReportsFromBothSources`,
+`firstSightAddsRosterNamesInOrderAndSpeakerChangesCloseThePreviousInterval`,
 `rosterAndSpeakingUpdateBrowserEvidenceAndPublishedValues`,
 `onlyOpenBrowserConnectionsRaiseThroughUsingTheRowInstant`,
-`recordingOffClearsTheClockAndKeepsEvidenceAndNames`.
-The observers cover `beforeRecordingStartsAPollReportsNothing`,
-`eachPollReportsItsChangesThenATickInCallTime`,
-`aMessageBeforeRecordingStartsIsHeldAndPlacedOnceItStarts` and
-`aClockedConnectionReportsItselfAndItsMessagesInCallTime`. The
+`recordingOffClosesTheWindowAndKeepsEvidenceAndNames`.
+The observers cover `eachPollReportsItsReadingAndTickAtTheSameMonotonicInstant`
+and `aClockedConnectionReportsItselfAndItsMessagesAtMonotonicInstants`. The
 composer checks the wiring in `aConnectedExtensionNamesTheRemoteRow`,
 `sessionNamesTheRowAndReleasesItsPort`, and
-`readingUsesTheRecordingInstantEvenWhenItsDeliveryWaits`. The watch's
-call-time callback is checked in `watchClockIsNilWhileItsOwnRecordingIsOff`.
+`readingUsesTheRecordingInstantEvenWhenItsDeliveryWaits`.
 
 ## S-2 Confirmed names replace live ones
 Evidence: `ConfirmationTests` and
@@ -47,3 +44,22 @@ Evidence: `finalizedCallIsReleasedAndLateTurnsAreIgnored`,
 `releasingNamesKeepsTheWatchStoppingUntilItsSourceCloses`,
 `readingUsesTheRecordingInstantEvenWhenItsDeliveryWaits`, and
 `sessionNamesTheRowAndReleasesItsPort`.
+
+## S-6 Zoom evidence begins once recording is on
+
+Evidence: `zoomEvidenceBeginsWithTheFirstPollInTheRecordingWindow` and
+`delayedZoomPollsAndTicksCountOnlyInsideTheRecordingWindow`. The observer
+reports repeated readings, silence and loss of access to the meeting in
+`eachPollReportsItsReadingAndTickAtTheSameMonotonicInstant`.
+
+## S-7 A roster sent before recording counts once recording is on
+
+Evidence: `earlyBrowserRosterAndSpeakingArePlacedInOrderWhenRecordingStarts`
+and `browserMessagesArrivingAfterRecordingAreHeldAndNeverPlaced`.
+The observer's calibration buffer is covered by
+`messagesBeforeTheFirstClockReplyAreHeldAndPlacedInOrderOnceItComes` and
+`anUncalibratedConnectionKeepsOnlyItsNewestMessagesInOrder`.
+
+## S-8 A connection that leaves before recording leaves nothing
+
+Evidence: `browserDisconnectBeforeRecordingDropsOnlyThatConnectionsMessages`.

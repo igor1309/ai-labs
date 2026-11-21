@@ -17,26 +17,36 @@ public struct CallNamesState: Equatable, Sendable {
     public var observation: Observation
     /// The first recording-on instant on the monotonic clock.
     public var recordingStart: Double?
-    /// Names seen by the adapter, including those whose observation was too late to accept.
+    /// The first recording-off instant after recording starts, on the same clock.
+    public var recordingEnd: Double?
+    /// The speaker from the last Zoom poll in the recording window.
+    public var lastZoomSpeaker: String?
+    /// Names seen in the recording window, including those whose observation was too late to accept.
     public var knownNames: [String]
-    /// The adapter's sequence includes events that the observation rejected.
+    /// The Zoom sequence includes events that the observation rejected.
     public var sequence: Int
     public var zoom: Evidence
     public var browser: Evidence
     public var browserConnections: Set<Int>
+    /// Unplaced browser messages in arrival order, retaining the newest 1000 per connection.
+    /// Before recording starts, their estimated times are bounded by receipt.
+    public var heldBrowserMessages: [Event]
 
     public init(
         roster: [String] = [], spoken: [Spoken] = [], through: Double = 0,
         rowNames: [Int: String] = [:], participantIDs: [String: String] = [:], participantOrder: [String] = [],
         confirmed: Bool = false, observation: Observation = .idle, recordingStart: Double? = nil,
-        knownNames: [String] = [], sequence: Int = 0,
-        zoom: Evidence = Evidence(), browser: Evidence = Evidence(), browserConnections: Set<Int> = []
+        recordingEnd: Double? = nil, lastZoomSpeaker: String? = nil, knownNames: [String] = [], sequence: Int = 0,
+        zoom: Evidence = Evidence(), browser: Evidence = Evidence(), browserConnections: Set<Int> = [],
+        heldBrowserMessages: [Event] = []
     ) {
         self.roster = roster; self.spoken = spoken; self.through = through
         self.rowNames = rowNames; self.participantIDs = participantIDs; self.participantOrder = participantOrder
         self.confirmed = confirmed; self.observation = observation; self.knownNames = knownNames; self.sequence = sequence
         self.recordingStart = recordingStart
+        self.recordingEnd = recordingEnd; self.lastZoomSpeaker = lastZoomSpeaker
         self.zoom = zoom; self.browser = browser; self.browserConnections = browserConnections
+        self.heldBrowserMessages = heldBrowserMessages
     }
 
     public struct Evidence: Equatable, Sendable {
@@ -100,22 +110,21 @@ public struct Row: Equatable, Sendable {
     }
 }
 
-public enum ZoomChange: Equatable, Sendable {
-    case started(String)
-    case stopped(String)
-    case observed
-    case lost
+public enum ZoomPoll: Equatable, Sendable {
+    case speaker(String)
+    case nobody
+    case unavailable
 }
 
 public enum CallNamesUpdate: Equatable, Sendable {
     /// The recording status at an instant on the monotonic clock.
     case recordingChanged(isOn: Bool, at: Double)
-    /// The Zoom change at the given call time in seconds.
-    case zoom(ZoomChange, at: Double)
-    /// The Zoom poll's call time in seconds.
+    /// The Zoom reading at the given instant on the monotonic clock.
+    case zoom(ZoomPoll, at: Double)
+    /// A tick at the Zoom poll's instant on the monotonic clock.
     case tick(now: Double)
-    /// Browser evidence placed on the call clock.
-    case browser(Event)
+    /// A browser message with an estimated time and receipt instant on the monotonic clock.
+    case browser(Event, receivedAt: Double)
     case browserConnected(Int)
     case browserDisconnected(Int)
     /// Row bounds are call-relative. `now` is an instant on the monotonic clock.
@@ -187,6 +196,7 @@ public struct CallNamesReducer: Sendable {
     public typealias Event = CallNamesEvent
     public typealias Effect = CallNamesEffect
 
+    private static let heldBrowserLimit = 1000
     private let name: @Sendable (Double, Double, [Participant], [Activity], Double) -> String?
     private let confirm: @Sendable ([Row], [DiarizedTurn], CallEvidence) -> [Int: String]
 
@@ -298,14 +308,22 @@ public struct CallNamesReducer: Sendable {
         case let .recordingChanged(true, instant):
             guard state.recordingStart == nil else { return state }
             next.recordingStart = instant
+            var browser = state.browser.observation
+            for message in state.heldBrowserMessages {
+                browser.receive(place(message, start: instant))
+            }
+            next.heldBrowserMessages.removeAll()
+            next.browser = .init(browser)
+            if next.browser != state.browser { publish(&next) }
             return next
 
-        case .recordingChanged(false, _):
-            next.recordingStart = nil
+        case let .recordingChanged(false, instant):
+            guard state.recordingStart != nil, state.recordingEnd == nil else { return state }
+            next.recordingEnd = instant
             return next
 
         case let .rows(rows, instant):
-            guard let start = state.recordingStart else { return state }
+            guard let start = state.recordingStart, state.recordingEnd == nil else { return state }
             let evidence = publish(&next, now: instant - start)
             let roster = evidence.members.map { Participant(id: $0.id, name: $0.name, isLocal: $0.isLocal) }
             let activities = evidence.intervals.map {
@@ -324,9 +342,29 @@ public struct CallNamesReducer: Sendable {
         case .diarized:
             return state
 
-        case let .browser(event):
+        case let .browser(event, receivedAt):
+            var event = event
+            // A pre-start receipt may reach the reducer after recording-on if calibration held it.
+            if state.recordingStart.map({ receivedAt <= $0 }) ?? true {
+                event.time = min(event.time, receivedAt)
+            }
+            guard let start = state.recordingStart, state.recordingEnd == nil else {
+                if next.heldBrowserMessages.count >= Self.heldBrowserLimit {
+                    var remaining = Self.heldBrowserLimit
+                    for index in next.heldBrowserMessages.indices.reversed()
+                    where next.heldBrowserMessages[index].epoch == event.epoch {
+                        remaining -= 1
+                        if remaining == 0 {
+                            next.heldBrowserMessages.remove(at: index)
+                            break
+                        }
+                    }
+                }
+                next.heldBrowserMessages.append(event)
+                return next
+            }
             var browser = state.browser.observation
-            browser.receive(event)
+            browser.receive(place(event, start: start))
             next.browser = .init(browser)
             guard next.browser != state.browser else { return state }
             publish(&next)
@@ -338,40 +376,60 @@ public struct CallNamesReducer: Sendable {
             return next
 
         case let .browserDisconnected(id):
-            guard next.browserConnections.remove(id) != nil else { return state }
-            publish(&next)
+            next.heldBrowserMessages.removeAll { $0.epoch == id }
+            if next.browserConnections.remove(id) != nil { publish(&next) }
             return next
 
-        case .zoom(.lost, _):
-            return state
+        case let .zoom(reading, instant):
+            guard let time = zoomTime(instant, in: state) else { return state }
+            record(reading, at: time, in: &next)
+            if next.zoom != state.zoom { publish(&next) }
+            return next
 
-        case .zoom, .tick:
+        case let .tick(instant):
+            guard let time = zoomTime(instant, in: state) else { return state }
             var zoom = state.zoom.observation
-            switch event {
-            case let .zoom(change, time):
-                func send(_ kind: ObservationEvent.Kind) {
-                    next.sequence += 1
-                    zoom.receive(.init(epoch: 1, sequence: next.sequence, time: time, kind: kind))
-                }
-                switch change {
-                case let .started(name):
-                    // Zoom exposes display names only, so a name is the participant's identity.
-                    if !next.knownNames.contains(name) {
-                        next.knownNames.append(name)
-                        send(.roster(next.knownNames.map { Member(id: $0, name: $0) }))
-                    }
-                    send(.speaking(memberID: name, true))
-                case let .stopped(name): send(.speaking(memberID: name, false))
-                case .observed: send(.heartbeat)
-                case .lost: break
-                }
-            case let .tick(now): zoom.tick(now: now)
-            case .recordingChanged, .rows, .diarized, .browser, .browserConnected, .browserDisconnected: break
-            }
+            zoom.tick(now: time)
             next.zoom = .init(zoom)
             if next.zoom != state.zoom { publish(&next) }
             return next
         }
+    }
+
+    private func place(_ message: ObservationEvent, start: Double) -> ObservationEvent {
+        var placed = message
+        placed.time = max(0, message.time - start)
+        return placed
+    }
+
+    private func zoomTime(_ instant: Double, in state: CallNamesState) -> Double? {
+        guard let start = state.recordingStart, instant >= start else { return nil }
+        // A poll can be delivered while the watch is closing.
+        if let end = state.recordingEnd, instant >= end { return nil }
+        return instant - start
+    }
+
+    private func record(_ reading: ZoomPoll, at time: Double, in state: inout CallNamesState) {
+        var zoom = state.zoom.observation
+        let speaker: String? = if case let .speaker(name) = reading { name } else { nil }
+        func send(_ kind: ObservationEvent.Kind) {
+            state.sequence += 1
+            zoom.receive(.init(epoch: 1, sequence: state.sequence, time: time, kind: kind))
+        }
+        if speaker != state.lastZoomSpeaker {
+            if let previous = state.lastZoomSpeaker { send(.speaking(memberID: previous, false)) }
+            if let speaker {
+                // Zoom exposes display names only, so a name is the participant's identity.
+                if !state.knownNames.contains(speaker) {
+                    state.knownNames.append(speaker)
+                    send(.roster(state.knownNames.map { Member(id: $0, name: $0) }))
+                }
+                send(.speaking(memberID: speaker, true))
+            }
+            state.lastZoomSpeaker = speaker
+        }
+        if reading != .unavailable { send(.heartbeat) }
+        state.zoom = .init(zoom)
     }
 
     @discardableResult

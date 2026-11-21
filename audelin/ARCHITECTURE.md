@@ -835,7 +835,11 @@ watched. The reducer names a row through an injected matcher
 (`LiveNames.match`) and confirms names through an injected after-call
 rule (`AfterCallNames.names`), both in SpeakerNaming.
 
-Time reaches it as instants on the monotonic clock, as for Reading.
+Time reaches it as instants on the monotonic clock, as for Reading. The
+call-app sources report at instants too and know nothing of recordings:
+CallNames places what they report on the call's time and holds the rules
+of the recording window, which Zoom readings count and which browser
+messages wait for recording or are dropped.
 
 Its effect handler watches and closes the call-app sources; each watch,
 and each source's stop acknowledgement, carries its call's id, so ending
@@ -855,7 +859,7 @@ far-side participant a reading shows as speaking: the Talking label; else
 the only other participant; else the only other unmuted one; else nobody.
 The user's tile is told apart by the user's Zoom name, and without that name
 the rule names nobody. Its reason to change is what Zoom exposes. The Zoom
-observer polls it, reports each change of that speaker to CallNames, and
+observer polls it, reports each poll's reading to CallNames, and
 takes the user's Zoom name through two closures, one that reads the
 remembered name and one that remembers a name Zoom showed; the root plugs
 both into Preferences. CallNames is unchanged: tile names reach it as

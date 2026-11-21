@@ -172,12 +172,12 @@ func makeAudelinPanel(
     intervals: ProfileIntervals, browser: @escaping @Sendable () -> BrowserChannel?,
     sleep: @escaping @Sendable (Duration) async throws -> Void, zoomName: ZoomName
 ) -> AudelinPanel {
-    let names = ApplicationCallNames(now: now) { clock in
+    let names = ApplicationCallNames {
         let windows = ZoomWindows()
         return CallAppWatch(sources: [
-            ZoomCallObserver(isPermitted: { windows.isPermitted }, windows: { windows.windows() }, clock: clock,
+            ZoomCallObserver(isPermitted: { windows.isPermitted }, windows: { windows.windows() }, now: now,
                              sleep: { try await Task.sleep(for: $0) }, knownName: zoomName.read, rememberName: zoomName.remember),
-            BrowserCallObserver(openBrowser: browser, clock: clock, monotonic: now, sleep: sleep, log: sink),
+            BrowserCallObserver(openBrowser: browser, monotonic: now, sleep: sleep, log: sink),
         ])
     }
     return AudelinPanel(now: now, ticks: ticks, sink: sink, intervals: intervals, names: names)

@@ -61,7 +61,7 @@ struct AfterCallNamesWiringTests {
 
     @MainActor
     @Test func confirmationReachesOnlyTheFinishedCallsNamesPort() async throws {
-        let app = ApplicationCallNames(now: { 40 }, makeWatch: { _ in .init(sources: []) })
+        let app = ApplicationCallNames(makeWatch: { .init(sources: []) })
         let first = RecordingNames(), second = RecordingNames()
         defer {
             app.send(.finalized(1))
@@ -71,8 +71,8 @@ struct AfterCallNamesWiringTests {
         func start(_ id: UInt64, _ names: RecordingNames, speaker: String, at: Double) {
             app.open(id: id, published: names)
             app.sessionChanged(id: id, phase: .recording, hasTranscript: true, at: at)
-            app.send(.update(id, .zoom(.started(speaker), at: 0)))
-            app.send(.update(id, .zoom(.observed, at: 10)))
+            app.send(.update(id, .zoom(.speaker(speaker), at: at)))
+            app.send(.update(id, .zoom(.speaker(speaker), at: at + 10)))
             app.send(.update(id, .rows([row], now: at + 10)))
         }
 
@@ -103,7 +103,7 @@ struct AfterCallNamesWiringTests {
         let source = GatedWatchSource()
         defer { source.stopping.end(); source.close.end(); source.updates.continuation.finish() }
         var watches = [CallAppWatch(sources: [source]), CallAppWatch(sources: [])]
-        let app = ApplicationCallNames(now: { 10 }, makeWatch: { _ in watches.removeFirst() })
+        let app = ApplicationCallNames(makeWatch: { watches.removeFirst() })
         let names = RecordingNames(), next = RecordingNames()
         app.open(id: 1, published: names)
         let states = names.states()
@@ -125,18 +125,18 @@ struct AfterCallNamesWiringTests {
     @Test func afterCallTurnsUseEvidenceOnlyAfterTheSourceCloses() async throws {
         let source = GatedWatchSource()
         defer { source.stopping.end(); source.close.end(); source.updates.continuation.finish() }
-        let app = ApplicationCallNames(now: { 10 }, makeWatch: { _ in .init(sources: [source]) })
+        let app = ApplicationCallNames(makeWatch: { .init(sources: [source]) })
         let names = RecordingNames()
         app.open(id: 1, published: names)
         app.sessionChanged(id: 1, phase: .recording, hasTranscript: true, at: 0)
-        source.updates.continuation.yield(.zoom(.started("Анна"), at: 0))
-        source.updates.continuation.yield(.zoom(.observed, at: 10))
+        source.updates.continuation.yield(.zoom(.speaker("Анна"), at: 0))
+        source.updates.continuation.yield(.zoom(.speaker("Анна"), at: 10))
         try #require(await names.states().first { @Sendable in $0.through == 10 } != nil)
 
-        app.sessionChanged(id: 1, phase: .ended, hasTranscript: true, at: 10)
+        app.sessionChanged(id: 1, phase: .ended, hasTranscript: true, at: 12)
         await source.stopping.next()
         await names.diarized(turns, rows: [Row(id: 1, start: 0, end: 4)])
-        source.updates.continuation.yield(.zoom(.stopped("Анна"), at: 11))
+        source.updates.continuation.yield(.zoom(.nobody, at: 11))
         let stillStopping = try #require(await names.states().first { @Sendable in $0.through == 11 })
         #expect(stillStopping.observation == .stopping)
         #expect(!stillStopping.confirmed)
@@ -147,45 +147,6 @@ struct AfterCallNamesWiringTests {
         #expect(confirmed.rowNames == [1: "Анна"])
         await names.finalizationEnded()
     }
-
-    @MainActor
-    @Test func watchClockIsNilWhileItsOwnRecordingIsOff() async throws {
-        let clock = FixtureClock(), first = RecordingNames(), second = RecordingNames()
-        var clocks: [@Sendable () async -> Double?] = []
-        let app = ApplicationCallNames(now: clock.time.monotonicNow, makeWatch: {
-            clocks.append($0)
-            return .init(sources: [])
-        })
-        defer {
-            app.send(.finalized(1))
-            app.send(.finalized(2))
-            clock.finish()
-        }
-
-        app.open(id: 1, published: first)
-        let firstClock = try #require(clocks.first)
-        try #require(await first.states().first { @Sendable in $0.observation == .observing } != nil)
-        clock.advance(10)
-        #expect(await firstClock() == nil)
-
-        app.sessionChanged(id: 1, phase: .recording, hasTranscript: true, at: clock.time.monotonicNow())
-        try #require(await first.states().first { @Sendable in $0.recordingStart == 10 } != nil)
-        clock.advance(4)
-        #expect(await firstClock() == 4)
-        app.sessionChanged(id: 1, phase: .ended, hasTranscript: true, at: clock.time.monotonicNow())
-        try #require(await first.states().first { @Sendable in $0.observation == .stopped } != nil)
-
-        clock.advance(6)
-        app.open(id: 2, published: second)
-        try #require(clocks.count == 2)
-        let secondClock = clocks[1]
-        app.sessionChanged(id: 2, phase: .recording, hasTranscript: true, at: clock.time.monotonicNow())
-        try #require(await second.states().first { @Sendable in $0.recordingStart == 20 } != nil)
-        clock.advance(3)
-        #expect(await secondClock() == 3)
-        #expect(await firstClock() == nil)
-    }
-
 }
 
 private struct GatedWatchSource: CallAppObserver {

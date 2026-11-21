@@ -5,17 +5,21 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct CallNamesEffectHandlerTests {
 
-    @Test func startDeliversReportsInCallTimeFromBothSources() async {
+    @Test func startDeliversMonotonicReportsFromBothSources() async {
         let zoom = SourceSpy(), browser = SourceSpy()
         let sut = CallNamesEffectHandler()
         let watch = CallAppWatch(sources: [zoom, browser])
         let (reducer, _) = makeSUT()
         let (_, effect) = reducer.reduce(.init(), .start(1, watch))
-        let zoomReport = CallNamesUpdate.zoom(.observed, at: 1.5)
-        let browserReport = CallNamesUpdate.browser(.init(epoch: 4, sequence: 1, time: 2, kind: .heartbeat))
-        await expect(sut, with: effect, toDeliver: [.update(1, zoomReport), .update(1, browserReport), .observationReportsEnded(1)], on: {
+        let zoomReport = CallNamesUpdate.zoom(.nobody, at: 101.5)
+        let tick = CallNamesUpdate.tick(now: 101.5)
+        let browserReport = CallNamesUpdate.browser(.init(epoch: 4, sequence: 1, time: 102, kind: .heartbeat), receivedAt: 102.5)
+        await expect(sut, with: effect, toDeliver: [.update(1, zoomReport), .update(1, tick), .update(1, .browserConnected(4)),
+                                               .update(1, browserReport), .update(1, .browserDisconnected(4)),
+                                               .observationReportsEnded(1)], on: {
             #expect(zoom.observations == 1 && browser.observations == 1)
-            zoom.report(zoomReport); browser.report(browserReport)
+            zoom.report(zoomReport); zoom.report(tick)
+            browser.report(.browserConnected(4)); browser.report(browserReport); browser.report(.browserDisconnected(4))
             zoom.finish(); browser.finish()
         })
         #expect(zoom.stops == 0 && browser.stops == 0)
@@ -55,7 +59,7 @@ struct CallNamesEffectHandlerTests {
         #expect(await firstEvents.next() == nil)
         #expect(reducer.reduce(state, drained).0.calls[1]?.names.observation == .stopped)
         let secondReports = sut.handle(try #require(startNext))
-        let report = CallNamesUpdate.zoom(.started("Boris"), at: 1)
+        let report = CallNamesUpdate.zoom(.speaker("Boris"), at: 101)
         second.report(report)
         var secondEvents = secondReports.makeAsyncIterator()
         #expect(await secondEvents.next() == .update(2, report))
