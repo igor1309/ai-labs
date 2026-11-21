@@ -14,6 +14,21 @@ struct ReadingNamesChangedTests {
         #expect(spy.layoutCalls.isEmpty)
     }
 
+    @Test(arguments: [0, 1, 3])
+    func aFirstTentativeNameReachesAnEarlierRow(sealed: Int) {
+        let spy = RenderingSpy()
+        var state = makeNamedReading(sealed: sealed)
+        state.names = [2: "Live"]
+        rename(&state, at: 0, name: nil, confirmed: false, mapped: false)
+        let names = [1: "Found", 2: "Live"]
+        assert(state, .namesChanged(names, confirmed: false), delivers: nil, using: makeReducer(spy)) {
+            $0.names = names
+            rename(&$0, at: 0, name: "Found", confirmed: false)
+        }
+        #expect(spy.calls.isEmpty)
+        #expect(spy.layoutCalls.isEmpty)
+    }
+
     @Test(arguments: [0, 1, 3], [false, true])
     func confirmedNamesReachEveryRemoteEntryIncludingAfterRecordingEnds(sealed: Int, ended: Bool) {
         let spy = RenderingSpy()

@@ -461,7 +461,11 @@ public final class AudelinMenu {
     func sendPanel(_ event: PanelEvent, for id: UInt64?) async {
         switch event {
         case .start: await perform(.start)
-        case .stop: await perform(.stop)
+        case .stop:
+            guard let id else { return await perform(.stop) }
+            guard !quitting else { return }
+            sink.write(.init(category: .menu, message: "action=stop call=\(id)"))
+            await send(.stopSession(id: id))
         case .openCallsFolder: await perform(.openCallsFolder)
         case let .openSettings(pane):
             let name = pane == .microphone ? "Privacy_Microphone" : "Privacy_ScreenCapture"
