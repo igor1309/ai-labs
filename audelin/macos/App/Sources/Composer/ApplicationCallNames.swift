@@ -8,12 +8,9 @@ import SpeakerNaming
 final class ApplicationCallNames {
     private let model: ObservableModel<CallNamesModelState, CallNamesEvent, CallNamesEffect>
     private let feed = StateFeed<CallNamesModelState>()
-    private let now: @Sendable () -> Double
-    private let makeWatch: @MainActor (@escaping @Sendable () async -> Double?) -> CallAppWatch
+    private let makeWatch: @MainActor () -> CallAppWatch
 
-    init(now: @escaping @Sendable () -> Double,
-         makeWatch: @escaping @MainActor (@escaping @Sendable () async -> Double?) -> CallAppWatch) {
-        self.now = now
+    init(makeWatch: @escaping @MainActor () -> CallAppWatch) {
         self.makeWatch = makeWatch
         let reducer = CallNamesReducer(
             name: { LiveNames().match(start: $0, end: $1, roster: $2, activities: $3, through: $4) },
@@ -40,10 +37,6 @@ final class ApplicationCallNames {
     }
 
     func open(id: UInt64, published: RecordingNames) {
-        let clock: @MainActor @Sendable () -> Double? = { [weak self] in
-            guard let self, let start = model.state.calls[id]?.names.recordingStart else { return nil }
-            return now() - start
-        }
         published.connect(diarized: { [weak self] turns, rows in
             await self?.send(.update(id, .diarized(turns, rows: rows)))
         }, finalized: { [weak self] in
@@ -64,7 +57,7 @@ final class ApplicationCallNames {
                 previous = names
             }
         }
-        send(.start(id, makeWatch(clock)))
+        send(.start(id, makeWatch()))
     }
 
     isolated deinit { feed.finish() }

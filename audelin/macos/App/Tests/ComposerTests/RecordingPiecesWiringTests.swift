@@ -110,7 +110,7 @@ struct RecordingPiecesWiringTests {
             let secondStates = await second.states()
             await rig.stop()
             var sawSecondStop = false
-            for await names in secondStates where names.recordingStart == nil { sawSecondStop = true }
+            for await names in secondStates where names.recordingEnd == 104 { sawSecondStop = true }
             #expect(sawSecondStop)
             _ = await rig.record()
             var sawSecond = false
@@ -194,6 +194,7 @@ struct RecordingPiecesWiringTests {
     }
 
     @Test func theNextRecordingAndPanelStartWhileThePreviousWatchStops() async throws {
+        let clock = FixtureClock()
         let stopping = Signal(), close = Signal(), watchingNext = Signal()
         defer { stopping.end(); close.end(); watchingNext.end() }
         let first = DelayedWatch(stopping: stopping, close: close)
@@ -202,7 +203,7 @@ struct RecordingPiecesWiringTests {
         let storage = NamesStorage(opens: true, diarizer: NamesDiarizer {})
         let hearing = Hearing(words: [Word("привет", start: 2, end: 4)])
 
-        try await withPieces(liveText: true, makeWatch: { _ in
+        try await withPieces(clock: clock, liveText: true, makeWatch: {
             CallAppWatch(sources: [watches.withLock { $0.removeFirst() }])
         }, configure: { boundary in
             boundary.transcripts = storage
@@ -218,8 +219,10 @@ struct RecordingPiecesWiringTests {
             let recorded = await rig.record()
             let firstNames = try #require(storage.ports.all.first)
             let folder = try #require(recorded.pieces?.recordedFolder?.id)
-            first.updates.continuation.yield(.zoom(.started("Анна"), at: 1))
-            first.updates.continuation.yield(.zoom(.stopped("Анна"), at: 4))
+            let start = try #require(await firstNames.states().first { $0.recordingStart != nil }?.recordingStart)
+            clock.advance(10, tick: false)
+            first.updates.continuation.yield(.zoom(.speaker("Анна"), at: start + 1))
+            first.updates.continuation.yield(.zoom(.nobody, at: start + 4))
             try #require(await firstNames.states().first { $0.through == 4 } != nil)
             try #require(await rig.panel.states().first { state in
                 guard case let .lines(lines) = state.log else { return false }
@@ -238,8 +241,8 @@ struct RecordingPiecesWiringTests {
             try #require(await names.states().first { $0.recordingStart != nil }?.observation == .pending)
             try #require(await rig.panel.presentations().first { $0.call == 2 && $0.state.recording == .on(elapsed: "00:00:00") } != nil)
 
-            first.updates.continuation.yield(.zoom(.started("Анна"), at: 4.5))
-            first.updates.continuation.yield(.zoom(.stopped("Анна"), at: 9))
+            first.updates.continuation.yield(.zoom(.speaker("Анна"), at: start + 4.5))
+            first.updates.continuation.yield(.zoom(.nobody, at: start + 9))
             let late = try #require(await firstNames.states().first { $0.through == 9 })
             #expect(late.observation == .stopping)
             close.end()
@@ -261,7 +264,7 @@ struct RecordingPiecesWiringTests {
         let diarizations = Values<String>()
         let storage = NamesStorage(opens: true, diarizer: NamesDiarizer { diarizations.append("started") })
 
-        try await withPieces(liveText: true, makeWatch: { _ in
+        try await withPieces(liveText: true, makeWatch: {
             CallAppWatch(sources: [source])
         }, configure: { $0.transcripts = storage }) { rig in
             let recorded = await rig.record()
@@ -534,7 +537,7 @@ private func withPieces(
     browser: @escaping @Sendable () -> BrowserChannel? = { nil },
     liveText: Bool = false, waiting onWaiting: @escaping @Sendable (URL) async -> Void = { _ in },
     publishing: @escaping @Sendable (String) async -> Void = { _ in },
-    makeWatch: (@MainActor @Sendable (@escaping @Sendable () async -> Double?) -> CallAppWatch)? = nil,
+    makeWatch: (@MainActor @Sendable () -> CallAppWatch)? = nil,
     configure: @Sendable (inout ComposerBoundary) -> Void = { _ in },
     _ body: @Sendable (PiecesRig) async throws -> Void
 ) async throws {
@@ -568,7 +571,7 @@ private func withPieces(
         app.started("us.zoom.xos")
         let panel: AudelinPanel
         if let makeWatch {
-            let names = await ApplicationCallNames(now: clock.time.monotonicNow, makeWatch: makeWatch)
+            let names = await ApplicationCallNames(makeWatch: makeWatch)
             panel = await AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: log,
                                       intervals: testIntervals, names: names)
         } else {

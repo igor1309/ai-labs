@@ -8,85 +8,88 @@ struct CallNamesReducerTests {
         #expect(spy.requests.isEmpty)
     }
 
-    @Test func firstSightAddsRosterNamesInOrderAndOpensIntervals() {
+    @Test func firstSightAddsRosterNamesInOrderAndSpeakerChangesCloseThePreviousInterval() {
         let (sut, spy) = makeSUT()
-        let anna = assert(makeState(), .zoom(.started("Anna"), at: 1), using: sut) {
-            $0.roster = ["Anna"]; $0.knownNames = ["Anna"]
+        let recording = makeState { $0.recordingStart = 100 }
+        let anna = assert(recording, .zoom(.speaker("Anna"), at: 101), using: sut) {
+            $0.lastZoomSpeaker = "Anna"; $0.roster = ["Anna"]; $0.knownNames = ["Anna"]
             $0.zoom.members = [.init(id: "Anna", name: "Anna")]
             $0.spoken = [.init(name: "Anna", start: 1, end: nil)]
             $0.zoom.intervals = [.init(memberID: "Anna", start: 1, end: nil)]
-            $0.through = 1; $0.sequence = 2; $0.zoom.sequence = 2; $0.zoom.epoch = 1; $0.zoom.health = .healthy
+            $0.through = 1; $0.sequence = 3; $0.zoom.sequence = 3; $0.zoom.epoch = 1; $0.zoom.health = .healthy
             $0.zoom.through = 1
         }
-        let boris = assert(anna, .zoom(.started("Boris"), at: 2), using: sut) {
-            $0.roster.append("Boris"); $0.knownNames.append("Boris")
+        let boris = assert(anna, .zoom(.speaker("Boris"), at: 102), using: sut) {
+            $0.lastZoomSpeaker = "Boris"; $0.roster.append("Boris"); $0.knownNames.append("Boris")
             $0.zoom.members.append(.init(id: "Boris", name: "Boris"))
+            $0.spoken[0].end = 2; $0.zoom.intervals[0].end = 2
             $0.spoken.append(.init(name: "Boris", start: 2, end: nil))
             $0.zoom.intervals.append(.init(memberID: "Boris", start: 2, end: nil))
-            $0.through = 2; $0.sequence = 4; $0.zoom.sequence = 4
+            $0.through = 2; $0.sequence = 7; $0.zoom.sequence = 7
             $0.zoom.through = 2
         }
-        assert(boris, .zoom(.started("Anna"), at: 3), using: sut) {
-            $0.through = 3; $0.sequence = 5; $0.zoom.sequence = 5
+        assert(boris, .zoom(.speaker("Anna"), at: 103), using: sut) {
+            $0.lastZoomSpeaker = "Anna"
+            $0.spoken[1].end = 3; $0.zoom.intervals[1].end = 3
+            $0.spoken.append(.init(name: "Anna", start: 3, end: nil))
+            $0.zoom.intervals.append(.init(memberID: "Anna", start: 3, end: nil))
+            $0.through = 3; $0.sequence = 10; $0.zoom.sequence = 10
             $0.zoom.through = 3
         }
         #expect(spy.requests.isEmpty)
     }
 
-    @Test func stopClosesOnlyThatNameAndARepeatedStartOpensANewInterval() {
+    @Test func aRepeatedSpeakerAdvancesThroughWithoutClosingAnInterval() {
         let (sut, spy) = makeSUT()
-        let state = makeObservedState {
-            $0.roster.append("Boris"); $0.knownNames.append("Boris")
-            $0.zoom.members.append(.init(id: "Boris", name: "Boris"))
-            $0.spoken.append(.init(name: "Boris", start: 2, end: nil))
-            $0.zoom.intervals.append(.init(memberID: "Boris", start: 2, end: nil))
-        }
-        let stopped = assert(state, .zoom(.stopped("Anna"), at: 6), using: sut) {
-            $0.spoken[0].end = 6; $0.through = 6; $0.sequence = 4; $0.zoom.sequence = 4
-            $0.zoom.through = 6
-            $0.zoom.intervals[0].end = 6
-        }
-        assert(stopped, .zoom(.started("Anna"), at: 7), using: sut) {
-            $0.spoken.append(.init(name: "Anna", start: 7, end: nil))
-            $0.zoom.intervals.append(.init(memberID: "Anna", start: 7, end: nil))
-            $0.through = 7; $0.sequence = 5; $0.zoom.sequence = 5
-            $0.zoom.through = 7
-        }
-        #expect(spy.requests.isEmpty)
-    }
-
-    @Test func heartbeatAdvancesThroughWithoutClosingAnInterval() {
-        let (sut, spy) = makeSUT()
-        assert(makeObservedState(), .zoom(.observed, at: 7), using: sut) {
+        assert(makeObservedState(), .zoom(.speaker("Anna"), at: 107), using: sut) {
             $0.through = 7; $0.sequence = 4; $0.zoom.sequence = 4
             $0.zoom.through = 7
         }
         #expect(spy.requests.isEmpty)
     }
 
-    @Test func lostDoesNothing() {
+    @Test func nobodyClosesTheSpeakerAndKeepsTheMeetingObserved() {
         let (sut, spy) = makeSUT()
-        assert(makeObservedState(), .zoom(.lost, at: 20), using: sut)
+        let quiet = assert(makeObservedState(), .zoom(.nobody, at: 106), using: sut) {
+            $0.lastZoomSpeaker = nil
+            $0.spoken[0].end = 6; $0.through = 6; $0.sequence = 5; $0.zoom.sequence = 5
+            $0.zoom.through = 6; $0.zoom.intervals[0].end = 6
+        }
+        assert(quiet, .zoom(.nobody, at: 107), using: sut) {
+            $0.through = 7; $0.sequence = 6; $0.zoom.sequence = 6
+            $0.zoom.through = 7
+        }
+        #expect(spy.requests.isEmpty)
+    }
+
+    @Test func losingTheMeetingClosesTheSpeakerWithoutFurtherHeartbeats() {
+        let (sut, spy) = makeSUT()
+        let lost = assert(makeObservedState(), .zoom(.unavailable, at: 106), using: sut) {
+            $0.lastZoomSpeaker = nil
+            $0.spoken[0].end = 6; $0.through = 6; $0.sequence = 4; $0.zoom.sequence = 4
+            $0.zoom.through = 6; $0.zoom.intervals[0].end = 6
+        }
+        assert(lost, .zoom(.unavailable, at: 107), using: sut)
         #expect(spy.requests.isEmpty)
     }
 
     @Test func tickClosesAtLastKnowledgeOnlyAfterTheTimeout() {
         let (sut, spy) = makeSUT()
         let state = makeObservedState { $0.zoom.timeout = 2 }
-        assert(state, .tick(now: 7), using: sut)
-        let stale = assert(state, .tick(now: 8), using: sut) {
+        assert(state, .tick(now: 107), using: sut)
+        let stale = assert(state, .tick(now: 108), using: sut) {
             $0.spoken[0].end = 5; $0.zoom.health = .stale
             $0.zoom.intervals[0].end = 5
         }
-        assert(stale, .tick(now: 20), using: sut)
-        assert(makeState(), .tick(now: 20), using: sut)
+        assert(stale, .tick(now: 120), using: sut)
+        assert(makeState(), .tick(now: 120), using: sut)
         #expect(spy.requests.isEmpty)
     }
 
     @Test func staleTickRemovesAnIntervalWithoutKnownDuration() {
         let (sut, spy) = makeSUT()
         let state = makeObservedState { $0.spoken[0].start = 5; $0.zoom.intervals[0].start = 5 }
-        assert(state, .tick(now: 9), using: sut) {
+        assert(state, .tick(now: 109), using: sut) {
             $0.spoken = []; $0.zoom.health = .stale
             $0.zoom.intervals = []
         }
@@ -95,17 +98,17 @@ struct CallNamesReducerTests {
 
     @Test func lateChangesKeepTheSenderSequenceAndKnownNamesForTheNextRoster() {
         let (sut, spy) = makeSUT()
-        let late = assert(makeObservedState(), .zoom(.started("Boris"), at: 4), using: sut) {
-            $0.knownNames.append("Boris"); $0.sequence = 5
+        let late = assert(makeObservedState(), .zoom(.speaker("Boris"), at: 104), using: sut) {
+            $0.lastZoomSpeaker = "Boris"; $0.knownNames.append("Boris"); $0.sequence = 7
         }
-        assert(late, .zoom(.started("Clara"), at: 6), using: sut) {
-            $0.knownNames.append("Clara"); $0.roster = ["Anna", "Boris", "Clara"]
+        assert(late, .zoom(.speaker("Clara"), at: 106), using: sut) {
+            $0.lastZoomSpeaker = "Clara"; $0.knownNames.append("Clara"); $0.roster = ["Anna", "Boris", "Clara"]
             $0.zoom.members = ["Anna", "Boris", "Clara"].map { .init(id: $0, name: $0) }
             $0.spoken[0].end = 5
             $0.zoom.intervals[0].end = 5
             $0.spoken.append(.init(name: "Clara", start: 6, end: nil))
             $0.zoom.intervals.append(.init(memberID: "Clara", start: 6, end: nil))
-            $0.through = 6; $0.sequence = 7; $0.zoom.sequence = 7
+            $0.through = 6; $0.sequence = 11; $0.zoom.sequence = 11
             $0.zoom.through = 6
         }
         #expect(spy.requests.isEmpty)
@@ -160,7 +163,7 @@ struct CallNamesReducerTests {
         let (sut, spy) = makeSUT(stubs: [nil, "Anna"])
         let state = makeObservedState()
         assert(state, .rows([makeRow()], now: 200), using: sut)
-        let later = assert(state, .zoom(.observed, at: 6), using: sut) {
+        let later = assert(state, .zoom(.speaker("Anna"), at: 106), using: sut) {
             $0.through = 6; $0.sequence = 4; $0.zoom.sequence = 4
             $0.zoom.through = 6
         }

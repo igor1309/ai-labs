@@ -10,17 +10,16 @@ import Testing
 struct BrowserCallObserverTests {
 
     @Test func withoutAChannelNothingIsReportedAndTheStreamEnds() async {
-        let sut = BrowserCallObserver(openBrowser: { nil }, clock: { 1 }, monotonic: { 0 }, sleep: { _ in }, log: FixtureLog())
+        let sut = BrowserCallObserver(openBrowser: { nil }, monotonic: { 0 }, sleep: { _ in }, log: FixtureLog())
         var events: [CallNamesUpdate] = []
         for await event in sut.observe() { events.append(event) }
         #expect(events.isEmpty)
     }
 
-    @Test func aClockedConnectionReportsItselfAndItsMessagesInCallTime() async {
+    @Test func aClockedConnectionReportsItselfAndItsMessagesAtMonotonicInstants() async {
         let channel = FakeChannel()
-        // Monotonic 50 s is call time 20 s: the call started 30 s into the monotonic clock.
-        let sut = BrowserCallObserver(openBrowser: { channel.open() }, clock: { 20 }, monotonic: { 50 },
-                                      sleep: { _ in try await Task.sleep(for: .seconds(3600)) }, log: FixtureLog())
+        let sut = BrowserCallObserver(openBrowser: { channel.open() }, monotonic: { 50 },
+                                      sleep: { _ in throw CancellationError() }, log: FixtureLog())
         var events = sut.observe().makeAsyncIterator()
         let peer = channel.connect()
         var sent = peer.sent.makeAsyncIterator()
@@ -29,7 +28,7 @@ struct BrowserCallObserverTests {
         peer.send(#"{"version":1,"ping":0,"at":100000}"#)
         #expect(await events.next() == .browserConnected(0))
         peer.send(message(0, #"{"type":"speakingStarted","at":89000,"participantId":"t1"}"#))
-        #expect(await events.next() == .browser(.init(epoch: 0, sequence: 0, time: 9, kind: .speaking(memberID: "t1", true))))
+        #expect(await events.next() == .browser(.init(epoch: 0, sequence: 0, time: 39, kind: .speaking(memberID: "t1", true))))
         peer.framesIn.finish()
         #expect(await events.next() == .browserDisconnected(0))
         await sut.stop()
@@ -37,28 +36,35 @@ struct BrowserCallObserverTests {
         #expect(channel.stops == 1)
     }
 
-    @Test func aMessageBeforeRecordingStartsIsHeldAndPlacedOnceItStarts() async {
+    @Test func anUncalibratedConnectionKeepsOnlyItsNewestMessagesInOrder() async throws {
         let channel = FakeChannel()
-        let times = Mutex<[Double?]>([nil, 20])
-        let sut = BrowserCallObserver(openBrowser: { channel.open() }, clock: { times.withLock { $0.count > 1 ? $0.removeFirst() : $0[0] } },
-                                      monotonic: { 50 }, sleep: { _ in try await Task.sleep(for: .seconds(3600)) }, log: FixtureLog())
+        let sut = BrowserCallObserver(openBrowser: { channel.open() }, monotonic: { 50 },
+                                      sleep: { _ in throw CancellationError() }, log: FixtureLog())
         var events = sut.observe().makeAsyncIterator()
         let peer = channel.connect()
+        defer { peer.framesIn.finish() }
         var sent = peer.sent.makeAsyncIterator()
-        _ = await sent.next()
+        try #require(await sent.next() == BrowserClockReply.ping(0))
+        let limit = BrowserCallObserver.heldLimit
+        for sequence in 0...limit {
+            peer.send(message(sequence, #"{"type":"speakingStarted","at":89000,"participantId":"t1"}"#))
+        }
         peer.send(#"{"version":1,"ping":0,"at":100000}"#)
+        peer.framesIn.finish()
         #expect(await events.next() == .browserConnected(0))
-        peer.send(message(0, #"{"type":"speakingStarted","at":89000,"participantId":"t1"}"#))
-        peer.send(message(1, #"{"type":"speakingStopped","at":90000,"participantId":"t1"}"#))
-        #expect(await events.next() == .browser(.init(epoch: 0, sequence: 0, time: 9, kind: .speaking(memberID: "t1", true))))
-        #expect(await events.next() == .browser(.init(epoch: 0, sequence: 1, time: 10, kind: .speaking(memberID: "t1", false))))
+        for sequence in 1...limit {
+            try #require(await events.next() == .browser(.init(epoch: 0, sequence: sequence, time: 39,
+                                                               kind: .speaking(memberID: "t1", true))))
+        }
+        #expect(await events.next() == .browserDisconnected(0))
         await sut.stop()
+        #expect(await events.next() == nil)
     }
 
     @Test func messagesBeforeTheFirstClockReplyAreHeldAndPlacedInOrderOnceItComes() async {
         let channel = FakeChannel()
-        let sut = BrowserCallObserver(openBrowser: { channel.open() }, clock: { 20 }, monotonic: { 50 },
-                                      sleep: { _ in try await Task.sleep(for: .seconds(3600)) }, log: FixtureLog())
+        let sut = BrowserCallObserver(openBrowser: { channel.open() }, monotonic: { 50 },
+                                      sleep: { _ in throw CancellationError() }, log: FixtureLog())
         var events = sut.observe().makeAsyncIterator()
         let peer = channel.connect()
         var sent = peer.sent.makeAsyncIterator()
@@ -68,17 +74,17 @@ struct BrowserCallObserverTests {
         peer.send(message(1, #"{"type":"speakingStarted","at":89000,"participantId":"t1"}"#))
         peer.send(#"{"version":1,"ping":0,"at":100000}"#)
         #expect(await events.next() == .browserConnected(0))
-        #expect(await events.next() == .browser(.init(epoch: 0, sequence: 0, time: 0,
+        #expect(await events.next() == .browser(.init(epoch: 0, sequence: 0, time: -45,
                                                       kind: .roster([.init(id: "t1", name: "Анна", isLocal: false)]))))
-        #expect(await events.next() == .browser(.init(epoch: 0, sequence: 1, time: 9, kind: .speaking(memberID: "t1", true))))
+        #expect(await events.next() == .browser(.init(epoch: 0, sequence: 1, time: 39, kind: .speaking(memberID: "t1", true))))
         await sut.stop()
     }
 
     @Test func theLogCountsWhatTheBrowserSendsWithoutNames() async {
         let channel = FakeChannel()
         let log = FixtureLog()
-        let sut = BrowserCallObserver(openBrowser: { channel.open() }, clock: { 20 }, monotonic: { 50 },
-                                      sleep: { _ in try await Task.sleep(for: .seconds(3600)) }, log: log)
+        let sut = BrowserCallObserver(openBrowser: { channel.open() }, monotonic: { 50 },
+                                      sleep: { _ in throw CancellationError() }, log: log)
         var events = sut.observe().makeAsyncIterator()
         let peer = channel.connect()
         var sent = peer.sent.makeAsyncIterator()
@@ -94,8 +100,8 @@ struct BrowserCallObserverTests {
         await sut.stop()
         #expect(log.entries.all.map(\.message) == [
             "connection=0 clocked held=1",
-            "connection=0 sequence=0 time=0.0 roster members=2 local=1",
-            "connection=0 sequence=1 time=9.0 speaking=true member=t1",
+            "connection=0 sequence=0 time=-45.0 roster members=2 local=1",
+            "connection=0 sequence=1 time=39.0 speaking=true member=t1",
             "connection=0 disconnected",
         ])
         #expect(log.entries.all.allSatisfy { $0.category == .browser })
@@ -103,14 +109,14 @@ struct BrowserCallObserverTests {
 
     @Test func theLogSaysWhenTheChannelCannotOpen() async {
         let log = FixtureLog()
-        let sut = BrowserCallObserver(openBrowser: { nil }, clock: { 1 }, monotonic: { 0 }, sleep: { _ in }, log: log)
+        let sut = BrowserCallObserver(openBrowser: { nil }, monotonic: { 0 }, sleep: { _ in }, log: log)
         for await _ in sut.observe() {}
         #expect(log.entries.all.map(\.message) == ["channel unavailable"])
     }
 
     @Test func stopClosesTheChannelAndEndsTheStream() async {
         let channel = FakeChannel()
-        let sut = BrowserCallObserver(openBrowser: { channel.open() }, clock: { 1 }, monotonic: { 0 }, sleep: { _ in }, log: FixtureLog())
+        let sut = BrowserCallObserver(openBrowser: { channel.open() }, monotonic: { 0 }, sleep: { _ in }, log: FixtureLog())
         let events = sut.observe()
         await sut.stop()
         var delivered: [CallNamesUpdate] = []

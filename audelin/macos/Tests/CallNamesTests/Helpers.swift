@@ -16,7 +16,7 @@ func makeObservedState(_ update: (inout State) -> Void = { _ in }) -> State {
     makeState {
         $0.recordingStart = 100
         $0.roster = ["Anna"]
-        $0.knownNames = ["Anna"]
+        $0.knownNames = ["Anna"]; $0.lastZoomSpeaker = "Anna"
         $0.spoken = [.init(name: "Anna", start: 1, end: nil)]
         $0.through = 5
         $0.sequence = 3; $0.zoom.sequence = 3; $0.zoom.epoch = 1; $0.zoom.health = .healthy
