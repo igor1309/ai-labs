@@ -1,26 +1,10 @@
 import CallNames
 import Foundation
 import IMRxObservation
-import Observation
 import PanelUI
 import Reading
 import Recording
-import SpeakerNaming
 import ZoomAccessibility
-
-/// One recording's reading model as the panel uses it; the app makes it on the main actor.
-struct ReadingInputs: Sendable {
-
-    let state: @MainActor @Sendable () -> ReadingState
-    let send: @MainActor @Sendable (ReadingEvent) -> Void
-
-    /// `state` must be observable, so the panel sees each change it reads.
-    init(state: @escaping @MainActor @Sendable () -> ReadingState, send: @escaping @MainActor @Sendable (ReadingEvent) -> Void) {
-
-        self.state = state
-        self.send = send
-    }
-}
 
 /// The user's Zoom name: the one remembered, and remembering one Zoom showed.
 struct ZoomName: Sendable {
@@ -28,378 +12,173 @@ struct ZoomName: Sendable {
     var remember: @Sendable (String) -> Void
 }
 
-/// The current recording's panel state and its reading actions.
-actor AudelinPanel {
+/// The panel and the call that produced it travel together to the view's event binding.
+struct PanelPresentation: Equatable, Sendable {
+    var call: UInt64?
+    var state = PanelState(recording: .off, log: .empty)
+}
+
+/// Connects an app-lifetime Reading to the panel and each call's feeds.
+@MainActor
+final class AudelinPanel {
+
+    private struct Subscription {
+        let inputs: Task<Void, Never>
+        let timer: Task<Void, Never>
+    }
 
     private let now: @Sendable () -> Double
     private let ticks: @Sendable () -> AsyncStream<Void>
     private let intervals: ProfileIntervals
     private let sink: any LogSink
-    private let browser: @Sendable () -> BrowserChannel?
-    private let sleep: @Sendable (Duration) async throws -> Void
-    private let zoomName: ZoomName
-    private var current: (id: UInt64, reading: ReadingInputs, enableLiveText: @Sendable () async -> Void)?
-    private var subscription: (id: UInt64, value: ReadingSubscription)?
-    /// The finished call's subscription, kept until the next recording so names confirmed
-    /// after the call still reach its rows.
-    private var finished: (id: UInt64, value: ReadingSubscription)?
-    private var state = PanelState(recording: .off, log: .empty)
+    let names: ApplicationCallNames
+    private let reading: SyncModel<ReadingState, ReadingEvent>
+    private let feed = StateFeed<PanelPresentation>()
+    private let statesFeed = StateFeed<PanelState>()
+    private var presentation = PanelPresentation()
     private var mappedRows = MappedRows()
     private var panelText = PanelText(language: .russian)
-    /// The reading state last mapped, so a new language can map it again.
-    private var lastReading: ReadingState?
-    private var subscribers: [UInt64: AsyncStream<PanelState>.Continuation] = [:]
-    private var nextSubscriber: UInt64 = 0
+    private var subscriptions: [UInt64: Subscription] = [:]
 
     init(
         now: @escaping @Sendable () -> Double, ticks: @escaping @Sendable () -> AsyncStream<Void>, sink: any LogSink,
-        intervals: ProfileIntervals, browser: @escaping @Sendable () -> BrowserChannel?,
-        sleep: @escaping @Sendable (Duration) async throws -> Void, zoomName: ZoomName
+        intervals: ProfileIntervals, names: ApplicationCallNames
     ) {
-
-        self.zoomName = zoomName
-        self.browser = browser
-        self.sleep = sleep
+        self.names = names
         self.now = now
         self.ticks = ticks
         self.sink = sink
         self.intervals = intervals
+        self.reading = makeReading()
     }
 
-    /// Each subscriber immediately receives the current state.
-    func states() -> AsyncStream<PanelState> {
+    func states() -> AsyncStream<PanelState> { statesFeed.subscribe(from: presentation.state) }
 
-        let id = nextSubscriber
-        nextSubscriber += 1
-        let (stream, output) = AsyncStream<PanelState>.makeStream()
-        output.yield(state)
-        subscribers[id] = output
-        output.onTermination = { [weak self] _ in Task { await self?.removeSubscriber(id) } }
-        return stream
-    }
+    func presentations() -> AsyncStream<PanelPresentation> { feed.subscribe(from: presentation) }
 
-    /// The menu wires recording controls; session controls and reading actions stay here.
-    func send(_ event: PanelEvent) async {
-
-        if event == .switchLiveTextOn, let enableLiveText = current?.enableLiveText { await enableLiveText() }
-        if let event = readingEvent(event), let reading = current?.reading { await reading.send(event) }
+    func send(_ event: PanelEvent, for id: UInt64) {
+        if let update = readingEvent(event) { send(.update(id, update)) }
     }
 
     func begin(id: UInt64, text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]> = AsyncStream { $0.finish() },
-               names published: RecordingNames = RecordingNames(), enableLiveText: @escaping @Sendable () async -> Void) async -> ReadingSubscription {
+               names published: RecordingNames = RecordingNames()) {
 
-        let reading = await makeReading()
-        finished = nil
-        current = (id, reading, enableLiveText)
-        mappedRows = .init()
-        lastReading = nil
-        let update = SignpostedPanelUpdate(receive: { [weak self] state in
-            await self?.receive(state, id: id)
-        }, intervals: intervals)
-        let made = await ReadingSubscription(reading: reading, text: text, speakers: speakers, names: published, now: now, ticks: ticks(), sink: sink,
-                                                  sources: callAppSources()) { state in
-            await update(state)
+        send(.opened(id))
+        names.open(id: id, published: published)
+        let nameStates = published.states()
+        let ticks = ticks()
+        let timer = Task { [weak self, now] in
+            for await _ in ticks {
+                guard let self else { return }
+                send(.update(id, .tick(at: now())))
+            }
         }
-        if current?.id == id { subscription = (id, made) }
-        return made
+        let inputs = Task { [weak self] in
+            await withTaskGroup(of: Void.self) { group in
+                group.addTask { [weak self] in
+                    var mapped = 0
+                    for await state in text {
+                        guard !Task.isCancelled, let self else { return }
+                        await self.receiveText(state, from: mapped, id: id)
+                        mapped = state.finalCount
+                    }
+                    await self?.send(.update(id, .textEnded))
+                }
+                group.addTask { [weak self] in
+                    for await places in speakers {
+                        guard let self else { return }
+                        await self.send(.update(id, .speakersFound(places)))
+                    }
+                }
+                group.addTask { [weak self] in
+                    var previous: CallNamesState?
+                    for await names in nameStates {
+                        guard let self else { return }
+                        if names.rowNames != previous?.rowNames || names.confirmed != previous?.confirmed {
+                            await self.send(.update(id, .namesChanged(names.rowNames, confirmed: names.confirmed)))
+                        }
+                        previous = names
+                    }
+                }
+            }
+            self?.subscriptions.removeValue(forKey: id)?.timer.cancel()
+            self?.send(.update(id, .feedsEnded))
+        }
+        subscriptions[id] = Subscription(inputs: inputs, timer: timer)
     }
 
-    /// The call app's sources for one recording, timed by its call clock.
-    private func callAppSources() -> @Sendable (@escaping @Sendable () async -> Double?) -> [any CallAppObserver] {
-
-        let browser = browser, now = now, sleep = sleep, zoomName = zoomName, sink = sink
-        return { clock in
-            let windows = ZoomWindows()
-            return [
-                ZoomCallObserver(isPermitted: { windows.isPermitted }, windows: { windows.windows() }, clock: clock,
-                                 sleep: { try await Task.sleep(for: $0) }, knownName: zoomName.read, rememberName: zoomName.remember),
-                BrowserCallObserver(openBrowser: browser, clock: clock, monotonic: now, sleep: sleep, log: sink),
-            ]
+    func sessionChanged(id: UInt64, _ state: SessionState, after phase: SessionState.Phase? = nil, at instant: Double) {
+        if phase != state.phase {
+            names.sessionChanged(id: id, phase: state.phase, hasTranscript: state.transcript != .down, at: instant)
+        }
+        send(.update(id, .recordingChanged(readingRecording(state), at: instant)))
+        send(.update(id, .problemsChanged(readingFaultKinds(state), callSilent: state.audioWarning == .callSilent, at: instant)))
+        if state.phase == .ended {
+            subscriptions[id]?.timer.cancel()
+            send(.update(id, .sessionEnded))
         }
     }
 
-    /// Takes the recording's reading feed to its end first, so its last text and speakers are shown;
-    /// the feed's streams must finish for this to return.
-    func end(id: UInt64) async {
-
-        guard current?.id == id else { return }
-        if let subscription, subscription.id == id { await subscription.value.end() }
-        guard current?.id == id else { return }
-        current = nil
-        finished = subscription
-        subscription = nil
-        // The finished call stays readable, with its confirmed names, until the next recording.
-        publish(.init(recording: .off, log: state.log))
+    private func receiveText(_ state: CallState, from cursor: Int, id: UInt64) {
+        let remote = state.entries[cursor...].filter { $0.speaker != .mine }
+            .map { Row(id: $0.text.id, start: $0.text.start, end: $0.text.end) }
+        if !remote.isEmpty { names.send(.update(id, .rows(remote, now: now()))) }
+        send(.update(id, .textUpdated(readingText(state, from: cursor))))
     }
 
-    private func receive(_ state: ReadingState, id: UInt64) {
-
-        if current?.id == id {
-            lastReading = state
-            publish(panelState(panelText.callAsFunction, state, rows: &mappedRows))
-        } else if current == nil, finished?.id == id {
-            lastReading = state
-            publish(.init(recording: .off, log: panelState(panelText.callAsFunction, state, rows: &mappedRows).log))
-        }
+    private func send(_ event: ReadingEvent) {
+        let previous = reading.state
+        reading.event(event)
+        let state = reading.state
+        guard state != previous else { return }
+        publish(state)
+        StateLog(sink: sink).reading(state)
     }
 
-    /// Maps what the panel shows again, from scratch, in the new language.
+    /// Maps the displayed log again in the chosen language, including a finished call.
     func languageChanged(_ text: PanelText) {
-
         guard text != panelText else { return }
         panelText = text
         mappedRows = .init()
-        guard let lastReading else { return }
-        let next = panelState(panelText.callAsFunction, lastReading, rows: &mappedRows)
-        publish(current == nil ? .init(recording: .off, log: next.log) : next)
+        publish(reading.state)
     }
 
-    private func publish(_ next: PanelState) {
-
-        guard state != next else { return }
-        state = next
-        for output in subscribers.values { output.yield(next) }
+    private func publish(_ state: ReadingState) {
+        SignpostedPanelUpdate(receive: present, intervals: intervals)(state)
     }
 
-    private func removeSubscriber(_ id: UInt64) { subscribers[id] = nil }
-
-    deinit {
-
-        for output in subscribers.values { output.finish() }
-    }
-}
-
-/// Owns only the subscriptions for one Session; no input is shared with a later one.
-/// It runs on the main actor, where the reading model reduces, so the events it
-/// sends keep their order.
-@MainActor
-final class ReadingSubscription {
-
-    private let reading: ReadingInputs
-    private let time: ReadingTime
-    private let presenter: ReadingPresenter
-    private let text: Task<Void, Never>
-    private let timer: Task<Void, Never>
-    private var observation: Task<Void, Never>
-    private let names: ObservableModel<CallNamesState, CallNamesEvent, CallNamesEffect>
-    private let naming: Task<Void, Never>
-    private var ended = false
-
-    init(
-        reading: ReadingInputs, text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]>, names recording: RecordingNames,
-        now: @escaping @Sendable () -> Double, ticks: AsyncStream<Void>, sink: any LogSink,
-        sources: @Sendable (@escaping @Sendable () async -> Double?) -> [any CallAppObserver],
-        receive: @escaping @Sendable (ReadingState) async -> Void
-    ) async {
-
-        self.reading = reading
-        let time = ReadingTime(reading: reading, now: now)
-        self.time = time
-        let reducer = CallNamesReducer(
-            name: { LiveNames().match(start: $0, end: $1, roster: $2, activities: $3, through: $4) },
-            confirm: { rows, turns, evidence in
-                AfterCallNames.names(rows: rows.map { ($0.id, $0.start, $0.end) }, turns: turns, evidence: evidence)
-            })
-        let handler = CallNamesEffectHandler(sources: sources { await time.elapsed() })
-        let names = ObservableModel(initialState: CallNamesState(), reduce: reducer.reduce, handleEffect: handler.handle)
-        self.names = names
-        let shown = ShownText(reading: reading)
-        let published = Observations { names.state }
-        naming = Task {
-            for await state in published {
-                guard !Task.isCancelled else { return }
-                recording.published(state)
-                shown.namesChanged(state.rowNames, confirmed: state.confirmed)
-            }
-        }
-        let presenter = ReadingPresenter(sink: sink, receive: receive)
-        self.presenter = presenter
-        await receive(reading.state())
-        let states = Observations { reading.state() }
-        observation = Task {
-            for await state in states {
-                guard !Task.isCancelled else { return }
-                await presenter.show(state)
-            }
-        }
-        names.event(.start)
-        self.text = Task {
-            var mapped = 0
-            for await state in text {
-                guard !Task.isCancelled else { return }
-                let remote = state.entries[mapped...].filter { $0.speaker != .mine }
-                    .map { Row(id: $0.text.id, start: $0.text.start, end: $0.text.end) }
-                if !remote.isEmpty, let now = await time.elapsed() { names.event(.rows(remote, now: now)) }
-                shown.show(state, from: mapped)
-                mapped = state.finalCount
-            }
-            // The speakers come after the call's last text, so every row they name is shown.
-            for await places in speakers {
-                guard !Task.isCancelled else { return }
-                reading.send(.speakersFound(places))
-            }
-        }
-        timer = Task {
-            for await _ in ticks {
-                guard !Task.isCancelled else { return }
-                time.tick()
-            }
-        }
-        recording.connect { [weak self] turns, rows in await self?.diarized(turns, rows: rows) }
-    }
-
-    private func diarized(_ turns: [DiarizedTurn], rows: [Row]) { names.event(.diarized(turns, rows: rows)) }
-
-    func recordingChanged(_ recording: ReadingRecording) {
-
-        time.recordingChanged(recording)
-    }
-
-    func sessionChanged(_ state: SessionState) {
-
-        time.recordingChanged(readingRecording(state))
-        time.problemsChanged(readingFaultKinds(state), callSilent: state.audioWarning == .callSilent)
-    }
-
-    /// Waits for the text and speaker streams to finish, so every state they sent is reduced.
-    func end() async {
-
-        guard !ended else { return }
-        ended = true
-        names.event(.stop)
-        for await state in Observations({ self.names.state }) where state.observation != .observing && state.observation != .stopping { break }
-        await text.value
-        timer.cancel()
-        await timer.value
-        time.recordingChanged(.off)
-        // The model reduces the event later; wait until the state shows it.
-        for await state in Observations({ self.reading.state() }) where state.recording == .off { break }
-        observation.cancel()
-        await observation.value
-        await presenter.show(reading.state())
-        // Names keep arriving after the call (the after-call pass confirms them); show each change.
-        let presenter = presenter, reading = reading, states = Observations { reading.state() }
-        observation = Task {
-            for await state in states {
-                guard !Task.isCancelled else { return }
-                await presenter.show(state)
-            }
-        }
+    private func present(_ state: ReadingState) {
+        let next = PanelPresentation(call: state.displayedCall, state: panelState(panelText.callAsFunction, state, rows: &mappedRows))
+        guard next != presentation else { return }
+        let stateChanged = next.state != presentation.state
+        presentation = next
+        feed.publish(next)
+        if stateChanged { statesFeed.publish(next.state) }
     }
 
     isolated deinit {
-
-        text.cancel()
-        timer.cancel()
-        observation.cancel()
-        naming.cancel()
-    }
-}
-
-/// The text last shown and the names CallNames last published: new text shows the
-/// latest names, and new names show again the text last shown.
-@MainActor
-private final class ShownText {
-
-    private let reading: ReadingInputs
-    private var names: [Int: String] = [:]
-    private var confirmed = false
-    private var last: (state: CallState, from: Int)?
-
-    init(reading: ReadingInputs) { self.reading = reading }
-
-    func show(_ state: CallState, from: Int) {
-
-        last = (state, from)
-        reading.send(.textUpdated(readingText(state, from: from, names: names)))
-    }
-
-    /// Confirmed names replace every live one, so later text cannot bring a live name back.
-    func namesChanged(_ names: [Int: String], confirmed: Bool) {
-
-        guard names != self.names || confirmed != self.confirmed else { return }
-        self.names = names
-        self.confirmed = confirmed
-        if confirmed {
-            reading.send(.namesConfirmed(names))
-        } else if let last {
-            reading.send(.textUpdated(readingText(last.state, from: last.from, names: names)))
+        for subscription in subscriptions.values {
+            subscription.inputs.cancel()
+            subscription.timer.cancel()
         }
-    }
-}
-
-/// Presents each distinct reading state once, in the order it was read.
-@MainActor
-private final class ReadingPresenter {
-
-    private let sink: any LogSink
-    private let receive: @Sendable (ReadingState) async -> Void
-    private var shown: ReadingState?
-    private var began = false
-
-    init(sink: any LogSink, receive: @escaping @Sendable (ReadingState) async -> Void) {
-
-        self.sink = sink
-        self.receive = receive
-    }
-
-    func show(_ state: ReadingState) async {
-
-        guard state != shown else { return }
-        shown = state
-        if case .on = state.recording { began = true }
-        // Text starts before capture; retain it without presenting a running log yet.
-        await receive(began ? state : .init())
-        StateLog(sink: sink).reading(state)
+        feed.finish()
+        statesFeed.finish()
     }
 }
 
 @MainActor
-private final class ReadingTime {
-
-    private let reading: ReadingInputs
-    private let now: @Sendable () -> Double
-    private var origin: Double?
-    private var problems: [ReadingProblem] = []
-
-    init(reading: ReadingInputs, now: @escaping @Sendable () -> Double) {
-
-        self.reading = reading
-        self.now = now
+func makeAudelinPanel(
+    now: @escaping @Sendable () -> Double, ticks: @escaping @Sendable () -> AsyncStream<Void>, sink: any LogSink,
+    intervals: ProfileIntervals, browser: @escaping @Sendable () -> BrowserChannel?,
+    sleep: @escaping @Sendable (Duration) async throws -> Void, zoomName: ZoomName
+) -> AudelinPanel {
+    let names = ApplicationCallNames(now: now) { clock in
+        let windows = ZoomWindows()
+        return CallAppWatch(sources: [
+            ZoomCallObserver(isPermitted: { windows.isPermitted }, windows: { windows.windows() }, clock: clock,
+                             sleep: { try await Task.sleep(for: $0) }, knownName: zoomName.read, rememberName: zoomName.remember),
+            BrowserCallObserver(openBrowser: browser, clock: clock, monotonic: now, sleep: sleep, log: sink),
+        ])
     }
-
-    func recordingChanged(_ recording: ReadingRecording) {
-
-        switch recording {
-        case .off:
-            origin = nil
-            problems = []
-            reading.send(.recordingChanged(.off))
-        case let .on(elapsed):
-            let instant = now()
-            let beginning = origin ?? instant - elapsed
-            origin = beginning
-            reading.send(.recordingChanged(.on(elapsed: instant - beginning)))
-        }
-    }
-
-    func problemsChanged(_ kinds: [ReadingProblem.Kind], callSilent: Bool) {
-
-        guard let origin else { return }
-        problems.removeAll { $0.kind == .callSilent && !callSilent }
-        let active = kinds + (callSilent ? [.callSilent] : [])
-        let elapsed = now() - origin
-        for kind in active where !problems.contains(where: { $0.kind == kind }) {
-            problems.append(.init(kind, began: elapsed))
-        }
-        reading.send(.problemsChanged(problems))
-    }
-
-    /// Seconds since the recording began, or nil while it is off.
-    func elapsed() -> Double? { origin.map { now() - $0 } }
-
-    func tick() {
-
-        if let origin { reading.send(.recordingChanged(.on(elapsed: now() - origin))) }
-    }
+    return AudelinPanel(now: now, ticks: ticks, sink: sink, intervals: intervals, names: names)
 }

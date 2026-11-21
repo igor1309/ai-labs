@@ -5,10 +5,9 @@ import TranscriptFinalization
 struct FinalizationDiarizing: TranscriptDiarizing {
     let resources: FinalizationResources
 
-    func diarize(call: String, _ raw: CallState, outcomes: FinishingOutcomes) async -> SavedDiarization<Transcript.Attributed>? {
+    func diarize(call: String, _ raw: CallState, evidence: CallNamesState, outcomes: FinishingOutcomes) async -> SavedDiarization<Transcript.Attributed>? {
         guard let resource = await resources.resource(call: call) else { return nil }
-        let far = await resource.transcript.pass.diarize(call: call, raw, outcomes: outcomes)
-        return far
+        return await resource.transcript.pass.diarize(raw, evidence: evidence, outcomes: outcomes)
     }
 }
 

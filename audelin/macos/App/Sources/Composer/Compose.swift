@@ -33,7 +33,7 @@ public func compose(
 ) async -> AudelinMenu {
     let preferences = PreferencesStore(fileURL: preferencesURL)
     await createDefaultCallsFolder(preferences.read().callsFolder, default: Preferences().callsFolder)
-    let panel = AudelinPanel(now: boundary.time.monotonicNow,
+    let panel = makeAudelinPanel(now: boundary.time.monotonicNow,
                              ticks: boundary.time.ticks, sink: boundary.log, intervals: boundary.intervals,
                              browser: boundary.browser, sleep: boundary.time.sleep,
                              zoomName: ZoomName(read: { preferences.read().zoomName }, remember: { name in

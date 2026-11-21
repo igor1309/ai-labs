@@ -114,7 +114,8 @@ struct TranscriptFinalizationShutdownTests {
     }
     @Test func cleaningCallCommitsAsWritten_effect() {
         assert(makeState(makeCall(.cleaning, names: "names", far: "far", outcomes: .init(split: .done(diarizer: "vbx")))), .shutdown,
-               delivers: .stopCleaning([callID: commit(names: "names", far: "far", outcomes: .init(split: .done(diarizer: "vbx"), cleaning: .skipped))]))
+               delivers: .commitOnShutdown(stoppingCleanup: [callID],
+                   commits: [callID: commit(names: "names", far: "far", outcomes: .init(split: .done(diarizer: "vbx"), cleaning: .skipped))]))
     }
 
     /// Diarizing and committing replace the file; the final form waits for that write.
@@ -174,12 +175,23 @@ struct TranscriptFinalizationShutdownTests {
         assert(State(calls: [callID: makeCall(.finalized, published: true)], shuttingDown: true, inputEnded: true, settled: true), .shutdown, delivers: nil)
     }
 
-    @Test func shutdownCommitsEveryCleaningCall() {
-        let (sut, spy) = makeSUT(stub: ["e"])
-        let state = State(calls: ["a": makeCall(.cleaning, raw: "ra"), "b": makeCall(.cleaning, raw: "rb", far: "fb"), "c": makeCall(.diarizing)])
-        let effect = sut.reduce(state, .shutdown).1
-        #expect(effect == .stopCleaning(["a": commit("ra", outcomes: .init(cleaning: .skipped)),
-                                         "b": commit("rb", far: "fb", outcomes: .init(cleaning: .skipped))]))
+    @Test func shutdownCommitsCallsWaitingForEvidenceOrCleaning() {
+        let state = State(calls: ["a": makeCall(.waitingForEvidence, raw: "ra", names: "names"),
+                                  "b": makeCall(.cleaning, raw: "rb", far: "fb"), "c": makeCall(.diarizing)])
+        let skipped = FinishingOutcomes(split: .skipped, cleaning: .skipped)
+        assert(state, .shutdown) {
+            $0.shuttingDown = true
+            $0.calls["a"]?.stage = .committing
+            $0.calls["a"]?.outcomes = skipped
+            $0.calls["b"]?.stage = .committing
+            $0.calls["b"]?.outcomes.cleaning = .skipped
+        }
+        assert(state, .shutdown, delivers: .commitOnShutdown(stoppingCleanup: ["b"], commits: [
+            "a": commit("ra", names: "names", outcomes: skipped),
+            "b": commit("rb", far: "fb", outcomes: .init(cleaning: .skipped)),
+        ]))
+        let (sut, spy) = makeSUT()
+        _ = sut.reduce(state, .shutdown)
         #expect(spy.requests.isEmpty)
     }
 }

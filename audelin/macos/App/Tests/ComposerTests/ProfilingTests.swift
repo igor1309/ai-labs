@@ -19,7 +19,8 @@ struct ProfilingTests {
             let failure = ProfileFailure()
             let hearing = Hearing(words: [.init("word", start: 0, end: 1)])
             let chunk = AudioChunk(samples: [0.25], sampleRate: 48_000)
-            let reading = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 2))).0
+            let started = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on, at: 100)).0
+            let reading = ReadingReducer.reduce(started, .tick(at: 102)).0
             let recognizer = ProfileRecognizer(
                 onHear: { value in
                     #expect(value == chunk)
@@ -28,7 +29,7 @@ struct ProfilingTests {
                     return hearing
                 }, onFinish: { calls.append("finish"); return hearing }
             )
-            let panel = SignpostedPanelUpdate(receive: { value in
+            let panel = await SignpostedPanelUpdate(receive: { value in
                 #expect(value == reading)
                 calls.append("panel")
             }, intervals: intervals)

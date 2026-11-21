@@ -6,19 +6,13 @@ import Recording
 import Recordings
 import SettingsUI
 
-/// Each recording's reading model, reducing on the main actor.
+/// The displayed call's Reading model, reducing on the main actor.
 @MainActor
-func makeReading() -> ReadingInputs {
+func makeReading() -> SyncModel<ReadingState, ReadingEvent> {
 
-    let model = ObservableModel<ReadingState, ReadingEvent, Never>(
-        initialState: .init(), reduce: ReadingReducer.reduce, handleEffect: noEvents
-    )
-    return ReadingInputs(state: { model.state }, send: { model.event($0) })
+    let reducer = readingReducer()
+    return SyncModel(initialState: .init(), reduce: { reducer.reduce($0, $1).0 })
 }
-
-/// The handler for a model without effects. It is generic because the compiler warns on any body
-/// taking `Never`: a closure given it "will never be executed".
-private func noEvents<Effect, Event>(_: Effect) -> AsyncStream<Event> { AsyncStream { $0.finish() } }
 
 /// The stream a model reads from a handler that returns one event.
 func oneEvent<Event: Sendable>(_ handle: @escaping @Sendable () async -> Event) -> AsyncStream<Event> {
@@ -36,6 +30,7 @@ func oneEvent<Event: Sendable>(_ handle: @escaping @Sendable () async -> Event) 
 @MainActor
 func makeRecording(
     initial: RecordingState, log: @escaping @Sendable (RecordingState) -> Void,
+    changed: @escaping @MainActor (RecordingState, RecordingState) -> Void,
     folderClaim: RecordingFolderClaim,
     sleep: @escaping @Sendable (Duration) async -> Void,
     callAudioReady: @escaping @Sendable () async -> Bool,
@@ -49,7 +44,7 @@ func makeRecording(
                                          prepareCallAudio: callAudioReady, liveText: liveText,
                                          releaseCallAudio: callAudioReleased, runPiece: runPiece)
     let model = RecordingModel(initial: initial, reducer: RecordingReducer(session: SessionReducer.reduce, status: status),
-                               handler: handler, log: log)
+                               handler: handler, changed: changed, log: log)
     var inputs = RecordingInputs(
         send: { await model.send($0) },
         state: { await model.state },
@@ -66,13 +61,15 @@ final class RecordingModel {
     private let model: ObservableModel<RecordingState, RecordingEvent, RecordingEffect>
     private let feed = StateFeed<RecordingState>()
 
-    init(initial: RecordingState, reducer: RecordingReducer, handler: RecordingEffectHandler, log: @escaping @Sendable (RecordingState) -> Void) {
+    init(initial: RecordingState, reducer: RecordingReducer, handler: RecordingEffectHandler,
+         changed: @escaping @MainActor (RecordingState, RecordingState) -> Void, log: @escaping @Sendable (RecordingState) -> Void) {
 
         let feed = feed
         model = ObservableModel(initialState: initial, reduce: { state, event in
             guard !feed.finished else { return (state, nil) }
             let (next, effect) = reducer.reduce(state, event)
             if next != state {
+                changed(state, next)
                 log(next)
                 feed.publish(next)
             }

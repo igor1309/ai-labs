@@ -28,7 +28,7 @@ final class BrowserCallObserver: CallAppObserver {
     /// The open channel and its stream, held only so stop can close them.
     /// The most messages held for one connection before they can be placed; the oldest go first.
     static let heldLimit = 1000
-    private let open = Mutex<(channel: BrowserChannel, output: AsyncStream<CallNamesEvent>.Continuation)?>(nil)
+    private let open = Mutex<(channel: BrowserChannel, output: AsyncStream<CallNamesUpdate>.Continuation)?>(nil)
 
     /// `clock` gives call time in seconds, or nil before recording starts; `monotonic`
     /// is the clock in seconds browser round trips are timed by; `sleep` spaces the pings.
@@ -38,8 +38,8 @@ final class BrowserCallObserver: CallAppObserver {
         self.openBrowser = openBrowser; self.clock = clock; self.monotonic = monotonic; self.sleep = sleep; self.log = log
     }
 
-    func observe() -> AsyncStream<CallNamesEvent> {
-        let (stream, output) = AsyncStream.makeStream(of: CallNamesEvent.self)
+    func observe() -> AsyncStream<CallNamesUpdate> {
+        let (stream, output) = AsyncStream.makeStream(of: CallNamesUpdate.self)
         let log = log
         guard let opened = openBrowser() else {
             log.write(.init(category: .browser, message: "channel unavailable"))

@@ -61,6 +61,7 @@ let package = Package(
         .library(name: "Preferences", targets: ["Preferences"]),
         .library(name: "RecordedCapture", targets: ["RecordedCapture"]),
         .library(name: "Reading", targets: ["Reading"]),
+        .library(name: "TranscriptLayout", targets: ["TranscriptLayout"]),
         .library(name: "Recording", targets: ["Recording"]),
         .library(name: "SettingsUI", targets: ["SettingsUI"]),
         .library(name: "SideText", targets: ["SideText"]),
@@ -242,6 +243,8 @@ let package = Package(
             name: "Reading",
             dependencies: ["SplitRows"]
         ),
+        .target(name: "TranscriptLayout"),
+        .testTarget(name: "TranscriptLayoutTests", dependencies: ["TranscriptLayout", "SplitRows"]),
         .target(
             name: "SplitRows"
         ),

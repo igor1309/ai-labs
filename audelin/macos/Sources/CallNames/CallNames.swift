@@ -15,6 +15,8 @@ public struct CallNamesState: Equatable, Sendable {
     public var confirmed: Bool
     /// Whether the call app is being watched for this recording.
     public var observation: Observation
+    /// The first recording-on instant on the monotonic clock.
+    public var recordingStart: Double?
     /// Names seen by the adapter, including those whose observation was too late to accept.
     public var knownNames: [String]
     /// The adapter's sequence includes events that the observation rejected.
@@ -26,12 +28,14 @@ public struct CallNamesState: Equatable, Sendable {
     public init(
         roster: [String] = [], spoken: [Spoken] = [], through: Double = 0,
         rowNames: [Int: String] = [:], participantIDs: [String: String] = [:], participantOrder: [String] = [],
-        confirmed: Bool = false, observation: Observation = .idle, knownNames: [String] = [], sequence: Int = 0,
+        confirmed: Bool = false, observation: Observation = .idle, recordingStart: Double? = nil,
+        knownNames: [String] = [], sequence: Int = 0,
         zoom: Evidence = Evidence(), browser: Evidence = Evidence(), browserConnections: Set<Int> = []
     ) {
         self.roster = roster; self.spoken = spoken; self.through = through
         self.rowNames = rowNames; self.participantIDs = participantIDs; self.participantOrder = participantOrder
         self.confirmed = confirmed; self.observation = observation; self.knownNames = knownNames; self.sequence = sequence
+        self.recordingStart = recordingStart
         self.zoom = zoom; self.browser = browser; self.browserConnections = browserConnections
     }
 
@@ -68,6 +72,7 @@ public struct CallNamesState: Equatable, Sendable {
 
     public enum Observation: Equatable, Sendable {
         case idle
+        case pending
         case observing
         /// Stop was asked; the sources are being closed.
         case stopping
@@ -102,32 +107,83 @@ public enum ZoomChange: Equatable, Sendable {
     case lost
 }
 
-public enum CallNamesEvent: Equatable, Sendable {
+public enum CallNamesUpdate: Equatable, Sendable {
+    /// The recording status at an instant on the monotonic clock.
+    case recordingChanged(isOn: Bool, at: Double)
+    /// The Zoom change at the given call time in seconds.
     case zoom(ZoomChange, at: Double)
+    /// The Zoom poll's call time in seconds.
     case tick(now: Double)
+    /// Browser evidence placed on the call clock.
     case browser(Event)
     case browserConnected(Int)
     case browserDisconnected(Int)
+    /// Row bounds are call-relative. `now` is an instant on the monotonic clock.
     case rows([Row], now: Double)
     /// The after-call pass's speaker turns over the closed call, with its remote rows.
     case diarized([DiarizedTurn], rows: [Row])
-    /// The recording started: watch the call app.
-    case start
+}
+
+public struct CallNamesModelState: Equatable, Sendable {
+    public var calls: [UInt64: Call]
+    /// Stops still awaiting acknowledgement after their call's names were released.
+    public var stoppingWatches: Set<UInt64>
+
+    public init(calls: [UInt64: Call] = [:], stoppingWatches: Set<UInt64> = []) {
+        self.calls = calls
+        self.stoppingWatches = stoppingWatches
+    }
+
+    public struct Call: Equatable, Sendable {
+        public var names: CallNamesState
+        public var watch: CallAppWatch
+        public var reportsEnded: Bool
+        public var sourcesClosed: Bool
+        public var pendingConfirmation: Confirmation?
+
+        public init(names: CallNamesState, watch: CallAppWatch, reportsEnded: Bool = false,
+                    sourcesClosed: Bool = false, pendingConfirmation: Confirmation? = nil) {
+            self.names = names
+            self.watch = watch
+            self.reportsEnded = reportsEnded
+            self.sourcesClosed = sourcesClosed
+            self.pendingConfirmation = pendingConfirmation
+        }
+    }
+
+    public struct Confirmation: Equatable, Sendable {
+        public var turns: [DiarizedTurn]
+        public var rows: [Row]
+
+        public init(turns: [DiarizedTurn], rows: [Row]) {
+            self.turns = turns
+            self.rows = rows
+        }
+    }
+}
+
+public enum CallNamesEvent: Equatable, Sendable {
+    /// The call opened: watch its sources while capture comes up.
+    case start(UInt64, CallAppWatch)
+    case update(UInt64, CallNamesUpdate)
     /// The recording ended: stop watching; the names stay.
-    case stop
-    case observationStopped
+    case stop(UInt64)
+    case observationStopped(UInt64)
+    case observationReportsEnded(UInt64)
+    /// An opened transcript has a separate finalization signal after Session ends.
+    case sessionEnded(UInt64, hasTranscript: Bool)
+    /// The call no longer needs names, whether or not it had a transcript.
+    case finalized(UInt64)
 }
 
 public enum CallNamesEffect: Equatable, Sendable {
-    /// Watch every call-app source, delivering what each observes.
-    case observe
-    /// Close every call-app source.
-    case stopObserving
+    case observe(UInt64, CallAppWatch)
+    case stopObserving(UInt64, CallAppWatch)
 }
 
 /// Gives rows stable names from browser or Zoom evidence; matching policy is supplied by the caller.
 public struct CallNamesReducer: Sendable {
-    public typealias State = CallNamesState
+    public typealias State = CallNamesModelState
     public typealias Event = CallNamesEvent
     public typealias Effect = CallNamesEffect
 
@@ -135,7 +191,7 @@ public struct CallNamesReducer: Sendable {
     private let confirm: @Sendable ([Row], [DiarizedTurn], CallEvidence) -> [Int: String]
 
     /// Production supplies `LiveNames.match` and `AfterCallNames.names`; row-name memory
-    /// belongs only to `State.rowNames`.
+    /// belongs only to each call’s `rowNames`.
     public init(
         name: @escaping @Sendable (Double, Double, [Participant], [Activity], Double) -> String?,
         confirm: @escaping @Sendable ([Row], [DiarizedTurn], CallEvidence) -> [Int: String]
@@ -146,23 +202,111 @@ public struct CallNamesReducer: Sendable {
     public func reduce(_ state: State, _ event: Event) -> (State, Effect?) {
         var next = state
         switch event {
-        case .start:
-            guard state.observation == .idle else { return (state, nil) }
-            next.observation = .observing
-            return (next, .observe)
+        case let .start(id, watch):
+            guard state.calls[id] == nil, !state.stoppingWatches.contains(id) else { return (state, nil) }
+            next.calls[id] = .init(names: .init(observation: .pending), watch: watch)
+            let effect = nextWatch(in: &next)
+            return (next, effect)
+        case let .update(id, .diarized(turns, rows)):
+            guard let call = state.calls[id], !turns.isEmpty else { return (state, nil) }
+            switch call.names.observation {
+            case .pending, .observing, .stopping:
+                next.calls[id]?.pendingConfirmation = .init(turns: turns, rows: rows)
+            case .idle, .stopped:
+                next.calls[id]?.names = confirmNames(call.names, turns: turns, rows: rows)
+            }
+        case let .update(id, update):
+            guard let call = state.calls[id] else { return (state, nil) }
+            next.calls[id]?.names = reduce(call.names, update)
+        case let .stop(id), let .sessionEnded(id, true):
+            guard let call = state.calls[id] else { return (state, nil) }
+            switch call.names.observation {
+            case .pending:
+                stopped(id, in: &next)
+            case .observing:
+                next.calls[id]?.names.observation = .stopping
+                return (next, .stopObserving(id, call.watch))
+            case .idle, .stopping, .stopped:
+                break
+            }
+        case let .observationStopped(id):
+            if let call = state.calls[id], call.names.observation == .stopping {
+                next.calls[id]?.sourcesClosed = true
+                if call.reportsEnded { stopped(id, in: &next) }
+            } else if next.stoppingWatches.remove(id) == nil {
+                return (state, nil)
+            }
+            let effect = nextWatch(in: &next)
+            return (next, effect)
+        case let .observationReportsEnded(id):
+            guard let call = state.calls[id] else { return (state, nil) }
+            switch call.names.observation {
+            case .observing, .stopping:
+                next.calls[id]?.reportsEnded = true
+                if call.sourcesClosed { stopped(id, in: &next) }
+            case .idle, .pending, .stopped:
+                break
+            }
+        case let .finalized(id), let .sessionEnded(id, false):
+            guard let call = next.calls.removeValue(forKey: id) else { return (state, nil) }
+            switch call.names.observation {
+            case .observing:
+                next.stoppingWatches.insert(id)
+                return (next, .stopObserving(id, call.watch))
+            case .stopping:
+                if !call.sourcesClosed { next.stoppingWatches.insert(id) }
+            case .idle, .pending, .stopped:
+                break
+            }
+        }
+        return (next, nil)
+    }
 
-        case .stop:
-            guard state.observation == .observing else { return (state, nil) }
-            next.observation = .stopping
-            return (next, .stopObserving)
+    private func nextWatch(in state: inout State) -> Effect? {
+        // Only a source close owns the shared browser socket. Evidence may still be draining.
+        guard state.stoppingWatches.isEmpty,
+              !state.calls.values.contains(where: {
+                  $0.names.observation == .observing || ($0.names.observation == .stopping && !$0.sourcesClosed)
+              }),
+              let id = state.calls.keys.filter({ state.calls[$0]?.names.observation == .pending }).min(),
+              let call = state.calls[id] else { return nil }
+        state.calls[id]?.names.observation = .observing
+        return .observe(id, call.watch)
+    }
 
-        case .observationStopped:
-            guard state.observation == .stopping else { return (state, nil) }
-            next.observation = .stopped
-            return (next, nil)
+    private func stopped(_ id: UInt64, in state: inout State) {
+        guard var call = state.calls[id] else { return }
+        call.names.observation = .stopped
+        if let confirmation = call.pendingConfirmation {
+            call.names = confirmNames(call.names, turns: confirmation.turns, rows: confirmation.rows)
+            call.pendingConfirmation = nil
+        }
+        state.calls[id] = call
+    }
 
-        case let .rows(rows, now):
-            let evidence = publish(&next, now: now)
+    private func confirmNames(_ state: CallNamesState, turns: [DiarizedTurn], rows: [Row]) -> CallNamesState {
+        guard !state.spoken.isEmpty else { return state }
+        let evidence = CallEvidence(roster: state.roster, spoken: state.spoken.map {
+            .init(name: $0.name, start: $0.start, end: $0.end)
+        }, through: state.through)
+        return state.confirming(confirm(rows, turns, evidence))
+    }
+
+    private func reduce(_ state: CallNamesState, _ event: CallNamesUpdate) -> CallNamesState {
+        var next = state
+        switch event {
+        case let .recordingChanged(true, instant):
+            guard state.recordingStart == nil else { return state }
+            next.recordingStart = instant
+            return next
+
+        case .recordingChanged(false, _):
+            next.recordingStart = nil
+            return next
+
+        case let .rows(rows, instant):
+            guard let start = state.recordingStart else { return state }
+            let evidence = publish(&next, now: instant - start)
             let roster = evidence.members.map { Participant(id: $0.id, name: $0.name, isLocal: $0.isLocal) }
             let activities = evidence.intervals.map {
                 Activity(participantID: $0.memberID, start: $0.start, end: $0.end, uncertainty: AfterCallNames.uncertainty)
@@ -175,36 +319,31 @@ public struct CallNamesReducer: Sendable {
                     next.participantIDs[given] = "z\(next.participantOrder.count)"
                 }
             }
-            return (next, nil)
+            return next
 
-        case let .diarized(turns, rows):
-            // Without speaker turns or call-app evidence there is nothing to confirm: names stay tentative.
-            guard !turns.isEmpty, !state.spoken.isEmpty else { return (state, nil) }
-            let evidence = CallEvidence(roster: state.roster, spoken: state.spoken.map {
-                .init(name: $0.name, start: $0.start, end: $0.end)
-            }, through: state.through)
-            return (state.confirming(confirm(rows, turns, evidence)), nil)
+        case .diarized:
+            return state
 
         case let .browser(event):
             var browser = state.browser.observation
             browser.receive(event)
             next.browser = .init(browser)
-            guard next.browser != state.browser else { return (state, nil) }
+            guard next.browser != state.browser else { return state }
             publish(&next)
-            return (next, nil)
+            return next
 
         case let .browserConnected(id):
-            guard next.browserConnections.insert(id).inserted else { return (state, nil) }
+            guard next.browserConnections.insert(id).inserted else { return state }
             publish(&next)
-            return (next, nil)
+            return next
 
         case let .browserDisconnected(id):
-            guard next.browserConnections.remove(id) != nil else { return (state, nil) }
+            guard next.browserConnections.remove(id) != nil else { return state }
             publish(&next)
-            return (next, nil)
+            return next
 
         case .zoom(.lost, _):
-            return (state, nil)
+            return state
 
         case .zoom, .tick:
             var zoom = state.zoom.observation
@@ -227,16 +366,16 @@ public struct CallNamesReducer: Sendable {
                 case .lost: break
                 }
             case let .tick(now): zoom.tick(now: now)
-            case .rows, .diarized, .browser, .browserConnected, .browserDisconnected, .start, .stop, .observationStopped: break
+            case .recordingChanged, .rows, .diarized, .browser, .browserConnected, .browserDisconnected: break
             }
             next.zoom = .init(zoom)
             if next.zoom != state.zoom { publish(&next) }
-            return (next, nil)
+            return next
         }
     }
 
     @discardableResult
-    private func publish(_ state: inout State, now: Double? = nil) -> State.Evidence {
+    private func publish(_ state: inout CallNamesState, now: Double? = nil) -> CallNamesState.Evidence {
         let usesBrowser = !state.browser.members.isEmpty
         let evidence = usesBrowser ? state.browser : state.zoom
         state.roster = evidence.members.filter { !$0.isLocal }.map(\.name)

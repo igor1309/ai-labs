@@ -1,324 +1,224 @@
-import SplitRows
-
 /// Decides what to read without starting work or changing the recording.
 public struct ReadingReducer: Sendable {
 
     private let recordingTime: @Sendable (Double) -> String
     private let lineTime: @Sendable (Double) -> String
-    private let span: @Sendable (String, String) -> String
+    private let layout: @Sendable (inout ReadingLayout, ReadingLayout.Change) -> Void
 
     public init(
         recordingTime: @escaping @Sendable (Double) -> String,
         lineTime: @escaping @Sendable (Double) -> String,
-        span: @escaping @Sendable (String, String) -> String
+        layout: @escaping @Sendable (inout ReadingLayout, ReadingLayout.Change) -> Void
     ) {
 
         self.recordingTime = recordingTime
         self.lineTime = lineTime
-        self.span = span
-    }
-
-    public static func reduce(_ state: ReadingState, _ event: ReadingEvent) -> (ReadingState, Never?) {
-
-        Self(recordingTime: ReadingFormatting.recordingTime,
-             lineTime: ReadingFormatting.lineTime,
-             span: ReadingFormatting.span).reduce(state, event)
+        self.layout = layout
     }
 
     public func reduce(_ state: ReadingState, _ event: ReadingEvent) -> (ReadingState, Never?) {
-
-        var state = state
         switch event {
-        case let .recordingChanged(recording):
-            switch recording {
-            case .off:
-                let removesGaps = hasGaps(state)
-                let wasPrepared = state.rendered.prepared
-                state.recording = .off
-                state.problems = []
-                state.banners = []
-                prepareRows(&state)
-                if wasPrepared && removesGaps { rebuildLayout(&state) }
-            case let .on(elapsed): state.recording = .on(elapsed: recordingTime(elapsed))
+        case let .opened(id):
+            if let displayedCall = state.displayedCall, id <= displayedCall { return (state, nil) }
+            return (.init(displayedCall: id), nil)
+        case let .update(id, update):
+            guard id == state.displayedCall else { return (state, nil) }
+            return (reduce(state, update), nil)
+        }
+    }
+
+    private func reduce(_ state: ReadingState, _ update: ReadingUpdate) -> ReadingState {
+        let readingEnded = state.sessionEnded && state.feedsEnded
+        var state = state
+        switch update {
+        case .recordingChanged(.off, _):
+            let removesGaps = hasGaps(state)
+            let wasPrepared = state.rendered.prepared
+            state.recording = .off
+            state.recordingStart = nil
+            state.lastTick = nil
+            state.problems = []
+            state.banners = []
+            prepareRows(&state)
+            if wasPrepared && removesGaps { rebuildLayout(&state) }
+        case let .recordingChanged(.on, instant):
+            if state.recordingStart != nil {
+                advanceClock(&state, to: instant)
+                return state
             }
-        case let .problemsChanged(problems):
+            state.recordingStart = instant
+            state.recording = .on(elapsed: recordingTime(0))
+            if !state.captureBegan {
+                state.captureBegan = true
+                state.banners = banners(state)
+            }
+        case let .tick(instant):
+            advanceClock(&state, to: instant)
+            return state
+        case let .problemsChanged(kinds, callSilent, instant):
+            guard let start = state.recordingStart else { return state }
             let previous = state.problems
-            state.problems.removeAll { $0.kind == .callSilent && !problems.contains(where: { $0.kind == .callSilent }) }
-            for problem in problems where !state.problems.contains(where: { $0.kind == problem.kind }) {
-                state.problems.append(problem)
+            if !callSilent { state.problems.removeAll { $0.kind == .callSilent } }
+            let elapsed = max(0, instant - start)
+            let active = kinds + (callSilent ? [.callSilent] : [])
+            for kind in active where !state.problems.contains(where: { $0.kind == kind }) {
+                state.problems.append(.init(kind, began: elapsed))
             }
-            if state.problems != previous {
-                state.banners = state.problems.enumerated().sorted {
-                    $0.element.began == $1.element.began ? $0.offset > $1.offset : $0.element.began > $1.element.began
-                }.map { problem in
-                    state.banners.first { $0.kind == problem.element.kind }
-                        ?? .init(kind: problem.element.kind, time: lineTime(problem.element.began))
-                }
-            }
+            if state.captureBegan, state.problems != previous { state.banners = banners(state) }
             let wasPrepared = state.rendered.prepared
             prepareRows(&state)
-            if wasPrepared,
-               previous.filter({ $0.kind != .callSilent }) != state.problems.filter({ $0.kind != .callSilent }) {
+            if wasPrepared, gapProblems(previous) != gapProblems(state.problems) {
                 rebuildLayout(&state)
             }
         case let .textUpdated(update):
             prepareRows(&state)
             state.status = update.status
-            var needsLayout = false
-            var touchesSealedRows = false
-            var changed: Set<ReadingTextUpdate.Entry.ID> = []
-            var appended: [ReadingTextUpdate.Entry.ID] = []
-            // Only listening replaces the log; a status transition cannot
-            // take away what was read before recognition was interrupted.
-            switch update.status {
-            case .listening:
-                let present = Set(update.entries.map(\.id))
-                // Sealed entries are final: they stay, and updates no longer carry them.
-                let removed = state.text.tail.keys.filter { !present.contains($0) }
-                if !removed.isEmpty {
-                    needsLayout = true
-                    let gone = Set(removed)
-                    state.rendered.ordered.removeAll { gone.contains($0) }
-                    for id in removed {
-                        state.anchors[id] = nil
-                        state.text[id] = nil
-                        state.rendered.entries[id] = nil
-                        state.rendered.locations[id] = nil
-                    }
-                }
-            case .off, .gettingReady, .failed, .finished: break
+            let previousID = state.nextDisplayID
+            state.latestText = update.entries.map(\.id)
+            let mapped = state.lines.rows.sealed.count
+            layOut(&state, .text(update))
+            identifySpeakers(&state, ids: state.latestText, mapped: mapped)
+            if !state.lines.followsLive { state.lines.newBelow += state.nextDisplayID - previousID }
+        case .textEnded:
+            state.textEnded = true
+            if let places = state.pendingSpeakerPlaces {
+                state.pendingSpeakerPlaces = nil
+                placeSpeakers(places, in: &state)
             }
-            for entry in update.entries {
-                let previous = state.text[entry.id]
-                if state.anchors[entry.id] == nil {
-                    state.anchors[entry.id] = .init(id: state.nextDisplayID, start: entry.start)
-                    state.nextDisplayID += 1
-                    let index = insert(entry.id, into: &state)
-                    let isLast = index == state.rendered.ordered.count - 1
-                    if index < state.rendered.inSealedRows { touchesSealedRows = true }
-                    if isLast, !entry.writtenLater, !hasGaps(state) { appended.append(entry.id) } else { needsLayout = true }
-                    if !state.lines.followsLive { state.lines.newBelow += 1 }
-                }
-                guard previous != entry else { continue }
-                if previous?.writtenLater != entry.writtenLater
-                    || (entry.writtenLater && previous?.end != entry.end) {
-                    needsLayout = true
-                }
-                state.text[entry.id] = entry
-                state.rendered.entries[entry.id] = displayEntry(entry, in: &state)
-                changed.insert(entry.id)
-            }
-            let newlyFinal = update.entries.prefix(max(update.finalCount - update.from, 0)).map(\.id)
-            for id in newlyFinal {
-                state.anchors.seal(id)
-                state.text.seal(id)
-                state.rendered.entries.seal(id)
-            }
-            if needsLayout {
-                rebuildLayout(&state, keepingSealedRows: !touchesSealedRows && !hasGaps(state))
-            } else {
-                for id in appended {
-                    state.rendered.locations[id] = .init(row: state.lines.rows.count, lateEntry: nil)
-                    state.lines.rows.append(.entry(state.rendered.entries[id]!))
-                }
-                for id in changed where !appended.contains(id) { replaceRow(id, in: &state) }
-                for id in newlyFinal { state.rendered.locations.seal(id) }
-                sealRows(&state)
-            }
+        case .sessionEnded:
+            state.sessionEnded = true
+        case .feedsEnded:
+            state.feedsEnded = true
         case let .hold(held):
+            guard !readingEnded else { return state }
             if !state.lines.holds.contains(held) { state.lines.holds.append(held) }
         case let .letGo(held):
+            guard !readingEnded else { return state }
             state.lines.holds.removeAll { $0 == held }
         case let .scrolled(atBottom, interaction):
+            guard !readingEnded else { return state }
             if let interaction { state.scrollAcknowledgement = interaction }
             state.lines.followsLive = atBottom
             if atBottom { state.lines.newBelow = 0 }
-        case let .namesConfirmed(names):
-            func confirm(_ entries: inout [ReadingTextUpdate.Entry.ID: ReadingState.Entry]) {
-                for (id, entry) in entries where id.speaker == .theirs {
-                    var entry = entry
-                    entry.name = names[id.localID]
-                    entry.nameConfirmed = entry.name != nil
-                    entries[id] = entry
-                }
-            }
-            confirm(&state.rendered.entries.sealed)
-            confirm(&state.rendered.entries.tail)
-            if state.rendered.prepared { rebuildLayout(&state) }
+        case let .namesChanged(names, confirmed):
+            guard names != state.names || confirmed != state.namesConfirmed else { break }
+            state.names = names
+            state.namesConfirmed = confirmed
+            let ids = confirmed ? Array(state.rendered.entries.sealed.keys) + Array(state.rendered.entries.tail.keys) : state.latestText
+            identifySpeakers(&state, ids: ids, mapped: state.lines.rows.sealed.count)
         case let .speakersFound(places):
-            func place(_ entries: inout [ReadingTextUpdate.Entry.ID: ReadingState.Entry]) {
-                for (id, entry) in entries where id.speaker == .theirs {
-                    var entry = entry
-                    entry.remoteSpeaker = places[id.localID]
-                    entries[id] = entry
-                }
+            if state.textEnded {
+                placeSpeakers(places, in: &state)
+            } else {
+                state.pendingSpeakerPlaces = places
             }
-            place(&state.rendered.entries.sealed)
-            place(&state.rendered.entries.tail)
-            if state.rendered.prepared { rebuildLayout(&state) }
         case .jumpToLive:
+            guard !readingEnded else { return state }
             state.lines.followsLive = true
             state.lines.newBelow = 0
         }
+        state.log = state.captureBegan ? log(state) : .empty
+        return state
+    }
+
+    private func placeSpeakers(_ places: [Int: Int], in state: inout ReadingState) {
+        guard state.speakerPlaces != places else { return }
+        state.speakerPlaces = places
+        for id in Array(state.rendered.entries.sealed.keys) + Array(state.rendered.entries.tail.keys) {
+            if let entry = state.rendered.entries[id] { state.rendered.entries[id] = identified(entry, id, in: state) }
+        }
+        if state.rendered.prepared { rebuildLayout(&state) }
+    }
+
+    private func advanceClock(_ state: inout ReadingState, to instant: Double) {
+        guard let start = state.recordingStart else { return }
+        let elapsed = instant - start
+        let previous = (state.lastTick ?? start) - start
+        guard elapsed.rounded(.down) > previous.rounded(.down) else { return }
+        state.lastTick = instant
+        state.recording = .on(elapsed: recordingTime(elapsed))
+    }
+
+    private func log(_ state: ReadingState) -> ReadingState.Log {
         switch state.status {
         case .off:
             let kept = state.lines.rows.isEmpty && state.lines.holds.isEmpty ? nil : state.lines
-            state.log = state.recording == .off ? kept.map(ReadingState.Log.lines) ?? .empty : .liveTextOff(kept: kept)
+            return state.recording == .off ? kept.map(ReadingState.Log.lines) ?? .empty : .liveTextOff(kept: kept)
         case .gettingReady:
-            state.log = state.banners.isEmpty ? .preparing(holds: state.lines.holds) : .lines(state.lines)
+            return state.banners.isEmpty ? .preparing(holds: state.lines.holds) : .lines(state.lines)
         case .listening, .failed, .finished:
-            state.log = .lines(state.lines)
+            return .lines(state.lines)
         }
-        return (state, nil)
     }
 
-    private func prepareRows(_ state: inout ReadingState) {
-
-        guard !state.rendered.prepared else { return }
-        state.rendered.prepared = true
-        for text in state.text.values {
-            insert(text.id, into: &state)
-            state.rendered.entries[text.id] = displayEntry(text, in: &state)
+    /// The problems' banners newest first, each keeping the time it first showed.
+    private func banners(_ state: ReadingState) -> [ReadingState.Banner] {
+        state.problems.enumerated().sorted {
+            $0.element.began == $1.element.began ? $0.offset > $1.offset : $0.element.began > $1.element.began
+        }.map { problem in
+            state.banners.first { $0.kind == problem.element.kind }
+                ?? .init(kind: problem.element.kind, time: lineTime(problem.element.began))
         }
-        rebuildLayout(&state)
     }
 
-    /// Places the entry in call order, returning where.
-    @discardableResult
-    private func insert(_ id: ReadingTextUpdate.Entry.ID, into state: inout ReadingState) -> Int {
+    /// A remote entry's name, its confirmation and its speaker place, from the latest sets.
+    private func identified(_ entry: ReadingState.Entry, _ id: ReadingTextUpdate.Entry.ID, in state: ReadingState) -> ReadingState.Entry {
+        guard id.speaker == .theirs else { return entry }
+        var entry = entry
+        entry.name = state.names[id.localID]
+        entry.nameConfirmed = state.namesConfirmed && entry.name != nil
+        entry.remoteSpeaker = state.speakerPlaces[id.localID]
+        return entry
+    }
 
-        let anchor = state.anchors[id]!
-        var lower = 0
-        var upper = state.rendered.ordered.count
-        while lower < upper {
-            let middle = lower + (upper - lower) / 2
-            let other = state.anchors[state.rendered.ordered[middle]]!
-            if other.start == anchor.start ? other.id < anchor.id : other.start < anchor.start {
-                lower = middle + 1
+    /// Identifies the given entries in place. Rows below `mapped` were sealed before
+    /// this event and the panel may have mapped them, so changing one remaps that prefix;
+    /// rows sealed by this event are new to the panel.
+    private func identifySpeakers(_ state: inout ReadingState, ids: [ReadingTextUpdate.Entry.ID], mapped: Int) {
+        for id in ids where id.speaker == .theirs {
+            guard let current = state.rendered.entries[id] else { continue }
+            let entry = identified(current, id, in: state)
+            guard current != entry else { continue }
+            state.rendered.entries[id] = entry
+            guard let location = state.rendered.locations[id] else { continue }
+            if let index = location.lateEntry, case var .late(group) = state.lines.rows[location.row] {
+                group.entries[index] = entry
+                state.lines.rows[location.row] = .late(group)
             } else {
-                upper = middle
+                state.lines.rows[location.row] = .entry(entry)
             }
+            if location.row < mapped { state.lines.layout += 1 }
         }
-        state.rendered.ordered.insert(id, at: lower)
-        return lower
     }
 
     private func hasGaps(_ state: ReadingState) -> Bool {
-
-        state.problems.contains { $0.kind != .callSilent }
+        !gapProblems(state.problems).isEmpty
     }
 
-    /// Rows before the first that still holds a changeable entry cannot change.
-    /// A late group stays open at the end, since the next late entry joins it.
-    private func sealRows(_ state: inout ReadingState) {
-
-        let rows = state.lines.rows
-        var end = state.rendered.locations.tail.values.map(\.row).min() ?? rows.count
-        while end > rows.sealed.count, case .late = rows[end - 1] { end -= 1 }
-        guard end > rows.sealed.count else { return }
-        for index in rows.sealed.count..<end {
-            switch rows[index] {
-            case .entry: state.rendered.inSealedRows += 1
-            case let .late(group): state.rendered.inSealedRows += group.entries.count
-            case .gap: break
-            }
-        }
-        state.lines.rows.seal(upTo: end)
+    /// The problems that leave a gap in the rows: call silence adds only a banner.
+    private func gapProblems(_ problems: [ReadingProblem]) -> [ReadingProblem] {
+        problems.filter { $0.kind != .callSilent }
     }
 
-    private func displayEntry(
-        _ text: ReadingTextUpdate.Entry, in state: inout ReadingState
-    ) -> ReadingState.Entry {
-
-        let anchor = state.anchors[text.id]!
-        return .init(id: anchor.id, time: lineTime(anchor.start), speaker: text.id.speaker,
-                     settled: text.settled, pending: text.pending, name: text.name)
+    private func prepareRows(_ state: inout ReadingState) {
+        guard !state.rendered.prepared else { return }
+        layOut(&state, .prepare)
     }
 
-    private func replaceRow(_ id: ReadingTextUpdate.Entry.ID, in state: inout ReadingState) {
-
-        let location = state.rendered.locations[id]!
-        let entry = state.rendered.entries[id]!
-        if let index = location.lateEntry, case let .late(group) = state.lines.rows[location.row] {
-            var entries = group.entries
-            entries[index] = entry
-            state.lines.rows[location.row] = .late(.init(span: group.span, entries: entries))
-        } else {
-            state.lines.rows[location.row] = .entry(entry)
-        }
+    private func rebuildLayout(_ state: inout ReadingState) {
+        layOut(&state, .rebuild)
     }
 
-    /// Lays the rows out again. Keeping the sealed rows needs nothing new to fall
-    /// among them, and no gaps, which a problem can place anywhere.
-    private func rebuildLayout(_ state: inout ReadingState, keepingSealedRows: Bool = false) {
-
-        let kept = keepingSealedRows ? state.lines.rows.sealed : []
-        var result: [ReadingState.Row] = []
-        var late: [ReadingState.Entry] = []
-        var lateIDs: [ReadingTextUpdate.Entry.ID] = []
-        if keepingSealedRows {
-            state.rendered.locations.removeTail()
-        } else {
-            state.rendered.locations.removeAll()
-            state.rendered.inSealedRows = 0
-            state.lines.layout += 1
-        }
-        func locate(_ id: ReadingTextUpdate.Entry.ID, _ location: ReadingState.Rendered.Location) {
-
-            if state.text.isSealed(id) {
-                if state.rendered.locations[id] != location { state.rendered.locations.setSealed(id, location) }
-            } else {
-                state.rendered.locations[id] = location
-            }
-        }
-        var lateStart = 0.0
-        var lateEnd = 0.0
-        func flushLate() {
-
-            guard !late.isEmpty else { return }
-            for (index, id) in lateIDs.enumerated() {
-                locate(id, .init(row: kept.count + result.count, lateEntry: index))
-            }
-            lateIDs = []
-            result.append(.late(.init(span: span(lineTime(lateStart), lineTime(lateEnd)), entries: late)))
-            late = []
-        }
-        let gaps = state.problems.enumerated().filter { $0.element.kind != .callSilent }.sorted {
-            $0.element.began == $1.element.began ? $0.offset < $1.offset : $0.element.began < $1.element.began
-        }.map(\.element)
-        var gapIndex = 0
-        func appendGap(_ problem: ReadingProblem) {
-
-            flushLate()
-            let speaker: ReadingState.Speaker = switch problem.kind {
-            case .callAudio, .callSilent: .theirs
-            case .microphone: .mine
-            case let .diskFull(side): side
-            }
-            result.append(.gap(.init(speaker: speaker, time: lineTime(problem.began), kind: problem.kind)))
-        }
-        for id in state.rendered.ordered[state.rendered.inSealedRows...] {
-            let text = state.text[id]!
-            let anchor = state.anchors[id]!
-            while gapIndex < gaps.count, gaps[gapIndex].began <= anchor.start {
-                appendGap(gaps[gapIndex])
-                gapIndex += 1
-            }
-            let entry = state.rendered.entries[id]!
-            if text.writtenLater {
-                if late.isEmpty { lateStart = anchor.start; lateEnd = text.end }
-                lateEnd = max(lateEnd, text.end)
-                late.append(entry)
-                lateIDs.append(id)
-            } else {
-                flushLate()
-                locate(id, .init(row: kept.count + result.count, lateEntry: nil))
-                result.append(.entry(entry))
-            }
-        }
-        flushLate()
-        for problem in gaps.dropFirst(gapIndex) { appendGap(problem) }
-        state.lines.rows = .init(sealed: kept, tail: result)
-        sealRows(&state)
+    private func layOut(_ state: inout ReadingState, _ change: ReadingLayout.Change) {
+        var value = ReadingLayout(anchors: state.anchors, nextDisplayID: state.nextDisplayID,
+                                  text: state.text, rendered: state.rendered, rows: state.lines.rows,
+                                  revision: state.lines.layout, problems: gapProblems(state.problems))
+        layout(&value, change)
+        state.anchors = value.anchors
+        state.nextDisplayID = value.nextDisplayID
+        state.text = value.text
+        state.rendered = value.rendered
+        state.lines.rows = value.rows
+        state.lines.layout = value.revision
     }
 }

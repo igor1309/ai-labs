@@ -1,10 +1,11 @@
 /// Finds a closed call's remote speakers and saves them in its transcript.
-public protocol TranscriptDiarizing<Raw, Far>: Sendable {
+public protocol TranscriptDiarizing<Raw, Names, Far>: Sendable {
     associatedtype Raw: Equatable & Sendable
+    associatedtype Names: Equatable & Sendable
     associatedtype Far: Equatable & Sendable
     /// Saves the far side given to its speakers with `outcomes` plus the split's own, and
     /// returns what it saved and by which diarizer; nil when the pass saved nothing.
-    func diarize(call: String, _ raw: Raw, outcomes: FinishingOutcomes) async -> SavedDiarization<Far>?
+    func diarize(call: String, _ raw: Raw, evidence: Names, outcomes: FinishingOutcomes) async -> SavedDiarization<Far>?
 }
 
 /// Hears a closed call's microphone side again from audio cleaned of the far side's bleed.
@@ -41,13 +42,13 @@ public struct TranscriptFinalizationEffectHandler<Raw: Equatable & Sendable, Nam
     public typealias Event = TranscriptFinalizationEvent<Raw, Names, Far, Heard>
     public typealias Effect = TranscriptFinalizationEffect<Raw, Names, Far, Heard, Entry>
 
-    private let diarizing: any TranscriptDiarizing<Raw, Far>
+    private let diarizing: any TranscriptDiarizing<Raw, Names, Far>
     private let cleanup: any MicrophoneCleanup<Raw, Far, Heard>
     private let replacement: any TranscriptReplacement<Raw, Names, Far, Heard>
     private let finals: any FinalTranscripts<Entry>
 
     public init(
-        diarizing: any TranscriptDiarizing<Raw, Far>, cleanup: any MicrophoneCleanup<Raw, Far, Heard>,
+        diarizing: any TranscriptDiarizing<Raw, Names, Far>, cleanup: any MicrophoneCleanup<Raw, Far, Heard>,
         replacement: any TranscriptReplacement<Raw, Names, Far, Heard>, finals: any FinalTranscripts<Entry>
     ) {
         self.diarizing = diarizing; self.cleanup = cleanup; self.replacement = replacement; self.finals = finals
@@ -66,8 +67,8 @@ public struct TranscriptFinalizationEffectHandler<Raw: Equatable & Sendable, Nam
 
     private func handle(_ effect: Effect, output: AsyncStream<Event>.Continuation) async {
         switch effect {
-        case let .diarize(call, raw, outcomes):
-            output.yield(.diarized(call: call, await diarizing.diarize(call: call, raw, outcomes: outcomes)))
+        case let .diarize(call, raw, evidence, outcomes):
+            output.yield(.diarized(call: call, await diarizing.diarize(call: call, raw, evidence: evidence, outcomes: outcomes)))
         case let .clean(call, raw, far):
             output.yield(.cleaned(call: call, await cleanup.clean(call: call, raw, far: far)))
         case let .commit(call, raw, names, far, heard, outcomes):
@@ -80,8 +81,8 @@ public struct TranscriptFinalizationEffectHandler<Raw: Equatable & Sendable, Nam
         case let .publish(transcripts):
             await finals.publish(transcripts)
             output.yield(.published(calls: Set(transcripts.keys)))
-        case let .stopCleaning(commits):
-            for call in commits.keys.sorted() { await cleanup.stop(call: call) }
+        case let .commitOnShutdown(stoppingCleanup, commits):
+            for call in stoppingCleanup.sorted() { await cleanup.stop(call: call) }
             for (call, commit) in commits.sorted(by: { $0.key < $1.key }) {
                 do {
                     try await replacement.replace(call: call, commit.raw, names: commit.names, far: commit.far,

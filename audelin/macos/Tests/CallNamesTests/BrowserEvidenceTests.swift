@@ -25,7 +25,7 @@ struct BrowserEvidenceTests {
 
     @Test func browserMembersWinForMatchingAndLocalMembersStayLocal() {
         let (sut, spy) = makeSUT(stubs: ["Browser answer"])
-        assert(makeBrowserState(), .rows([makeRow()], now: 20), using: sut) {
+        assert(makeBrowserState(), .rows([makeRow()], now: 120), using: sut) {
             $0.rowNames[1] = "Browser answer"
             $0.participantIDs["Browser answer"] = "z1"; $0.participantOrder = ["Browser answer"]
         }
@@ -51,7 +51,7 @@ struct BrowserEvidenceTests {
             $0.browser.members = []; $0.browser.sequence = 4; $0.browser.through = 7
             $0.roster = ["Anna"]; $0.spoken = [.init(name: "Anna", start: 1, end: nil)]; $0.through = 5
         }
-        assert(ended, .rows([makeRow()], now: 20), using: sut) {
+        assert(ended, .rows([makeRow()], now: 120), using: sut) {
             $0.rowNames[1] = "Zoom answer"
             $0.participantIDs["Zoom answer"] = "z1"; $0.participantOrder = ["Zoom answer"]
         }
@@ -62,18 +62,18 @@ struct BrowserEvidenceTests {
     }
 
     @Test(arguments: [Set<Int>(), [4], [4, 5]])
-    func onlyOpenBrowserConnectionsRaiseThroughAtNaming(connections: Set<Int>) {
+    func onlyOpenBrowserConnectionsRaiseThroughUsingTheRowInstant(connections: Set<Int>) {
         let (sut, spy) = makeSUT()
         let state = makeBrowserState { $0.browserConnections = connections }
         let through: Double = connections.isEmpty ? 6 : 20
-        assert(state, .rows([makeRow()], now: 20), using: sut) { $0.through = through }
+        assert(state, .rows([makeRow()], now: 120), using: sut) { $0.through = through }
         #expect(spy.requests == [makeBrowserRequest(through: through)])
     }
 
     @Test func nowCannotLowerBrowserKnowledge() {
         let (sut, spy) = makeSUT()
         let state = makeBrowserState { $0.browserConnections = [4] }
-        assert(state, .rows([makeRow()], now: 3), using: sut)
+        assert(state, .rows([makeRow()], now: 103), using: sut)
         #expect(spy.requests == [makeBrowserRequest()])
     }
 
@@ -84,9 +84,9 @@ struct BrowserEvidenceTests {
         assert(connected, .browserConnected(4), using: sut)
         let two = assert(connected, .browserConnected(5), using: sut) { $0.browserConnections = [4, 5] }
         let one = assert(two, .browserDisconnected(4), using: sut) { $0.browserConnections = [5] }
-        assert(one, .rows([makeRow()], now: 20), using: sut) { $0.through = 20 }
+        assert(one, .rows([makeRow()], now: 120), using: sut) { $0.through = 20 }
         let closed = assert(one, .browserDisconnected(5), using: sut) { $0.browserConnections = [] }
-        assert(closed, .rows([makeRow()], now: 20), using: sut)
+        assert(closed, .rows([makeRow()], now: 120), using: sut)
         #expect(spy.requests == [makeBrowserRequest(through: 20), makeBrowserRequest()])
     }
 
@@ -101,7 +101,7 @@ struct BrowserEvidenceTests {
     @Test func namingWatermarkDoesNotRejectALaterBrowserObservation() {
         let (sut, spy) = makeSUT()
         let state = makeBrowserState { $0.browserConnections = [4] }
-        let named = assert(state, .rows([makeRow()], now: 20), using: sut) { $0.through = 20 }
+        let named = assert(state, .rows([makeRow()], now: 120), using: sut) { $0.through = 20 }
         assert(named, .browser(.init(epoch: 4, sequence: 4, time: 7, kind: .speaking(memberID: "remote", false))), using: sut) {
             $0.browser.intervals[0].end = 7; $0.browser.sequence = 4; $0.browser.through = 7
             $0.spoken[0].end = 7; $0.through = 7
@@ -124,7 +124,7 @@ struct BrowserEvidenceTests {
             $0.browser.epoch = 4; $0.browser.sequence = 1; $0.browser.through = 2; $0.browser.health = .healthy
             $0.roster = []; $0.spoken = []; $0.through = 2
         }
-        assert(state, .rows([makeRow()], now: 20), using: sut)
+        assert(state, .rows([makeRow()], now: 120), using: sut)
         #expect(spy.requests == [.init(start: 1, end: 5,
                                       roster: [.init(id: "self", name: "Me", isLocal: true)],
                                       activities: [], through: 2)])

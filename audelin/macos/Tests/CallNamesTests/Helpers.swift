@@ -4,7 +4,6 @@ import Synchronization
 import Testing
 
 typealias State = CallNamesState
-typealias Event = CallNamesEvent
 typealias Reducer = CallNamesReducer
 
 func makeState(_ update: (inout State) -> Void = { _ in }) -> State {
@@ -15,6 +14,7 @@ func makeState(_ update: (inout State) -> Void = { _ in }) -> State {
 
 func makeObservedState(_ update: (inout State) -> Void = { _ in }) -> State {
     makeState {
+        $0.recordingStart = 100
         $0.roster = ["Anna"]
         $0.knownNames = ["Anna"]
         $0.spoken = [.init(name: "Anna", start: 1, end: nil)]
@@ -89,12 +89,31 @@ func makeConfirmingSUT(stubs: [String?] = [], confirmed: [Int: String] = [:]) ->
 
 @discardableResult
 func assert(
-    _ state: State, _ event: Event, using sut: Reducer, delivering effect: CallNamesEffect? = nil,
+    _ state: State, _ event: CallNamesUpdate, using sut: Reducer,
     _ update: (inout State) -> Void = { _ in }, sourceLocation: SourceLocation = #_sourceLocation
 ) -> State {
+    let model = makeModel(state)
+    let next = assert(model, .update(1, event), using: sut, {
+        if var names = $0.calls[1]?.names {
+            update(&names)
+            $0.calls[1]?.names = names
+        }
+    }, sourceLocation: sourceLocation)
+    return next.calls[1]!.names
+}
+
+func makeModel(_ names: State, watch: CallAppWatch = .init(sources: [])) -> CallNamesModelState {
+    .init(calls: [1: .init(names: names, watch: watch)])
+}
+
+@discardableResult
+func assert(
+    _ state: CallNamesModelState, _ event: CallNamesEvent, using sut: Reducer, delivering effect: CallNamesEffect? = nil,
+    _ update: (inout CallNamesModelState) -> Void = { _ in }, sourceLocation: SourceLocation = #_sourceLocation
+) -> CallNamesModelState {
     var expected = state
     update(&expected)
-    let (next, delivered): (State, CallNamesEffect?) = sut.reduce(state, event)
+    let (next, delivered) = sut.reduce(state, event)
     #expect(next == expected, "\(state) + \(event)", sourceLocation: sourceLocation)
     #expect(delivered == effect, "\(state) + \(event)", sourceLocation: sourceLocation)
     return next

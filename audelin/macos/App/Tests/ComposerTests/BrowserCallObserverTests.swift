@@ -11,7 +11,7 @@ struct BrowserCallObserverTests {
 
     @Test func withoutAChannelNothingIsReportedAndTheStreamEnds() async {
         let sut = BrowserCallObserver(openBrowser: { nil }, clock: { 1 }, monotonic: { 0 }, sleep: { _ in }, log: FixtureLog())
-        var events: [CallNamesEvent] = []
+        var events: [CallNamesUpdate] = []
         for await event in sut.observe() { events.append(event) }
         #expect(events.isEmpty)
     }
@@ -113,7 +113,7 @@ struct BrowserCallObserverTests {
         let sut = BrowserCallObserver(openBrowser: { channel.open() }, clock: { 1 }, monotonic: { 0 }, sleep: { _ in }, log: FixtureLog())
         let events = sut.observe()
         await sut.stop()
-        var delivered: [CallNamesEvent] = []
+        var delivered: [CallNamesUpdate] = []
         for await event in events { delivered.append(event) }
         #expect(delivered.isEmpty)
         #expect(channel.stops == 1)

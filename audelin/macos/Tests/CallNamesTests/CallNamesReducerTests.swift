@@ -119,7 +119,7 @@ struct CallNamesReducerTests {
             $0.spoken.append(.init(name: "Boris", start: 0, end: 1))
             $0.zoom.intervals.append(.init(memberID: "Boris", start: 0, end: 1))
         }
-        assert(state, .rows([makeRow(12, start: 2, end: 4)], now: 100), using: sut) {
+        assert(state, .rows([makeRow(12, start: 2, end: 4)], now: 200), using: sut) {
             $0.rowNames[12] = "Stub"
             $0.participantIDs["Stub"] = "z1"; $0.participantOrder = ["Stub"]
         }
@@ -132,11 +132,11 @@ struct CallNamesReducerTests {
 
     @Test func idsFollowAscendingRowIDWithinABatchAndFirstSeenNamesAcrossBatches() {
         let (sut, spy) = makeSUT(stubs: ["Boris", "Anna", "Anna", "Boris"])
-        let first = assert(makeObservedState(), .rows([makeRow(9, start: 9, end: 13), makeRow(3, start: 3, end: 7)], now: 100), using: sut) {
+        let first = assert(makeObservedState(), .rows([makeRow(9, start: 9, end: 13), makeRow(3, start: 3, end: 7)], now: 200), using: sut) {
             $0.rowNames = [3: "Boris", 9: "Anna"]
             $0.participantIDs = ["Boris": "z1", "Anna": "z2"]; $0.participantOrder = ["Boris", "Anna"]
         }
-        assert(first, .rows([makeRow(10, start: 10, end: 14), makeRow(1, start: 1)], now: 100), using: sut) {
+        assert(first, .rows([makeRow(10, start: 10, end: 14), makeRow(1, start: 1)], now: 200), using: sut) {
             $0.rowNames[1] = "Anna"; $0.rowNames[10] = "Boris"
         }
         #expect(spy.requests.map(\.start) == [3, 9, 1, 10])
@@ -144,7 +144,7 @@ struct CallNamesReducerTests {
 
     @Test func namedRowsNeverRequestAnotherNameEvenWithDifferentTimingOrEvidence() {
         let (sut, spy) = makeSUT(stubs: ["Anna", "Boris"])
-        let named = assert(makeObservedState(), .rows([makeRow()], now: 100), using: sut) {
+        let named = assert(makeObservedState(), .rows([makeRow()], now: 200), using: sut) {
             $0.rowNames[1] = "Anna"; $0.participantIDs["Anna"] = "z1"; $0.participantOrder = ["Anna"]
         }
         var changed = named
@@ -152,19 +152,19 @@ struct CallNamesReducerTests {
         changed.zoom.members = [.init(id: "Boris", name: "Boris")]
         changed.zoom.intervals = [.init(memberID: "Boris", start: 5, end: 15)]
         changed.zoom.through = 15
-        assert(changed, .rows([makeRow(start: 5, end: 15)], now: 100), using: sut)
+        assert(changed, .rows([makeRow(start: 5, end: 15)], now: 200), using: sut)
         #expect(spy.requests.count == 1)
     }
 
     @Test func unnamedRowsStayUnnamedAndCanBeRetriedWithLaterEvidence() {
         let (sut, spy) = makeSUT(stubs: [nil, "Anna"])
         let state = makeObservedState()
-        assert(state, .rows([makeRow()], now: 100), using: sut)
+        assert(state, .rows([makeRow()], now: 200), using: sut)
         let later = assert(state, .zoom(.observed, at: 6), using: sut) {
             $0.through = 6; $0.sequence = 4; $0.zoom.sequence = 4
             $0.zoom.through = 6
         }
-        assert(later, .rows([makeRow()], now: 100), using: sut) {
+        assert(later, .rows([makeRow()], now: 200), using: sut) {
             $0.rowNames[1] = "Anna"; $0.participantIDs["Anna"] = "z1"; $0.participantOrder = ["Anna"]
         }
         #expect(spy.requests.map(\.through) == [5, 6])
@@ -175,14 +175,14 @@ struct CallNamesReducerTests {
         let state = makeObservedState {
             $0.rowNames[1] = "Anna"; $0.participantIDs["Anna"] = "z1"; $0.participantOrder = ["Anna"]
         }
-        assert(state, .rows([], now: 100), using: sut)
-        assert(state, .rows([makeRow(), makeRow()], now: 100), using: sut)
+        assert(state, .rows([], now: 200), using: sut)
+        assert(state, .rows([makeRow(), makeRow()], now: 200), using: sut)
         #expect(spy.requests.isEmpty)
     }
 
     @Test func duplicateRowsUseTheirFirstGivenName() {
         let (sut, spy) = makeSUT(stubs: ["Anna", "Boris"])
-        assert(makeObservedState(), .rows([makeRow(), makeRow()], now: 100), using: sut) {
+        assert(makeObservedState(), .rows([makeRow(), makeRow()], now: 200), using: sut) {
             $0.rowNames[1] = "Anna"; $0.participantIDs["Anna"] = "z1"; $0.participantOrder = ["Anna"]
         }
         #expect(spy.requests.count == 1)
