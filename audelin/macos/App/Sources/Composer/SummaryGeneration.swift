@@ -24,7 +24,7 @@ struct SummaryGeneration: SummariesGeneration {
                 try await fallback(job) { configuration in
                     let mapping = identities.map { "\($0.label): \($0.name) (\($0.time): \($0.quote))" }.joined(separator: "\n")
                     let generator = NotesGeneration.Generator(text: RuntimeTextAttempt(runtime: runtime, configuration: configuration))
-                    return try await generator.notes(lines: lines(job), evidence: mapping, template: template)
+                    return try await generator.notes(lines: lines(job), userName: nil, evidence: mapping, template: template)
                 }
             }
         } catch {
