@@ -152,6 +152,20 @@ struct ReadingFinalCursorTests {
         #expect(panelState(russianPanel, second, rows: &cache) == panelState(russianPanel, second))
     }
 
+    /// Names and speaker places that arrive after rows sealed: the cached rows show what a fresh mapping shows.
+    @Test(arguments: [false, true])
+    func renamesAndSpeakerPlacesAfterSealingMatchAFreshMapping(confirmed: Bool) {
+
+        let updates: [Int: ReadingUpdate] = [
+            5: .namesChanged([1: "Anna", 3: "Boris"], confirmed: false),
+            6: .speakersFound([1: 0, 3: 1, 5: 0]),
+            7: .namesChanged([1: "Anna", 3: "Vera", 5: "Gleb"], confirmed: confirmed),
+        ]
+        for step in wholeAndCursor(later: false, between: { updates[$0] }) {
+            #expect(step.panel == panelState(russianPanel, step.cursor))
+        }
+    }
+
     @Test func aGapAfterEntriesWentFinalKeepsItsPlace() {
 
         let problem = ReadingUpdate.problemsChanged([.microphone], callSilent: false, at: 120)

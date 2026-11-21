@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-21
+
+- LAB-1721: The panel keeps showing a finished call until the next recording opens, and that call's late names and confirmations still reach it. A call's names are confirmed after the next call has started, and quitting while a call waits for its speakers no longer starts speaker work.
+
 ## 2026-11-20
 
 - LAB-1719: A call whose start finds call audio unavailable is no longer lost: Audelin tries again every five seconds while the call is on and starts recording as soon as call audio is heard. Every failed call-audio check is logged with its reason.

@@ -72,7 +72,6 @@ The code does not yet follow rules 4 and 5 everywhere. Each item below
 becomes part of a machine's state, or is shown to be only mapping:
 
 - The menu runs panel presence's reducer and its delay by hand.
-- The composer holds `NewestText` across events.
 
 No check yet fails on an import that a target's kind does not allow.
 
