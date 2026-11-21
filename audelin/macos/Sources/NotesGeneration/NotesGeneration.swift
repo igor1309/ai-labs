@@ -14,6 +14,17 @@ public struct Template: Equatable, Sendable {
     }
 }
 
+/// One transcript line; `isUser` marks the user's own lines.
+public struct Line: Equatable, Sendable {
+    public var time: String
+    public var label: String
+    public var text: String
+    public var isUser: Bool
+    public init(time: String, label: String, text: String, isUser: Bool) {
+        self.time = time; self.label = label; self.text = text; self.isUser = isUser
+    }
+}
+
 public protocol TextAttempt: Sendable {
     func generate(_ request: String) async throws -> String
 }
@@ -36,17 +47,26 @@ public struct Generator: Sendable {
     from agreements, cause identified from fix completed, and MR available/opened from reviewed/merged.
     Accepted speaker evidence names a speaker from the conversation; it is a suggestion, so at its first use mark it as inferred, e.g. "Анна (inferred)". Do not manufacture a decision or action.
     """
-    public static func request(transcript: String, evidence: String, template: Template) -> String {
+    public static func request(lines: [Line], userName: String?, evidence: String, template: Template) -> String {
+        let transcript = transcript(lines: lines, userName: userName)
+        let recorder = userName.map { "\nThe owner, \($0), recorded this call; lines labelled \"\($0)\" are theirs, and every other label is someone else." } ?? ""
         let headings = template.headings.map { variant in
             variant.map { "## " + $0.name + ($0.required ? " (required)" : " (optional)") }.joined(separator: "\n")
         }.joined(separator: "\nOR, in the transcript's language:\n")
-        return faithfulness + "\nTEMPLATE INSTRUCTIONS:\n" + template.instructions
+        return faithfulness + "\nTEMPLATE INSTRUCTIONS:\n" + template.instructions + recorder
             + "\nUse one complete heading set, in this order, without mixing sets:\n" + headings
             + "\nEvery present section must be nonempty. Return Markdown only, starting with the first heading, without a preamble or enclosing code fence."
             + "\nACCEPTED EVIDENCE:\n" + evidence + "\nTRANSCRIPT DATA:\n" + transcript
     }
-    public func notes(transcript: String, evidence: String, template: Template) async throws -> String {
-        try Self.validate(try await text.generate(Self.request(transcript: transcript, evidence: evidence, template: template)), template: template)
+    public func notes(lines: [Line], userName: String?, evidence: String, template: Template) async throws -> String {
+        try Self.validate(try await text.generate(Self.request(lines: lines, userName: userName, evidence: evidence, template: template)), template: template)
+    }
+    /// The transcript lines the notes request carries, for any other request that reads them.
+    public static func transcript(lines: [Line], userName: String?) -> String {
+        lines.map { "[\($0.time)] \(label($0, userName)): \($0.text)" }.joined(separator: "\n")
+    }
+    private static func label(_ line: Line, _ userName: String?) -> String {
+        line.isUser ? userName ?? line.label : line.label
     }
 
     /// Checks structure, not the truth of the generated claims.

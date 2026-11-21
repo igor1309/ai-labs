@@ -149,6 +149,8 @@ public struct ComposerBoundary: Sendable {
     /// Disk operations and the shared admission boundary for kept calls.
     public var callsDisk: CallsDisk = .system
     public var callsOperation: CallsStorageGuard = .serial()
+    /// The Mac account's full name, read when a run's notes are prepared.
+    public var accountName: @Sendable () -> String
     /// Moves a deleted call's folder to the Trash.
     public var trash: @Sendable (URL) throws -> Void
 
@@ -160,7 +162,9 @@ public struct ComposerBoundary: Sendable {
                 bleedCleaning: any MicrophoneCleaning<CleanupRecording, [Float]>,
                 bleedHearing: any CleanedHearing<[Float], [TranscriptSegment]>, diarizer: any TranscriptDiarizer, transcripts: any TranscriptStorage,
                 preferredLanguages: @escaping @Sendable () -> [String] = { Locale.preferredLanguages },
-                browser: @escaping @Sendable () -> BrowserChannel? = { nil }) {
+                browser: @escaping @Sendable () -> BrowserChannel? = { nil },
+                accountName: @escaping @Sendable () -> String) {
+        self.accountName = accountName
         self.transcriptBuild = transcriptBuild
         self.browser = browser
         self.preferredLanguages = preferredLanguages

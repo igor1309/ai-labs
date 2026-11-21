@@ -63,7 +63,8 @@ public func compose(
     let templates = TemplateFiles.Files(folder: preferencesURL.deletingLastPathComponent().appendingPathComponent("Templates"), disk: TemplateFiles.FileDisk(), openFolder: { @MainActor folder in
         guard openCallsFolder(folder) else { throw CocoaError(.fileReadUnknown, userInfo: [NSFilePathErrorKey: folder.path]) }
     })
-    let summaries = SummariesModel(keeping: { preferences.read().keepPreviousNotes }, templates: DefaultTemplatePort(files: templates), text: { language.language.callsList },
+    let summaries = SummariesModel(keeping: { preferences.read().keepPreviousNotes },
+                                   userName: { [accountName = boundary.accountName] in userName(zoom: preferences.read().zoomName, account: accountName()) }, templates: DefaultTemplatePort(files: templates), text: { language.language.callsList },
         preparation: SummariesPreparationPort(notes: { preferences.read().notes }, makeID: { UUID().uuidString },
                                               callText: { try await storage.text(id: $0) }),
         files: SummariesFilesPort(files: summaryFiles, makeID: { UUID().uuidString }),

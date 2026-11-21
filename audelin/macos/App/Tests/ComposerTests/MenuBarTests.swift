@@ -72,7 +72,7 @@ struct MenuBarTests {
                     recordings: FileRecordingStorage(), trash: removeForTrash, bleedCleaning: CleaningStub { _ in preconditionFailure("Live text is disabled") },
                     bleedHearing: HearingStub { _ in preconditionFailure("Live text is disabled") },
                     diarizer: CallDiarizer.unavailable, transcripts: FileTranscriptStorage(diarizer: CallDiarizer.unavailable),
-                    preferredLanguages: { ["ru-RU"] }
+                    preferredLanguages: { ["ru-RU"] }, accountName: { "" }
                 )
                 let app = await compose(boundary: boundary, preferencesURL: root.appendingPathComponent("preferences.json"),
                     openCallsFolder: { _ in false }, presentCalls: {}, openURL: { _ in }, presentPanel: { _ in },
