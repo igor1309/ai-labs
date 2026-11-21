@@ -28,7 +28,8 @@ public struct CallNamesState: Equatable, Sendable {
     public var zoom: Evidence
     public var browser: Evidence
     public var browserConnections: Set<Int>
-    /// Unplaced browser messages in arrival order, tagged with their connection epoch.
+    /// Unplaced browser messages in arrival order, retaining the newest 1000 per connection.
+    /// Before recording starts, their estimated times are bounded by receipt.
     public var heldBrowserMessages: [Event]
 
     public init(
@@ -122,8 +123,8 @@ public enum CallNamesUpdate: Equatable, Sendable {
     case zoom(ZoomPoll, at: Double)
     /// A tick at the Zoom poll's instant on the monotonic clock.
     case tick(now: Double)
-    /// A browser message whose time is on the monotonic clock.
-    case browser(Event)
+    /// A browser message with an estimated time and receipt instant on the monotonic clock.
+    case browser(Event, receivedAt: Double)
     case browserConnected(Int)
     case browserDisconnected(Int)
     /// Row bounds are call-relative. `now` is an instant on the monotonic clock.
@@ -195,6 +196,7 @@ public struct CallNamesReducer: Sendable {
     public typealias Event = CallNamesEvent
     public typealias Effect = CallNamesEffect
 
+    private static let heldBrowserLimit = 1000
     private let name: @Sendable (Double, Double, [Participant], [Activity], Double) -> String?
     private let confirm: @Sendable ([Row], [DiarizedTurn], CallEvidence) -> [Int: String]
 
@@ -340,8 +342,24 @@ public struct CallNamesReducer: Sendable {
         case .diarized:
             return state
 
-        case let .browser(event):
+        case let .browser(event, receivedAt):
+            var event = event
+            // A pre-start receipt may reach the reducer after recording-on if calibration held it.
+            if state.recordingStart.map({ receivedAt <= $0 }) ?? true {
+                event.time = min(event.time, receivedAt)
+            }
             guard let start = state.recordingStart, state.recordingEnd == nil else {
+                if next.heldBrowserMessages.count >= Self.heldBrowserLimit {
+                    var remaining = Self.heldBrowserLimit
+                    for index in next.heldBrowserMessages.indices.reversed()
+                    where next.heldBrowserMessages[index].epoch == event.epoch {
+                        remaining -= 1
+                        if remaining == 0 {
+                            next.heldBrowserMessages.remove(at: index)
+                            break
+                        }
+                    }
+                }
                 next.heldBrowserMessages.append(event)
                 return next
             }

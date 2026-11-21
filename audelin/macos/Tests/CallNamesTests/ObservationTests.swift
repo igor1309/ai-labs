@@ -74,9 +74,9 @@ struct ObservationTests {
         let speaking = Event(epoch: 4, sequence: 2, time: 99, kind: .speaking(memberID: "tile", true))
         let stopped = Event(epoch: 4, sequence: 3, time: 103, kind: .speaking(memberID: "tile", false))
         let connected = assert(makeState(), .browserConnected(4), using: sut) { $0.browserConnections = [4] }
-        let withRoster = assert(connected, .browser(roster), using: sut) { $0.heldBrowserMessages = [roster] }
-        let withSpeaker = assert(withRoster, .browser(speaking), using: sut) { $0.heldBrowserMessages.append(speaking) }
-        let held = assert(withSpeaker, .browser(stopped), using: sut) { $0.heldBrowserMessages.append(stopped) }
+        let withRoster = assert(connected, .browser(roster, receivedAt: 98.5), using: sut) { $0.heldBrowserMessages = [roster] }
+        let withSpeaker = assert(withRoster, .browser(speaking, receivedAt: 99.5), using: sut) { $0.heldBrowserMessages.append(speaking) }
+        let held = assert(withSpeaker, .browser(stopped, receivedAt: 103.5), using: sut) { $0.heldBrowserMessages.append(stopped) }
         #expect(spy.requests.isEmpty)
 
         let recording = assert(held, .recordingChanged(isOn: true, at: 100), using: sut) {
@@ -92,6 +92,74 @@ struct ObservationTests {
             start: 0, end: 3, roster: [.init(id: "tile", name: "Anna")],
             activities: [.init(participantID: "tile", start: 0, end: 3, uncertainty: 0.5)], through: 4
         )])
+    }
+
+    @Test(arguments: [false, true])
+    func anEarlyRosterCannotHideSpeakingAfterRecalibration(rosterReportedAfterStart: Bool) {
+        let (sut, spy) = makeSUT(stubs: ["Anna"])
+        let start = 105.05
+        let speakingTime = 105.10
+        let member = Member(id: "tile", name: "Anna")
+        let roster = Event(epoch: 4, sequence: 1, time: 105.15, kind: .roster([member]))
+        let report = CallNamesUpdate.browser(roster, receivedAt: 104.96)
+        let recording = CallNamesUpdate.recordingChanged(isOn: true, at: start)
+        let watching = makeState { $0.observation = .observing; $0.browserConnections = [4] }
+        let withRoster: State
+        if rosterReportedAfterStart {
+            let started = assert(watching, recording, using: sut) { $0.recordingStart = start }
+            withRoster = assert(started, report, using: sut) {
+                $0.browser = .init(members: [member], epoch: 4, sequence: 1, health: .healthy)
+                $0.roster = ["Anna"]
+            }
+        } else {
+            let held = assert(watching, report, using: sut) {
+                var message = roster
+                message.time = 104.96
+                $0.heldBrowserMessages = [message]
+            }
+            withRoster = assert(held, recording, using: sut) {
+                $0.recordingStart = start; $0.heldBrowserMessages = []
+                $0.browser = .init(members: [member], epoch: 4, sequence: 1, health: .healthy)
+                $0.roster = ["Anna"]
+            }
+        }
+        #expect(spy.requests.isEmpty)
+
+        let speaking = Event(epoch: 4, sequence: 2, time: speakingTime, kind: .speaking(memberID: "tile", true))
+        let speakingStart = speakingTime - start
+        let observed = assert(withRoster, .browser(speaking, receivedAt: speakingTime), using: sut) {
+            $0.browser.intervals = [.init(memberID: "tile", start: speakingStart, end: nil)]
+            $0.browser.sequence = 2; $0.browser.through = speakingStart
+            $0.spoken = [.init(name: "Anna", start: speakingStart, end: nil)]; $0.through = speakingStart
+        }
+        #expect(spy.requests.isEmpty)
+
+        let row = makeRow(start: speakingStart, end: 1)
+        let now = 107.0
+        assert(observed, .rows([row], now: now), using: sut) {
+            $0.through = now - start; $0.rowNames = [1: "Anna"]
+            $0.participantIDs = ["Anna": "z1"]; $0.participantOrder = ["Anna"]
+        }
+        #expect(spy.requests == [.init(
+            start: row.start, end: row.end, roster: [.init(id: "tile", name: "Anna")],
+            activities: [.init(participantID: "tile", start: speakingStart, end: nil, uncertainty: 0.5)], through: now - start
+        )])
+    }
+
+    @Test func aFullBrowserConnectionEvictsOnlyItsOwnOldestHeldMessage() {
+        let (sut, spy) = makeSUT()
+        let waiting = (1...1000).map { Event(epoch: 4, sequence: $0, time: 98, kind: .heartbeat) }
+        let other = Event(epoch: 5, sequence: 1, time: 98, kind: .roster([]))
+        let state = makeState {
+            $0.browserConnections = [4, 5]
+            $0.heldBrowserMessages = [other] + waiting
+        }
+        let newest = Event(epoch: 4, sequence: 1001, time: 99, kind: .heartbeat)
+
+        assert(state, .browser(newest, receivedAt: 99), using: sut) {
+            $0.heldBrowserMessages = [other] + Array(waiting.dropFirst()) + [newest]
+        }
+        #expect(spy.requests.isEmpty)
     }
 
     @Test func browserDisconnectBeforeRecordingDropsOnlyThatConnectionsMessages() {
@@ -114,7 +182,7 @@ struct ObservationTests {
         let (sut, spy) = makeSUT()
         let ended = makeBrowserState { $0.recordingEnd = 110; $0.browserConnections = [4] }
         let message = Event(epoch: 4, sequence: 4, time: 109, kind: .roster([]))
-        let held = assert(ended, .browser(message), using: sut) { $0.heldBrowserMessages = [message] }
+        let held = assert(ended, .browser(message, receivedAt: 111), using: sut) { $0.heldBrowserMessages = [message] }
         assert(held, .recordingChanged(isOn: true, at: 115), using: sut)
         assert(held, .browserDisconnected(4), using: sut) {
             $0.browserConnections = []; $0.heldBrowserMessages = []

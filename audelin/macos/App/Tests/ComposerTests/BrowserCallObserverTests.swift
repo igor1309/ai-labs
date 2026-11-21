@@ -28,7 +28,7 @@ struct BrowserCallObserverTests {
         peer.send(#"{"version":1,"ping":0,"at":100000}"#)
         #expect(await events.next() == .browserConnected(0))
         peer.send(message(0, #"{"type":"speakingStarted","at":89000,"participantId":"t1"}"#))
-        #expect(await events.next() == .browser(.init(epoch: 0, sequence: 0, time: 39, kind: .speaking(memberID: "t1", true))))
+        #expect(await events.next() == .browser(.init(epoch: 0, sequence: 0, time: 39, kind: .speaking(memberID: "t1", true)), receivedAt: 50))
         peer.framesIn.finish()
         #expect(await events.next() == .browserDisconnected(0))
         await sut.stop()
@@ -54,29 +54,57 @@ struct BrowserCallObserverTests {
         #expect(await events.next() == .browserConnected(0))
         for sequence in 1...limit {
             try #require(await events.next() == .browser(.init(epoch: 0, sequence: sequence, time: 39,
-                                                               kind: .speaking(memberID: "t1", true))))
+                                                               kind: .speaking(memberID: "t1", true)), receivedAt: 50))
         }
         #expect(await events.next() == .browserDisconnected(0))
         await sut.stop()
         #expect(await events.next() == nil)
     }
 
-    @Test func messagesBeforeTheFirstClockReplyAreHeldAndPlacedInOrderOnceItComes() async {
+    @Test func calibrationKeepsTheHeldRosterReceiptAndRecalibrationPlacesLaterMessages() async throws {
         let channel = FakeChannel()
-        let sut = BrowserCallObserver(openBrowser: { channel.open() }, monotonic: { 50 },
-                                      sleep: { _ in throw CancellationError() }, log: FixtureLog())
+        let clock = Mutex(104.5)
+        let reads = AsyncStream<Double>.makeStream()
+        let pings = AsyncStream<Void>.makeStream()
+        let sut = BrowserCallObserver(openBrowser: { channel.open() }, monotonic: {
+            let instant = clock.withLock { $0 }
+            reads.continuation.yield(instant)
+            return instant
+        }, sleep: { _ in
+            var releases = pings.stream.makeAsyncIterator()
+            guard await releases.next() != nil else { throw CancellationError() }
+        }, log: FixtureLog())
         var events = sut.observe().makeAsyncIterator()
         let peer = channel.connect()
+        defer { peer.framesIn.finish(); pings.continuation.finish(); reads.continuation.finish() }
         var sent = peer.sent.makeAsyncIterator()
-        #expect(await sent.next() == BrowserClockReply.ping(0))
-        // The extension flushes what it buffered at once, before answering the ping.
-        peer.send(message(0, #"{"type":"roster","at":5000,"participants":[{"id":"t1","name":"Анна","isSelf":false}]}"#))
-        peer.send(message(1, #"{"type":"speakingStarted","at":89000,"participantId":"t1"}"#))
-        peer.send(#"{"version":1,"ping":0,"at":100000}"#)
-        #expect(await events.next() == .browserConnected(0))
-        #expect(await events.next() == .browser(.init(epoch: 0, sequence: 0, time: -45,
-                                                      kind: .roster([.init(id: "t1", name: "Анна", isLocal: false)]))))
-        #expect(await events.next() == .browser(.init(epoch: 0, sequence: 1, time: 39, kind: .speaking(memberID: "t1", true))))
+        var instants = reads.stream.makeAsyncIterator()
+        try #require(await sent.next() == BrowserClockReply.ping(0))
+        try #require(await instants.next() == 104.5)
+        clock.withLock { $0 = 104.75 }
+        peer.send(message(0, #"{"type":"roster","at":155187.5,"participants":[{"id":"t1","name":"Анна","isSelf":false}]}"#))
+        try #require(await instants.next() == 104.75)
+
+        clock.withLock { $0 = 105 }
+        peer.send(#"{"version":1,"ping":0,"at":154750}"#)
+        try #require(await events.next() == .browserConnected(0))
+        let roster = Event(epoch: 0, sequence: 0, time: 105.1875, kind: .roster([.init(id: "t1", name: "Анна")]))
+        #expect(await events.next() == .browser(roster, receivedAt: 104.75))
+        try #require(await instants.next() == 105)
+
+        // The next round trip spans recording start at 105.0625 and is shorter.
+        clock.withLock { $0 = 105.03125 }
+        pings.continuation.yield(())
+        try #require(await sent.next() == BrowserClockReply.ping(1))
+        try #require(await instants.next() == 105.03125)
+        clock.withLock { $0 = 105.09375 }
+        peer.send(#"{"version":1,"ping":1,"at":155187.5}"#)
+        try #require(await instants.next() == 105.09375)
+
+        clock.withLock { $0 = 105.15625 }
+        peer.send(message(1, #"{"type":"speakingStarted","at":155250,"participantId":"t1"}"#))
+        let speaking = Event(epoch: 0, sequence: 1, time: 105.125, kind: .speaking(memberID: "t1", true))
+        #expect(await events.next() == .browser(speaking, receivedAt: 105.15625))
         await sut.stop()
     }
 

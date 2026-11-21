@@ -13,7 +13,7 @@ struct CallNamesEffectHandlerTests {
         let (_, effect) = reducer.reduce(.init(), .start(1, watch))
         let zoomReport = CallNamesUpdate.zoom(.nobody, at: 101.5)
         let tick = CallNamesUpdate.tick(now: 101.5)
-        let browserReport = CallNamesUpdate.browser(.init(epoch: 4, sequence: 1, time: 102, kind: .heartbeat))
+        let browserReport = CallNamesUpdate.browser(.init(epoch: 4, sequence: 1, time: 102, kind: .heartbeat), receivedAt: 102.5)
         await expect(sut, with: effect, toDeliver: [.update(1, zoomReport), .update(1, tick), .update(1, .browserConnected(4)),
                                                .update(1, browserReport), .update(1, .browserDisconnected(4)),
                                                .observationReportsEnded(1)], on: {

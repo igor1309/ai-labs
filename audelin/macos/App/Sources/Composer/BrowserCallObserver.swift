@@ -45,18 +45,19 @@ final class BrowserCallObserver: CallAppObserver {
             return stream
         }
         open.withLock { $0 = (opened, output) }
+        let monotonic = monotonic
         let receiver = BrowserReceiver(connections: opened.connections, now: monotonic, sleep: sleep)
         let listening = Task {
             var offsets: [Int: Double] = [:]
             // The extension flushes its roster before its first clock reply.
-            var held: [Int: [BrowserMessage]] = [:]
-            func report(_ message: BrowserMessage, connection: Int, offset: Double) {
+            var held: [Int: [(message: BrowserMessage, receivedAt: Double)]] = [:]
+            func report(_ message: BrowserMessage, receivedAt: Double, connection: Int, offset: Double) {
                 // Preserve the estimated instant, including times before the monotonic origin.
                 guard let event = BrowserObservation.event(message, connection: connection, callTime: {
                     $0 / 1000 - offset
                 }) else { return }
                 log.write(.init(category: .browser, message: Self.describe(event)))
-                output.yield(.browser(event))
+                output.yield(.browser(event, receivedAt: receivedAt))
             }
             for await event in receiver.events {
                 switch event {
@@ -66,7 +67,9 @@ final class BrowserCallObserver: CallAppObserver {
                     let waiting = held.removeValue(forKey: connection) ?? []
                     log.write(.init(category: .browser, message: "connection=\(connection) clocked held=\(waiting.count)"))
                     output.yield(.browserConnected(connection))
-                    for message in waiting { report(message, connection: connection, offset: offset) }
+                    for (message, receivedAt) in waiting {
+                        report(message, receivedAt: receivedAt, connection: connection, offset: offset)
+                    }
                 case let .disconnected(connection), let .rejected(connection, _):
                     if case let .rejected(_, reason) = event {
                         log.write(.init(category: .browser, message: "connection=\(connection) rejected", error: reason))
@@ -76,11 +79,12 @@ final class BrowserCallObserver: CallAppObserver {
                     held[connection] = nil
                     if offsets.removeValue(forKey: connection) != nil { output.yield(.browserDisconnected(connection)) }
                 case let .message(connection, message):
+                    let receivedAt = monotonic()
                     if let offset = offsets[connection] {
-                        report(message, connection: connection, offset: offset)
+                        report(message, receivedAt: receivedAt, connection: connection, offset: offset)
                     } else {
                         var waiting = held.removeValue(forKey: connection) ?? []
-                        waiting.append(message)
+                        waiting.append((message, receivedAt))
                         if waiting.count > Self.heldLimit { waiting.removeFirst() }
                         held[connection] = waiting
                     }
