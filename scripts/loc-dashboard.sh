@@ -4,10 +4,11 @@
 # Options: --sort=name (default) | --sort=total
 #
 # ROW PROJECTS (update the loop in main when adding a new project):
-#   agents, agister, agonara, ali, audelin, cairana, claude-insights, clipdeck, corpus-scout,
-#   dashboard-sync-agent, debates, dev-skills, dragoman, foliotell, gokit, insights,
-#   loki, mizan-ble, neris, nexum, nomos, noreta, notio, ntfy-sender, oracle, prompts,
-#   reading, reinix, rexlab, sandbox, session-digest, tools, warder, web-scout
+#   agents, agister, agonara, ali, audelin, cairana, claude-insights,
+#   clipdeck, corpus-scout, dashboard-sync-agent, debates, dev-skills,
+#   dragoman, foliotell, gokit, insights, loki, mizan-ble, neris, nexum,
+#   nomos, noreta, notio, ntfy-sender, oracle, prompts, reading, reinix,
+#   rexlab, sandbox, session-digest, tools, warder, web-scout
 
 set -euo pipefail
 
