@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-21
+
+- LAB-1736: Call notes call you by name, not "Me": the name Zoom last showed for you, else your Mac account's full name. Notes keep the name they were made with; the transcript still marks your lines as yours.
+
 ## 2026-11-20
 
 - LAB-1731: Default and Daily template files you never edited now follow the shipped text, so prompt fixes reach notes; edited files are left alone.

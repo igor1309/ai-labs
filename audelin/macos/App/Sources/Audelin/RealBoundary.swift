@@ -27,7 +27,8 @@ func makeRealBoundary() async -> ComposerBoundary {
             try await manager.process(micURL: microphone, referenceURL: call)
         }), bleedHearing: CleanupHearing(recognizers: recognizers),
         diarizer: diarizer, transcripts: FileTranscriptStorage(diarizer: diarizer),
-        browser: openBrowserChannel
+        browser: openBrowserChannel,
+        accountName: { NSFullUserName() }
     )
 }
 

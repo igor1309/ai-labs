@@ -163,7 +163,7 @@ public struct ComposerBoundary: Sendable {
                 bleedHearing: any CleanedHearing<[Float], [TranscriptSegment]>, diarizer: any TranscriptDiarizer, transcripts: any TranscriptStorage,
                 preferredLanguages: @escaping @Sendable () -> [String] = { Locale.preferredLanguages },
                 browser: @escaping @Sendable () -> BrowserChannel? = { nil },
-                accountName: @escaping @Sendable () -> String = { NSFullUserName() }) {
+                accountName: @escaping @Sendable () -> String) {
         self.accountName = accountName
         self.transcriptBuild = transcriptBuild
         self.browser = browser
