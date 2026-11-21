@@ -1,105 +1,105 @@
 # Reading
 
-Observer: compose, which feeds one recording's text, recording state and
-reader actions into the reducer, and translates its state for the panel.
-Reading owns no recording, recognition, window or other effects.
+Observer: compose, which feeds call-keyed text, names, recording state,
+time and reader actions into the reducer, and translates its state
+for the panel. Reading owns no recording, recognition, window or other
+effects; transcript layout lays out its rows.
 
 ## Decided
 
-- Entries are ordered by their first reported start time. Each speaker's
-  local id gets a unique display id; while present, later snapshots update
-  its words without changing that identity or its original time and position.
-  A listening snapshot that omits an entry retires its identity and time.
-  If the producer reuses that local id, it gets a fresh, monotonically
-  increasing display id and the newly reported start time. Held selections
-  keep their original display ids and text. Equal start times keep first
-  arrival order.
-- Recording time is elapsed `HH:MM:SS`; entry times are elapsed `MM:SS`,
-  with minutes continuing past 59. Fractions are rounded down.
-- Consecutive written-later entries form a group at their place in call
-  order, spanning the earliest start through the latest end in that group.
-- Holds keep the supplied text exactly, oldest first. The same entry and
-  text is one selection; different text in the same entry is another.
-  Only letting that selection go removes it, even if its entry disappears.
-- Scrolling away pauses following. Each previously unseen entry counts
-  toward new-below, including recovered speech from earlier in the call.
-  Revisions do not count; ids returning after a listening omission count
-  as new entries. Reaching the bottom or
-  jumping to live resumes following and clears the count.
-- Text updates are complete snapshots while listening.
-  Preparing, off, failed and finished updates retain prior entries absent from the
-  update. Holds and following survive every status change.
-- An inactive, unread recording shows an empty log. Recording with text
-  off offers live text, keeping prior lines above it. Getting ready shows
-  preparing; active problems keep the available lines visible even while
-  preparing. Listening, failure and completion show the available lines;
-  recognition failure never changes the recording indicator.
-
-- Problems arrive stamped on the recording's elapsed clock. A fault keeps its
-  first time and remains until recording switches off. Banners run newest
-  first; equal times put the last newly supplied problem first.
-- Missing call audio, a missing microphone and a failed disk track each add a
-  small muted gap on the missing side at that time. Gaps sit among entries
-  by elapsed time and split written-later groups. Repeated snapshots never
-  duplicate or move a gap. Gap times use the same minute format as entries.
-- Call silence adds an informational banner, with no gap because audio is
-  still being written. Clearing the warning removes only that banner.
-  Recording off resets all problems and gaps, retaining transcript text.
-- Recording faults change neither the recording indicator nor captured text.
+- One Reading lives as long as the app. It holds the displayed call's id.
+  Opening a later call resets the log, and input for another call is
+  ignored. After its recording ends the call stays displayed, still taking
+  its text, names and speaker places, until the next call opens. The log
+  follows the chosen language even after recording ends.
+- Text before capture begins is kept, and the log shows empty until
+  capture first begins; once begun it does not close again for that call.
+- A listening update replaces the text after the last final entry; final
+  entries stay. Preparing, off, failed and finished updates keep prior entries. Holds and following
+  survive every status change.
+- Names come as one set by remote local id, with whether they are
+  confirmed; each set replaces the last. A tentative set names the entries of
+  the latest text update and later ones; a confirmed set names every
+  remote entry. Speaker places take effect after the call's text feed ends.
+- Time comes as instants on one monotonic clock, stamped by compose on
+  each recording change, tick and fault report. The first instant recording
+  is on starts the clock; recording off stops and clears it. Recording time
+  is elapsed `HH:MM:SS`, fractions rounded down; a tick earlier than the
+  last is ignored.
+- A fault keeps the elapsed time of its first report and stays until
+  recording is off. Banners run newest first; equal times put the last new
+  one first. Missing call audio, microphone or disk track add a gap on that
+  side; call silence adds only a banner, and clearing it removes only that.
+- Holds keep the supplied text exactly, oldest first; only letting that
+  selection go removes it. Scrolling away pauses following and counts each
+  new entry below; reaching the bottom or jumping to live resumes and clears.
+  The latest scroll interaction is acknowledged by its id. Reader actions
+  stop changing the log once the Session and its feeds have ended.
+- An unread recording shows an empty log. Recording with text off offers
+  live text, keeping prior lines. Getting ready shows preparing, with lines
+  kept visible while problems are active. Faults and recognition failure
+  never change the recording indicator or captured text.
 
 ```gherkin
-Feature: Reading one recording
+Feature: Reading the displayed call
 
-  Scenario: Both speakers settle in call order
-    Given both speakers have entries, including pending words
-    When recognition firms up an entry
-    Then its words change at the same identity and position
-    And both speakers remain in call order
+  Scenario: S-1 A failed side shows a banner and a gap
+    Given a recording with text on both sides
+    When a track fault is reported
+    Then compose can show its banner and a gap on that side until recording is off
 
-  Scenario: Recovered speech belongs where it was said
-    Given text includes consecutive entries written later
-    When the log is read
-    Then those entries form a group with their elapsed span at their call position
-
-  Scenario: A failed side leaves a visible gap
-    Given entries before and after a track fault, including recovered speech
-    When the fault arrives with its elapsed start time
-    Then its gap sits between those entries on the failed side
-    And its banner stays until recording ends without hiding any text
-
-  Scenario: Silence clears without leaving a gap
+  Scenario: S-2 Silence clears without leaving a gap
     Given the call-silence banner and a microphone fault
     When the silence warning clears
-    Then only the microphone banner remains
-    And there is no silence gap in the log
+    Then compose can show only the microphone banner, with no silence gap
 
-  Scenario: Held selections remain independent of recognition
-    Given several selections have been held
-    When text changes or disappears, or the reader scrolls or clicks
-    Then every selection keeps exactly its supplied text in selection order
-    And letting one go keeps every other selection
+  Scenario: S-3 Held selections stay as selected
+    Given several selections are held
+    When text changes or disappears
+    Then compose can show every selection with exactly its text, in order
 
-  Scenario: Scrolling away counts new entries
+  Scenario: S-4 Scrolling away counts new entries
     Given the reader has scrolled away from the bottom
-    When entries arrive or change
-    Then only new identities increase new-below
-    And reaching the bottom or jumping to live clears the count and follows again
+    When new entries arrive
+    Then compose can show how many are below, and jumping to live clears it
 
-  Scenario: A reused speech slot belongs at its new time
-    Given pending speech is held and then omitted from a listening snapshot
-    When new speech arrives with the same speaker and local id
-    Then it has a fresh display id and appears at its newly reported time
-    And it increases new-below if the reader is not following
-    And the held selection keeps its original identity and exact text
-
-  Scenario: Live text prepares while recording
+  Scenario: S-5 Live text prepares while recording
     Given a recording is running
     When live text is getting ready
-    Then the log shows preparing and recording shows its elapsed time
+    Then compose can show preparing and the elapsed recording time
 
-  Scenario: Switching off or failing preserves what was read
+  Scenario: S-6 Finishing keeps what was read
     Given the log has text
-    When live text switches off, fails or finishes
-    Then the text so far stays
-    And the recording indicator changes only when recording reports a change
+    When live text finishes
+    Then compose can show the text so far
+
+  Scenario: S-7 A finished call takes its confirmed names
+    Given a call's recording has ended and the next has not opened
+    When its confirmed names arrive
+    Then compose can show its text with those names
+
+  Scenario: S-8 The next call starts clean
+    Given a finished call is displayed with holds
+    When the next call opens and the finished call's text arrives late
+    Then compose can show an empty log with no holds
+
+  Scenario: S-9 Text before capture waits
+    Given a call has opened and its text arrives
+    When capture begins
+    Then compose can show that text, and an empty log before it
+
+  Scenario: S-10 Confirmed names reach final entries
+    Given remote entries have been read, some of them final
+    When a confirmed set of names arrives
+    Then compose can show every remote entry under its name from that set
+
+  Scenario: S-11 Time runs from the first recording instant
+    Given recording went on at an instant
+    When a later tick and then an earlier one arrive
+    Then compose can show the time from that instant, never running back
+
+  Scenario: S-12 Speaker places follow the final text
+    Given speaker places arrive before the call's text feed ends
+    When the final text arrives and the feed ends
+    Then compose can show speaker places on the final rows
 ```

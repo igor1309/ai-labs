@@ -40,6 +40,7 @@ struct TranscriptFinalizationPortsTests {
             finals: FinalTranscriptsPort(resources: resources, deliver: { call, _ in received.append(call) }))
         for id in ["a", "b"] {
             model.send(.opened(call: id)); model.send(.wrote(call: id, raw)); model.send(.closed(call: id, names: .init()))
+            model.send(.evidenceClosed(call: id, .init()))
         }
         await cleaningA.next(); await cleaningB.next()
         model.send(.shutdown); model.send(.inputEnded)
@@ -177,9 +178,9 @@ struct TranscriptFinalizationPortsTests {
                 .init(text: line("first", start: 0)), .init(text: line("second", start: 2)),
             ])
             let sut = FinalizationDiarizing(resources: resources)
-            #expect(await sut.diarize(call: "missing", raw, outcomes: .init()) == nil)
+            #expect(await sut.diarize(call: "missing", raw, evidence: .init(), outcomes: .init()) == nil)
             #expect(samples.all.isEmpty)
-            let far = try #require(await sut.diarize(call: "a", raw, outcomes: .init()))
+            let far = try #require(await sut.diarize(call: "a", raw, evidence: .init(), outcomes: .init()))
             #expect(far.far.rows == [0: 1, 2: 2])
             #expect(far.far.speakers.map(\.id) == ["d0", "d1"])
             #expect(samples.all == [160])

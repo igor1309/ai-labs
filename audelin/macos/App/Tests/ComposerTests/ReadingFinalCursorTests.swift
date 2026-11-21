@@ -48,7 +48,7 @@ struct ReadingFinalCursorTests {
             random = random &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
             return Int((random >> 33) % UInt64(bound))
         }
-        let listening = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 0))).0
+        let listening = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on, at: 100)).0
         var sealing = listening, oracle = listening
         var entries: [CallState.Entry] = []
         var final = 0, mapped = 0
@@ -85,7 +85,7 @@ struct ReadingFinalCursorTests {
     /// Updates from the cursor do not carry final entries, and a tail entry going must not take them.
     @Test func aTailEntryGoingKeepsTheFinalEntries() {
 
-        var reading = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 0))).0
+        var reading = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on, at: 100)).0
         let finals = (0..<4).map { Self.entry($0, words: "final \($0)") }
         var first = CallState(status: .listening, entries: .init(tail: finals + [Self.entry(4, words: "tail"), Self.entry(5, words: "tail")]))
         first.finalCount = 4
@@ -95,7 +95,7 @@ struct ReadingFinalCursorTests {
         next.finalCount = 4
         reading = ReadingReducer.reduce(reading, .textUpdated(readingText(next, from: 4))).0
 
-        var whole = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 0))).0
+        var whole = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on, at: 100)).0
         whole = ReadingReducer.reduce(whole, .textUpdated(readingText(first))).0
         whole = ReadingReducer.reduce(whole, .textUpdated(readingText(next))).0
         #expect(panelState(russianPanel, reading) == panelState(russianPanel, whole))
@@ -104,10 +104,10 @@ struct ReadingFinalCursorTests {
     }
 
     private func wholeAndCursor(
-        later: Bool, between: (Int) -> ReadingEvent? = { _ in nil }
+        later: Bool, between: (Int) -> ReadingUpdate? = { _ in nil }
     ) -> [(whole: ReadingState, cursor: ReadingState, panel: PanelState)] {
 
-        var whole = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 0))).0
+        var whole = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on, at: 100)).0
         var cursor = whole
         var mapped = 0
         var rows = MappedRows()
@@ -134,9 +134,41 @@ struct ReadingFinalCursorTests {
         }
     }
 
+    @Test(arguments: [1, 2])
+    func theNextCallsSealedRowsMatchAFreshMapping(sealed: Int) {
+        func makeCall(_ id: UInt64, count: Int, text: String, name: String) -> ReadingState {
+            let entries: [ReadingState.Row] = (0..<count).map { index in
+                .entry(.init(id: index, time: "00:00", speaker: .theirs, settled: text, name: name, nameConfirmed: true))
+            }
+            return .init(displayedCall: id, log: .lines(.init(rows: .init(sealed: entries), layout: 1)))
+        }
+
+        var cache = MappedRows()
+        let first = makeCall(1, count: 1, text: "first call", name: "Vera")
+        _ = panelState(russianPanel, first, rows: &cache)
+        let opened = readingReducer().reduce(first, .opened(2)).0
+        #expect(panelState(russianPanel, opened, rows: &cache).log == .empty)
+        let second = makeCall(2, count: sealed, text: "second call", name: "Anna")
+        #expect(panelState(russianPanel, second, rows: &cache) == panelState(russianPanel, second))
+    }
+
+    /// Names and speaker places that arrive after rows sealed: the cached rows show what a fresh mapping shows.
+    @Test(arguments: [false, true])
+    func renamesAndSpeakerPlacesAfterSealingMatchAFreshMapping(confirmed: Bool) {
+
+        let updates: [Int: ReadingUpdate] = [
+            5: .namesChanged([1: "Anna", 3: "Boris"], confirmed: false),
+            6: .speakersFound([1: 0, 3: 1, 5: 0]),
+            7: .namesChanged([1: "Anna", 3: "Vera", 5: "Gleb"], confirmed: confirmed),
+        ]
+        for step in wholeAndCursor(later: false, between: { updates[$0] }) {
+            #expect(step.panel == panelState(russianPanel, step.cursor))
+        }
+    }
+
     @Test func aGapAfterEntriesWentFinalKeepsItsPlace() {
 
-        let problem = ReadingEvent.problemsChanged([.init(.microphone, began: 20)])
+        let problem = ReadingUpdate.problemsChanged([.microphone], callSilent: false, at: 120)
         for step in wholeAndCursor(later: false, between: { $0 == 6 ? problem : nil }) {
             #expect(step.cursor.log == step.whole.log)
             #expect(step.panel == panelState(russianPanel, step.whole))

@@ -18,7 +18,12 @@ This directory owns the source of truth for what the agent inspects, how it synt
 
 ## Status
 
-**Live on OpenClaw.** Agent definition artifacts and CI sync workflow are present; the VPS workspace, suppression state, cron wrapper, and Telegram topic routing are owned by OpenClaw.
+**Scheduled sync is a script.** `sync.js` renders the three surfaces from the registry and per-project READMEs exactly as `agent/synthesis-spec.md` and `agent/project-registry.md` define them, and reports each as clean, drift or error. `run.sh` runs it daily from a bb script automation: it checks out `origin/trunk` into a throwaway worktree, and on drift force-updates `dashboard-sync/daily` and opens or updates its PR. It never merges, and prints a summary only on drift or error.
+
+- Dry run: `node dashboard-sync-agent/sync.js` (JSON report; `--write` applies, `--loc-threshold=<N>` overrides 300).
+- Tests: `node --test scripts/tests/dashboard-sync.test.js`, including a check that trunk's script and products page render without drift.
+
+The OpenClaw agent definition in `agent/` still serves the manual `/dashboard-sync` command on the VPS until that host's job is retired.
 
 ## Source
 
@@ -32,6 +37,8 @@ This directory owns the source of truth for what the agent inspects, how it synt
 | `docs/intent.md` | Source intent |
 | `docs/adr-specialized-openclaw-agent-dashboard-sync-v0.0.1.md` | Source ADR |
 | `docs/log.md` | Project log |
+| `sync.js` | Deterministic renderer and drift report |
+| `run.sh` | Daily runner: worktree, stable branch, PR |
 
 The `agent/` subtree has been added. A `runtime/` subtree (mirroring `doc-drift-agent/`) will be added if source-owned runtime artifacts are needed.
 

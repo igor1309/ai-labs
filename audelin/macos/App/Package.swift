@@ -87,11 +87,12 @@ let package = Package(
         ),
         .target(
             name: "SessionRehearsal",
-            dependencies: ["Composer", .product(name: "BrowserBridge", package: "macos"), .product(name: "BleedCleanup", package: "macos"), .product(name: "CallDiarizer", package: "macos"), .product(name: "LiveText", package: "macos"), .product(name: "Preferences", package: "macos")]
+            dependencies: ["Composer", .product(name: "BrowserBridge", package: "macos"), .product(name: "BleedCleanup", package: "macos"), .product(name: "CallDiarizer", package: "macos"), .product(name: "LiveText", package: "macos"), .product(name: "Preferences", package: "macos"), .product(name: "TranscriptFormat", package: "macos")]
         ),
         .target(
             name: "Composer",
             dependencies: [
+                .product(name: "TranscriptLayout", package: "macos"),
                 .product(name: "LatestText", package: "macos"),
                 .product(name: "RecordingConditions", package: "macos"),
                 .product(name: "CallDetail", package: "macos"),
@@ -171,6 +172,7 @@ let package = Package(
         .testTarget(
             name: "ComposerTests",
             dependencies: [
+                .product(name: "TranscriptFormat", package: "macos"),
                 .product(name: "RecordingConditions", package: "macos"),
                 .product(name: "CallDetail", package: "macos"),
                 .product(name: "NotesMenu", package: "macos"),

@@ -13,7 +13,7 @@ struct ReadingStateTests {
         let lines = ReadingState.Lines(rows: [.late(late), .gap(gap)], layout: 7,
                                        holds: [.init(entryID: 12, text: " exact ")], newBelow: 3, followsLive: false)
         let state = ReadingState(
-            banners: [.init(kind: .microphone, time: "banner")], recording: .on(elapsed: "elapsed"),
+            banners: [.init(kind: .microphone, time: "banner")], recording: .on(elapsed: "elapsed"), captureBegan: true,
             log: .preparing(holds: lines.holds), problems: [.init(.microphone, began: 3)], status: .gettingReady,
             anchors: .init(sealed: [id: .init(id: 12, start: 2)]), nextDisplayID: 13,
             text: .init(sealed: [id: text]), lines: lines,
@@ -23,6 +23,7 @@ struct ReadingStateTests {
         )
         #expect(state.banners == [.init(kind: .microphone, time: "banner")])
         #expect(state.recording == .on(elapsed: "elapsed"))
+        #expect(state.captureBegan)
         #expect(state.log == .preparing(holds: lines.holds))
         #expect(state.problems == [.init(.microphone, began: 3)])
         #expect(state.status == .gettingReady)
@@ -46,6 +47,7 @@ struct ReadingStateTests {
         var state = makeState()
         state.status = .gettingReady
         state.recording = .on(elapsed: "given")
+        state.captureBegan = true
         state.lines.holds = [.init(entryID: 1, text: "held")]
         #expect(state.log == .empty)
         assert(state, .jumpToLive, delivers: nil, using: makeReducer(spy)) {
@@ -66,6 +68,14 @@ struct ReadingStateTests {
         other.lines.layout = 8
         #expect(state == other)
         other.log = .preparing(holds: [])
+        #expect(state != other)
+    }
+
+    @Test func equalityObservesWhetherCaptureBegan() {
+
+        let state = makeState()
+        var other = state
+        other.captureBegan = true
         #expect(state != other)
     }
 

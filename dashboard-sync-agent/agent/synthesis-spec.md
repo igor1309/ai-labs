@@ -6,7 +6,7 @@ description: "Synthesis spec for dashboard-sync-agent: how the project registry 
 
 # Synthesis Spec
 
-For each agent-owned surface, this document pins the rules that map the registry (per `project-registry.md`) and per-project READMEs to the surface's content. Two reviewers regenerating from the same inputs must produce byte-identical output.
+For each agent-owned surface, this document pins the rules that map the registry (per `project-registry.md`) and per-project READMEs to the surface's content. Two reviewers regenerating from the same inputs must produce byte-identical output. `dashboard-sync-agent/sync.js` implements this spec; change both together.
 
 ## Surface (1) — `scripts/loc-dashboard.sh`
 
@@ -41,7 +41,7 @@ A single line of the form:
   local known="<names joined by single space>"
 ```
 
-Two-space indent. The string is the union of: the canonical tracked set, the excluded-directories list from `project-registry.md`, plus any **untracked candidate** that already appears in the existing `known` list (i.e. the agent does not silently drop a name that the maintainer or a previous run placed there). Names are sorted ASCII-ascending, joined by single spaces. The leading `_inbox` (which sorts after letters under ASCII) appears at the end — this is correct under ASCII sort.
+Two-space indent. The string is the union of: the canonical tracked set, the excluded-directories list from `project-registry.md`, plus any **untracked candidate** that already appears in the existing `known` list (i.e. the agent does not silently drop a name that the maintainer or a previous run placed there). Names are sorted ASCII-ascending, except that names with a leading underscore (`_inbox`) go last; joined by single spaces.
 
 ### Surface (1) ordering rule
 
@@ -68,12 +68,20 @@ For each registry entry whose `Component` row is in `## Components`, the agent e
 
 | Card field | Source | Rule |
 |------------|--------|------|
-| `<span class="product-name">` | Components row | The `Component` cell, **title-cased** with hyphens replaced by spaces (e.g. `claude-insights` → `Claude Insights`, `doc-drift-agent` → `Doc Drift Agent`). When the `Description` cell begins with `"<TitleCase>" ...` (in quotes), use that quoted title verbatim instead — this preserves curated names like `"The Dragoman"`. |
-| `<p class="product-desc">` | Components row + per-project README | The `Description` cell becomes the lead `<strong>…</strong>` sentence (truncated to the first sentence if the cell contains multiple). If the project's `<key>/README.md` exists and contains a section titled `## Description` or `## Overview` whose first paragraph extends the description, that paragraph is rendered as the body text after the lead. Otherwise the body is the remainder of the Description cell after the first sentence. **No invention.** If neither source supplies body text, the lead alone is the entire `<p>`. Body text rendering converts these inline markdown markers to HTML: `*x*` → `<em>x</em>`, `**x**` → `<strong>x</strong>`, `` `x` `` → `<code>x</code>`. Other inline markdown (links, images) is rendered to standard HTML; block-level markdown is not supported (the body is one paragraph). |
+| `<span class="product-name">` | Components row | The `Component` cell, **title-cased** with hyphens replaced by spaces (e.g. `claude-insights` → `Claude Insights`, `doc-drift-agent` → `Doc Drift Agent`). Keys listed in the display-name table below use its name instead. When the `Description` cell begins with `"<TitleCase>" ...` (in quotes), use that quoted title verbatim instead — this preserves curated names like `"The Dragoman"`. |
+| `<p class="product-desc">` | Components row + per-project README | The `Description` cell becomes the lead `<strong>…</strong>` sentence (truncated to the first sentence if the cell contains multiple). If the project's `<key>/README.md` exists and contains a section titled `## Description` or `## Overview`, its first paragraph is rendered as the body text after the lead. Otherwise the body is the remainder of the Description cell after the first sentence. **No invention.** If neither source supplies body text, the lead alone is the entire `<p>`. Body text rendering converts these inline markdown markers to HTML: `*x*` → `<em>x</em>`, `**x**` → `<strong>x</strong>`, `` `x` `` → `<code>x</code>`. Other inline markdown (links, images) is rendered to standard HTML; block-level markdown is not supported (the body is one paragraph). |
 | `<div class="product-stack">` tags | Per-project README only | If `<key>/README.md` contains a `## Stack`, `## Tech Stack`, or `## Tags` section formatted as a Markdown bulleted list of bare tag names (one per bullet, no other markup), each bullet becomes one `<span class="tag">…</span>`. If no such section exists, the stack block is omitted entirely (no empty `<div>`). The agent does **not** synthesize tags from prose. |
 | Deployed URL inline in `<p class="product-desc">` | Per-project README | If the project's README contains a line of the form `Deployed at: <URL>` or a `## Deployment` section whose first sentence states a URL, the agent inlines `Deployed at <code><URL></code>` as the final sentence of the description body. Otherwise, no deployment line is rendered. |
 
 **Intent on type display.** Each card shows name, description, and (optional) stack tags — that is all that lives inside a card. The project's type is communicated by which `<h3 class="group-title">` section the card sits under, not by per-card metadata. Don't emit a `<span class="product-type">` (or any equivalent type-chip) inside the card. The current `docs/products.html` already follows this — PR #345 removed those chips intentionally — so the absence of type chips in the file is **expected**, not a structural mismatch.
+
+### Display names
+
+Names title-casing cannot produce:
+
+| Key | Display name |
+|-----|--------------|
+| `mizan-ble` | `Mizan BLE` |
 
 ### Card link wrapper
 
@@ -163,7 +171,7 @@ Each entry is one line of the form:
   { name: "<name>",        code: <code>, tests: <tests>, docs: <docs> },
 ```
 
-Two-space indent inside the array. The `name:` field is followed by spaces padding the value column to a fixed width. The current file uses width-15 padding (`"<name>"` + spaces to make the next field start at column 27); the agent **preserves the current width** by reading the existing array's first non-empty line and matching its column for `code:`. New names longer than the existing maximum cause the agent to widen the padding for all rows in the same run. Number fields are right-aligned to width 4.
+Two-space indent inside the array. The `name:` field is followed by spaces padding the value column to a fixed width. The current file uses width-15 padding (`"<name>"` + spaces to make the next field start at column 27); the agent **preserves the current width** by reading the existing array's first non-empty line and matching its column for `code:`. New names longer than the existing maximum cause the agent to widen the padding for all rows in the same run. Number fields are right-aligned to width 5.
 
 ### Ordering
 

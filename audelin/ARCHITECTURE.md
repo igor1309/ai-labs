@@ -50,7 +50,7 @@ platform; anything else breaks rule 1. The lanes of
 | Kind | May import | Targets |
 |---|---|---|
 | Machine | nothing | Recording, Reading, Lifecycle, CallAudioAccess, Recordings, SummarySettings, SummaryJobs, CallDetail, NotesMenu, CallsList, TranscriptFinalization, RecordingConditions, CallNames |
-| Plain component or operator | a shared helper | CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, LatestText, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch, CallTags, ReRecognition, NameCarry |
+| Plain component or operator | a shared helper | TranscriptLayout, CallText, SideText, FillIn, LiveText, TranscriptWriting, SavePacing, LatestText, BleedCleanup, SpeakerAttribution, SpeakerIdentification, SpeakerNaming, CallObservation, CallsSearch, CallTags, ReRecognition, NameCarry |
 | Adapter | the component whose port it answers; a shared helper | the recognisers, MicrophoneCapture, SystemAudioCapture, CallAudioProbe, CoreAudioProcesses, CoreAudioProcessBinding, CallAppProcesses, ZoomAccessibility, BrowserBridge, AudelinNativeHost, CallDiarizer, SummaryRuntime, TemplateFiles, NotesGeneration, CallFolder, TrackFile, TranscriptFile, TranscriptFormat, SummaryFiles, TagsFile, AgentsFile, Calls, CallsStorage, Preferences |
 | Shared helper | nothing | SplitRows, CallFolderName, AudioConversion, ModelLoading |
 | UI | GlassLedger, NotesMarkdown, other UI | PanelUI, SettingsUI, MenuBar, CallsListUI, CallsWindowUI, SummaryPreviewUI, NotesMarkdown, GlassLedger |
@@ -71,10 +71,7 @@ state inside Recording's state and is not a machine or a module of its own.
 The code does not yet follow rules 4 and 5 everywhere. Each item below
 becomes part of a machine's state, or is shown to be only mapping:
 
-- The panel's composition builds a Reading and a CallNames for each
-  recording and decides what Reading is sent.
 - The menu runs panel presence's reducer and its delay by hand.
-- The composer holds `NewestText` across events.
 
 No check yet fails on an import that a target's kind does not allow.
 
@@ -595,27 +592,29 @@ made final. TranscriptFinalization is the state machine for that line. It
 answers what each call's transcript is in its final form, for every call
 recorded, whether or not notes are on, and knows nothing of notes: its
 final transcript goes to a receiver port, which the root answers. Its
-state holds each call's stage, writing, diarizing, cleaning, committing,
-then finalized or failed, with the call's last saved text, the speaker
+state holds each call's stage, writing, waiting for speaker evidence,
+diarizing, cleaning, committing, then finalized or failed, with the call's last saved text, the speaker
 names taken when its transcript closed, its attributed far side and its
 cleaned microphone side; whether the latest write succeeded; whether its
 final transcript has been published; whether transcript input has ended; and
 whether a shutdown has settled.
 Its events are the transcript's opening, each live write's success or
-failure, the close with the call's names, each stage's result, each
+failure, the close with the call's names, the call's closed speaker evidence, each stage's result, each
 publication, the end of transcript input and shutdown.
 
 A call whose latest write failed is final as last saved, without further
-work. A saved call is diarized (Remote speakers), then cleaned (Bleed
-cleanup); cleaned microphone text is committed to the file, and a failed
+work. A saved call waits for its speaker evidence after the transcript
+closes, then is diarized (Remote speakers) and cleaned (Bleed cleanup).
+Cleaned microphone text is committed to the file, and a failed
 commit keeps the text as written. A commit renders with the names taken at
 close, read once, so a name published later cannot race it. Each call's
 final transcript, its entries, whether they hold words, and whether the file
 holds the latest text, is published once, and is published when its
 receiver has taken it. Entries come from an injected pure mapping.
 
-On shutdown no new model work starts. A call being cleaned is committed
-as written with its stages left skipped (Transcript origin), and the
+On shutdown no new model work starts. A call waiting for evidence is
+committed as written with both stages skipped. A call being cleaned is committed
+as written with cleaning skipped (Transcript origin), and the
 machine stops its cleanup; a call being diarized or
 committed is final when that file write returns, since both replace the
 file; a call still being written is committed as last saved, its stages skipped, once it closes.
@@ -635,7 +634,8 @@ whole replacements. The root keeps each call's writer, cleanup inputs and
 running cleanup as resource handles until its final transcript is
 published, subscribes the machine to Recording's ordered transcript
 output (each opening, write and close, keyed by call, none dropped), and
-answers the receiver port by handing each final transcript to SummaryJobs
+forwards each call's closed speaker evidence independently. It answers
+the receiver port by handing each final transcript to SummaryJobs
 before it releases the call's handles; it subscribes the panel's speaker
 rows to the machine.
 
@@ -794,13 +794,40 @@ failed diarization leaves the far side as one "Them". When the pass runs
 in the app's flow, and how the speakers are labelled and shown, belong to
 the transcript, summary and panel.
 
+## Reading
+
+Reading is the machine that says what the panel shows. Its reason to
+change is how a call's text is read. One machine lives as long as the app
+and displays one call at a time: opening a call resets it, and input for
+any other call is ignored. A call stays displayed after its recording ends,
+still taking its final text, confirmed names and speaker places, until the
+next call opens. Reading holds any early speaker places until the call's
+text feed ends. Its state holds the displayed call's id, its entries, the names by remote row,
+whether they are confirmed, whether capture has begun, the instant it
+began and the first time of each problem; it keeps text that arrives
+before capture and shows an empty log until capture begins. Reading has no
+effects. It lays out its rows through TranscriptLayout, a pure component
+it calls from its reducer.
+
+Time is given, never read: compose stamps each recording change, tick and
+fault report with an instant on one monotonic clock, and Reading and
+CallNames each start their clock from the first instant recording is on.
+Neither machine asks the other for the time.
+
+The root subscribes each call's text, speaker places, names and Session
+state independently. These inputs and the panel's reader actions carry the
+call id. The root maps the displayed log again when the language changes,
+including after recording ends. The mapping keeps the rows it built for the current
+layout so a long call is not mapped again from the start; it is a cache of
+a pure mapping, and a fresh mapping gives the same panel state.
+
 ## Call names
 
 CallNames is a machine with one responsibility: the names of each call's
 far-side rows. Its reason to change is how call-app evidence becomes a
 name. One machine lives as long as the app and holds every call by key: a
-call is kept after its recording ends, until its final transcript is
-published, since its after-call pass may run while another recording has
+call is kept after its recording ends, until its finalization ends, with
+or without a transcript, since its after-call pass may run while another recording has
 begun. For each call its state holds the evidence it kept from Zoom and the
 browser extension, each row's name, the participant IDs the transcript
 uses, whether the names are confirmed, and whether the call app is being
@@ -808,7 +835,19 @@ watched. The reducer names a row through an injected matcher
 (`LiveNames.match`) and confirms names through an injected after-call
 rule (`AfterCallNames.names`), both in SpeakerNaming.
 
-Its effect handler watches and closes the call-app sources. Two adapters in
+Time reaches it as instants on the monotonic clock, as for Reading. The
+call-app sources report at instants too and know nothing of recordings:
+CallNames places what they report on the call's time and holds the rules
+of the recording window, which Zoom readings count and which browser
+messages wait for recording or are dropped.
+
+Its effect handler watches and closes the call-app sources; each watch,
+and each source's stop acknowledgement, carries its call's id, so ending
+one call never stops another's watch. The browser adapter opens the
+socket for each call's watch and closes it when that watch stops.
+CallNames keeps the next watch pending until the previous watch
+acknowledges the close, since the socket path is shared. A pending watch
+does not delay the next Session or its panel. Two adapters in
 the composer answer that port: the Zoom observer reports who speaks on
 Zoom's side, and the browser observer reports the extension's events and
 connections.
@@ -820,7 +859,7 @@ far-side participant a reading shows as speaking: the Talking label; else
 the only other participant; else the only other unmuted one; else nobody.
 The user's tile is told apart by the user's Zoom name, and without that name
 the rule names nobody. Its reason to change is what Zoom exposes. The Zoom
-observer polls it, reports each change of that speaker to CallNames, and
+observer polls it, reports each poll's reading to CallNames, and
 takes the user's Zoom name through two closures, one that reads the
 remembered name and one that remembers a name Zoom showed; the root plugs
 both into Preferences. CallNames is unchanged: tile names reach it as
@@ -830,7 +869,10 @@ that call; its names stay after it.
 
 The root sends it each new remote row of a call, and subscribes its names,
 tentative and confirmed, to Reading, which shows them, and to the call's
-names port, which keeps the names last published. The transcript writer and the after-call
-pass read that port; they never wait for the machine. The pass gives the
-speaker turns it diarized back through the same port, and CallNames
-confirms the names from them and its kept evidence.
+names port, which keeps the names last published. The transcript writer
+reads the latest published names. When a watch's sources close and their
+reports reach CallNames, the root sends that call's evidence to
+TranscriptFinalization, which passes it to the after-call pass. The pass
+gives the speaker turns it diarized back through
+the same port. CallNames keeps early turns until that evidence is ready
+and then confirms the names.

@@ -113,7 +113,8 @@ extension FloatingPanel {
 @MainActor
 public func panelContentBinding(_ model: AudelinMenu) -> (state: PanelState, event: (PanelEvent) -> Task<Void, Never>) {
 
-    (model.panelState, { event in Task { await model.sendPanel(event) } })
+    let presentation = model.panelPresentation
+    return (presentation.state, { event in Task { await model.sendPanel(event, for: presentation.call) } })
 }
 
 private struct PanelContent: View {
@@ -127,6 +128,7 @@ private struct PanelContent: View {
             PanelView(state: binding.state, event: { event in
                 _ = binding.event(event)
             }, config: config(width: geometry.size.width), text: model.panelText)
+            .id(model.panelPresentation.call)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }

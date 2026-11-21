@@ -30,15 +30,11 @@ public struct ReadingTextUpdate: Equatable, Sendable {
         public let settled: String
         public let pending: String
         public let writtenLater: Bool
-        /// A remote speaker's tentative name, when the call app showed one.
-        public let name: String?
 
         public init(
             id: ID, start: Double, end: Double,
-            settled: String = "", pending: String = "", writtenLater: Bool = false, name: String? = nil
+            settled: String = "", pending: String = "", writtenLater: Bool = false
         ) {
-
-            self.name = name
 
             self.id = id
             self.start = start
@@ -66,22 +62,32 @@ public struct ReadingTextUpdate: Equatable, Sendable {
 public enum ReadingRecording: Equatable, Sendable {
 
     case off
-    case on(elapsed: Double)
+    case on
 }
 
 public enum ReadingEvent: Equatable, Sendable {
+    case opened(UInt64)
+    case update(UInt64, ReadingUpdate)
+}
+
+public enum ReadingUpdate: Equatable, Sendable {
 
     /// Switching live text is reflected by the update's status.
     case textUpdated(ReadingTextUpdate)
-    case recordingChanged(ReadingRecording)
-    case problemsChanged([ReadingProblem])
+    case textEnded
+    case sessionEnded
+    case feedsEnded
+    /// Instants are seconds on the composer's monotonic clock.
+    case recordingChanged(ReadingRecording, at: Double)
+    case tick(at: Double)
+    case problemsChanged([ReadingProblem.Kind], callSilent: Bool, at: Double)
     case hold(ReadingState.Held)
     case letGo(ReadingState.Held)
     case scrolled(atBottom: Bool, interaction: UUID? = nil)
     case jumpToLive
-    /// The after-call pass: remote entries take these confirmed names by local ID;
-    /// every other remote entry loses its tentative name.
-    case namesConfirmed([Int: String])
+    /// Replaces the name set by remote local ID. Tentative names apply to the latest
+    /// text update and later text; confirmed names apply to every remote entry.
+    case namesChanged([Int: String], confirmed: Bool)
     /// The after-call pass found several remote speakers: remote entries take these
     /// 1-based places by local ID; every other remote entry stays plain Them.
     case speakersFound([Int: Int])

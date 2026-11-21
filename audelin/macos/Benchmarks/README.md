@@ -7,6 +7,18 @@ not its drawing. Setup plays a call until the panel holds 20, 800, 1,620 or
 6,000 lines (1,620 is a 3-hour call, 6,000 about 11 hours); each sample then
 speaks one more word and waits until the panel shows it.
 
+The tick-only case uses the same call setup and public composition. Once the
+panel holds that text, each sample advances a manual monotonic clock by one
+second, sends one panel tick and waits until `panelStates()` shows the new
+elapsed time. No audio is fed during these samples, and the 1 s panel timer is
+replaced by the benchmark's tick stream. Live names change only when text
+arrives, so there is no names-only case.
+
+| Case (both in the `LateUpdate` target) | Measures | Panel lines |
+|---|---|---|
+| `One word with … lines in the panel` | One new microphone word through recognition, the session and the panel state | 20, 800, 1,620, 6,000 |
+| `One tick with … lines in the panel` | One elapsed-time update through the panel composition with unchanged text | 20, 800, 1,620, 6,000 |
+
 Run everything from this directory, outside the agent sandbox (SwiftPM cannot start
 its own sandbox inside it), with nothing heavy alongside. Every tool takes `-h`.
 
@@ -16,6 +28,7 @@ its own sandbox inside it), with nothing heavy alongside. Every tool takes `-h`.
 |---|---|---|
 | Did this commit help, against an earlier one? | `./measure.sh BASE TIP` | about 25 min, plus builds |
 | Quick: this code against the saved base | `./compare.sh` | under a minute once built |
+| Tick-only cases, this checkout | `swift package --disable-sandbox benchmark --filter 'One tick with.*'` | setup plus up to 20 s per length, plus build |
 | Do both packages' tests pass, optimized? | `./test-optimized.sh` | a few minutes |
 | Which step grows, one commit only | `Profile/growth.sh TAG [OLD]` | about 5–12 min |
 | The same with the other side silent or gone quiet | `SILENT=1 Profile/growth.sh TAG`, `QUIET=1 Profile/growth.sh TAG` | about 5–12 min |
@@ -41,7 +54,8 @@ report's table in the issue. The trees are reused by later runs; they take gigab
 so remove old ones with `git worktree remove --force`.
 
 Reading the report:
-- **Instructions per word** give each percentile's lowest to highest run. A change is
+- **Instructions per word or tick** give each percentile's lowest to highest run,
+  with the sample kind in its own column. A change is
   real only if the `overlap` column says `no` and it is larger than the 20% noise below.
 - **CPU per word by step** comes from one run. Its lengths use different word and round
   counts, so compare growth between commits, not one commit's two lengths.
@@ -59,6 +73,10 @@ Reading the report:
 - **The saved `base` that `compare.sh` reads stays at the start of the work,** so its
   table keeps meaning the same thing. `./save-base.sh` replaces it for everyone; do that
   only when the owner decides on a new starting point, and commit the result.
+  It contains word results only; `compare.sh` shows each tick's current cost
+  with a dash for its saved base and change.
+  Use `./measure.sh BASE TIP` to compare ticks: it runs both commits with these
+  benchmark tools, without replacing the saved `base`.
 
 ## Real speech
 
@@ -86,8 +104,9 @@ reports and the results are in
 
 ## Reading the number
 
-Read the median instructions per word: they count all the process's work,
-the transcript writer's included. Runs of the same code differ by up to about
+Read the median instructions per sample (word or tick): they count all the
+process's work, the transcript writer's included. The saved numbers below are
+per word. Runs of the same code differ by up to about
 20%, so only a larger change is real. Wall clock swings with whatever else the
 Mac runs and is not compared. Instructions swing too when the Mac is busy (a
 run beside a build read 12 M at 20 lines), so run it with nothing heavy alongside.

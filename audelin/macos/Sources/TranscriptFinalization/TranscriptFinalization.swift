@@ -34,7 +34,7 @@ public struct TranscriptCommit<Raw: Equatable & Sendable, Names: Equatable & Sen
 /// Recordings' transcripts on their way from the last live write to their final form.
 ///
 /// `Raw` is a call's text as last written, `Names` its speaker names taken when it closed,
-/// `Far` its far side given to diarized speakers, `Heard` the microphone side heard again from cleaned audio, `Entry` one row as consumers read it.
+/// `Far` its far side given to diarized speakers, and `Heard` the microphone side heard again from cleaned audio.
 public struct TranscriptFinalizationState<Raw: Equatable & Sendable, Names: Equatable & Sendable, Far: Equatable & Sendable, Heard: Equatable & Sendable>: Equatable, Sendable {
 
     public var calls: [String: Call]
@@ -76,6 +76,8 @@ public struct TranscriptFinalizationState<Raw: Equatable & Sendable, Names: Equa
     public enum Stage: Equatable, Sendable {
 
         case writing
+        /// The transcript has closed after a saved write, and the naming sources are still closing.
+        case waitingForEvidence
         /// Closed after a saved write: the far side's speakers are being found.
         case diarizing
         /// The microphone side is being heard again from cleaned audio.
@@ -111,6 +113,8 @@ public enum TranscriptFinalizationEvent<Raw: Equatable & Sendable, Names: Equata
     case writeFailed(call: String)
     /// Carries the call's names as they were when its transcript closed.
     case closed(call: String, names: Names)
+    /// Carries the call's final speaker evidence once its sources have closed.
+    case evidenceClosed(call: String, Names)
     /// Nil when diarizing failed: the far side stays as written.
     case diarized(call: String, SavedDiarization<Far>?)
     /// Nil when cleanup kept the microphone side as written.
@@ -125,13 +129,13 @@ public enum TranscriptFinalizationEvent<Raw: Equatable & Sendable, Names: Equata
 
 public enum TranscriptFinalizationEffect<Raw: Equatable & Sendable, Names: Equatable & Sendable, Far: Equatable & Sendable, Heard: Equatable & Sendable, Entry: Equatable & Sendable>: Equatable, Sendable {
 
-    case diarize(call: String, Raw, FinishingOutcomes)
+    case diarize(call: String, Raw, Names, FinishingOutcomes)
     case clean(call: String, Raw, Far?)
     case commit(call: String, Raw, Names?, Far?, Heard?, FinishingOutcomes)
     /// Each call's final form, published once.
     case publish([String: FinalTranscript<Entry>])
-    /// Stops cleanup before committing each call as written.
-    case stopCleaning([String: TranscriptCommit<Raw, Names, Far, Heard>])
+    /// Stops running cleanup before committing saved calls whose model work was skipped or stopped.
+    case commitOnShutdown(stoppingCleanup: Set<String>, commits: [String: TranscriptCommit<Raw, Names, Far, Heard>])
 }
 
 public struct TranscriptFinalizationReducer<Raw: Equatable & Sendable, Names: Equatable & Sendable, Far: Equatable & Sendable, Heard: Equatable & Sendable, Entry: Equatable & Sendable>: Sendable {
@@ -192,9 +196,15 @@ public struct TranscriptFinalizationReducer<Raw: Equatable & Sendable, Names: Eq
                 next.calls[id] = call
                 return (next, commit(id, call, raw: raw))
             }
+            call.stage = .waitingForEvidence
+            next.calls[id] = call
+            return (next, nil)
+
+        case let .evidenceClosed(id, evidence):
+            guard var call = state.calls[id], call.stage == .waitingForEvidence, let raw = call.raw else { return (state, nil) }
             call.stage = .diarizing
             next.calls[id] = call
-            return (next, .diarize(call: id, raw, call.outcomes))
+            return (next, .diarize(call: id, raw, evidence, call.outcomes))
 
         case let .diarized(id, saved):
             guard var call = state.calls[id], call.stage == .diarizing, let raw = call.raw else { return (state, nil) }
@@ -233,15 +243,21 @@ public struct TranscriptFinalizationReducer<Raw: Equatable & Sendable, Names: Eq
         case .shutdown:
             guard !state.shuttingDown else { return (state, nil) }
             next.shuttingDown = true
+            var stoppingCleanup: Set<String> = []
             var commits: [String: TranscriptCommit<Raw, Names, Far, Heard>] = [:]
-            for (id, var call) in state.calls where call.stage == .cleaning {
+            for (id, var call) in state.calls where call.stage == .waitingForEvidence || call.stage == .cleaning {
                 guard let raw = call.raw else { continue }
+                if call.stage == .waitingForEvidence {
+                    call.outcomes.split = .skipped
+                } else {
+                    stoppingCleanup.insert(id)
+                }
                 call.stage = .committing
                 call.outcomes.cleaning = .skipped
                 next.calls[id] = call
                 commits[id] = .init(raw: raw, names: call.names, far: call.far, heard: nil, outcomes: call.outcomes)
             }
-            return (next, commits.isEmpty ? nil : .stopCleaning(commits))
+            return (next, commits.isEmpty ? nil : .commitOnShutdown(stoppingCleanup: stoppingCleanup, commits: commits))
         }
     }
 

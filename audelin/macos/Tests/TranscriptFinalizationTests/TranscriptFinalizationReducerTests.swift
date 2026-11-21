@@ -20,11 +20,13 @@ struct TranscriptFinalizationReducerTests {
     }
     @Test func writeFailureMarksLatestWrite_effect() { assert(makeState(makeCall()), .writeFailed(call: callID), delivers: nil) }
 
-    @Test func closingASavedCallDiarizes_state() { assert(makeState(makeCall()), .closed(call: callID, names: "names")) {
-        $0.calls[callID]?.stage = .diarizing
+    @Test func closingASavedCallWaitsForEvidence_state() { assert(makeState(makeCall()), .closed(call: callID, names: "names")) {
+        $0.calls[callID]?.stage = .waitingForEvidence
         $0.calls[callID]?.names = "names"
     } }
-    @Test func closingASavedCallDiarizes_effect() { assert(makeState(makeCall()), .closed(call: callID, names: "names"), delivers: .diarize(call: callID, "raw", .init())) }
+    @Test func closingASavedCallWaitsForEvidence_effect() {
+        assert(makeState(makeCall()), .closed(call: callID, names: "names"), delivers: nil)
+    }
 
     @Test func closingAfterAFailedWriteIsFinalAsSaved_state() {
         assert(makeState(makeCall(saved: false)), .closed(call: callID, names: "names")) {
@@ -99,15 +101,14 @@ struct TranscriptFinalizationReducerTests {
     }
 
     @Test func callsAreIndependent_state() {
-        let state = State(calls: ["other": makeCall(.diarizing), callID: makeCall()])
-        assert(state, .closed(call: callID, names: "names")) {
+        let state = State(calls: ["other": makeCall(.waitingForEvidence), callID: makeCall(.waitingForEvidence, names: "names")])
+        assert(state, .evidenceClosed(call: callID, "closed evidence")) {
             $0.calls[callID]?.stage = .diarizing
-            $0.calls[callID]?.names = "names"
         }
     }
     @Test func callsAreIndependent_effect() {
-        let state = State(calls: ["other": makeCall(.diarizing), callID: makeCall()])
-        assert(state, .closed(call: callID, names: "names"), delivers: .diarize(call: callID, "raw", .init()))
+        let state = State(calls: ["other": makeCall(.waitingForEvidence), callID: makeCall(.waitingForEvidence, names: "names")])
+        assert(state, .evidenceClosed(call: callID, "closed evidence"), delivers: .diarize(call: callID, "raw", "closed evidence", .init()))
     }
 
     /// Each stage takes only its own result; a final call takes nothing.
@@ -123,6 +124,7 @@ struct TranscriptFinalizationEntriesTests {
                                (makeState(shuttingDown: true), .opened(call: callID)),
                                (makeState(shuttingDown: true), .wrote(call: callID, "saved")),
                                (makeState(), Event.wrote(call: callID, "a")), (makeState(makeCall()), .closed(call: callID, names: "names")),
+                               (makeState(makeCall(.waitingForEvidence)), .evidenceClosed(call: callID, "closed evidence")),
                                (makeState(makeCall(.diarizing)), .diarized(call: callID, .init(far: "far", diarizer: "nemotron"))),
                                (makeState(makeCall(.cleaning)), .cleaned(call: callID, "heard"))] + outOfStage {
             _ = sut.reduce(state, event)
@@ -175,10 +177,12 @@ let outOfStage: [(State, Event)] = {
     let all: [Event] = [
         .wrote(call: callID, "x"), .writeFailed(call: callID), .closed(call: callID, names: "names"), .diarized(call: callID, .init(far: "f", diarizer: "nemotron")),
         .cleaned(call: callID, "h"), .committed(call: callID, succeeded: true), .published(calls: [callID]), .opened(call: callID),
+        .evidenceClosed(call: callID, "closed evidence"),
     ]
-    let accepted: [State.Stage: Set<Int>] = [.writing: [0, 1, 2], .diarizing: [3], .cleaning: [4], .committing: [5], .finalized: [6], .failed: [6]]
-    let stages: [State.Stage] = [.writing, .diarizing, .cleaning, .committing, .finalized, .failed]
+    let accepted: [State.Stage: Set<Int>] = [.writing: [0, 1, 2], .waitingForEvidence: [8], .diarizing: [3],
+                                            .cleaning: [4], .committing: [5], .finalized: [6], .failed: [6]]
+    let stages: [State.Stage] = [.writing, .waitingForEvidence, .diarizing, .cleaning, .committing, .finalized, .failed]
     return stages.flatMap { stage in
         all.indices.filter { !accepted[stage]!.contains($0) }.map { (makeState(makeCall(stage, heard: stage == .committing ? "h" : nil)), all[$0]) }
-    } + all.indices.filter { (3...6).contains($0) }.map { (makeState(), all[$0]) }
+    } + [3, 4, 5, 6, 8].map { (makeState(), all[$0]) }
 }()

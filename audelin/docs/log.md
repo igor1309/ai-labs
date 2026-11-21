@@ -3,6 +3,7 @@
 ## 2026-11-21
 
 - LAB-1736: Call notes call you by name, not "Me": the name Zoom last showed for you, else your Mac account's full name. Notes keep the name they were made with; the transcript still marks your lines as yours.
+- LAB-1721: The panel keeps showing a finished call until the next recording opens, and that call's late names and confirmations still reach it. A call's names are confirmed after the next call has started, and quitting while a call waits for its speakers no longer starts speaker work.
 
 ## 2026-11-20
 
