@@ -6,7 +6,14 @@ that report evidence and acknowledge a stop on cue. Rows read back each
 call's names and what each fake source was asked to do.
 
 ## S-1 A row takes the name seen when it was said
-Evidence: `CallNamesReducerTests` (matcher spy, row named; unnamed row named on a later update).
+Evidence: `rowsPassExactEvidenceToNamingAndUseItsAnswer`,
+`firstRecordingOnStartsTheClockAndWatchesZoom`,
+`firstRecordingOnDeliversZoomObservationsWithTheirInstants`,
+`firstSightAddsRosterNamesInOrderAndOpensIntervals`,
+`calibratedBrowserInstantsBecomeElapsedRosterAndSpeakingEvidence`,
+`bufferedBrowserEvidenceBeforeRecordingIsPlacedAtItsStart`,
+`onlyOpenBrowserConnectionsRaiseThroughUsingTheRowInstant`,
+`recordingOffClearsTheClockAndKeepsEvidenceAndNames`.
 
 ## S-2 Confirmed names replace live ones
 Evidence: `ConfirmationTests`.

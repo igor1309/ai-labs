@@ -9,29 +9,25 @@ public protocol CallAppObserver: Sendable {
 /// Hands each effect to the call-app sources and delivers what they report; it keeps nothing.
 public struct CallNamesEffectHandler: Sendable {
 
-    private let sources: [any CallAppObserver]
+    private let zoom: any CallAppObserver
+    private let browser: any CallAppObserver
 
-    public init(sources: [any CallAppObserver]) { self.sources = sources }
+    public init(zoom: any CallAppObserver, browser: any CallAppObserver) {
+        self.zoom = zoom
+        self.browser = browser
+    }
 
     public func handle(_ effect: CallNamesEffect) -> AsyncStream<CallNamesEvent> {
-        let sources = sources
         switch effect {
-        case .observe:
-            return AsyncStream { output in
-                let task = Task {
-                    await withTaskGroup(of: Void.self) { group in
-                        for source in sources {
-                            group.addTask { for await event in source.observe() { output.yield(event) } }
-                        }
-                    }
-                    output.finish()
-                }
-                output.onTermination = { _ in task.cancel() }
-            }
+        case .observeBrowser:
+            return browser.observe()
+        case .observeZoom:
+            return zoom.observe()
         case .stopObserving:
             return AsyncStream { output in
                 let task = Task {
-                    for source in sources { await source.stop() }
+                    await zoom.stop()
+                    await browser.stop()
                     output.yield(.observationStopped)
                     output.finish()
                 }

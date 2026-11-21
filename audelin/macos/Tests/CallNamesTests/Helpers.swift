@@ -4,7 +4,6 @@ import Synchronization
 import Testing
 
 typealias State = CallNamesState
-typealias Event = CallNamesEvent
 typealias Reducer = CallNamesReducer
 
 func makeState(_ update: (inout State) -> Void = { _ in }) -> State {
@@ -13,8 +12,15 @@ func makeState(_ update: (inout State) -> Void = { _ in }) -> State {
     return state
 }
 
-func makeObservedState(_ update: (inout State) -> Void = { _ in }) -> State {
+func makeRecordingState(_ update: (inout State) -> Void = { _ in }) -> State {
     makeState {
+        $0.recordingStart = 100
+        update(&$0)
+    }
+}
+
+func makeObservedState(_ update: (inout State) -> Void = { _ in }) -> State {
+    makeRecordingState {
         $0.roster = ["Anna"]
         $0.knownNames = ["Anna"]
         $0.spoken = [.init(name: "Anna", start: 1, end: nil)]
@@ -89,7 +95,7 @@ func makeConfirmingSUT(stubs: [String?] = [], confirmed: [Int: String] = [:]) ->
 
 @discardableResult
 func assert(
-    _ state: State, _ event: Event, using sut: Reducer, delivering effect: CallNamesEffect? = nil,
+    _ state: State, _ event: CallNamesEvent, using sut: Reducer, delivering effect: CallNamesEffect? = nil,
     _ update: (inout State) -> Void = { _ in }, sourceLocation: SourceLocation = #_sourceLocation
 ) -> State {
     var expected = state

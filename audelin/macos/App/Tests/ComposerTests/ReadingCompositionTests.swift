@@ -49,7 +49,7 @@ struct ReadingCompositionTests {
             }
             #expect(lines.scrollAcknowledgement == interaction)
             #expect(lines.followsLive == atBottom)
-            reading = ReadingReducer.reduce(reading, .recordingChanged(.on(elapsed: 0))).0
+            reading = ReadingReducer.reduce(reading, .recordingChanged(.on, at: 100)).0
             reading = ReadingReducer.reduce(reading, .textUpdated(.init(status: .off, entries: []))).0
             #expect(panelState(russianPanel, reading, rows: &rows).log == .liveTextOff(kept: lines))
             reading = ReadingReducer.reduce(reading, .jumpToLive).0
@@ -158,7 +158,8 @@ struct ReadingCompositionTests {
         #expect(panelState(russianPanel, .init()) == .init(recording: .off, log: .empty))
         var reading = ReadingState()
         func send(_ event: ReadingEvent) { reading = ReadingReducer.reduce(reading, event).0 }
-        send(.recordingChanged(.on(elapsed: 62)))
+        send(.recordingChanged(.on, at: 100))
+        send(.tick(at: 162))
         #expect(panelState(russianPanel, reading) == .init(recording: .on(elapsed: "00:01:02"), log: .liveTextOff(kept: nil)))
         send(.scrolled(atBottom: false))
         let snapshot = try await publishedCall(status: .listening, mine: [
@@ -178,7 +179,7 @@ struct ReadingCompositionTests {
         #expect(panelState(russianPanel, reading).log == .liveTextOff(kept: expected))
         send(.textUpdated(.init(status: .gettingReady, entries: [])))
         #expect(panelState(russianPanel, reading).log == .preparing(holds: holds))
-        send(.recordingChanged(.off))
+        send(.recordingChanged(.off, at: 162))
         #expect(panelState(russianPanel, reading).recording == .off)
         for event in [PanelEvent.start, .stop, .switchLiveTextOn] { #expect(readingEvent(event) == nil) }
     }

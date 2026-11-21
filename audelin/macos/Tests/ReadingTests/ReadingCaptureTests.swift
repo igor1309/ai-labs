@@ -17,16 +17,11 @@ struct ReadingCaptureTests {
         #expect(spy.calls.isEmpty)
     }
 
-    @Test func problemsBeforeCaptureAreKeptWithoutBanners() {
+    @Test func reportsWhileRecordingIsOffLeaveTheLogEmpty() {
         let spy = RenderingSpy()
         let state = makeBeforeCapture()
-        let problems: [ReadingProblem] = [.init(.microphone, began: 3), .init(.callSilent, began: 8)]
-        assert(state, .problemsChanged(problems), delivers: nil, using: makeReducer(spy)) {
-            $0.problems = problems
-        }
-        var input = snapshot(state)
-        input.problems = [problems[0]]
-        #expect(spy.layoutCalls == [.init(value: input, change: .rebuild)])
+        assert(state, .problemsChanged([.microphone], callSilent: true, at: 108), delivers: nil, using: makeReducer(spy))
+        #expect(spy.layoutCalls.isEmpty)
         #expect(spy.calls.isEmpty)
     }
 
@@ -41,7 +36,7 @@ struct ReadingCaptureTests {
 
     @Test func recordingOffBeforeCaptureKeepsTheLogEmpty() {
         let spy = RenderingSpy()
-        assert(makeBeforeCapture(), .recordingChanged(.off), delivers: nil, using: makeReducer(spy))
+        assert(makeBeforeCapture(), .recordingChanged(.off, at: 120), delivers: nil, using: makeReducer(spy))
         #expect(spy.layoutCalls.isEmpty)
         #expect(spy.calls.isEmpty)
     }
@@ -49,19 +44,20 @@ struct ReadingCaptureTests {
     @Test func firstCaptureShowsTheKeptTextAndBanners() {
         let spy = RenderingSpy()
         let problems: [ReadingProblem] = [.init(.microphone, began: 3), .init(.callSilent, began: 8)]
-        assert(makeBeforeCapture(problems: problems), .recordingChanged(.on(elapsed: 5)), delivers: nil, using: makeReducer(spy)) {
-            $0.recording = .on(elapsed: "recording(5.0)")
+        assert(makeBeforeCapture(problems: problems), .recordingChanged(.on, at: 105), delivers: nil, using: makeReducer(spy)) {
+            $0.recording = .on(elapsed: "recording(0.0)")
+            $0.recordingStart = 105
             $0.captureBegan = true
             $0.banners = [.init(kind: .callSilent, time: "line(8.0)"), .init(kind: .microphone, time: "line(3.0)")]
             $0.log = .lines($0.lines)
         }
-        #expect(spy.calls == [.recording(5), .line(8), .line(3)])
+        #expect(spy.calls == [.recording(0), .line(8), .line(3)])
         #expect(spy.layoutCalls.isEmpty)
     }
 
     @Test func recordingOffAfterCaptureBeganKeepsTheLogOpen() {
         let spy = RenderingSpy()
-        assert(makeListening(entries: [text], rows: [.entry(shown)]), .recordingChanged(.off), delivers: nil, using: makeReducer(spy)) {
+        assert(makeListening(entries: [text], rows: [.entry(shown)]), .recordingChanged(.off, at: 120), delivers: nil, using: makeReducer(spy)) {
             $0.recording = .off
         }
         #expect(spy.layoutCalls.isEmpty)
@@ -74,10 +70,11 @@ struct ReadingCaptureTests {
         var state = makeListening(entries: [text], rows: [.entry(shown)], problems: problems,
                                   banners: [.init(kind: .microphone, time: "given")])
         state.recording = .off
-        assert(state, .recordingChanged(.on(elapsed: 9)), delivers: nil, using: makeReducer(spy)) {
-            $0.recording = .on(elapsed: "recording(9.0)")
+        assert(state, .recordingChanged(.on, at: 109), delivers: nil, using: makeReducer(spy)) {
+            $0.recording = .on(elapsed: "recording(0.0)")
+            $0.recordingStart = 109
         }
-        #expect(spy.calls == [.recording(9)])
+        #expect(spy.calls == [.recording(0)])
         #expect(spy.layoutCalls.isEmpty)
     }
 }

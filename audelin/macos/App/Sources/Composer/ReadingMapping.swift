@@ -6,7 +6,7 @@ import Recording
 
 func readingRecording(_ state: SessionState) -> ReadingRecording {
 
-    state.phase == .recording ? .on(elapsed: 0) : .off
+    state.phase == .recording ? .on : .off
 }
 
 /// Maps the entries from position `from` on; those before it are already final.

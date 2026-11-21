@@ -9,14 +9,48 @@ struct ReadingReducerTests {
         #expect(spy.layoutCalls.isEmpty)
     }
 
-    @Test func recordingOnUsesInjectedTimeWithoutLayingOutText() {
+    @Test func firstRecordingOnStartsTheClockEvenWhenItArrivesAfterATick() {
         let spy = RenderingSpy()
-        assert(.init(), .recordingChanged(.on(elapsed: 3_661.9)), delivers: nil, using: makeReducer(spy)) {
-            $0.recording = .on(elapsed: "recording(3661.9)")
+        let reducer = makeReducer(spy)
+        let initial = makeBeforeRecording()
+        assert(initial, .tick(at: 105), delivers: nil, using: reducer)
+        #expect(spy.calls.isEmpty)
+
+        assert(initial, .recordingChanged(.on, at: 100), delivers: nil, using: reducer) {
+            $0.recordingStart = 100
+            $0.recording = .on(elapsed: "recording(0.0)")
             $0.captureBegan = true
             $0.log = .liveTextOff(kept: nil)
         }
+        #expect(spy.calls == [.recording(0)])
+        #expect(spy.layoutCalls.isEmpty)
+    }
+
+    @Test func laterRecordingOnKeepsTheFirstInstant() {
+        let spy = RenderingSpy()
+        assert(makeRecording(), .recordingChanged(.on, at: 105.5), delivers: nil, using: makeReducer(spy)) {
+            $0.lastTick = 105.5
+            $0.recording = .on(elapsed: "recording(5.5)")
+        }
+        #expect(spy.calls == [.recording(5.5)])
+        #expect(spy.layoutCalls.isEmpty)
+    }
+
+    @Test func tickUsesElapsedTimeFromTheFirstRecordingInstant() {
+        let spy = RenderingSpy()
+        assert(makeRecording(), .tick(at: 3_761.9), delivers: nil, using: makeReducer(spy)) {
+            $0.lastTick = 3_761.9
+            $0.recording = .on(elapsed: "recording(3661.9)")
+        }
         #expect(spy.calls == [.recording(3_661.9)])
+        #expect(spy.layoutCalls.isEmpty)
+    }
+
+    @Test(arguments: [99.0, 103.9, 104.5, 104.75, 104.99])
+    func earlierTicksAndTicksInTheSameDisplayedSecondDoNothing(instant: Double) {
+        let spy = RenderingSpy()
+        assert(makeRecording(lastTick: 104.75), .tick(at: instant), delivers: nil, using: makeReducer(spy))
+        #expect(spy.calls.isEmpty)
         #expect(spy.layoutCalls.isEmpty)
     }
 
@@ -129,4 +163,11 @@ struct ReadingReducerTests {
 func snapshot(_ state: ReadingState) -> ReadingLayout {
     .init(anchors: state.anchors, nextDisplayID: state.nextDisplayID, text: state.text,
           rendered: state.rendered, rows: state.lines.rows, revision: state.lines.layout, problems: state.problems)
+}
+
+private func makeBeforeRecording() -> ReadingState { .init() }
+
+private func makeRecording(lastTick: Double? = nil) -> ReadingState {
+    .init(recording: .on(elapsed: "given"), recordingStart: 100, lastTick: lastTick,
+          captureBegan: true, log: .liveTextOff(kept: nil))
 }

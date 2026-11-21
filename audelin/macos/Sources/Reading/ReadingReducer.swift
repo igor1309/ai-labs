@@ -20,28 +20,38 @@ public struct ReadingReducer: Sendable {
 
         var state = state
         switch event {
-        case let .recordingChanged(recording):
-            switch recording {
-            case .off:
-                let removesGaps = hasGaps(state)
-                let wasPrepared = state.rendered.prepared
-                state.recording = .off
-                state.problems = []
-                state.banners = []
-                prepareRows(&state)
-                if wasPrepared && removesGaps { rebuildLayout(&state) }
-            case let .on(elapsed):
-                state.recording = .on(elapsed: recordingTime(elapsed))
-                if !state.captureBegan {
-                    state.captureBegan = true
-                    state.banners = banners(state)
-                }
+        case .recordingChanged(.off, _):
+            let removesGaps = hasGaps(state)
+            let wasPrepared = state.rendered.prepared
+            state.recording = .off
+            state.recordingStart = nil
+            state.lastTick = nil
+            state.problems = []
+            state.banners = []
+            prepareRows(&state)
+            if wasPrepared && removesGaps { rebuildLayout(&state) }
+        case let .recordingChanged(.on, instant):
+            if state.recordingStart != nil {
+                advanceClock(&state, to: instant)
+                return (state, nil)
             }
-        case let .problemsChanged(problems):
+            state.recordingStart = instant
+            state.recording = .on(elapsed: recordingTime(0))
+            if !state.captureBegan {
+                state.captureBegan = true
+                state.banners = banners(state)
+            }
+        case let .tick(instant):
+            advanceClock(&state, to: instant)
+            return (state, nil)
+        case let .problemsChanged(kinds, callSilent, instant):
+            guard let start = state.recordingStart else { return (state, nil) }
             let previous = state.problems
-            state.problems.removeAll { $0.kind == .callSilent && !problems.contains(where: { $0.kind == .callSilent }) }
-            for problem in problems where !state.problems.contains(where: { $0.kind == problem.kind }) {
-                state.problems.append(problem)
+            if !callSilent { state.problems.removeAll { $0.kind == .callSilent } }
+            let elapsed = max(0, instant - start)
+            let active = kinds + (callSilent ? [.callSilent] : [])
+            for kind in active where !state.problems.contains(where: { $0.kind == kind }) {
+                state.problems.append(.init(kind, began: elapsed))
             }
             if state.captureBegan, state.problems != previous { state.banners = banners(state) }
             let wasPrepared = state.rendered.prepared
@@ -84,6 +94,15 @@ public struct ReadingReducer: Sendable {
         }
         state.log = state.captureBegan ? log(state) : .empty
         return (state, nil)
+    }
+
+    private func advanceClock(_ state: inout ReadingState, to instant: Double) {
+        guard let start = state.recordingStart else { return }
+        let elapsed = instant - start
+        let previous = (state.lastTick ?? start) - start
+        guard elapsed.rounded(.down) > previous.rounded(.down) else { return }
+        state.lastTick = instant
+        state.recording = .on(elapsed: recordingTime(elapsed))
     }
 
     private func log(_ state: ReadingState) -> ReadingState.Log {

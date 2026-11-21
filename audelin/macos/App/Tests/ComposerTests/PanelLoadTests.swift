@@ -86,7 +86,7 @@ struct PanelLoadTests {
     private func panelSteps(entries count: Int) -> [[Duration]] {
 
         let feed = feed(entries: count)
-        var reading = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 0))).0
+        var reading = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on, at: 100)).0
         var states: [[Duration]] = []
         let clock = ContinuousClock()
         // The call is already there: only the states after it are the cost of a late state.

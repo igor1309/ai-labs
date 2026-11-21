@@ -97,25 +97,21 @@ actor AudelinPanel {
             await self?.receive(state, id: id)
         }, intervals: intervals)
         let made = await ReadingSubscription(reading: reading, text: text, speakers: speakers, names: published, now: now, ticks: ticks(), sink: sink,
-                                                  sources: callAppSources()) { state in
+                                              handler: callAppHandler()) { state in
             await update(state)
         }
         if current?.id == id { subscription = (id, made) }
         return made
     }
 
-    /// The call app's sources for one recording, timed by its call clock.
-    private func callAppSources() -> @Sendable (@escaping @Sendable () async -> Double?) -> [any CallAppObserver] {
+    private func callAppHandler() -> CallNamesEffectHandler {
 
-        let browser = browser, now = now, sleep = sleep, zoomName = zoomName, sink = sink
-        return { clock in
-            let windows = ZoomWindows()
-            return [
-                ZoomCallObserver(isPermitted: { windows.isPermitted }, windows: { windows.windows() }, clock: clock,
-                                 sleep: { try await Task.sleep(for: $0) }, knownName: zoomName.read, rememberName: zoomName.remember),
-                BrowserCallObserver(openBrowser: browser, clock: clock, monotonic: now, sleep: sleep, log: sink),
-            ]
-        }
+        let windows = ZoomWindows()
+        return CallNamesEffectHandler(
+            zoom: ZoomCallObserver(isPermitted: { windows.isPermitted }, windows: { windows.windows() }, now: now,
+                                   sleep: { try await Task.sleep(for: $0) }, knownName: zoomName.read, rememberName: zoomName.remember),
+            browser: BrowserCallObserver(openBrowser: browser, monotonic: now, sleep: sleep, log: sink)
+        )
     }
 
     /// Takes the recording's reading feed to its end first, so its last text and speakers are shown;
@@ -176,7 +172,7 @@ actor AudelinPanel {
 final class ReadingSubscription {
 
     private let reading: ReadingInputs
-    private let time: ReadingTime
+    private let now: @Sendable () -> Double
     private let show: @MainActor @Sendable (ReadingState) async -> Void
     private let text: Task<Void, Never>
     private let timer: Task<Void, Never>
@@ -189,19 +185,17 @@ final class ReadingSubscription {
     init(
         reading: ReadingInputs, text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]>, names recording: RecordingNames,
         now: @escaping @Sendable () -> Double, ticks: AsyncStream<Void>, sink: any LogSink,
-        sources: @Sendable (@escaping @Sendable () async -> Double?) -> [any CallAppObserver],
+        handler: CallNamesEffectHandler,
         receive: @escaping @Sendable (ReadingState) async -> Void
     ) async {
 
         self.reading = reading
-        let time = ReadingTime(reading: reading, now: now)
-        self.time = time
+        self.now = now
         let reducer = CallNamesReducer(
             name: { LiveNames().match(start: $0, end: $1, roster: $2, activities: $3, through: $4) },
             confirm: { rows, turns, evidence in
                 AfterCallNames.names(rows: rows.map { ($0.id, $0.start, $0.end) }, turns: turns, evidence: evidence)
             })
-        let handler = CallNamesEffectHandler(sources: sources { await time.elapsed() })
         let names = ObservableModel(initialState: CallNamesState(), reduce: reducer.reduce, handleEffect: handler.handle)
         self.names = names
         let published = Observations { names.state }
@@ -226,7 +220,7 @@ final class ReadingSubscription {
                 guard !Task.isCancelled else { return }
                 let remote = state.entries[mapped...].filter { $0.speaker != .mine }
                     .map { Row(id: $0.text.id, start: $0.text.start, end: $0.text.end) }
-                if !remote.isEmpty, let now = await time.elapsed() { names.event(.rows(remote, now: now)) }
+                if !remote.isEmpty { names.event(.rows(remote, now: now())) }
                 reading.send(.textUpdated(readingText(state, from: mapped)))
                 mapped = state.finalCount
             }
@@ -239,7 +233,7 @@ final class ReadingSubscription {
         timer = Task {
             for await _ in ticks {
                 guard !Task.isCancelled else { return }
-                time.tick()
+                reading.send(.tick(at: now()))
             }
         }
         recording.connect { [weak self] turns, rows in await self?.diarized(turns, rows: rows) }
@@ -247,15 +241,17 @@ final class ReadingSubscription {
 
     private func diarized(_ turns: [DiarizedTurn], rows: [Row]) { names.event(.diarized(turns, rows: rows)) }
 
-    func recordingChanged(_ recording: ReadingRecording) {
+    private func recordingChanged(_ recording: ReadingRecording, at instant: Double) {
 
-        time.recordingChanged(recording)
+        reading.send(.recordingChanged(recording, at: instant))
+        names.event(.recordingChanged(isOn: recording == .on, at: instant))
     }
 
     func sessionChanged(_ state: SessionState) {
 
-        time.recordingChanged(readingRecording(state))
-        time.problemsChanged(readingFaultKinds(state), callSilent: state.audioWarning == .callSilent)
+        let instant = now()
+        recordingChanged(readingRecording(state), at: instant)
+        reading.send(.problemsChanged(readingFaultKinds(state), callSilent: state.audioWarning == .callSilent, at: instant))
     }
 
     /// Waits for the text and speaker streams to finish, so every state they sent is reduced.
@@ -268,7 +264,7 @@ final class ReadingSubscription {
         await text.value
         timer.cancel()
         await timer.value
-        time.recordingChanged(.off)
+        recordingChanged(.off, at: now())
         // The model reduces the event later; wait until the state shows it.
         for await state in Observations({ self.reading.state() }) where state.recording == .off { break }
         observation.cancel()
@@ -302,55 +298,5 @@ final class ReadingSubscription {
         timer.cancel()
         observation.cancel()
         naming.cancel()
-    }
-}
-
-@MainActor
-private final class ReadingTime {
-
-    private let reading: ReadingInputs
-    private let now: @Sendable () -> Double
-    private var origin: Double?
-    private var problems: [ReadingProblem] = []
-
-    init(reading: ReadingInputs, now: @escaping @Sendable () -> Double) {
-
-        self.reading = reading
-        self.now = now
-    }
-
-    func recordingChanged(_ recording: ReadingRecording) {
-
-        switch recording {
-        case .off:
-            origin = nil
-            problems = []
-            reading.send(.recordingChanged(.off))
-        case let .on(elapsed):
-            let instant = now()
-            let beginning = origin ?? instant - elapsed
-            origin = beginning
-            reading.send(.recordingChanged(.on(elapsed: instant - beginning)))
-        }
-    }
-
-    func problemsChanged(_ kinds: [ReadingProblem.Kind], callSilent: Bool) {
-
-        guard let origin else { return }
-        problems.removeAll { $0.kind == .callSilent && !callSilent }
-        let active = kinds + (callSilent ? [.callSilent] : [])
-        let elapsed = now() - origin
-        for kind in active where !problems.contains(where: { $0.kind == kind }) {
-            problems.append(.init(kind, began: elapsed))
-        }
-        reading.send(.problemsChanged(problems))
-    }
-
-    /// Seconds since the recording began, or nil while it is off.
-    func elapsed() -> Double? { origin.map { now() - $0 } }
-
-    func tick() {
-
-        if let origin { reading.send(.recordingChanged(.on(elapsed: now() - origin))) }
     }
 }

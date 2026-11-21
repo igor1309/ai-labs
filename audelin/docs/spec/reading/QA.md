@@ -6,10 +6,12 @@ expected change. Formatters are spies; rows read back the rows, holds,
 banners, names and recording time the state shows.
 
 ## S-1 A failed side shows a banner and a gap
-Evidence: `repeatedFaultKeepsItsFirstTime`, `recordingOffClearsProblemsAndGaps`, `faultsAndWarningAreNewestFirst`.
+Evidence: `repeatedFaultKeepsItsFirstTimeAndDoesNotLayOutAgain`,
+`recordingOffClearsFaultsAndUsesTheRebuiltRows`,
+`faultsAndWarningAreNewestFirstAndOnlyFaultsPersist`.
 
 ## S-2 Silence clears without leaving a gap
-Evidence: `clearingWarningKeepsFaultsAndGaps`, `warningAloneHasNoGap`.
+Evidence: `clearingWarningKeepsFaultsWithoutLayingOutAgain`, `layoutGetsOnlyProblemsThatLeaveAGap`.
 
 ## S-3 Held selections stay as selected
 Evidence: `holdsSurviveRevisedText`, `holdsSurviveTheirEntryLeaving`, `letGoRemovesOnlyThatHold`.
@@ -33,10 +35,11 @@ Evidence: Missing.
 
 ## S-9 Text before capture waits
 Text, then capture beginning: the log is empty, then shows that text.
-Text, names and problems before capture are kept with no banner; recording
-off before or after capture changes nothing about whether it began.
+Text and names before capture are kept with no banner. Fault reports while
+recording is off leave the log empty. Recording off before or after capture
+preserves whether capture began.
 Evidence: `textBeforeCaptureIsKeptWhileTheLogStaysEmpty`,
-`problemsBeforeCaptureAreKeptWithoutBanners`,
+`reportsWhileRecordingIsOffLeaveTheLogEmpty`,
 `namesBeforeCaptureAreKeptWhileTheLogStaysEmpty`,
 `recordingOffBeforeCaptureKeepsTheLogEmpty`,
 `firstCaptureShowsTheKeptTextAndBanners`,
@@ -59,5 +62,9 @@ The composer checks the layout and panel cache wiring in
 
 ## S-11 Time runs from the first recording instant
 Recording on at an instant, ticks at later and earlier instants: the time
-reads from the first instant and the earlier tick changes nothing.
-Evidence: Missing.
+reads from the first instant. Earlier ticks and ticks in the same displayed
+second leave the state unchanged. Evidence:
+`firstRecordingOnStartsTheClockEvenWhenItArrivesAfterATick`,
+`laterRecordingOnKeepsTheFirstInstant`, `tickUsesElapsedTimeFromTheFirstRecordingInstant`,
+`earlierTicksAndTicksInTheSameDisplayedSecondDoNothing`,
+`recordingOffClearsFaultsAndUsesTheRebuiltRows`.

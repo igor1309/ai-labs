@@ -51,8 +51,8 @@ struct ReadingLogTests {
             .textUpdated(.init(status: .gettingReady, entries: [])),
             .textUpdated(.init(status: .failed("failure"), entries: [])),
             .textUpdated(.init(status: .finished, entries: [])),
-            .recordingChanged(.off), .recordingChanged(.on(elapsed: 0)),
-            .problemsChanged([.init(.microphone, began: 4)]), .scrolled(atBottom: false), .jumpToLive,
+            .recordingChanged(.off, at: 100), .recordingChanged(.on, at: 100),
+            .problemsChanged([.microphone], callSilent: false, at: 104), .scrolled(atBottom: false), .jumpToLive,
         ]
         for event in events {
             let spy = RenderingSpy(result: { $0.rows = []; $0.text = [:]; $0.anchors = [:] })

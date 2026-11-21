@@ -62,15 +62,17 @@ public struct ReadingTextUpdate: Equatable, Sendable {
 public enum ReadingRecording: Equatable, Sendable {
 
     case off
-    case on(elapsed: Double)
+    case on
 }
 
 public enum ReadingEvent: Equatable, Sendable {
 
     /// Switching live text is reflected by the update's status.
     case textUpdated(ReadingTextUpdate)
-    case recordingChanged(ReadingRecording)
-    case problemsChanged([ReadingProblem])
+    /// Instants are seconds on the composer's monotonic clock.
+    case recordingChanged(ReadingRecording, at: Double)
+    case tick(at: Double)
+    case problemsChanged([ReadingProblem.Kind], callSilent: Bool, at: Double)
     case hold(ReadingState.Held)
     case letGo(ReadingState.Held)
     case scrolled(atBottom: Bool, interaction: UUID? = nil)

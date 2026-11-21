@@ -48,7 +48,7 @@ struct ReadingFinalCursorTests {
             random = random &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
             return Int((random >> 33) % UInt64(bound))
         }
-        let listening = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 0))).0
+        let listening = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on, at: 100)).0
         var sealing = listening, oracle = listening
         var entries: [CallState.Entry] = []
         var final = 0, mapped = 0
@@ -85,7 +85,7 @@ struct ReadingFinalCursorTests {
     /// Updates from the cursor do not carry final entries, and a tail entry going must not take them.
     @Test func aTailEntryGoingKeepsTheFinalEntries() {
 
-        var reading = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 0))).0
+        var reading = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on, at: 100)).0
         let finals = (0..<4).map { Self.entry($0, words: "final \($0)") }
         var first = CallState(status: .listening, entries: .init(tail: finals + [Self.entry(4, words: "tail"), Self.entry(5, words: "tail")]))
         first.finalCount = 4
@@ -95,7 +95,7 @@ struct ReadingFinalCursorTests {
         next.finalCount = 4
         reading = ReadingReducer.reduce(reading, .textUpdated(readingText(next, from: 4))).0
 
-        var whole = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 0))).0
+        var whole = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on, at: 100)).0
         whole = ReadingReducer.reduce(whole, .textUpdated(readingText(first))).0
         whole = ReadingReducer.reduce(whole, .textUpdated(readingText(next))).0
         #expect(panelState(russianPanel, reading) == panelState(russianPanel, whole))
@@ -107,7 +107,7 @@ struct ReadingFinalCursorTests {
         later: Bool, between: (Int) -> ReadingEvent? = { _ in nil }
     ) -> [(whole: ReadingState, cursor: ReadingState, panel: PanelState)] {
 
-        var whole = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on(elapsed: 0))).0
+        var whole = ReadingReducer.reduce(ReadingState(), .recordingChanged(.on, at: 100)).0
         var cursor = whole
         var mapped = 0
         var rows = MappedRows()
@@ -136,7 +136,7 @@ struct ReadingFinalCursorTests {
 
     @Test func aGapAfterEntriesWentFinalKeepsItsPlace() {
 
-        let problem = ReadingEvent.problemsChanged([.init(.microphone, began: 20)])
+        let problem = ReadingEvent.problemsChanged([.microphone], callSilent: false, at: 120)
         for step in wholeAndCursor(later: false, between: { $0 == 6 ? problem : nil }) {
             #expect(step.cursor.log == step.whole.log)
             #expect(step.panel == panelState(russianPanel, step.whole))
