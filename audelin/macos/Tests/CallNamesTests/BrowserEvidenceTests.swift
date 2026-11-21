@@ -124,7 +124,7 @@ struct BrowserEvidenceTests {
             $0.browser.epoch = 4; $0.browser.sequence = 1; $0.browser.through = 2; $0.browser.health = .healthy
             $0.roster = []; $0.spoken = []; $0.through = 2
         }
-        assert(state, .rows([makeRow()], now: 120), using: sut)
+        assert(state, .rows([makeRow()], now: 120), using: sut) { $0.waitingRows = [makeRow()] }
         #expect(spy.requests == [.init(start: 1, end: 5,
                                       roster: [.init(id: "self", name: "Me", isLocal: true)],
                                       activities: [], through: 2)])

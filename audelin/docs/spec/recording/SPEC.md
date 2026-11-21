@@ -67,6 +67,11 @@ effect handler, and its result comes back as a Recording event.
   condition goes missing or Recording shuts down. A start by hand refused
   for call audio does not wait: the user sees what is missing and starts
   again.
+- **A stop can name the recording it is for.** The panel's Stop names the
+  recording the panel shows; Recording takes it as the user's stop only
+  while that recording is the current one, and ignores it otherwise, so a
+  stop from a finished call's panel never ends the next. The menu's Stop
+  names none and stops whatever runs.
 - **A Session that cannot record is ended,** named until the next.
 - **A side that fails while recording is named until the next recording
   begins.** The Session tells which: a lost access or a failed capture on
@@ -164,6 +169,11 @@ Feature: Deciding when a call is recorded
     Given a recording is beginning
     When a stop comes and its Session ends
     Then I can read that no recording runs
+
+  Scenario: S-11a A stop for a finished recording leaves the current one
+    Given one recording has ended and the next records
+    When a stop naming the first recording comes
+    Then I can read that the next recording still runs
 
   Scenario: S-12 A call that ends during bring-down is not recorded
     Given a call started while a recording was ending

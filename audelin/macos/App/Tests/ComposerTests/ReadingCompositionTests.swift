@@ -38,6 +38,30 @@ struct ReadingCompositionTests {
         }
     }
 
+    @MainActor
+    @Test func aStopFromThePreviousPanelBindingKeepsTheNextCallRecording() async throws {
+        try await withComposition(preferences: { .init(automaticRecording: false, liveText: false, callsFolder: $0) }) { rig in
+            try await rig.start()
+            for await shown in Observations({ rig.menu.panelPresentation }) where shown.call == 1 {
+                if case .on = shown.state.recording { break }
+            }
+            let first = panelContentBinding(rig.menu)
+            try await rig.stop()
+            try await rig.start()
+            for await shown in Observations({ rig.menu.panelPresentation }) where shown.call == 2 {
+                if case .on = shown.state.recording { break }
+            }
+            let second = panelContentBinding(rig.menu)
+            await first.event(.stop).value
+            // Recording reduces events in order: the switch reaches call 2 only if it still records.
+            await second.event(.switchLiveTextOn).value
+            let state = try await rig.state { $0.pieces?.wantedLiveText == true || $0.phase != .recording }
+            #expect(state.session?.id == 2)
+            #expect(state.phase == .recording)
+            try await rig.stop()
+        }
+    }
+
     @Test func panelActionsReachTheCurrentReading() async throws {
         try await withComposition { rig in
             try await rig.start()

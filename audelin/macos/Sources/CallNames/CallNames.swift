@@ -31,6 +31,9 @@ public struct CallNamesState: Equatable, Sendable {
     /// Unplaced browser messages in arrival order, retaining the newest 1000 per connection.
     /// Before recording starts, their estimated times are bounded by receipt.
     public var heldBrowserMessages: [Event]
+    /// Remote rows that came while the evidence held no one, such as while the watch waited for
+    /// the previous call's watch to close; each is named once evidence reaches it.
+    public var waitingRows: [Row]
 
     public init(
         roster: [String] = [], spoken: [Spoken] = [], through: Double = 0,
@@ -38,7 +41,7 @@ public struct CallNamesState: Equatable, Sendable {
         confirmed: Bool = false, observation: Observation = .idle, recordingStart: Double? = nil,
         recordingEnd: Double? = nil, lastZoomSpeaker: String? = nil, knownNames: [String] = [], sequence: Int = 0,
         zoom: Evidence = Evidence(), browser: Evidence = Evidence(), browserConnections: Set<Int> = [],
-        heldBrowserMessages: [Event] = []
+        heldBrowserMessages: [Event] = [], waitingRows: [Row] = []
     ) {
         self.roster = roster; self.spoken = spoken; self.through = through
         self.rowNames = rowNames; self.participantIDs = participantIDs; self.participantOrder = participantOrder
@@ -47,6 +50,7 @@ public struct CallNamesState: Equatable, Sendable {
         self.recordingEnd = recordingEnd; self.lastZoomSpeaker = lastZoomSpeaker
         self.zoom = zoom; self.browser = browser; self.browserConnections = browserConnections
         self.heldBrowserMessages = heldBrowserMessages
+        self.waitingRows = waitingRows
     }
 
     public struct Evidence: Equatable, Sendable {
@@ -314,7 +318,7 @@ public struct CallNamesReducer: Sendable {
             }
             next.heldBrowserMessages.removeAll()
             next.browser = .init(browser)
-            if next.browser != state.browser { publish(&next) }
+            if next.browser != state.browser { publish(&next); nameWaitingRows(&next) }
             return next
 
         case let .recordingChanged(false, instant):
@@ -325,18 +329,8 @@ public struct CallNamesReducer: Sendable {
         case let .rows(rows, instant):
             guard let start = state.recordingStart, state.recordingEnd == nil else { return state }
             let evidence = publish(&next, now: instant - start)
-            let roster = evidence.members.map { Participant(id: $0.id, name: $0.name, isLocal: $0.isLocal) }
-            let activities = evidence.intervals.map {
-                Activity(participantID: $0.memberID, start: $0.start, end: $0.end, uncertainty: AfterCallNames.uncertainty)
-            }
-            for row in rows.sorted(by: { $0.id < $1.id }) where next.rowNames[row.id] == nil {
-                guard let given = name(row.start, row.end, roster, activities, next.through) else { continue }
-                next.rowNames[row.id] = given
-                if next.participantIDs[given] == nil {
-                    next.participantOrder.append(given)
-                    next.participantIDs[given] = "z\(next.participantOrder.count)"
-                }
-            }
+            nameWaitingRows(&next)
+            name(rows, with: evidence, in: &next)
             return next
 
         case .diarized:
@@ -368,6 +362,7 @@ public struct CallNamesReducer: Sendable {
             next.browser = .init(browser)
             guard next.browser != state.browser else { return state }
             publish(&next)
+            nameWaitingRows(&next)
             return next
 
         case let .browserConnected(id):
@@ -383,7 +378,7 @@ public struct CallNamesReducer: Sendable {
         case let .zoom(reading, instant):
             guard let time = zoomTime(instant, in: state) else { return state }
             record(reading, at: time, in: &next)
-            if next.zoom != state.zoom { publish(&next) }
+            if next.zoom != state.zoom { publish(&next); nameWaitingRows(&next) }
             return next
 
         case let .tick(instant):
@@ -391,8 +386,39 @@ public struct CallNamesReducer: Sendable {
             var zoom = state.zoom.observation
             zoom.tick(now: time)
             next.zoom = .init(zoom)
-            if next.zoom != state.zoom { publish(&next) }
+            if next.zoom != state.zoom { publish(&next); nameWaitingRows(&next) }
             return next
+        }
+    }
+
+    /// Tries the waiting rows again with the evidence just published.
+    private func nameWaitingRows(_ state: inout CallNamesState) {
+        guard !state.waitingRows.isEmpty, state.recordingEnd == nil else { return }
+        let evidence = state.browser.members.isEmpty ? state.zoom : state.browser
+        guard !evidence.members.isEmpty else { return }
+        let rows = state.waitingRows
+        state.waitingRows = []
+        name(rows, with: evidence, in: &state)
+    }
+
+    /// Names the rows the evidence matches. A row left unnamed waits while the evidence holds no one
+    /// or has not yet reached its end; past that it is left to the after-call pass.
+    private func name(_ rows: [Row], with evidence: CallNamesState.Evidence, in state: inout CallNamesState) {
+        let roster = evidence.members.map { Participant(id: $0.id, name: $0.name, isLocal: $0.isLocal) }
+        let activities = evidence.intervals.map {
+            Activity(participantID: $0.memberID, start: $0.start, end: $0.end, uncertainty: AfterCallNames.uncertainty)
+        }
+        for row in rows.sorted(by: { $0.id < $1.id }) where state.rowNames[row.id] == nil {
+            guard let given = name(row.start, row.end, roster, activities, state.through) else { continue }
+            state.rowNames[row.id] = given
+            if state.participantIDs[given] == nil {
+                state.participantOrder.append(given)
+                state.participantIDs[given] = "z\(state.participantOrder.count)"
+            }
+        }
+        for row in rows where state.rowNames[row.id] == nil && (evidence.members.isEmpty || row.end > state.through) {
+            state.waitingRows.removeAll { $0.id == row.id }
+            state.waitingRows.append(row)
         }
     }
 

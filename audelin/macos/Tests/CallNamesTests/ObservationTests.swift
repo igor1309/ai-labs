@@ -174,7 +174,7 @@ struct ObservationTests {
             $0.recordingStart = 100; $0.heldBrowserMessages = []
             $0.browser = .init(epoch: 4, sequence: 1, health: .healthy)
         }
-        assert(recording, .rows([makeRow()], now: 105), using: sut)
+        assert(recording, .rows([makeRow()], now: 105), using: sut) { $0.waitingRows = [makeRow()] }
         #expect(spy.requests == [.init(start: 1, end: 5, roster: [], activities: [], through: 0)])
     }
 

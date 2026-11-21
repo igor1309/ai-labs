@@ -102,9 +102,13 @@ public struct ReadingReducer: Sendable {
             if atBottom { state.lines.newBelow = 0 }
         case let .namesChanged(names, confirmed):
             guard names != state.names || confirmed != state.namesConfirmed else { break }
+            // A row sealed earlier can get its first name once evidence reaches it; a given name stays.
+            let named = names.keys.filter { state.names[$0] == nil }.sorted()
+                .map { ReadingTextUpdate.Entry.ID(speaker: .theirs, localID: $0) }
+                .filter { !state.latestText.contains($0) }
             state.names = names
             state.namesConfirmed = confirmed
-            let ids = confirmed ? Array(state.rendered.entries.sealed.keys) + Array(state.rendered.entries.tail.keys) : state.latestText
+            let ids = confirmed ? Array(state.rendered.entries.sealed.keys) + Array(state.rendered.entries.tail.keys) : state.latestText + named
             identifySpeakers(&state, ids: ids, mapped: state.lines.rows.sealed.count)
         case let .speakersFound(places):
             if state.textEnded {

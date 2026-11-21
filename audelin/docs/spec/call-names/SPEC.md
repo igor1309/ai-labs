@@ -12,8 +12,10 @@ call's names and whether they are confirmed.
   ends, with or without a transcript. Grounds: the architecture's Call
   names section.
 - A row is named when the call-app evidence matches it; a named row keeps
-  its name, and a row still unnamed may be named on a later update.
-  Grounds: ADR-002 and today's reducer.
+  its name. A row the evidence cannot name yet, because it names no one,
+  as while the watch is pending, or has not reached the row's end, waits
+  and is tried again as evidence arrives; past that it is left to the
+  after-call pass. Grounds: ADR-002.
 - The after-call turns confirm the names: an empty result clears every live
   name. Missing turns or evidence leave them tentative. CallNames uses the
   evidence after the call's sources close and all their reports arrive.
@@ -73,6 +75,11 @@ Feature: Naming each call's far-side rows
     When the next call opens
     Then the next watch is pending while its Session and panel can start
     And acknowledging the close starts that watch
+
+  Scenario: S-4a A row from the pending watch's wait is named by its watch
+    Given the next watch is pending and a remote row of its call arrives
+    When the close is acknowledged and the watch's first evidence names that row's speaker
+    Then compose can read that row's live name
 
   Scenario: S-5 A finished call is let go
     Given a call's finalization has ended
