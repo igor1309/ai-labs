@@ -17,6 +17,7 @@ generate with the style prompt below plus that line.
 ## Flying style prompt
 
 For a flying reptile, a pterosaur, which is no dinosaur and no bird.
+This is the legacy magenta-key workflow; batch 2 uses direct alpha below.
 
 > Children's picture-book illustration of a single flying reptile, full
 > body, side view facing left, turned slightly toward the viewer, gliding
@@ -30,6 +31,7 @@ For a flying reptile, a pterosaur, which is no dinosaur and no bird.
 ## Sea style prompt
 
 For a sea reptile, which is no dinosaur.
+This is the legacy magenta-key workflow; batch 2 uses direct alpha below.
 
 > Children's picture-book illustration of a single sea reptile, full body,
 > side view facing left, turned slightly toward the viewer, swimming with
@@ -38,6 +40,19 @@ For a sea reptile, which is no dinosaur.
 > clean dark outline. Plain flat solid pure magenta (#FF00FF) background,
 > no water, no bubbles, no ground, no shadow, no plants, no other animals,
 > no text, and no magenta or pink anywhere on the animal.
+
+## Direct-alpha generation for catalogue batch 2
+
+Use the built-in OpenAI imagegen tool with `transparent_background: true`
+for every creature in the batch 2 section of `prompts.md`, including its
+flying and sea reptiles. Combine the subject line with the picture-book
+style prompt, replacing the standing pose with gliding membrane wings
+for pterosaurs or swimming with limbs spread for sea reptiles. Pterosaurs
+have fine short fuzz, never feathers. Request no ground, scenery, text
+or shadow. Preserve the generated alpha; do not use magenta keying or
+`body-picture.sh` for this batch. Pink is allowed, including Pterodaustro's
+coral colouring. Trim and fit within 760×560 on the common transparent
+800×600 canvas, then encode as WebP at quality 85.
 
 ## Rules
 
@@ -48,8 +63,9 @@ For a sea reptile, which is no dinosaur.
   Deinonychus, Oviraptor, Therizinosaurus, Utahraptor, Yutyrannus,
   Archaeopteryx and Troodon are feathered. Pterosaurs have fine fuzz,
   never feathers: whether it was a kind of feather is still argued.
-- **Flying and sea reptiles** are made by `scripts/body-picture.sh`, which
+- **Legacy flying and sea reptiles** use `scripts/body-picture.sh`, which
   clears the magenta and frames each the same way as the dinosaurs.
+  Catalogue batch 2 uses the direct-alpha workflow above instead.
 - **Delivery:** 800×600 WebP with alpha, about 40–70 KB, at
   `src/assets/dinos/<id>/body.webp`, where `<id>` is the dinosaur's id in
   `src/data/dinosaurs.json`.

@@ -71,7 +71,7 @@ The output is trimmed and fitted within a 760×560 box on the common
 800×600 transparent canvas, then encoded as WebP at quality 85.
 
 - `sinosauropteryx`: Small slender biped with short forelimbs, fine fuzzy primitive feathers along back and head, ginger body and very long striped ginger-and-cream tail.
-+- `ouranosaurus`: Ouranosaurus, bulky herbivorous iguanodont dinosaur with a tall rounded sail running along its back, long low ducklike snout, sturdy hind legs and shorter forelegs, standing on four feet, olive green and cream.
+- `ouranosaurus`: Ouranosaurus, bulky herbivorous iguanodont dinosaur with a tall rounded sail running along its back, long low ducklike snout, sturdy hind legs and shorter forelegs, standing on four feet, olive green and cream.
 - `euoplocephalus`: Euoplocephalus, low broad quadruped armored dinosaur with rows of bony plates and modest lateral spikes, broad low head with small cheek knobs, heavy rounded bony tail club, ochre gold and brown.
 - `majungasaurus`: Majungasaurus, stocky bipedal abelisaur dinosaur with deep short blunt skull, single small rounded bump above nose, extremely tiny forearms, thick hind legs and long balancing tail, rust red with cream belly.
 - `shonisaurus`: Shonisaurus, giant ichthyosaur with long slender dolphin-like body, long pointed toothless snout, four elongated narrow flippers and vertical crescent tail fin, muted blue with cream belly, swimming.
