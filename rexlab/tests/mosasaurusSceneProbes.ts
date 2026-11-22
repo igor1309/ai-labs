@@ -14,7 +14,7 @@ export const mosasaurusHatchlingProbes: readonly (readonly [number, number, stri
   [822, 492, "weed-right"]
 ];
 
-export const mosasaurusExplorerProbes: readonly (readonly [number, number, string])[] = [
+export const mosasaurusExplorer1Probes: readonly (readonly [number, number, string])[] = [
   [258, 70, "sky"],
   [112, 124, "water"],
   [784, 128, "fish-top"],
@@ -43,4 +43,21 @@ export const mosasaurusExplorerProbes: readonly (readonly [number, number, strin
 // Eye, smile, teeth, paddle bones and wave ink in both scenes.
 export const mosasaurusProtectedProbes: readonly (readonly [number, number])[] = [
   [742, 216], [888, 256], [856, 262], [572, 372], [60, 120]
+];
+
+// The traced Explorer scene: one interior point per region, in paint order.
+export const mosasaurusExplorerProbes: readonly (readonly [number, number, string])[] = [
+  [798, 49, "sky"], [782, 144, "water"], [166, 105, "water-left"], [297, 101, "light-ray-left"], [541, 133, "water-top"],
+  [646, 142, "light-ray-right"], [698, 571, "seabed"], [240, 541, "rock-left"], [593, 544, "rock-right"], [378, 546, "ammonite-1"],
+  [370, 491, "ammonite-2"], [418, 458, "ammonite-3"], [463, 475, "ammonite-4"], [470, 516, "ammonite-5"], [231, 385, "fish-left"],
+  [615, 415, "fish-right"], [130, 446, "kelp-left-1"], [192, 473, "kelp-left-2"], [703, 490, "kelp-right-1"], [765, 450, "kelp-right-2"],
+  [800, 499, "kelp-right-3"], [210, 285, "flipper-far-front"], [535, 321, "flipper-far-back"], [771, 247, "tail-tip"], [801, 314, "tail-fin"],
+  [314, 184, "back-band-1"], [381, 205, "back-band-2"], [453, 238, "back-band-3"], [521, 236, "back-band-4"], [582, 230, "back-band-5"],
+  [637, 225, "tail-band-1"], [686, 219, "tail-band-2"], [451, 295, "belly"], [278, 236, "head"], [400, 323, "flipper-near-front"],
+  [602, 310, "flipper-near-back"]
+];
+
+// Eye, teeth and a fish eye ink in the traced Explorer scene.
+export const mosasaurusExplorerProtectedProbes: readonly (readonly [number, number])[] = [
+  [216, 152], [114, 185], [196, 366]
 ];

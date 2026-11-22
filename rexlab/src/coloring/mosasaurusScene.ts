@@ -86,4 +86,4 @@ function scene(rich: boolean): Geometry {
 }
 
 export const MOSASAURUS_HATCHLING = scene(false);
-export const MOSASAURUS_EXPLORER = scene(true);
+export const MOSASAURUS_EXPLORER_1 = scene(true);

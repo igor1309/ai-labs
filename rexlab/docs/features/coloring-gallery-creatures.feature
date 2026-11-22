@@ -12,7 +12,7 @@ Feature: Coloring gallery creature choices
   Scenario: Choose a recognizable Mosasaurus
     When I enter the gallery at any age level
     Then exactly one Mosasaurus choice has a matching vector preview and the uppercase localized name MOSASAURUS or МОЗАЗАВР
-    And Mosasaurus uses mosasaurus-hatchling-1 at Hatchling and mosasaurus-explorer-1 at Explorer and Paleontologist
+    And Mosasaurus uses mosasaurus-hatchling-1 at Hatchling and mosasaurus-explorer-2 at Explorer and Paleontologist
     And Stegosaurus, Triceratops, Ankylosaurus and T-Rex remain available with their age-matched previews
     And its friendly swimming silhouette has long toothy jaws, four paddles and a crescent tail fin
     And choosing it starts an independent unpainted work without changing existing works
@@ -20,7 +20,7 @@ Feature: Coloring gallery creature choices
   Scenario: Choose a recognizable Brachiosaurus
     When I enter the gallery at any age level
     Then exactly one Brachiosaurus choice has a matching vector preview and the uppercase localized name BRACHIOSAURUS or БРАХИОЗАВР
-    And Brachiosaurus uses brachiosaurus-hatchling-1 at Hatchling and brachiosaurus-explorer-1 at Explorer and Paleontologist
+    And Brachiosaurus uses brachiosaurus-hatchling-1 at Hatchling and brachiosaurus-explorer-2 at Explorer and Paleontologist
     And Stegosaurus, Triceratops, Ankylosaurus, T-Rex and Mosasaurus remain available with their age-matched previews
     And its friendly silhouette has a long neck reaching up, a small head, tall front legs and a sloping back to a long tail
     And choosing it starts an independent unpainted work without changing existing works

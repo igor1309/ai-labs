@@ -16,8 +16,8 @@ Feature: Coloring creature age variants and saved drawings
     Examples:
       | level          | geometry               |
       | Hatchling      | mosasaurus-hatchling-1 |
-      | Explorer       | mosasaurus-explorer-1  |
-      | Paleontologist | mosasaurus-explorer-1  |
+      | Explorer       | mosasaurus-explorer-2  |
+      | Paleontologist | mosasaurus-explorer-2  |
 
   Scenario Outline: Brachiosaurus age variants and saved drawings
     Given the global age setting is <level>
@@ -31,8 +31,8 @@ Feature: Coloring creature age variants and saved drawings
     Examples:
       | level          | geometry                  |
       | Hatchling      | brachiosaurus-hatchling-1 |
-      | Explorer       | brachiosaurus-explorer-1  |
-      | Paleontologist | brachiosaurus-explorer-1  |
+      | Explorer       | brachiosaurus-explorer-2  |
+      | Paleontologist | brachiosaurus-explorer-2  |
 
   Scenario Outline: Pteranodon age variants and saved drawings
     Given the global age setting is <level>
