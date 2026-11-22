@@ -42,7 +42,7 @@ Feature: Coloring gallery creature choices
   Scenario: Choose a recognizable Parasaurolophus
     When I enter the gallery at any age level
     Then exactly one Parasaurolophus choice has a matching vector preview and the uppercase localized name PARASAUROLOPHUS or ПАРАЗАУРОЛОФ
-    And Parasaurolophus uses parasaurolophus-hatchling-1 at Hatchling and parasaurolophus-explorer-1 at Explorer and Paleontologist
+    And Parasaurolophus uses parasaurolophus-hatchling-1 at Hatchling and parasaurolophus-explorer-2 at Explorer and Paleontologist
     And Stegosaurus, Triceratops, Ankylosaurus, T-Rex, Mosasaurus, Brachiosaurus and Pteranodon remain available with their age-matched previews
     And its friendly silhouette has a long tube crest sweeping back, a duck bill and a flowing tail
     And choosing it starts an independent unpainted work without changing existing works

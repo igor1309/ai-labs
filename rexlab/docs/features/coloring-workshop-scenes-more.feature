@@ -45,13 +45,14 @@ Feature: Coloring workshop Pteranodon, Parasaurolophus and Spinosaurus scenes
     And simple ground with one reed clump leaves the Parasaurolophus clear and prominent
     And the entire scene fits supported iPad and iPhone viewports without clipping
 
-  Scenario: Rich Parasaurolophus riverbank for older levels
+  Scenario: Parasaurolophus by a swamp river for older levels
     Given I start a new Parasaurolophus work at Explorer or Paleontologist
-    Then the workshop renders the original parasaurolophus-explorer-1 vector scene
-    And the Parasaurolophus stands on a riverbank with sky, sun, cloud, far bank, cypress, river, lily pad, reeds, cattail and swamp fern
-    And its body adds a tail tip, belly, three back stripes and a crest tip as independent regions
-    And lily flower, skin spots, ripples, stems and leaf veins remain protected linework, never tiny targets
-    And the entire scene fits supported iPad and iPhone viewports without clipping
+    Then the workshop renders the parasaurolophus-explorer-2 traced line-art scene of 43 regions
+    And a Parasaurolophus in its own proportions walks on four legs with a long curved crest sweeping back over its neck, a duck-billed head, a deep body and a long level tail
+    And its crest, head, neck, throat, body, three back stripes, four tail bands and each of its four legs are regions of their own
+    And sky, sun, cloud, five hills, a meadow, a river in two parts with two lily pads, banks, ground, a conifer's trunk and three crown tiers, two bushes and three stones offer broad scenery regions
+    And its outline, small eye, nostril, mouth and toes are one protected ink drawing above every fill
+    And the entire scene fits supported iPad landscape viewports without clipping
 
   Scenario: Simple Spinosaurus for Hatchling
     Given I start a new Spinosaurus work at Hatchling

@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-11-23
+
+- LAB-1776: Parasaurolophus's Explorer picture is redrawn from traced line art (43 regions): a Parasaurolophus walking on four legs by a swamp river, its long crest, head, neck, back stripes and tail bands each a region of their own, among hills, a conifer, bushes, lily pads and stones; saved works keep the earlier picture.
+
 ## 2026-11-22
 
 - LAB-1785: Spinosaurus's Explorer picture is redrawn from traced line art (35 regions): an illustrated Spinosaurus on a riverbank under a seven-band sail, with a deep plain head, a back stripe, a banded tail and strong hind legs, beside a river with a fish, a palm and stones. Its outline and small details are one protected ink drawing above the paint. Works saved on older pictures reopen on them.
