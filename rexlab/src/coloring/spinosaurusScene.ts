@@ -86,4 +86,5 @@ function scene(rich: boolean): Geometry {
 }
 
 export const SPINOSAURUS_HATCHLING = scene(false);
-export const SPINOSAURUS_EXPLORER = scene(true);
+// Saved journals still resolve this version; new Explorer works use spinosaurusExplorer.ts.
+export const SPINOSAURUS_EXPLORER_1 = scene(true);

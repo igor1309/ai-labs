@@ -170,9 +170,15 @@ complete. The [technical probe](coloring-probe.md) describes an earlier,
 isolated experiment, not the complete Home-integrated game.
 
 Rules: [gallery](features/coloring-gallery.feature),
+[gallery creatures](features/coloring-gallery-creatures.feature),
 [workshop](features/coloring-workshop.feature),
+[workshop tools](features/coloring-workshop-tools.feature),
+[workshop scenes](features/coloring-workshop-scenes.feature),
+[more workshop scenes](features/coloring-workshop-scenes-more.feature),
 [result](features/coloring-result.feature),
-[full flow](features/coloring-flow.feature).
+[full flow](features/coloring-flow.feature),
+[saved works](features/coloring-flow-saved.feature),
+[creature age variants](features/coloring-flow-creatures.feature).
 Integration: LAB-804; creature selections and follow-up artwork: LAB-822.
 
 ## Catalogue and planned work

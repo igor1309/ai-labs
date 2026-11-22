@@ -6,7 +6,7 @@ const { resolve } = require("node:path");
 module.exports = async function spinosaurusScenes(page) {
   const output = process.env.SPINOSAURUS_SCREENSHOTS || "/tmp/lab-1764/browser";
   await mkdir(output, { recursive: true });
-  for (const version of ["spinosaurus-hatchling-1", "spinosaurus-explorer-1"]) {
+  for (const version of ["spinosaurus-hatchling-1", "spinosaurus-explorer-1", "spinosaurus-explorer-2"]) {
     await page.evaluate(async version => {
       const { artworkFor, createPainter, COLORS } = await import("/harness.js");
       document.body.replaceChildren();
@@ -34,13 +34,15 @@ module.exports = async function spinosaurusScenes(page) {
     }
   }
   const failures = [];
-  for (const version of ["spinosaurus-hatchling-1", "spinosaurus-explorer-1"]) {
+  for (const version of ["spinosaurus-hatchling-1", "spinosaurus-explorer-1", "spinosaurus-explorer-2"]) {
     try {
       console.log(await page.evaluate(async version => {
         const { artworkFor, createPainter, WIDTH, HEIGHT, VECTOR_SCALE, BASE_COLOR,
-          spinosaurusHatchlingProbes, spinosaurusExplorerProbes, spinosaurusProtectedProbes } = await import("/harness.js");
+          spinosaurusHatchlingProbes, spinosaurusExplorerProbes, spinosaurusExplorer1Probes,
+          spinosaurusProtectedProbes, spinosaurusExplorerProtectedProbes } = await import("/harness.js");
         const geometry = artworkFor(version).geometry;
-        const probes = version === "spinosaurus-hatchling-1" ? spinosaurusHatchlingProbes : spinosaurusExplorerProbes;
+        const probes = { "spinosaurus-hatchling-1": spinosaurusHatchlingProbes, "spinosaurus-explorer-1": spinosaurusExplorer1Probes }[version] ?? spinosaurusExplorerProbes;
+        const protectedProbes = version === "spinosaurus-explorer-2" ? spinosaurusExplorerProtectedProbes : spinosaurusProtectedProbes;
         const check = (value, message) => { if (!value) throw new Error(`${version}: ${message}`); };
         const painter = createPainter(() => document.createElement("canvas"), geometry), canvas = painter.canvas();
         const rgb = color => [...color.slice(1).match(/../g).map(byte => parseInt(byte, 16)), 255];
@@ -51,7 +53,7 @@ module.exports = async function spinosaurusScenes(page) {
         check(JSON.stringify(probes.map(([, , id]) => id)) === JSON.stringify(geometry.artwork.regions), "every region has an independent landmark");
         const incorrect = probes.filter(([x, y, id]) => painter.regionAt({ x, y }) !== id || !pixelEquals(blank, x, y, base));
         check(!incorrect.length, `interior landmarks: ${JSON.stringify(incorrect.map(([x, y, id]) => ({ id, x, y, hit: painter.regionAt({ x, y }) })))}`);
-        const unprotected = spinosaurusProtectedProbes.filter(([x, y]) => painter.regionAt({ x, y }) !== undefined);
+        const unprotected = protectedProbes.filter(([x, y]) => painter.regionAt({ x, y }) !== undefined);
         check(!unprotected.length, `protected landmarks: ${JSON.stringify(unprotected)}`);
         // An independent SVG ownership mask proves fills beyond the chosen landmarks.
         const shape = node => `<path d="${node.path}" transform="translate(${node.x} ${node.y})"/>`;
@@ -97,7 +99,7 @@ module.exports = async function spinosaurusScenes(page) {
         }
         check(!smallTargets.length, `generous targets: ${smallTargets.join("; ")}`);
         const covered = geometry.artwork.regions.map(region => ({ kind: "fill", region, color: "#ef5350" }));
-        covered.push(...spinosaurusProtectedProbes.map(([x, y]) => ({ kind: "stroke", color: "#42a5f5", size: 40, points: [{ x, y }] })));
+        covered.push(...protectedProbes.map(([x, y]) => ({ kind: "stroke", color: "#42a5f5", size: 40, points: [{ x, y }] })));
         painter.render(canvas, covered);
         const painted = painter.pixels(canvas);
         for (let offset = 0; offset < blank.length; offset += 4) {
@@ -113,5 +115,5 @@ module.exports = async function spinosaurusScenes(page) {
     } catch (error) { failures.push(error.message); }
   }
   assert.equal(failures.length, 0, failures.join("\n"));
-  console.log("PASS Spinosaurus rendered screenshots: both scenes, unpainted/painted, four tablet landscape viewports");
+  console.log("PASS Spinosaurus rendered screenshots: all three scenes, unpainted/painted, four tablet landscape viewports");
 };
