@@ -242,3 +242,18 @@ Feature: Coloring full flow and durable progress
       | Hatchling      | parasaurolophus-hatchling-1 |
       | Explorer       | parasaurolophus-explorer-1  |
       | Paleontologist | parasaurolophus-explorer-1  |
+
+  Scenario Outline: Spinosaurus age variants and saved drawings
+    Given the global age setting is <level>
+    When I choose Spinosaurus from the coloring gallery
+    Then the workshop opens <geometry> with matching preview and localized name
+    When I paint, save and reopen this work after changing the global age setting
+    Then its original geometry, paint, undo history, thumbnail and earned star are retained
+    And returning to the gallery offers the Spinosaurus for the current global age level
+    And existing creatures and their saved works, including Parasaurolophus, remain unchanged
+
+    Examples:
+      | level          | geometry                |
+      | Hatchling      | spinosaurus-hatchling-1 |
+      | Explorer       | spinosaurus-explorer-1  |
+      | Paleontologist | spinosaurus-explorer-1  |

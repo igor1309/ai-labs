@@ -1,3 +1,4 @@
+import { SPINOSAURUS_HATCHLING, SPINOSAURUS_EXPLORER } from "./coloring/spinosaurusScene.ts";
 import { PARASAUROLOPHUS_HATCHLING, PARASAUROLOPHUS_EXPLORER } from "./coloring/parasaurolophusScene.ts";
 import { PTERANODON_HATCHLING, PTERANODON_EXPLORER } from "./coloring/pteranodonScene.ts";
 import { BRACHIOSAURUS_HATCHLING, BRACHIOSAURUS_EXPLORER } from "./coloring/brachiosaurusScene.ts";
@@ -81,6 +82,7 @@ export function coloringVersionsFor(level: AgeLevel): readonly string[] {
     (level === "hatchling" ? MOSASAURUS_HATCHLING : MOSASAURUS_EXPLORER).artwork.version,
     (level === "hatchling" ? BRACHIOSAURUS_HATCHLING : BRACHIOSAURUS_EXPLORER).artwork.version,
     (level === "hatchling" ? PTERANODON_HATCHLING : PTERANODON_EXPLORER).artwork.version,
-    (level === "hatchling" ? PARASAUROLOPHUS_HATCHLING : PARASAUROLOPHUS_EXPLORER).artwork.version
+    (level === "hatchling" ? PARASAUROLOPHUS_HATCHLING : PARASAUROLOPHUS_EXPLORER).artwork.version,
+    (level === "hatchling" ? SPINOSAURUS_HATCHLING : SPINOSAURUS_EXPLORER).artwork.version
   ];
 }

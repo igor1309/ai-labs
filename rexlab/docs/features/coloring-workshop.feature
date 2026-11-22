@@ -1,6 +1,6 @@
 @next
 Feature: Coloring workshop
-  Free creativity with Stegosaurus, Triceratops, Ankylosaurus, T-Rex, Mosasaurus, Brachiosaurus, Pteranodon and Parasaurolophus artwork. There is no model to
+  Free creativity with Stegosaurus, Triceratops, Ankylosaurus, T-Rex, Mosasaurus, Brachiosaurus, Pteranodon, Parasaurolophus and Spinosaurus artwork. There is no model to
   copy, time limit, coverage target or judgement of artistic quality.
   An action means one accepted brush contact from press to release, or
   one fill. A work is nonempty when its current editable paint differs
@@ -314,4 +314,21 @@ Feature: Coloring workshop
     And the Parasaurolophus stands on a riverbank with sky, sun, cloud, far bank, cypress, river, lily pad, reeds, cattail and swamp fern
     And its body adds a tail tip, belly, three back stripes and a crest tip as independent regions
     And lily flower, skin spots, ripples, stems and leaf veins remain protected linework, never tiny targets
+    And the entire scene fits supported iPad and iPhone viewports without clipping
+
+  Scenario: Simple Spinosaurus for Hatchling
+    Given I start a new Spinosaurus work at Hatchling
+    Then the workshop renders the original spinosaurus-hatchling-1 vector scene
+    And a friendly Spinosaurus walks low on four legs with a tall back sail, a long crocodile snout, a long tail and a pale belly
+    And the sail is one big region, and the body, belly, head, snout and four legs offer broad independent coloring regions
+    And its eye, smile, teeth and toes remain protected decorative details
+    And simple ground with one rock leaves the Spinosaurus clear and prominent
+    And the entire scene fits supported iPad and iPhone viewports without clipping
+
+  Scenario: Rich Spinosaurus riverbank for older levels
+    Given I start a new Spinosaurus work at Explorer or Paleontologist
+    Then the workshop renders the original spinosaurus-explorer-1 vector scene
+    And the Spinosaurus walks along a riverbank with sky, sun, cloud, far bank, cypress, river, lily pad, reeds, cattail and swamp fern
+    And its sail is split into three stripes, and its body adds a tail tip and belly as independent regions
+    And sail spines, lily flower, skin spots, ripples, stems and leaf veins remain protected linework, never tiny targets
     And the entire scene fits supported iPad and iPhone viewports without clipping
