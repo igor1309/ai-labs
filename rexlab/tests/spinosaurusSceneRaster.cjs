@@ -6,7 +6,7 @@ const { resolve } = require("node:path");
 module.exports = async function spinosaurusScenes(page) {
   const output = process.env.SPINOSAURUS_SCREENSHOTS || "/tmp/lab-1764/browser";
   await mkdir(output, { recursive: true });
-  for (const version of ["spinosaurus-hatchling-1", "spinosaurus-explorer-1", "spinosaurus-explorer-2"]) {
+  for (const version of ["spinosaurus-hatchling-1", "spinosaurus-explorer-1", "spinosaurus-explorer-2", "spinosaurus-explorer-3"]) {
     await page.evaluate(async version => {
       const { artworkFor, createPainter, COLORS } = await import("/harness.js");
       document.body.replaceChildren();
@@ -34,15 +34,15 @@ module.exports = async function spinosaurusScenes(page) {
     }
   }
   const failures = [];
-  for (const version of ["spinosaurus-hatchling-1", "spinosaurus-explorer-1", "spinosaurus-explorer-2"]) {
+  for (const version of ["spinosaurus-hatchling-1", "spinosaurus-explorer-1", "spinosaurus-explorer-2", "spinosaurus-explorer-3"]) {
     try {
       console.log(await page.evaluate(async version => {
         const { artworkFor, createPainter, WIDTH, HEIGHT, VECTOR_SCALE, BASE_COLOR,
-          spinosaurusHatchlingProbes, spinosaurusExplorerProbes, spinosaurusExplorer1Probes,
+          spinosaurusHatchlingProbes, spinosaurusExplorerProbes, spinosaurusExplorer1Probes, spinosaurusExplorer2Probes, spinosaurusExplorer2ProtectedProbes,
           spinosaurusProtectedProbes, spinosaurusExplorerProtectedProbes } = await import("/harness.js");
         const geometry = artworkFor(version).geometry;
-        const probes = { "spinosaurus-hatchling-1": spinosaurusHatchlingProbes, "spinosaurus-explorer-1": spinosaurusExplorer1Probes }[version] ?? spinosaurusExplorerProbes;
-        const protectedProbes = version === "spinosaurus-explorer-2" ? spinosaurusExplorerProtectedProbes : spinosaurusProtectedProbes;
+        const probes = { "spinosaurus-hatchling-1": spinosaurusHatchlingProbes, "spinosaurus-explorer-1": spinosaurusExplorer1Probes, "spinosaurus-explorer-2": spinosaurusExplorer2Probes }[version] ?? spinosaurusExplorerProbes;
+        const protectedProbes = { "spinosaurus-explorer-2": spinosaurusExplorer2ProtectedProbes, "spinosaurus-explorer-3": spinosaurusExplorerProtectedProbes }[version] ?? spinosaurusProtectedProbes;
         const check = (value, message) => { if (!value) throw new Error(`${version}: ${message}`); };
         const painter = createPainter(() => document.createElement("canvas"), geometry), canvas = painter.canvas();
         const rgb = color => [...color.slice(1).match(/../g).map(byte => parseInt(byte, 16)), 255];
