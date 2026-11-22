@@ -79,7 +79,7 @@ Run `node tests/coloringGallery.browser.cjs` for gallery previews, independent
 saved works, brush/fill/undo, cross-age restoration, thumbnails and one-time
 completion rewards. Set `COLORING_ARTIFACT_DIR` to choose the workshop screenshot
 directory. `node tests/coloringFlow.browser.cjs` checks the production Home route,
-including all four choices and T-Rex at 1180 × 820 and 1024 × 768 across the three
+including Stegosaurus, Triceratops, Ankylosaurus and T-Rex at 1180 × 820 and 1024 × 768 across the three
 age levels, both languages and themes.
 
 `npm run slow-tests` runs the whole suite three times and writes every test,
