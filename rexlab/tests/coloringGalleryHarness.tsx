@@ -5,7 +5,7 @@ export { pteranodonHatchlingProbes, pteranodonExplorerProbes } from "./pteranodo
 export { spinosaurusHatchlingProbes, spinosaurusExplorerProbes } from "./spinosaurusSceneProbes.ts";
 export { parasaurolophusHatchlingProbes, parasaurolophusExplorerProbes } from "./parasaurolophusSceneProbes.ts";
 import type { Theme } from "../src/theme.ts";
-export { mosasaurusHatchlingProbes, mosasaurusExplorerProbes } from "./mosasaurusSceneProbes.ts";
+export { mosasaurusHatchlingProbes, mosasaurusExplorerProbes, mosasaurusExplorer1Probes, mosasaurusProtectedProbes, mosasaurusExplorerProtectedProbes } from "./mosasaurusSceneProbes.ts";
 export { trexHatchlingProbes, trexExplorerProbes, trexProtectedProbes, trexExplorerProtectedProbes, trexExplorer2Probes, trexExplorer3Probes, trexExplorer3ProtectedProbes }  from "./trexSceneProbes.ts";
 export { ankylosaurusHatchlingProbes, ankylosaurusExplorerProbes } from "./ankylosaurusSceneProbes.ts";
 export { ankylosaurusProbes } from "./ankylosaurusProbes.ts";
