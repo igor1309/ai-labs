@@ -8409,7 +8409,7 @@ html .friends.friends-dig-site {
 .friends-dig-site .friend-picture[data-picture="failed"] { opacity: 0; }
 .friends-dig-site .friend-picture[data-picture="failed"] + .friend-failure { display: block; }
 .friends-dig-site .friend-footer { width: 100%; min-width: 0; height: calc(var(--friends-name) * 1.25); display: grid; align-items: center; text-align: center; }
-.friends-dig-site .friend-name { display: block; white-space: nowrap; font-size: var(--friends-name); font-weight: 700; line-height: 1.25; }
+.friends-dig-site .friend-name { display: block; min-width: 0; white-space: nowrap; font-size: var(--friends-name); font-weight: 700; line-height: 1.25; }
 .friends-dig-site .friends-bedrock { position: absolute; bottom: 0; left: 0; right: 0; height: calc(var(--friends-bottom) + env(safe-area-inset-bottom)); background: var(--ds-strata-2); --home-earth: var(--ds-strata-2); pointer-events: none; }
 .friends-dig-site .no-friends { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: none; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: var(--ds-space-20); padding: var(--ds-space-l) calc(var(--friends-side) + var(--screen-right)) calc(var(--friends-bottom) + 20px + env(safe-area-inset-bottom)) calc(var(--friends-side) + var(--screen-left)); animation: rise-in var(--motion-screen) var(--ease-out) both; }
 .friends-dig-site .no-friends-picture { display: grid; place-items: center; flex: none; width: 200px; height: 200px; border-radius: 50%; background: var(--ds-pocket-1); box-shadow: inset 0 6px 10px var(--ds-pocket-shadow); }
