@@ -64,8 +64,20 @@ Each long wrong turn starts at a distinct interior solution junction and
 reaches a dead end at least 4 moves away. Replay keeps the chosen level
 and generates different walls, even with a repeating random source.
 
-Coloring uses the simple Triceratops for Hatchling and a richer Triceratops
-scene for Explorer and Paleontologist. Stegosaurus is available at every level.
+Coloring offers each creature as a Hatchling picture and an Explorer picture;
+Paleontologist uses the Explorer one.
+
+- A Hatchling picture is a friendly cartoon: a big eye, a smile, chubby legs
+  and about 10–17 broad regions on a simple ground.
+- An Explorer picture is drawn for a five- or six-year-old: about 35–50
+  regions, the animal in its own proportions with a small realistic eye, and
+  its telling features as regions of their own (plates and their panels,
+  armour, a sail and its bands, a frill, a wing membrane, stripes or bands on
+  the flank and tail), in a scene with sky, landscape and plants. Every
+  region stays a broad target; small marks are protected ink.
+- T-Rex, Mosasaurus, Brachiosaurus, Pteranodon and Parasaurolophus still
+  have Explorer pictures of 22–27 regions in the cartoon style, below this
+  standard until they are redrawn.
 Saved works always reopen with their own artwork, regardless of the current
 level. Tools and rewards are shared; coloring offers no level switch or
 promotion. Each separate nonempty completed work earns one star once; its best is the saved completed collection count
