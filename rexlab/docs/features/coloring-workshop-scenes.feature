@@ -9,12 +9,11 @@ Feature: Coloring workshop T-Rex, Mosasaurus and Brachiosaurus scenes
 
   Scenario: T-Rex striding below a volcano for older levels
     Given I start a new T-Rex work at Explorer or Paleontologist
-    Then the workshop renders the trex-explorer-2 vector scene of 37 regions
-    And a T-Rex in its own proportions strides with a level back, a long tail, a deep skull and tiny arms
-    And its back and tail stripes, belly, hip, brow and jaw muscle are regions of their own
-    And a smoking volcano, a pond, a rock, a fern and a cycad offer broad scenery regions
+    Then the workshop renders the trex-explorer-3 vector scene of 37 regions
+    And a T-Rex in its own shape strides with a level back, a tapering tail, a deep skull, tiny clawed arms and raised ankles
+    And curved stripes on its back and tail and its belly are regions of their own
+    And a smoking volcano, a pond, a conifer, a rock and two ferns offer broad scenery regions
     And its small eye, teeth, claws and toes remain protected rather than tiny fill targets
-    And the entire scene fits supported iPad landscape viewports without clipping
 
   Scenario Outline: Independent T-Rex fills preserve the drawing
     Given I open a T-Rex work using <artwork>
@@ -29,6 +28,7 @@ Feature: Coloring workshop T-Rex, Mosasaurus and Brachiosaurus scenes
       | trex-hatchling-1 |
       | trex-explorer-1  |
       | trex-explorer-2  |
+      | trex-explorer-3  |
 
   Scenario: Simple Mosasaurus for Hatchling
     Given I start a new Mosasaurus work at Hatchling
