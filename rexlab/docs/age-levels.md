@@ -75,7 +75,7 @@ Paleontologist uses the Explorer one.
   armour, a sail and its bands, a frill, a wing membrane, stripes or bands on
   the flank and tail), in a scene with sky, landscape and plants. Every
   region stays a broad target; small marks are protected ink.
-- T-Rex, Mosasaurus, Brachiosaurus, Pteranodon and Parasaurolophus still
+- Mosasaurus, Brachiosaurus, Pteranodon and Parasaurolophus still
   have Explorer pictures of 22–27 regions in the cartoon style, below this
   standard until they are redrawn.
 Saved works always reopen with their own artwork, regardless of the current

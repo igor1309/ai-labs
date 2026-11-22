@@ -4,7 +4,8 @@ import { PARASAUROLOPHUS_HATCHLING, PARASAUROLOPHUS_EXPLORER } from "./coloring/
 import { PTERANODON_HATCHLING, PTERANODON_EXPLORER } from "./coloring/pteranodonScene.ts";
 import { BRACHIOSAURUS_HATCHLING, BRACHIOSAURUS_EXPLORER } from "./coloring/brachiosaurusScene.ts";
 import { MOSASAURUS_HATCHLING, MOSASAURUS_EXPLORER } from "./coloring/mosasaurusScene.ts";
-import { TREX_HATCHLING, TREX_EXPLORER } from "./coloring/trexScene.ts";
+import { TREX_HATCHLING } from "./coloring/trexScene.ts";
+import { TREX_EXPLORER } from "./coloring/trexExplorer.ts";
 import { ANKYLOSAURUS_HATCHLING, ANKYLOSAURUS_EXPLORER } from "./coloring/ankylosaurusScene.ts";
 import type { AgeLevel } from "./ageLevel.ts";
 import { TRICERATOPS } from "./coloring/triceratops.ts";

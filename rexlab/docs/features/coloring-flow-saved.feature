@@ -87,5 +87,5 @@ Feature: Coloring screens, damaged storage and saved geometry
     Examples:
       | level          | geometry                |
       | Hatchling      | trex-hatchling-1         |
-      | Explorer       | trex-explorer-1          |
-      | Paleontologist | trex-explorer-1          |
+      | Explorer       | trex-explorer-2          |
+      | Paleontologist | trex-explorer-2          |

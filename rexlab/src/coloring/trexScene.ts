@@ -82,4 +82,5 @@ function scene(rich: boolean): Geometry {
 }
 
 export const TREX_HATCHLING = scene(false);
-export const TREX_EXPLORER = scene(true);
+// Saved journals still resolve this version; new Explorer works use trexExplorer.ts.
+export const TREX_EXPLORER_1 = scene(true);
