@@ -37,7 +37,7 @@ export const trexExplorer1Probes: readonly (readonly [number, number, string])[]
   ...trexHatchlingProbes.slice(8)
 ];
 
-export const trexExplorerProbes: readonly (readonly [number, number, string])[] = [
+export const trexExplorer2Probes: readonly (readonly [number, number, string])[] = [
   [366, 106, "sky"], [70, 70, "sun"], [508, 92, "cloud-1"], [788, 54, "cloud-2"], [238, 78, "smoke"],
   [154, 258, "volcano"], [242, 150, "lava"], [146, 342, "ridge"], [230, 464, "plain"], [636, 472, "pond"],
   [784, 564, "ground"], [104, 548, "rock"], [174, 558, "rock-face"], [288, 560, "fern"], [828, 524, "cycad-trunk"],
@@ -48,9 +48,26 @@ export const trexExplorerProbes: readonly (readonly [number, number, string])[] 
   [746, 238, "lower-jaw"], [672, 310, "arm-near"]
 ];
 
-// Eye and toe ink in the Explorer scene.
-export const trexExplorerProtectedProbes: readonly (readonly [number, number])[] = [
+// Eye and toe ink in the second Explorer scene.
+export const trexExplorer2ProtectedProbes: readonly (readonly [number, number])[] = [
   [798, 158], [444, 554]
+];
+
+// One interior point per region of the traced Explorer scene.
+export const trexExplorerProbes: readonly (readonly [number, number, string])[] = [
+  [419, 74, "sky"], [524, 86, "sun"], [202, 76, "cloud-1"], [749, 70, "cloud-2"], [91, 188, "hill-left"],
+  [351, 156, "hill-far"], [437, 188, "hill-near"], [828, 189, "hill-right"], [621, 182, "volcano"], [697, 211, "lava"],
+  [789, 216, "volcano-slope"], [220, 325, "plain"], [111, 387, "pond"], [308, 462, "meadow"], [451, 462, "ground"],
+  [108, 548, "ground-left"], [303, 565, "stone-left"], [461, 551, "stone-big"], [649, 562, "stone-right"], [181, 454, "cycad"],
+  [711, 476, "bush-leaf-1"], [717, 425, "bush-leaf-2"], [796, 426, "bush-leaf-3"], [794, 478, "bush-leaf-4"], [346, 419, "leg-far"],
+  [396, 374, "belly"], [282, 291, "throat"], [300, 190, "back-stripe-1"], [363, 268, "back-stripe-2"], [413, 266, "back-stripe-3"],
+  [464, 251, "back-stripe-4"], [514, 264, "back-stripe-5"], [564, 281, "back-stripe-6"], [612, 318, "tail-stripe-1"], [661, 326, "tail-stripe-2"],
+  [712, 328, "tail-stripe-3"], [760, 322, "tail-stripe-4"], [513, 347, "leg-near"], [171, 216, "head"], [247, 254, "lower-jaw"]
+];
+
+// Eye, far-foot outline and teeth ink in the traced Explorer scene.
+export const trexExplorerProtectedProbes: readonly (readonly [number, number])[] = [
+  [219, 190], [293, 497], [110, 262]
 ];
 
 export const trexProtectedProbes: readonly (readonly [number, number])[] = [

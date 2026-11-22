@@ -6,7 +6,7 @@ const { resolve } = require("node:path");
 module.exports = async function trexScenes(page) {
   const output = process.env.TREX_SCREENSHOTS || "/tmp/lab-889/browser";
   await mkdir(output, { recursive: true });
-  for (const version of ["trex-hatchling-1", "trex-explorer-1", "trex-explorer-2"]) {
+  for (const version of ["trex-hatchling-1", "trex-explorer-1", "trex-explorer-2", "trex-explorer-3"]) {
     await page.evaluate(async version => {
       const { artworkFor, createPainter, COLORS } = await import("/harness.js");
       document.body.replaceChildren();
@@ -37,15 +37,15 @@ module.exports = async function trexScenes(page) {
     }
   }
   const failures = [];
-  for (const version of ["trex-hatchling-1", "trex-explorer-1", "trex-explorer-2"]) {
+  for (const version of ["trex-hatchling-1", "trex-explorer-1", "trex-explorer-2", "trex-explorer-3"]) {
     try {
       console.log(await page.evaluate(async version => {
         const { artworkFor, createPainter, WIDTH, HEIGHT, VECTOR_SCALE, BASE_COLOR,
-          trexHatchlingProbes, trexExplorerProbes, trexExplorer1Probes,
-          trexProtectedProbes, trexExplorerProtectedProbes } = await import("/harness.js");
+          trexHatchlingProbes, trexExplorerProbes, trexExplorer1Probes, trexExplorer2Probes,
+          trexProtectedProbes, trexExplorerProtectedProbes, trexExplorer2ProtectedProbes } = await import("/harness.js");
         const geometry = artworkFor(version).geometry;
-        const probes = { "trex-hatchling-1": trexHatchlingProbes, "trex-explorer-1": trexExplorer1Probes }[version] ?? trexExplorerProbes;
-        const protectedProbes = version === "trex-explorer-2" ? trexExplorerProtectedProbes : trexProtectedProbes;
+        const probes = { "trex-hatchling-1": trexHatchlingProbes, "trex-explorer-1": trexExplorer1Probes, "trex-explorer-2": trexExplorer2Probes }[version] ?? trexExplorerProbes;
+        const protectedProbes = { "trex-explorer-2": trexExplorer2ProtectedProbes, "trex-explorer-3": trexExplorerProtectedProbes }[version] ?? trexProtectedProbes;
         const check = (value, message) => { if (!value) throw new Error(`${version}: ${message}`); };
         const painter = createPainter(() => document.createElement("canvas"), geometry), canvas = painter.canvas();
         const rgb = color => [...color.slice(1).match(/../g).map(byte => parseInt(byte, 16)), 255];

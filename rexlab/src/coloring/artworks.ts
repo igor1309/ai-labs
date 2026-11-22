@@ -6,7 +6,8 @@ import { STEGOSAURUS } from "./geometry.ts";
 import { TRICERATOPS } from "./triceratops.ts";
 import { MOSASAURUS_HATCHLING, MOSASAURUS_EXPLORER } from "./mosasaurusScene.ts";
 import { TREX_HATCHLING, TREX_EXPLORER_1 } from "./trexScene.ts";
-import { TREX_EXPLORER } from "./trexExplorer.ts";
+import { TREX_EXPLORER_2 } from "./trexExplorer.ts";
+import { TREX_EXPLORER } from "./trexExplorer3.ts";
 import { BRACHIOSAURUS_HATCHLING, BRACHIOSAURUS_EXPLORER } from "./brachiosaurusScene.ts";
 import { PTERANODON_HATCHLING, PTERANODON_EXPLORER } from "./pteranodonScene.ts";
 import { PARASAUROLOPHUS_HATCHLING, PARASAUROLOPHUS_EXPLORER } from "./parasaurolophusScene.ts";
@@ -24,6 +25,8 @@ export const ARTWORKS = [
   { geometry: ANKYLOSAURUS, names: { en: "ANKYLOSAURUS", ru: "АНКИЛОЗАВР" } },
   { geometry: TREX_HATCHLING, names: { en: "T-REX", ru: "ТИРАННОЗАВР" } },
   { geometry: TREX_EXPLORER, names: { en: "T-REX", ru: "ТИРАННОЗАВР" } },
+  // Saved journals still resolve this version; new selections use the traced scene above.
+  { geometry: TREX_EXPLORER_2, names: { en: "T-REX", ru: "ТИРАННОЗАВР" } },
   // Saved journals still resolve this version; new selections use the Explorer scene above.
   { geometry: TREX_EXPLORER_1, names: { en: "T-REX", ru: "ТИРАННОЗАВР" } },
   { geometry: MOSASAURUS_HATCHLING, names: { en: "MOSASAURUS", ru: "МОЗАЗАВР" } },

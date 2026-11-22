@@ -75,7 +75,8 @@ const details: readonly ProtectedDetail[] = [
   line("M290 240 Q300 236 310 240 M324 244 Q334 240 344 244 M60 236 Q70 230 80 236 M180 230 Q190 224 200 230", 1.2)
 ];
 
-export const TREX_EXPLORER: Geometry = {
+// Saved journals still resolve this version; new Explorer works use trexExplorer3.ts.
+export const TREX_EXPLORER_2: Geometry = {
   artwork: Object.freeze({ version: "trex-explorer-2", regions: Object.freeze(regions.map(({ id }) => id)) }),
   regions, details
 };

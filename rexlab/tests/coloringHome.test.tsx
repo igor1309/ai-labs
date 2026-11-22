@@ -158,7 +158,7 @@ it.each([
 ] as const)("starts exactly one localized T-Rex at %s in %s with the matching preview", async (level, language) => {
   const f = fixture({ level, language }); await act(async () => {});
   const name = language === "en" ? "T-REX" : "ТИРАННОЗАВР";
-  const version = level === "hatchling" ? "trex-hatchling-1" : "trex-explorer-2";
+  const version = level === "hatchling" ? "trex-hatchling-1" : "trex-explorer-3";
   await f.click(language === "en" ? "COLOR A DINOSAUR" : "РАСКРАСЬ ДИНОЗАВРА");
   expect(f.container.querySelectorAll(".gallery-new")).toHaveLength(9);
   const button = screen.getByRole("button", { name });
