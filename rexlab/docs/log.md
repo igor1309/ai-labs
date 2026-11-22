@@ -2,6 +2,7 @@
 
 ## 2026-11-22
 
+- LAB-1772: T-Rex's Explorer picture is redrawn to the Explorer standard (37 regions): a T-Rex striding below a smoking volcano, with a level back, long tail, deep skull and tiny arms; its back and tail stripes, belly, hip, brow and jaw muscle are regions. Works saved on the old picture reopen on it.
 - LAB-1770, LAB-1771: Coloring's Explorer pictures have a standard in `docs/age-levels.md`: about 35–50 regions, the animal in its own proportions, its telling features as regions; the cartoon style stays at Hatchling. Spinosaurus's Explorer picture is redrawn to it (40 regions): a Spinosaurus wading a river with a fish leaping at its jaws, its sail, flank and tail banded. Works saved on the old picture reopen on it.
 - LAB-1769: Batch 2's ten creatures join the games: the hidden mark is off, so all ten are in the catalogue, COMPARE, SORT, FIND THE PAIR and DIG (spots placed by eye, wing or flipper their telling kinds, cells from their body pictures), and the four dinosaurs visit CARE; SKELETONS has no art for them and skips them. DIG breaks SINOSAUROPTERYX before PTERYX on a phone. CARE's visitor name on a narrow phone is sized by the longest name, so PACHYCEPHALOSAURUS and HETERODONTOSAURUS are no longer cut at 320 wide (the intermittent careWalk and careVisitLayout failures).
 - LAB-1768: Batch 2 has body artwork for all ten creatures in the catalogue picture-book style; the batch remains hidden until its games stage.

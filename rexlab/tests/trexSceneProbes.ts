@@ -13,7 +13,7 @@ export const trexHatchlingProbes: readonly (readonly [number, number, string])[]
   [203, 515, "plant-right"]
 ];
 
-export const trexExplorerProbes: readonly (readonly [number, number, string])[] = [
+export const trexExplorer1Probes: readonly (readonly [number, number, string])[] = [
   [325, 82, "sun"],
   [110, 112, "cloud"],
   [383, 251, "ridge"],
@@ -35,6 +35,22 @@ export const trexExplorerProbes: readonly (readonly [number, number, string])[] 
   [285, 554, "rock"],
   [329, 554, "rock-face"],
   ...trexHatchlingProbes.slice(8)
+];
+
+export const trexExplorerProbes: readonly (readonly [number, number, string])[] = [
+  [366, 106, "sky"], [70, 70, "sun"], [508, 92, "cloud-1"], [788, 54, "cloud-2"], [238, 78, "smoke"],
+  [154, 258, "volcano"], [242, 150, "lava"], [146, 342, "ridge"], [230, 464, "plain"], [636, 472, "pond"],
+  [784, 564, "ground"], [104, 548, "rock"], [174, 558, "rock-face"], [288, 560, "fern"], [828, 524, "cycad-trunk"],
+  [764, 370, "cycad-left"], [824, 326, "cycad-crown"], [870, 366, "cycad-right"], [542, 434, "leg-far"], [190, 212, "tail"],
+  [140, 196, "tail-stripe-1"], [238, 204, "tail-stripe-2"], [338, 220, "tail-stripe-3"], [686, 244, "body"], [472, 222, "back-stripe-1"],
+  [550, 218, "back-stripe-2"], [620, 228, "back-stripe-3"], [586, 360, "belly"], [628, 334, "arm-far"], [440, 460, "leg-near"],
+  [420, 388, "thigh"], [406, 318, "hip-patch"], [826, 180, "head"], [782, 130, "brow"], [726, 198, "jaw-muscle"],
+  [746, 238, "lower-jaw"], [672, 310, "arm-near"]
+];
+
+// Eye and toe ink in the Explorer scene.
+export const trexExplorerProtectedProbes: readonly (readonly [number, number])[] = [
+  [798, 158], [444, 554]
 ];
 
 export const trexProtectedProbes: readonly (readonly [number, number])[] = [

@@ -7,13 +7,13 @@ Feature: Coloring workshop T-Rex, Mosasaurus and Brachiosaurus scenes
   visibly from the initial unpainted dinosaur; tool choices are not paint. Paint matching the initial base color
   alone is empty; a contact that changes no visible paint adds no undo entry.
 
-  Scenario: Rich T-Rex prehistoric scene
+  Scenario: T-Rex striding below a volcano for older levels
     Given I start a new T-Rex work at Explorer or Paleontologist
-    Then the workshop renders the original trex-explorer-1 vector scene
-    And the same recognizable creature appears in a richer prehistoric landscape
-    And its belly and broad body markings add independent coloring regions beyond the Hatchling version
-    And prehistoric plants, rocks, clouds and distant hills offer additional broad independent coloring regions
-    And small facial details, fingers, toes and plant veins remain protected rather than tiny fill targets
+    Then the workshop renders the trex-explorer-2 vector scene of 37 regions
+    And a T-Rex in its own proportions strides with a level back, a long tail, a deep skull and tiny arms
+    And its back and tail stripes, belly, hip, brow and jaw muscle are regions of their own
+    And a smoking volcano, a pond, a rock, a fern and a cycad offer broad scenery regions
+    And its small eye, teeth, claws and toes remain protected rather than tiny fill targets
     And the entire scene fits supported iPad landscape viewports without clipping
 
   Scenario Outline: Independent T-Rex fills preserve the drawing
@@ -28,6 +28,7 @@ Feature: Coloring workshop T-Rex, Mosasaurus and Brachiosaurus scenes
       | artwork          |
       | trex-hatchling-1 |
       | trex-explorer-1  |
+      | trex-explorer-2  |
 
   Scenario: Simple Mosasaurus for Hatchling
     Given I start a new Mosasaurus work at Hatchling

@@ -6,7 +6,7 @@ const { resolve } = require("node:path");
 module.exports = async function trexScenes(page) {
   const output = process.env.TREX_SCREENSHOTS || "/tmp/lab-889/browser";
   await mkdir(output, { recursive: true });
-  for (const version of ["trex-hatchling-1", "trex-explorer-1"]) {
+  for (const version of ["trex-hatchling-1", "trex-explorer-1", "trex-explorer-2"]) {
     await page.evaluate(async version => {
       const { artworkFor, createPainter, COLORS } = await import("/harness.js");
       document.body.replaceChildren();
@@ -37,13 +37,15 @@ module.exports = async function trexScenes(page) {
     }
   }
   const failures = [];
-  for (const version of ["trex-hatchling-1", "trex-explorer-1"]) {
+  for (const version of ["trex-hatchling-1", "trex-explorer-1", "trex-explorer-2"]) {
     try {
       console.log(await page.evaluate(async version => {
         const { artworkFor, createPainter, WIDTH, HEIGHT, VECTOR_SCALE, BASE_COLOR,
-          trexHatchlingProbes, trexExplorerProbes, trexProtectedProbes } = await import("/harness.js");
+          trexHatchlingProbes, trexExplorerProbes, trexExplorer1Probes,
+          trexProtectedProbes, trexExplorerProtectedProbes } = await import("/harness.js");
         const geometry = artworkFor(version).geometry;
-        const probes = version === "trex-hatchling-1" ? trexHatchlingProbes : trexExplorerProbes;
+        const probes = { "trex-hatchling-1": trexHatchlingProbes, "trex-explorer-1": trexExplorer1Probes }[version] ?? trexExplorerProbes;
+        const protectedProbes = version === "trex-explorer-2" ? trexExplorerProtectedProbes : trexProtectedProbes;
         const check = (value, message) => { if (!value) throw new Error(`${version}: ${message}`); };
         const painter = createPainter(() => document.createElement("canvas"), geometry), canvas = painter.canvas();
         const rgb = color => [...color.slice(1).match(/../g).map(byte => parseInt(byte, 16)), 255];
@@ -54,7 +56,7 @@ module.exports = async function trexScenes(page) {
         check(JSON.stringify(probes.map(([, , id]) => id)) === JSON.stringify(geometry.artwork.regions), "every region has an independent landmark");
         const incorrect = probes.filter(([x, y, id]) => painter.regionAt({ x, y }) !== id || !pixelEquals(blank, x, y, base));
         check(!incorrect.length, `interior landmarks: ${JSON.stringify(incorrect.map(([x, y, id]) => ({ id, x, y, hit: painter.regionAt({ x, y }) })))}`);
-        const unprotected = trexProtectedProbes.filter(([x, y]) => painter.regionAt({ x, y }) !== undefined);
+        const unprotected = protectedProbes.filter(([x, y]) => painter.regionAt({ x, y }) !== undefined);
         check(!unprotected.length, `protected landmarks: ${JSON.stringify(unprotected)}`);
         // An independent SVG ownership mask proves fills beyond the chosen landmarks.
         const shape = node => `<path d="${node.path}" transform="translate(${node.x} ${node.y})"/>`;
@@ -100,7 +102,7 @@ module.exports = async function trexScenes(page) {
         }
         check(!smallTargets.length, `generous targets: ${smallTargets.join("; ")}`);
         const covered = geometry.artwork.regions.map(region => ({ kind: "fill", region, color: "#ef5350" }));
-        covered.push(...trexProtectedProbes.map(([x, y]) => ({ kind: "stroke", color: "#42a5f5", size: 40, points: [{ x, y }] })));
+        covered.push(...protectedProbes.map(([x, y]) => ({ kind: "stroke", color: "#42a5f5", size: 40, points: [{ x, y }] })));
         painter.render(canvas, covered);
         const painted = painter.pixels(canvas);
         for (let offset = 0; offset < blank.length; offset += 4) {
