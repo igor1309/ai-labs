@@ -61,6 +61,26 @@ in `style.md` in place of the dinosaur one.
 - `plesiosaurus`: Plesiosaurus, a plesiosaur, long neck, small head, broad flat body, four flippers, short tail, orange-brown with a cream belly.
 - `ophthalmosaurus`: Ophthalmosaurus, an ichthyosaur, dolphin-shaped body, very big round eyes, long thin snout, a fin on its back, a half-moon tail fin, four flippers, blue with a white belly.
 
+## Catalogue batch 2
+
+Generated with the built-in OpenAI imagegen tool. Each subject below used
+the picture-book style above, facing left on a transparent background,
+with no scenery, shadow, text or scale cues. Flying reptiles have membrane
+wings and fine fuzz, never feathers. Sea reptiles swim in empty space.
+The output is trimmed and fitted within a 760×560 box on the common
+800×600 transparent canvas, then encoded as WebP at quality 85.
+
+- `sinosauropteryx`: Small slender biped with short forelimbs, fine fuzzy primitive feathers along back and head, ginger body and very long striped ginger-and-cream tail.
++- `ouranosaurus`: Ouranosaurus, bulky herbivorous iguanodont dinosaur with a tall rounded sail running along its back, long low ducklike snout, sturdy hind legs and shorter forelegs, standing on four feet, olive green and cream.
+- `euoplocephalus`: Euoplocephalus, low broad quadruped armored dinosaur with rows of bony plates and modest lateral spikes, broad low head with small cheek knobs, heavy rounded bony tail club, ochre gold and brown.
+- `majungasaurus`: Majungasaurus, stocky bipedal abelisaur dinosaur with deep short blunt skull, single small rounded bump above nose, extremely tiny forearms, thick hind legs and long balancing tail, rust red with cream belly.
+- `shonisaurus`: Shonisaurus, giant ichthyosaur with long slender dolphin-like body, long pointed toothless snout, four elongated narrow flippers and vertical crescent tail fin, muted blue with cream belly, swimming.
+- `liopleurodon`: Liopleurodon, pliosaur sea reptile with very large elongated head, short thick neck, robust streamlined body, four large paddle flippers and short pointed tail, teal green and pale cream, swimming.
+- `tylosaurus`: Tylosaurus, elongated mosasaur sea reptile with long pointed snout including solid rounded projecting snout tip, long lizard-like body, four paddle flippers and long tail with a downward-bent fin, slate blue and cream, swimming.
+- `nothosaurus`: Nothosaurus, slender sea reptile with long neck, small flattened long-toothed head, long tapered tail and four short paddle-like webbed limbs still visibly bearing digits, green teal and pale cream, swimming.
+- `tupandactylus`: Tupandactylus, pterosaur with spectacular huge tall rounded sail-shaped head crest supported by slender rods, short toothless downturned beak, short tail, wide membrane wings spread in gliding pose, fine short fuzz on body, teal wings and bright orange yellow crest. No feathers.
+- `pterodaustro`: Pterodaustro, pterosaur with long strongly upward-curved slender beak, fine bristle-like filter teeth along lower jaw, no head crest, short tail, wide membrane wings spread in gliding pose, fine short fuzz on body, dusty coral pink and cream. No feathers.
+
 ## Jaws
 
 Add each line to the jaw style prompt in `style.md`. Each names the cue
