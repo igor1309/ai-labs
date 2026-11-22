@@ -58,3 +58,4 @@ tests. Tracing is deterministic: the same page and groups give the same ids.
 | Scene | Page | Regions |
 | --- | --- | --- |
 | `trex-explorer-4` | `coloring/trex-explorer-4.png` | 40 |
+| `mosasaurus-explorer-2` | `coloring/mosasaurus-explorer-2.png` | 36 |

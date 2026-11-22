@@ -12,7 +12,7 @@ Feature: Coloring gallery creature choices
   Scenario: Choose a recognizable Mosasaurus
     When I enter the gallery at any age level
     Then exactly one Mosasaurus choice has a matching vector preview and the uppercase localized name MOSASAURUS or МОЗАЗАВР
-    And Mosasaurus uses mosasaurus-hatchling-1 at Hatchling and mosasaurus-explorer-1 at Explorer and Paleontologist
+    And Mosasaurus uses mosasaurus-hatchling-1 at Hatchling and mosasaurus-explorer-2 at Explorer and Paleontologist
     And Stegosaurus, Triceratops, Ankylosaurus and T-Rex remain available with their age-matched previews
     And its friendly swimming silhouette has long toothy jaws, four paddles and a crescent tail fin
     And choosing it starts an independent unpainted work without changing existing works

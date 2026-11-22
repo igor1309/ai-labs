@@ -10,8 +10,9 @@ import { PTERANODON_HATCHLING, PTERANODON_EXPLORER } from "../src/coloring/ptera
 import { pteranodonHatchlingProbes, pteranodonExplorerProbes } from "./pteranodonSceneProbes.ts";
 import { BRACHIOSAURUS_HATCHLING, BRACHIOSAURUS_EXPLORER } from "../src/coloring/brachiosaurusScene.ts";
 import { brachiosaurusHatchlingProbes, brachiosaurusExplorerProbes } from "./brachiosaurusSceneProbes.ts";
-import { MOSASAURUS_HATCHLING, MOSASAURUS_EXPLORER } from "../src/coloring/mosasaurusScene.ts";
-import { mosasaurusHatchlingProbes, mosasaurusExplorerProbes } from "./mosasaurusSceneProbes.ts";
+import { MOSASAURUS_HATCHLING, MOSASAURUS_EXPLORER_1 } from "../src/coloring/mosasaurusScene.ts";
+import { MOSASAURUS_EXPLORER } from "../src/coloring/mosasaurusExplorer2.ts";
+import { mosasaurusHatchlingProbes, mosasaurusExplorerProbes, mosasaurusExplorer1Probes } from "./mosasaurusSceneProbes.ts";
 import { TREX_HATCHLING, TREX_EXPLORER_1 } from "../src/coloring/trexScene.ts";
 import { TREX_EXPLORER_3 } from "../src/coloring/trexExplorer.ts";
 import { TREX_EXPLORER } from "../src/coloring/trexExplorer4.ts";
@@ -122,26 +123,31 @@ describe("T-Rex workshop scenes", () => {
 describe("Mosasaurus workshop scenes", () => {
   it.each([
     [MOSASAURUS_HATCHLING, "mosasaurus-hatchling-1", mosasaurusHatchlingProbes],
-    [MOSASAURUS_EXPLORER, "mosasaurus-explorer-1", mosasaurusExplorerProbes]
+    [MOSASAURUS_EXPLORER_1, "mosasaurus-explorer-1", mosasaurusExplorer1Probes],
+    [MOSASAURUS_EXPLORER, "mosasaurus-explorer-2", mosasaurusExplorerProbes]
   ] as const)("registers enclosed regions with matching parents (scene %#)", (geometry, version, probes) => {
     expect(geometry.artwork.version).toBe(version);
     expect(artworkFor(version)).toEqual({ geometry, names: { en: "MOSASAURUS", ru: "МОЗАЗАВР" } });
     expect(geometry.artwork.regions).toEqual(probes.map(([, , id]) => id));
-    expect(geometry.regions.filter(({ id }) => id.startsWith("flipper-")).map(({ id }) => id)).toEqual(
+    expect(new Set(geometry.artwork.regions).size).toBe(geometry.regions.length);
+    expect(geometry.regions.filter(({ id }) => id.startsWith("flipper-")).map(({ id }) => id).sort()).toEqual(
       ["flipper-far-back", "flipper-far-front", "flipper-near-back", "flipper-near-front"]);
+    // The traced scene draws every line as one protected ink layer above regions that tile the picture.
+    const traced = geometry === MOSASAURUS_EXPLORER;
     for (const region of geometry.regions) {
-      expect(region.outline).toBeGreaterThanOrEqual(1.7);
+      expect(region.outline).toBe(traced ? 0 : Math.max(region.outline, 1.7));
       expect("path" in region && region.path.endsWith(" Z")).toBe(true);
     }
     expect(geometry.regions.filter(({ parent }) => parent).map(({ id, parent }) => [id, parent])).toEqual(
-      geometry === MOSASAURUS_HATCHLING ? [] : [
+      geometry === MOSASAURUS_EXPLORER_1 ? [
         ["rock-face", "rock"], ["tail-mark", "tail"], ["belly", "body"], ["back-mark", "body"], ["head-mark", "head"]
-      ]
+      ] : []
     );
   });
 
   it.each([
     ["Hatchling", MOSASAURUS_HATCHLING, mosasaurusHatchlingProbes],
+    ["first Explorer", MOSASAURUS_EXPLORER_1, mosasaurusExplorer1Probes],
     ["Explorer", MOSASAURUS_EXPLORER, mosasaurusExplorerProbes]
   ] as const)("keeps every %s animal and sea target independently fillable", async (_, geometry, probes) => {
     for (const [, , id] of probes) {
@@ -151,7 +157,8 @@ describe("Mosasaurus workshop scenes", () => {
         expect([...painted.subarray(offset, offset + 4)], `${id} at ${other}`).toEqual(id === other ? [239, 83, 80, 255] : [255, 240, 207, 255]);
       }
     }
-    expect(MOSASAURUS_EXPLORER.regions.length).toBeGreaterThan(MOSASAURUS_HATCHLING.regions.length * 1.8);
+    expect(MOSASAURUS_EXPLORER.regions.length).toBeGreaterThan(MOSASAURUS_HATCHLING.regions.length * 2);
+    expect(MOSASAURUS_EXPLORER.artwork.regions).toEqual(expect.arrayContaining(["head", "tail-fin", "belly", "back-band-1", "tail-band-1", "tail-band-2"]));
     expect(MOSASAURUS_HATCHLING.artwork.regions).not.toContain("water");
   });
 });
@@ -594,12 +601,12 @@ describe("Ankylosaurus prehistoric scenes", () => {
 
 describe("Explorer coloring standard", () => {
   // Scenes drawn before the standard, each awaiting its redraw.
-  const awaitingRedraw = ["mosasaurus-explorer-1", "brachiosaurus-explorer-1", "pteranodon-explorer-1", "parasaurolophus-explorer-1"];
+  const awaitingRedraw = ["brachiosaurus-explorer-1", "pteranodon-explorer-1", "parasaurolophus-explorer-1"];
 
   it.each(["explorer", "paleontologist"] as const)("offers %s pictures of at least 35 regions", level => {
     const counts = coloringVersionsFor(level).filter(version => !awaitingRedraw.includes(version))
       .map(version => [version, artworkFor(version).geometry.regions.length] as const);
     expect(counts.filter(([, count]) => count < 35)).toEqual([]);
-    expect(counts.map(([version]) => version)).toEqual(expect.arrayContaining(["spinosaurus-explorer-3", "trex-explorer-4"]));
+    expect(counts.map(([version]) => version)).toEqual(expect.arrayContaining(["spinosaurus-explorer-3", "trex-explorer-4", "mosasaurus-explorer-2"]));
   });
 });
