@@ -175,6 +175,16 @@ includes Britannica Kids. Britannica's tons are short tons of 907 kg.
 | `kronosaurus` | 11 t | Zhao 2026: 10.4 m, 11,396 kg, Queensland |
 | `plesiosaurus` | 200 kg | NHM: about 3.5 m, fish and crustaceans, Anning's skeleton; Zhao 2026: Seeleyosaurus 3.66 m, 199 kg |
 | `ophthalmosaurus` | 940 kg | Motani: 4.0 m, 930–950 kg; NHM: eyes over 22 cm across, live birth |
+| `sinosauropteryx` | 500 g | Length 1.1 m: NHM, which gives no mass; Britannica could not be read (LAB-1767). 500 g is kept, the published estimate for a 1 m adult being about 0.55 kg; Compsognathus's 3 kg cubed to 1.1 m (12 kg) would ignore its far slimmer body and long tail |
+| `ouranosaurus` | 2.2 t | Length 7 m: NHM, which gives no mass; Britannica could not be read. 2.2 t is the proposal's working estimate; Iguanodon's 4 t at 10 m cubed to 7 m gives 1.4 t, Ouranosaurus being the lighter-built, so the range is 1.4–2.2 t |
+| `euoplocephalus` | 2 t | Length 7 m and mass 2,000 kg: NHM. The proposal's 6 m and 2.5 t gave way to NHM |
+| `majungasaurus` | 1.1 t | Length 6 m: NHM, which gives no mass; the proposal's 7 m gave way to NHM. Carnotaurus's 1.5 t at 8 m cubed to 6 m gives 0.63 t, Majungasaurus being the stockier; 1.1 t is kept as the working estimate |
+| `shonisaurus` | 50 t | Length 15 m (S. sikanniensis, Britannica, from the proposal). Motani's Ophthalmosaurus, 4.0 m and 940 kg, cubed to 15 m: 940 × (15 / 4)³ = 49,600 kg |
+| `liopleurodon` | 2.7 t | Length 6.4 m: NHM. Zhao 2026's Kronosaurus, 10.4 m and 11,396 kg, cubed to 6.4 m: 11,396 × (6.4 / 10.4)³ = 2,660 kg |
+| `tylosaurus` | 10 t | Length 12 m (Britannica, AMNH, from the proposal). The catalogue's Mosasaurus, 12 m and 10 t (NHM), at the same length: 10 t |
+| `nothosaurus` | 260 kg | Length 4 m (Britannica, from the proposal). Zhao 2026's Seeleyosaurus, 3.66 m and 199 kg, cubed to 4 m: 199 × (4 / 3.66)³ = 260 kg |
+| `tupandactylus` | 11 kg | Wingspan 4 m (from the proposal). Witton 2008's Pteranodon, 5.96 m and 36.7 kg, cubed to 4 m: 36.7 × (4 / 5.96)³ = 11.1 kg |
+| `pterodaustro` | 2.7 kg | Wingspan 2.5 m (Britannica, from the proposal). Witton 2008's Pteranodon, 5.96 m and 36.7 kg, cubed to 2.5 m: 36.7 × (2.5 / 5.96)³ = 2.7 kg |
 
 ## Hip heights
 
@@ -268,3 +278,7 @@ tibia + metatarsal III, over the femur unless said):
 | `maiasaura` | 2.1 m | 2 | MA12, ROM 44770: femur 990, × 2.14 |
 | `corythosaurus` | 2.4 m | 3 | NHM 10 m × Parasaurolophus, 2205 over NHM 9 m; MA12's femora, 500–640 mm, are too small for its length |
 | `chasmosaurus` | 2.2 m | 2 | MA12, ROM 843: femur 840, × 2.60 |
+| `sinosauropteryx` | 0.50 m | 3 | NHM 1.1 m × Compsognathus, 0.32 m over NHM 0.7 m; PC16 and KK25 could not be read (LAB-1767) |
+| `ouranosaurus` | 1.5 m | 3 | NHM 7 m × Iguanodon, 2.2 m over NHM 10 m; MA12's femora could not be read |
+| `euoplocephalus` | 0.96 m | 3 | NHM 7 m × Ankylosaurus, 1.1 m over NHM 8 m; MA12's femora could not be read |
+| `majungasaurus` | 1.9 m | 3 | NHM 6 m × Carnotaurus, 2.5 m over NHM 8 m; PC16 could not be read |
