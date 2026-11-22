@@ -231,7 +231,7 @@ it.each([
 ] as const)("starts exactly one localized Parasaurolophus at %s in %s with the matching preview", async (level, language) => {
   const f = fixture({ level, language }); await act(async () => {});
   const name = language === "en" ? "PARASAUROLOPHUS" : "ПАРАЗАУРОЛОФ";
-  const version = level === "hatchling" ? "parasaurolophus-hatchling-1" : "parasaurolophus-explorer-1";
+  const version = level === "hatchling" ? "parasaurolophus-hatchling-1" : "parasaurolophus-explorer-2";
   await f.click(language === "en" ? "COLOR A DINOSAUR" : "РАСКРАСЬ ДИНОЗАВРА");
   expect(f.container.querySelectorAll(".gallery-new")).toHaveLength(9);
   const button = screen.getByRole("button", { name });

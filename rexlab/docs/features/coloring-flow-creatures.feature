@@ -61,8 +61,8 @@ Feature: Coloring creature age variants and saved drawings
     Examples:
       | level          | geometry                    |
       | Hatchling      | parasaurolophus-hatchling-1 |
-      | Explorer       | parasaurolophus-explorer-1  |
-      | Paleontologist | parasaurolophus-explorer-1  |
+      | Explorer       | parasaurolophus-explorer-2  |
+      | Paleontologist | parasaurolophus-explorer-2  |
 
   Scenario Outline: Spinosaurus age variants and saved drawings
     Given the global age setting is <level>
