@@ -68,11 +68,6 @@ state inside Recording's state and is not a machine or a module of its own.
 
 ### Open
 
-The code does not yet follow rules 4 and 5 everywhere. Each item below
-becomes part of a machine's state, or is shown to be only mapping:
-
-- The menu runs panel presence's reducer and its delay by hand.
-
 No check yet fails on an import that a target's kind does not allow.
 
 ## Recording conditions
