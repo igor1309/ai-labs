@@ -33,6 +33,7 @@ let benchmarks: @Sendable () -> Void = {
             teardown: { await Call.current?.end() }
         )
     }
+    tickBenchmarks()
 }
 
 /// One recorded call through the app's composition, fed by hand.
@@ -57,10 +58,10 @@ final class Call: @unchecked Sendable {
     /// Slots of audio fed to both sides.
     var slots = 0
 
-    static func played(lines: Int) async throws -> Call {
+    static func played(lines: Int, tickClock: TickClock? = nil) async throws -> Call {
 
         let began = ContinuousClock.now
-        let call = try await Call()
+        let call = try await Call(tickClock: tickClock)
         Call.current = call
         // A sentence and its pause at a time, so getting there is quick.
         while call.lines < lines {
@@ -73,17 +74,25 @@ final class Call: @unchecked Sendable {
 
     var lines: Int { if case let .lines(lines) = latest?.log { lines.rows.count } else { 0 } }
 
-    private init() async throws {
+    private init(tickClock: TickClock?) async throws {
 
         root = FileManager.default.temporaryDirectory.appendingPathComponent("audelin-bench-\(ProcessInfo.processInfo.processIdentifier)")
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-        let boundary = rehearsalBoundary(
+        var boundary = rehearsalBoundary(
         capturePersistence: .transient,
             microphone: { [microphone] in microphone.started() }, call: { [call] _ in call.started() },
             mine: RehearsalRecognizer(mine), theirs: RehearsalRecognizer(theirs),
             now: { Date() }, timeZone: { .current }, sleep: { try await ContinuousClock().sleep(for: $0) },
-            intervals: rehearsalIntervals()
+            intervals: rehearsalIntervals(),
+            transcriptBuild: .init(version: "benchmark", build: "1", mine: "mine", theirs: "theirs")
         )
+        if let tickClock {
+            let time = boundary.time
+            boundary.time = ComposerTime(
+                now: time.now, timeZone: time.timeZone, monotonicNow: tickClock.now,
+                sleep: time.sleep, after: time.after, ticks: { tickClock.stream }
+            )
+        }
         composition = try await startRehearsal(boundary: boundary, root: root)
         shown = await composition.panelStates().makeAsyncIterator()
     }

@@ -1,0 +1,64 @@
+Role=AXGroup Description=Notification Help=Meeting detected Zoom
+  Role=AXStaticText Description=Note-taking is available
+  Role=AXStaticText Description=Zoom
+  Role=AXButton Title=Take notes Description=Take notes
+  Role=AXMenuButton Title= Description=Note options
+Role=AXWindow Subrole= Description=Invite link has been copied to clipboard
+  Role=AXTextArea Value=Invite link has been copied to clipboard
+    Role=AXTextArea Description=Invite link has been copied to clipboard
+Role=AXWindow Subrole=AXStandardWindow Title=Zoom Meeting Identifier=zm.meeting.window.main
+  Role=AXTabGroup Description=Анна Петрова, Computer audio muted Help=
+    Role=AXImage
+    Role=AXButton Description=Анна Петрова
+  Role=AXButton Description=Unmute my audio Identifier=audio Help=Press (⇧⌘A) to unmute or hold (Space) to temporarily unmute.
+  Role=AXButton Description=Audio options
+  Role=AXButton Description=Start video Identifier=video Help=Start video (⇧⌘V)
+  Role=AXButton Description=Video options
+  Role=AXButton Description=End Identifier=leave Help=End (⌘W)
+  Role=AXButton Description=Open participants panel, closed, 1 participants Identifier=participant Help=Show the participants list (⌘U), press Shift+F10 key to open the context menu, Press Ctrl + Command + Arrow Keys to reorder
+  Role=AXButton Description=Participants options
+  Role=AXButton Description=Open chat panel  Identifier=chat Help=Show chat (⇧⌘H), press Shift+F10 key to open the context menu, Press Ctrl + Command + Arrow Keys to reorder
+  Role=AXButton Description=Chat options
+  Role=AXButton Description=More meeting controls, collapsed Identifier=more Help=Opens the navigation tabs in a grid
+  Role=AXButton Description=Анна Петрова's Zoom Meeting Identifier=MeetingTopBarInfoButton Help=Анна Петрова's Zoom Meeting
+  Role=AXButton Description=Open Notes pop-up; My Notes is off Help=Press Enter to open Notes panel
+  Role=AXButton Description=Open Zoom AI pop-up; Zoom AI is off Help=Press Enter to open AI chat
+  Role=AXButton Description=View options, Gallery
+  Role=AXButton Description=Open meeting security popup
+  Role=AXButton Description=Upgrade to Zoom Pro Identifier=upgrade button
+  Role=AXButton Description=more badges Help=more badges
+  Role=AXButton Subrole=AXCloseButton
+  Role=AXButton Subrole=AXMinimizeButton
+  Role=AXButton Subrole=AXFullScreenButton
+Role=AXWindow Subrole=AXStandardWindow Title=Zoom Workplace
+  Role= Description=
+  Role=AXButton Description=Search (⌘E)  ⌘E
+  Role=AXButton Title= Description=Zoom, Анна Петрова, In a Zoom Meeting, Basic account
+  Role=AXButton Description=Create new Help=Create new
+  Role=AXGroup Description=Navigation tabs
+    Role=AXButton Description=Home, selected, 1 of 3 Help=Press Shift + F10 key for the context menu, Press Ctrl+Command+Arrow keys to reorder
+    Role=AXButton Description=ZoomMate, 2 of 3 Help=Press Shift + F10 key for the context menu, Press Ctrl+Command+Arrow keys to reorder
+    Role=AXButton Description=More with new items, 3 of 3 Help=Opens the navigation tabs in a grid
+  Role=AXButton Title=Settings Help=Settings
+  Role=AXStaticText Value=Settings
+  Role=AXSplitGroup
+    Role=AXGroup
+      Role=AXStaticText Value=12:48
+      Role=AXStaticText Value=Monday, 16 November
+      Role=AXGroup
+        Role=AXButton Title= Description=Back to meeting Identifier=74B505FC-1289-40FA-A6B4-086EF9E05C9F
+      Role=AXGroup
+        Role=AXButton Title= Description=Join meeting Identifier=3B9A47AD-E7C7-4239-B081-E73B66E157EA
+      Role=AXGroup
+        Role=AXButton Title= Description=Schedule meeting Identifier=381BB3DA-E607-45E8-8315-6DADFCF01658
+      Role=AXGroup
+        Role=AXButton Title= Description=Share screen Identifier=AA0F961F-B9AE-489A-BE53-5EEE604C38EB
+      Role=AXGroup
+        Role=AXButton Title= Description=My Notes Identifier=B03D037F-537E-4511-856D-F2DD188CD026
+      Role=AXGroup
+      Role=AXButton Description=Open AI chat (⇧⌘O)
+    Role=AXSplitter Value=496
+  Role=AXButton Subrole=AXCloseButton
+  Role=AXButton Subrole=AXFullScreenButton Help=this button also has an action to zoom the window
+    Role=AXGroup
+  Role=AXButton Subrole=AXMinimizeButton

@@ -6,19 +6,13 @@ import Recording
 import Recordings
 import SettingsUI
 
-/// Each recording's reading model, reducing on the main actor.
+/// The displayed call's Reading model, reducing on the main actor.
 @MainActor
-func makeReading() -> ReadingInputs {
+func makeReading() -> SyncModel<ReadingState, ReadingEvent> {
 
-    let model = ObservableModel<ReadingState, ReadingEvent, Never>(
-        initialState: .init(), reduce: ReadingReducer.reduce, handleEffect: noEvents
-    )
-    return ReadingInputs(state: { model.state }, send: { model.event($0) })
+    let reducer = readingReducer()
+    return SyncModel(initialState: .init(), reduce: { reducer.reduce($0, $1).0 })
 }
-
-/// The handler for a model without effects. It is generic because the compiler warns on any body
-/// taking `Never`: a closure given it "will never be executed".
-private func noEvents<Effect, Event>(_: Effect) -> AsyncStream<Event> { AsyncStream { $0.finish() } }
 
 /// The stream a model reads from a handler that returns one event.
 func oneEvent<Event: Sendable>(_ handle: @escaping @Sendable () async -> Event) -> AsyncStream<Event> {
@@ -36,6 +30,9 @@ func oneEvent<Event: Sendable>(_ handle: @escaping @Sendable () async -> Event) 
 @MainActor
 func makeRecording(
     initial: RecordingState, log: @escaping @Sendable (RecordingState) -> Void,
+    changed: @escaping @MainActor (RecordingState, RecordingState) -> Void,
+    folderClaim: RecordingFolderClaim,
+    sleep: @escaping @Sendable (Duration) async -> Void,
     callAudioReady: @escaping @Sendable () async -> Bool,
     liveText: @escaping @Sendable () -> Bool,
     callAudioReleased: @escaping @Sendable () async -> Void,
@@ -43,18 +40,17 @@ func makeRecording(
     status: @escaping @Sendable (SessionState) -> RecordingSessionStatus
 ) -> RecordingInputs {
 
-    let handler = RecordingEffectHandler(prepareCallAudio: callAudioReady, liveText: liveText,
+    let handler = RecordingEffectHandler(sleep: sleep, claimFolder: folderClaim.take, releaseFolder: folderClaim.release,
+                                         prepareCallAudio: callAudioReady, liveText: liveText,
                                          releaseCallAudio: callAudioReleased, runPiece: runPiece)
     let model = RecordingModel(initial: initial, reducer: RecordingReducer(session: SessionReducer.reduce, status: status),
-                               handler: handler, log: log)
+                               handler: handler, changed: changed, log: log)
     var inputs = RecordingInputs(
         send: { await model.send($0) },
         state: { await model.state },
         states: { await model.states() },
         end: { await model.end() }
     )
-    inputs.reserveStorage = { await model.reserveStorage() }
-    inputs.releaseStorage = { await model.send(.releaseStorage) }
     return inputs
 }
 
@@ -65,13 +61,15 @@ final class RecordingModel {
     private let model: ObservableModel<RecordingState, RecordingEvent, RecordingEffect>
     private let feed = StateFeed<RecordingState>()
 
-    init(initial: RecordingState, reducer: RecordingReducer, handler: RecordingEffectHandler, log: @escaping @Sendable (RecordingState) -> Void) {
+    init(initial: RecordingState, reducer: RecordingReducer, handler: RecordingEffectHandler,
+         changed: @escaping @MainActor (RecordingState, RecordingState) -> Void, log: @escaping @Sendable (RecordingState) -> Void) {
 
         let feed = feed
         model = ObservableModel(initialState: initial, reduce: { state, event in
             guard !feed.finished else { return (state, nil) }
             let (next, effect) = reducer.reduce(state, event)
             if next != state {
+                changed(state, next)
                 log(next)
                 feed.publish(next)
             }
@@ -80,21 +78,6 @@ final class RecordingModel {
     }
 
     var state: RecordingState { model.state }
-    private var lastReservation: UInt64 = 0
-
-    /// Answers this request's own decision; another caller's reservation is not this one's.
-    func reserveStorage() async -> Bool {
-        lastReservation += 1
-        let request = lastReservation
-        let states = feed.subscribe(from: model.state)
-        model.event(.reserveStorage(request: request))
-        for await state in states {
-            guard let granted = state.reservations[request] else { continue }
-            model.event(.reservationAnswered(request: request))
-            return granted
-        }
-        return false
-    }
 
     func send(_ event: RecordingEvent) { model.event(event) }
 
@@ -107,10 +90,11 @@ final class RecordingModel {
 
 /// The termination machine: publishes the quit intention and terminates once every participant settled.
 @MainActor
-func makeTermination(relaunch: @escaping @Sendable () async -> Bool, unsettled: Set<TerminationParticipant>,
+func makeTermination(claimFolder: @escaping @Sendable () async -> UInt64?, releaseFolder: @escaping @Sendable (UInt64) async -> Void,
+                     relaunch: @escaping @Sendable () async -> Bool, unsettled: Set<TerminationParticipant>,
                      terminate: @escaping @Sendable () async -> Void) -> ObservableModel<TerminationState, TerminationEvent, TerminationEffect> {
 
-    let handler = TerminationEffectHandler(relaunch: relaunch, terminate: terminate)
+    let handler = TerminationEffectHandler(claimFolder: claimFolder, releaseFolder: releaseFolder, relaunch: relaunch, terminate: terminate)
     return ObservableModel(initialState: TerminationState(unsettled: unsettled), reduce: TerminationReducer.reduce,
                            handleEffect: { effect in oneEvent { await handler.handle(effect) } })
 }
@@ -118,14 +102,36 @@ func makeTermination(relaunch: @escaping @Sendable () async -> Bool, unsettled: 
 @MainActor
 func makeRecordings(handler: RecordingsEffectHandler, text: @escaping @Sendable () -> SettingsText,
                     initial: RecordingsState = .init()) -> RecordingsInputs {
-    let model = ObservableModel(initialState: initial, reduce: recordingsReducer(text).reduce,
+    let feed = StateFeed<RecordingsState>()
+    let reducer = recordingsReducer(text)
+    let model = ObservableModel(initialState: initial, reduce: { state, event in
+        let result = reducer.reduce(state, event)
+        // Selection consumes transitions; observation may coalesce a run's start and end.
+        if result.0 != state { feed.publish(result.0) }
+        return result
+    },
                                 handleEffect: handler.handle)
-    return RecordingsInputs(state: { model.state }, send: { model.event($0) })
+    return RecordingsInputs(state: { model.state }, send: { model.event($0) },
+                            states: { feed.subscribe(from: model.state) })
 }
 
 /// The calls list machine, with its text in the language `text` gives when it writes.
 func recordingsReducer(_ text: @escaping @Sendable () -> SettingsText) -> RecordingsReducer {
     RecordingsReducer(failureMessage: { prior, refreshError in
         text()(.refreshFailed, prior, refreshError)
-    }, moveText: folderMoveText(text), busyMessage: { text()(.callMergeBusy) })
+    }, moveText: folderMoveText(text), busyMessage: { text()(.callMergeBusy) },
+                      transcriptMessage: { transcriptMessage($0, text: text()) })
+}
+
+func transcriptMessage(_ refusal: TranscriptRefusal, text: SettingsText) -> String {
+    switch refusal {
+    case .notIdle: text(.transcriptNotIdle)
+    case .actionUnderWay: text(.transcriptActionUnderWay)
+    case .noPreviousTranscript: text(.transcriptNoPrevious)
+    case .callNotFound: text(.transcriptCallNotFound)
+    case .recordingStarted: text(.transcriptRecordingStarted)
+    case let .runningTranscript(id): text(.transcriptRunning, id)
+    case let .missingTracks(tracks):
+        text(.transcriptMissingTracks, tracks.map { text($0.track == .call ? .transcriptCallTrack : .transcriptMicrophoneTrack, $0.id) }.joined(separator: "; "))
+    }
 }

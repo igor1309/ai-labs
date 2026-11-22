@@ -3,11 +3,11 @@ import Testing
 
 @Suite struct SummariesCancelReducerTests {
     let format = FormatSpy()
-    static let running: [SummariesState.Call.Stage] = [.claiming, .starting, .identifying, .checkpointing, .noting, .publishing, .saving]
+    static let running: [SummariesState.Call.Stage] = [.claiming, .starting, .identifying, .checkpointing, .resolving, .noting, .publishing, .saving]
     /// Each running stage with a result that answers it.
     static let answers: [(SummariesState.Call.Stage, SummariesEvent)] = [
         (.claiming, .claimed("call", owned: true, .init(stage: .pending, job: makeJob()))), (.starting, .started("call", owned: true)), (.identifying, .identified("call", [])), (.identifying, .identificationFailed("call")),
-        (.checkpointing, .checkpointed("call")), (.noting, .noted("call", "n")), (.noting, .notesFailed("call")),
+        (.checkpointing, .checkpointed("call")), (.resolving, .resolved("call", makeTemplate())), (.noting, .noted("call", "n")), (.noting, .notesFailed("call")),
         (.publishing, .published("call")), (.saving, .saved("call")),
     ]
 
@@ -152,32 +152,32 @@ import Testing
     }
     @Test func discardDoesNothingElse() async {
         let preparation = PreparationSpy(), claims = ClaimsSpy(), records = RecordsSpy(), starts = StartsSpy(), generation = GenerationsSpy()
-        _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: records, starts: starts,
+        _ = await SummariesEffectHandler(keeping: { true }, templates: TemplatesSpy(), preparation: preparation, claims: claims, records: records, starts: starts,
                                          storage: StorageSpy(), generation: generation).handle(.discard(makeJob()))
         #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && records.payloads.isEmpty
                 && starts.payloads.isEmpty && generation.payloads.isEmpty)
     }
     @Test func abortStopsTheJobsGenerationAndDeliversAborted() async {
         let generation = GenerationsSpy()
-        let event = await SummariesEffectHandler(preparation: PreparationSpy(), claims: ClaimsSpy(), records: RecordsSpy(),
+        let event = await SummariesEffectHandler(keeping: { true }, templates: TemplatesSpy(), preparation: PreparationSpy(), claims: ClaimsSpy(), records: RecordsSpy(),
                                                  starts: StartsSpy(), storage: StorageSpy(), generation: generation).handle(.abort(makeJob()))
         #expect(event == .aborted("call") && generation.payloads == [.cancel(makeJob())])
     }
     @Test func abortDoesNothingElse() async {
         let preparation = PreparationSpy(), claims = ClaimsSpy(), records = RecordsSpy(), starts = StartsSpy(), storage = StorageSpy()
-        _ = await SummariesEffectHandler(preparation: preparation, claims: claims, records: records, starts: starts,
+        _ = await SummariesEffectHandler(keeping: { true }, templates: TemplatesSpy(), preparation: preparation, claims: claims, records: records, starts: starts,
                                          storage: storage, generation: GenerationsSpy()).handle(.abort(makeJob()))
         #expect(preparation.payloads.isEmpty && claims.payloads.isEmpty && records.payloads.isEmpty
                 && starts.payloads.isEmpty && storage.payloads.isEmpty)
     }
-    @Test(arguments: [SummariesEffect.identify(makeJob()), .notes(makeJob(), []), .publish(makeJob(), "n", warning: false)])
+    @Test(arguments: [SummariesEffect.identify(makeJob()), .notes(makeJob(), [], makeTemplate()), .publish(makeJob(), "n", warning: false, keeping: .rotation)])
     func otherEffectsDoNotDiscard(effect: SummariesEffect) async {
         let storage = StorageSpy()
         _ = await makeSUT(storage).handle(effect)
         #expect(!storage.payloads.contains(.discard(makeJob())))
     }
     private func makeSUT(_ storage: StorageSpy) -> SummariesEffectHandler {
-        .init(preparation: PreparationSpy(), claims: ClaimsSpy(), records: RecordsSpy(), starts: StartsSpy(),
+        .init(keeping: { true }, templates: TemplatesSpy(), preparation: PreparationSpy(), claims: ClaimsSpy(), records: RecordsSpy(), starts: StartsSpy(),
               storage: storage, generation: GenerationsSpy())
     }
 }

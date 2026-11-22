@@ -1,8 +1,11 @@
 name: Audelin Nightly
 
 # The long runs of docs/research/profiling-in-development.md, layers 3 and 4
-# (LAB-797): a 3-hour real-model call at 1x with lag and memory, and short
-# CPU-and-hangs windows at large preloaded sizes. They need a quiet, known
+# (LAB-797): a real-model call at 1x with lag and memory, and short
+# CPU-and-hangs windows at large preloaded sizes. The call lasts 3 hours once
+# a week, on the Saturday-to-Sunday night, and 30 minutes on the other
+# nights; the report compares a night only with earlier nights of the same
+# length. They need a quiet, known
 # machine, so they run only on the self-hosted Mac, on a schedule, never in
 # pull request checks: their numbers mean nothing on shared hosted runners.
 # Runs at 01:43 UTC (04:43 Moscow time), after ci-weekly's Sunday 00:37 UTC
@@ -12,6 +15,11 @@ on:
   schedule:
     - cron: "43 1 * * *"   # 04:43 MSK
   workflow_dispatch:
+    inputs:
+      minutes:
+        description: "Length of the real-model call in minutes (default: 180 on Sunday UTC, else 30)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -35,11 +43,17 @@ jobs:
       # compares with the last one that ran on the same setup.
       - name: Run the long runs
         working-directory: audelin/macos
+        env:
+          MINUTES_INPUT: ${{ github.event.inputs.minutes }}
         run: |
+          # 3 hours on the Saturday-to-Sunday night (Sunday UTC), 30 minutes otherwise.
+          if [ -n "$MINUTES_INPUT" ]; then minutes="$MINUTES_INPUT"
+          elif [ "$(date -u +%u)" = 7 ]; then minutes=180
+          else minutes=30; fi
           history="$HOME/Library/Application Support/Audelin Nightly"
           out="$history/runs/$(date -u +%Y-%m-%d-%H%M%S)-${GITHUB_SHA::7}"
           echo "NIGHTLY_OUT=$out" >> "$GITHUB_ENV"
-          scripts/nightly.sh --out "$out" --history "$history"
+          scripts/nightly.sh --out "$out" --history "$history" --minutes "$minutes"
 
       - name: Summarize
         if: always() && env.NIGHTLY_OUT != ''
@@ -55,6 +69,8 @@ jobs:
             ${{ env.NIGHTLY_OUT }}/report.*
             ${{ env.NIGHTLY_OUT }}/endurance.log
             ${{ env.NIGHTLY_OUT }}/capture-*/summary.*
+            ${{ env.NIGHTLY_OUT }}/capture-rehearsal/rehearsal.log
+            ${{ env.NIGHTLY_OUT }}/rehearsal-*/rehearsal.log
 
   # The live scenario of remote names from the browser extension: the
   # rehearsal replays recorded Telemost events through the app's socket and
@@ -75,9 +91,26 @@ jobs:
         working-directory: audelin/macos
         run: scripts/live-browser-names.sh
 
+  # Renaming a call in the calls list, driven through Accessibility in the
+  # Mac's logged-in session; after the browser-names run so they share the Mac in turn.
+  live-calls-rename:
+    if: ${{ always() && !cancelled() }}
+    needs: [live-browser-names]
+    runs-on: [self-hosted, local-mac]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || 'trunk' }}
+
+      - name: Run the live scenarios
+        working-directory: audelin/macos
+        run: scripts/live-calls-rename.sh
+
   notify:
-    if: ${{ always() && !cancelled() && (needs.long-runs.result == 'failure' || needs.live-browser-names.result == 'failure') }}
-    needs: [long-runs, live-browser-names]
+    if: ${{ always() && !cancelled() && (needs.long-runs.result == 'failure' || needs.live-browser-names.result == 'failure' || needs.live-calls-rename.result == 'failure') }}
+    needs: [long-runs, live-browser-names, live-calls-rename]
     uses: ./.github/workflows/notify-telegram-failure.yml
     with:
       title: "Audelin Nightly"
@@ -86,6 +119,7 @@ jobs:
       job_results: |
         long-runs=${{ needs.long-runs.result }}
         live-browser-names=${{ needs.live-browser-names.result }}
+        live-calls-rename=${{ needs.live-calls-rename.result }}
     secrets:
       CI_BOT_TOKEN: ${{ secrets.CI_BOT_TOKEN }}
       CI_CHAT_ID: ${{ secrets.CI_CHAT_ID }}

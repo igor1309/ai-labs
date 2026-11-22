@@ -33,6 +33,8 @@ under the working name wisper.
 | [diarization.md](diarization.md), [diarization/](diarization/) | Speaker diarization of the call track on AMI, the owner's calls and synthetic Russian group calls built with known speakers (LAB-1130): Nemotron 3, VBx, live LS-EEND churn and cost; Nemotron after the call, not live |
 | [monthly/](monthly/README.md) | Monthly check of the owner's newest calls: flags speaker bleed and speaker counts the enhancement and diarization reports did not expect |
 | [vad-hallucinations.md](vad-hallucinations.md) | Targeted silent-mic failures: FluidAudio at 0.95 and reference Silero at 0.5 reject both; speech controls and limits before adoption |
+| [transcript-language.md](transcript-language.md), [transcript-language/](transcript-language/) | Where non-Cyrillic text in final transcripts comes from, on 15 calls checked against levels, reference Silero and Amanu: half the microphone's is written on a silent mic |
+| [owner-naming.md](owner-naming.md), [owner-naming/](owner-naming/) | Replacing the owner's `Me` label with their name in the notes request, on six calls: fixes how the owner is named, not who-did-what; build the name plus one recorder line |
 | `gallery/` | Site captures and screenshots of the surveyed apps (inventory-a6) |
 | `../design/visual-language.pen` | Glass Ledger's design system, components and Screens 1–8, light and dark |
 | [design/README.md](../design/README.md) | Index of the design file: Glass Ledger's tokens, components, and the frame map |

@@ -35,6 +35,7 @@ struct MenuBarTests {
                 let panelClock = ReadingClockSpy()
                 let permissionRead = Signal()
                 let boundary = ComposerBoundary(
+                    transcriptBuild: testTranscriptBuild,
                     capturePersistence: .recorded,
                     microphone: FixtureMicrophone(begin: {
                         events.append("microphone started")
@@ -70,8 +71,8 @@ struct MenuBarTests {
                         }, ticks: panelClock.ticks), log: TestLogSink(), intervals: testIntervals,
                     recordings: FileRecordingStorage(), trash: removeForTrash, bleedCleaning: CleaningStub { _ in preconditionFailure("Live text is disabled") },
                     bleedHearing: HearingStub { _ in preconditionFailure("Live text is disabled") },
-                    transcripts: FileTranscriptStorage(diarizer: CallDiarizer.unavailable),
-                    preferredLanguages: { ["ru-RU"] }
+                    diarizer: CallDiarizer.unavailable, transcripts: FileTranscriptStorage(diarizer: CallDiarizer.unavailable),
+                    preferredLanguages: { ["ru-RU"] }, accountName: { "" }
                 )
                 let app = await compose(boundary: boundary, preferencesURL: root.appendingPathComponent("preferences.json"),
                     openCallsFolder: { _ in false }, presentCalls: {}, openURL: { _ in }, presentPanel: { _ in },

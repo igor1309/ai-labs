@@ -1,9 +1,18 @@
 import BlockingTestWork
-import Composer
 import Foundation
 import LiveText
+import Reading
 import Synchronization
 import Testing
+@testable import Composer
+
+extension ReadingReducer {
+    static func reduce(_ state: ReadingState, _ update: ReadingUpdate) -> (ReadingState, Never?) {
+        var call = state
+        call.displayedCall = 1
+        return readingReducer().reduce(call, .update(1, update))
+    }
+}
 
 func withComposeFolder(isolation: isolated (any Actor)? = #isolation, _ body: (URL) async throws -> Void) async throws {
 
@@ -123,4 +132,10 @@ extension TranscriptSegment {
 
         .init(id: id, start: start, end: end, words: words, settledCount: settledCount)
     }
+}
+
+/// Yields until `done` holds, for an async machine's event to reduce and its effects to run.
+@MainActor
+func settled(_ done: () -> Bool) async {
+    for _ in 0..<10_000 where !done() { await Task.yield() }
 }

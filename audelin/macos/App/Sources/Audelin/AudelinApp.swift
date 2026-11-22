@@ -45,16 +45,13 @@ struct AudelinApp: App {
             return window
         }, title: CallsListText(language: .russian)(.windowTitle), activate: { NSApplication.shared.activate(ignoringOtherApps: true) }, shown: { presence.shown($0) })
         self.callsWindow = callsWindow
-        let settingsWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 668, height: 700),
-                                      styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        let settingsWindow = SettingsWindow.make()
         settingsWindow.title = SettingsText(language: .russian)(.windowTitle)
-        settingsWindow.isReleasedWhenClosed = false
-        settingsWindow.minSize = NSSize(width: 668, height: 120)
-        settingsWindow.center()
         presence.track(settingsWindow)
         self.settingsWindow = settingsWindow
         let callWindow = CallWindowSlot()
         let boundary = await makeRealBoundary()
+        let notifications = SystemNotifications(bundle: Bundle.main.bundleURL)
         let model = await compose(
             boundary: boundary,
             preferencesURL: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".audelin/preferences.json"),
@@ -74,10 +71,11 @@ struct AudelinApp: App {
                     begin: { completion in picker.begin { completion($0 == .OK ? picker.url : nil) } },
                     isVisible: { picker.isVisible }
                 )
-            }, copyNotes: { copyNotes($0, to: .general) }, readCall: { if let window = callWindow.window { presentCall(window, shown: { presence.shown($0) }) } }
+            }, copyNotes: { copyNotes($0, to: .general) }, readCall: { if let window = callWindow.window { presentCall(window, shown: { presence.shown($0) }) } },
+            notify: { notifications.post($0) }
         )
         self.model = model
-        settingsWindow.contentView = NSHostingView(rootView: SettingsContent(model: model, window: settingsWindow))
+        SettingsWindow.install(model, in: settingsWindow)
         observeLanguage(model, settingsWindow: settingsWindow, callsWindow: callsWindow)
         observeAppearance(model)
         if let calls = model.calls, let callsNSWindow {
@@ -120,8 +118,7 @@ struct AudelinApp: App {
             }
         } label: {
             // Icon only: titles of different widths shifted the icon (LAB-640).
-            Image(nsImage: menuBarImage)
-                .accessibilityLabel(model?.menu.item.title ?? "Audelin")
+            MenuBarLabel(item: model?.menu.item)
                 .task { await start() }
         }
         .commands {
@@ -140,17 +137,48 @@ struct AudelinApp: App {
             forKey: "Settings\\U2026", value: "Settings…", table: "MenuCommands",
             localizations: Locale.preferredLanguages.map { Locale.Language(identifier: $0) })
     }
+}
 
-    private var menuBarImage: NSImage {
+/// The menu-bar icon. While recording it carries a steady red dot.
+private struct MenuBarLabel: View {
 
-        guard let item = model?.menu.item else {
+    let item: MenuBarItem?
+
+    var body: some View {
+        Image(nsImage: image)
+            .accessibilityLabel(item?.title ?? "Audelin")
+    }
+
+    private var image: NSImage {
+        guard let item else {
             return NSImage(systemSymbolName: "waveform", accessibilityDescription: "Audelin") ?? NSImage()
         }
-        let image = NSImage(systemSymbolName: item.symbol, accessibilityDescription: item.title)?
-            .withSymbolConfiguration(.init(paletteColors: [item.isRed ? .systemRed : .labelColor]))
-            ?? NSImage()
-        // Template status images discard their palette in the menu bar.
-        image.isTemplate = !item.isRed
+        let symbol = NSImage(systemSymbolName: item.symbol, accessibilityDescription: item.title) ?? NSImage()
+        guard item.isRed else {
+            symbol.isTemplate = true
+            return symbol
+        }
+        return Self.badged(symbol)
+    }
+
+    /// The symbol with a 7 pt red dot over its top-right corner, the dot cut
+    /// clear of the lines beneath it. Not a template: a template image loses
+    /// its red in the menu bar. The symbol is tinted with the menu bar's own
+    /// text colour at draw time, so it follows light and dark menu bars.
+    private static func badged(_ symbol: NSImage) -> NSImage {
+        let dot: CGFloat = 7, gap: CGFloat = 1.2, size = symbol.size
+        let image = NSImage(size: size, flipped: false) { rect in
+            let tinted = symbol.withSymbolConfiguration(.init(paletteColors: [.labelColor])) ?? symbol
+            tinted.draw(in: rect)
+            let spot = NSRect(x: rect.maxX - dot + 1, y: rect.maxY - dot + 1, width: dot, height: dot)
+            NSGraphicsContext.current?.compositingOperation = .clear
+            NSBezierPath(ovalIn: spot.insetBy(dx: -gap, dy: -gap)).fill()
+            NSGraphicsContext.current?.compositingOperation = .sourceOver
+            NSColor.systemRed.setFill()
+            NSBezierPath(ovalIn: spot).fill()
+            return true
+        }
+        image.isTemplate = false
         return image
     }
 }
@@ -215,23 +243,3 @@ func observeAppearance(_ model: AudelinMenu) {
     }
 }
 
-private struct SettingsContent: View {
-    let model: AudelinMenu
-    let window: NSWindow
-    var body: some View {
-        SettingsScrollView(state: model.settingsState, event: { event in Task { await model.sendSettings(event) } },
-                           text: model.settingsText,
-                           contentHeightChanged: { height in
-            // Keep the title bar in place when a tab or its contents changes height.
-            let visible = window.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? window.frame
-            let chrome = window.frame.height - window.contentLayoutRect.height
-            let targetHeight = min(height + chrome, visible.height)
-            var frame = window.frame
-            frame.origin.y += frame.height - targetHeight
-            frame.size.height = targetHeight
-            frame.origin.y = max(visible.minY, min(frame.origin.y, visible.maxY - targetHeight))
-            window.setFrame(frame, display: true)
-        })
-            .disabled(model.quitting)
-    }
-}

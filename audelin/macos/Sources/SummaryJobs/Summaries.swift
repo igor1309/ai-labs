@@ -1,37 +1,55 @@
+/// Safe classifications only; service diagnostics can contain transcript or credentials.
+public enum SummariesFailure: Error, CaseIterable, Equatable, Sendable {
+    case unavailable, authentication, quota, transport, invalidResponse, outputLimit, timeout, cancelled, configuration, unknown
+}
+
+public enum SummariesLifecycle: Equatable, Sendable { case accepting, draining, settled }
+public enum SummariesStage: Equatable, Sendable {
+    case choosing, selecting
+    case waiting, reading, recovering, preparing, claiming, pending, starting, identifying, checkpointing, resolving, noting, deferred, publishing, saving
+    case retrying, discarding
+    case succeeded, failed, interrupted, unavailable, observed
+}
+public enum SummariesReplacement: Equatable, Sendable { case queuedAutomatic, automatic, request }
+public enum SummariesKeeping: Equatable, Sendable { case rotation, replacement }
+public enum SummariesBadge: Equatable, Sendable { case none, pending, failed }
+
 /// One machine for the whole line of a call's notes: every call's stage, from
 /// recovery or submission to saved notes, and the lifecycle around them.
-public struct SummariesState: Equatable, Sendable {
+public struct SummariesState<Template: SummariesTemplate>: Equatable, Sendable {
     /// After `.shutdown` the machine drains, then publishes `settled` once nothing it started is in flight.
-    public enum Lifecycle: Equatable, Sendable { case accepting, draining, settled }
+    public typealias Lifecycle = SummariesLifecycle
     public struct Call: Equatable, Sendable {
-        public enum Stage: Equatable, Sendable {
-            case waiting, reading, recovering, preparing, claiming, pending, starting, identifying, checkpointing, noting, deferred, publishing, saving
-            case retrying, discarding
-            case succeeded, failed, interrupted, unavailable, observed
-        }
+        public typealias Stage = SummariesStage
         public var stage: Stage
         public var job: Job?
         public var identities: [Identity]
         public var warning: Bool
+        public var requestedTemplate: String
+        public var failure: String?
+        public var generationFailure: SummariesFailure?
+        public var template: Template?
         public var notes: String?
         public var terminal: Stage?
         public var requested: Bool
         public var cancelling: Bool
         public var retryFailed: Bool
+        public var replacement: SummariesReplacement?
         /// The submission waiting for its job, until the job is prepared.
         public var submission: SummariesSubmission?
-        public enum Badge: Equatable, Sendable { case none, pending, failed }
+        public typealias Badge = SummariesBadge
         public var status: String
         /// The mark the call's row shows.
         public var badge: Badge
         /// The user can ask for this call's notes again.
         public var retryable: Bool
-        public init(stage: Stage, job: Job? = nil, identities: [Identity] = [], warning: Bool = false, notes: String? = nil,
+        public init(stage: Stage, requestedTemplate: String = "Default", failure: String? = nil, generationFailure: SummariesFailure? = nil, template: Template? = nil, job: Job? = nil, identities: [Identity] = [], warning: Bool = false, notes: String? = nil,
                     terminal: Stage? = nil, requested: Bool = false, cancelling: Bool = false, retryFailed: Bool = false,
-                    submission: SummariesSubmission? = nil, status: String = "", badge: Badge = .none, retryable: Bool = false) {
-            self.stage = stage; self.job = job; self.identities = identities; self.warning = warning; self.notes = notes
+                    replacement: SummariesReplacement? = nil, submission: SummariesSubmission? = nil, status: String = "", badge: Badge = .none, retryable: Bool = false) {
+            self.requestedTemplate = requestedTemplate; self.failure = failure; self.generationFailure = generationFailure
+            self.stage = stage; self.template = template; self.job = job; self.identities = identities; self.warning = warning; self.notes = notes
             self.terminal = terminal; self.requested = requested; self.cancelling = cancelling; self.retryFailed = retryFailed
-            self.submission = submission; self.status = status; self.badge = badge; self.retryable = retryable
+            self.replacement = replacement; self.submission = submission; self.status = status; self.badge = badge; self.retryable = retryable
         }
     }
     public var lifecycle: Lifecycle
@@ -54,42 +72,51 @@ public struct SummariesState: Equatable, Sendable {
 public struct SummariesSubmission: Equatable, Sendable {
     public var call: String
     public var entries: [Job.Entry]
+    public var transcriptIdentity: String?
     public var finalWrite: Bool
     public var usable: Bool
     /// The user asked for these notes, so they are made even when notes are off.
     public var requested: Bool
-    public init(call: String, entries: [Job.Entry], finalWrite: Bool, usable: Bool, requested: Bool = false) {
+    public init(call: String, entries: [Job.Entry], finalWrite: Bool, usable: Bool, requested: Bool = false, transcriptIdentity: String? = nil) {
+        self.transcriptIdentity = transcriptIdentity
         self.call = call; self.entries = entries; self.finalWrite = finalWrite; self.usable = usable; self.requested = requested
     }
 }
 
 /// A job as storage holds it.
 public struct SummariesSaved: Equatable, Sendable {
-    public var stage: SummariesState.Call.Stage
+    /// The current transcript input, or nil when it could not be read. Running jobs are never compared.
+    public var currentInput: String?
+    public var stage: SummariesStage
     public var job: Job
     public var identities: [Identity]
     public var warning: Bool
     public var notes: String?
-    public var terminal: SummariesState.Call.Stage?
-    public init(stage: SummariesState.Call.Stage, job: Job, identities: [Identity] = [], warning: Bool = false,
-                notes: String? = nil, terminal: SummariesState.Call.Stage? = nil) {
+    public var terminal: SummariesStage?
+    public init(stage: SummariesStage, job: Job, identities: [Identity] = [], warning: Bool = false,
+                notes: String? = nil, terminal: SummariesStage? = nil, currentInput: String? = nil) {
+        self.currentInput = currentInput
         self.stage = stage; self.job = job; self.identities = identities; self.warning = warning; self.notes = notes; self.terminal = terminal
     }
 }
 
-public enum SummariesEvent: Equatable, Sendable {
+public enum SummariesEvent<Template: SummariesTemplate>: Equatable, Sendable {
     case recover(String)
     /// A recording ended and its transcript is not ready yet, and whether notes are on; it waits only while they are.
     case waiting(String, notesOn: Bool)
     /// The user asked for the call's notes, made from its stored transcript.
     case request(String)
+    case generate(String, template: String)
+    case keepingRead(String, Bool, userName: String? = nil)
+    case templateSelected(String, Template)
+    case templateFailed(String, String)
     case readFailed(String)
     /// The call's saved job, or none when storage holds no job for it.
     case recovered(String, SummariesSaved?)
     case loadFailed(String)
     /// A recording's finalized transcript, offered for automatic notes, and whether notes are on; while they are
     /// off the call is dropped at once.
-    case finalized(String, entries: [Job.Entry], finalWrite: Bool, usable: Bool, notesOn: Bool)
+    case finalized(String, entries: [Job.Entry], finalWrite: Bool, usable: Bool, notesOn: Bool, transcriptIdentity: String? = nil)
     /// The stored transcript a request read.
     case submit(SummariesSubmission)
     /// The submission's job, and whether notes are on; the reducer drops an automatic call while they are off.
@@ -100,8 +127,9 @@ public enum SummariesEvent: Equatable, Sendable {
     case identified(String, [Identity])
     case identificationFailed(String)
     case checkpointed(String)
+    case resolved(String, Template)
     case noted(String, String)
-    case notesFailed(String)
+    case notesFailed(String, SummariesFailure = .unknown)
     case published(String)
     case saved(String)
     case storageFailed(String)
@@ -110,6 +138,7 @@ public enum SummariesEvent: Equatable, Sendable {
     /// The job saved anew for its next run.
     case retried(String, SummariesSaved)
     case retryFailed(String)
+    case retryInput(String, String?)
     /// Drops a settled call from the machine.
     case forget(String)
     /// Drops a merged part's job: a settled one as `forget` does, a stored one not started yet by discarding it.
@@ -132,18 +161,22 @@ public enum SummariesEvent: Equatable, Sendable {
     case transaction(running: Bool)
 }
 
-public enum SummariesEffect: Equatable, Sendable {
+public enum SummariesEffect<Template: SummariesTemplate>: Equatable, Sendable {
+    case readKeeping(Job)
+    case selectTemplate(Job, String)
     case load(String)
     /// Reads the call's stored transcript into a submission.
     case read(String)
     case prepare(SummariesSubmission)
-    case claim(Job)
+    case claim(Job, intent: SummariesClaimIntent = .ifAbsent)
     case start(Job)
     case identify(Job)
     case checkpoint(Job, [Identity], warning: Bool)
-    case notes(Job, [Identity])
-    case publish(Job, String, warning: Bool)
-    case save(Job, SummariesState.Call.Stage, warning: Bool)
+    case resolve(Job)
+    case notes(Job, [Identity], Template)
+    case publish(Job, String, warning: Bool, keeping: SummariesKeeping)
+    case save(Job, SummariesStage, warning: Bool)
+    case readInput(Job)
     case retry(Job)
     case discard(Job)
     /// Stops the job's generation call, if one runs; the call answers with its failure.
@@ -152,49 +185,60 @@ public enum SummariesEffect: Equatable, Sendable {
     case reload([String])
 }
 
-public struct SummariesReducer: Sendable {
-    private let format: @Sendable (SummariesState.Call.Stage, Bool) -> String
-    private let badge: @Sendable (SummariesState.Call.Stage) -> SummariesState.Call.Badge
+public struct SummariesReducer<Template: SummariesTemplate>: Sendable {
+    private let format: @Sendable (SummariesStage, Bool) -> String
+    private let badge: @Sendable (SummariesStage) -> SummariesBadge
     /// Renders a call's status line from its stage and whether its notes lack speaker names, and its row's badge from its stage.
-    public init(format: @escaping @Sendable (SummariesState.Call.Stage, Bool) -> String,
-                badge: @escaping @Sendable (SummariesState.Call.Stage) -> SummariesState.Call.Badge) {
+    public init(format: @escaping @Sendable (SummariesStage, Bool) -> String,
+                badge: @escaping @Sendable (SummariesStage) -> SummariesBadge) {
         self.format = format; self.badge = badge
     }
     /// The stages a call rests in once nothing runs for it.
-    static let settled: Set<SummariesState.Call.Stage> = [.succeeded, .failed, .interrupted, .unavailable]
+    static var settled: Set<SummariesStage> { [.succeeded, .failed, .interrupted, .unavailable] }
     /// Whether a job is being made or stored in this process, which an app update must not cut short. A pending
     /// job is stored and runs at the next launch.
-    public static func busy(_ state: SummariesState) -> Bool {
+    public static func busy(_ state: SummariesState<Template>) -> Bool {
         state.calls.values.contains { !settled.contains($0.stage) && $0.stage != .waiting && $0.stage != .pending }
     }
     /// A call a refresh reads again: one another process runs, or a stopped job another process may run again.
-    static func reloadable(_ call: SummariesState.Call) -> Bool {
+    static func reloadable(_ call: SummariesState<Template>.Call) -> Bool {
         call.stage == .observed || ([.failed, .interrupted] as Set).contains(call.stage) && call.job != nil
     }
     /// The stages whose result a cancel waits for before it discards the job.
-    static let running: Set<SummariesState.Call.Stage> = [.starting, .identifying, .checkpointing, .noting, .publishing, .saving]
+    static var running: Set<SummariesStage> { [.starting, .identifying, .checkpointing, .resolving, .noting, .publishing, .saving] }
     /// The call and stage a result answers, for the results a cancel turns into a discard.
-    static func answered(_ event: SummariesEvent) -> (String, SummariesState.Call.Stage)? {
+    static func answered(_ event: SummariesEvent<Template>) -> (String, SummariesStage)? {
         switch event {
         case let .claimed(id, owned: true, _): (id, .claiming)
         case let .started(id, owned: true): (id, .starting)
         case let .identified(id, _), let .identificationFailed(id): (id, .identifying)
         case let .checkpointed(id): (id, .checkpointing)
-        case let .noted(id, _), let .notesFailed(id): (id, .noting)
+        case let .resolved(id, _): (id, .resolving)
+        case let .noted(id, _), let .notesFailed(id, _): (id, .noting)
         case let .published(id): (id, .publishing)
         case let .saved(id): (id, .saving)
         default: nil
         }
     }
     /// The stages that wait on a storage answer shutdown lets arrive before the machine settles.
-    static let inFlight: Set<SummariesState.Call.Stage> = [.reading, .recovering, .preparing, .claiming, .retrying]
-    static let working: Set<SummariesState.Call.Stage> = [.claiming, .starting, .identifying, .checkpointing, .noting, .publishing, .saving, .discarding]
-    public func reduce(_ state: SummariesState, _ event: SummariesEvent) -> (SummariesState, SummariesEffect?) {
+    static var inFlight: Set<SummariesStage> { [.reading, .recovering, .preparing, .choosing, .selecting, .claiming, .retrying, .resolving] }
+    static var working: Set<SummariesStage> { [.claiming, .starting, .identifying, .checkpointing, .resolving, .noting, .publishing, .saving, .discarding] }
+    public func reduce(_ state: SummariesState<Template>, _ event: SummariesEvent<Template>) -> (SummariesState<Template>, SummariesEffect<Template>?) {
+        if case let .request(id) = event { return reduce(state, .generate(id, template: "Default")) }
         if case let .drop(id) = event { return reduce(state, state.calls[id]?.stage == .pending ? .cancel(id) : .forget(id)) }
         var (next, effect) = step(state, event)
         if next == state && effect == nil { return (state, nil) }
         for (id, work) in next.calls where work != state.calls[id] {
             next.calls[id]?.retryable = (work.stage == .failed || work.stage == .interrupted) && (work.job != nil || work.requested)
+            if (work.stage == .failed || work.stage == .unavailable) && work.replacement == .request {
+                next.calls[id]?.retryFailed = true; next.calls[id]?.replacement = nil
+            }
+        }
+        if effect == nil,
+           let (id, work) = next.calls.filter({ $0.value.stage == .discarding && $0.value.replacement == .queuedAutomatic }).min(by: { $0.key < $1.key }),
+           let job = work.job {
+            next.calls[id]?.replacement = .automatic
+            effect = .discard(job)
         }
         if effect == nil, !next.transaction, next.lifecycle == .accepting,
            let (id, work) = next.calls.filter({ $0.value.stage == .deferred }).min(by: { $0.key < $1.key }),
@@ -203,24 +247,47 @@ public struct SummariesReducer: Sendable {
             // transaction resumes them in turn: each publication ends in a save that frees the next.
             next.calls[id]?.stage = .publishing
             next.calls[id]?.status = format(.publishing, work.warning); next.calls[id]?.badge = badge(.publishing)
-            effect = .publish(job, notes, warning: work.warning)
+            effect = .publish(job, notes, warning: work.warning, keeping: job.keepPrevious ? .rotation : .replacement)
         }
-        if next.lifecycle == .draining && !next.releasing && !next.calls.values.contains(where: { SummariesReducer.inFlight.contains($0.stage) }) {
+        if next.lifecycle == .draining && !next.releasing && !next.calls.values.contains(where: {
+            Self.inFlight.contains($0.stage) || $0.stage == .discarding || $0.cancelling && Self.running.contains($0.stage)
+        }) {
             next.lifecycle = .settled
         }
         return (next, effect)
     }
-    private func step(_ state: SummariesState, _ event: SummariesEvent) -> (SummariesState, SummariesEffect?) {
+    private static func stale(_ saved: SummariesSaved) -> Bool {
+        [.pending, .failed, .interrupted].contains(saved.stage) && saved.currentInput.map { $0 != saved.job.input } == true
+    }
+    private static func preparationAnswer(_ event: SummariesEvent<Template>) -> (String, SummariesStage)? {
+        switch event {
+        case let .submit(value): (value.call, .reading)
+        case let .readFailed(id): (id, .reading)
+        case let .prepared(id, _, _): (id, .preparing)
+        case let .keepingRead(id, _, _): (id, .choosing)
+        case let .templateSelected(id, _), let .templateFailed(id, _): (id, .selecting)
+        default: nil
+        }
+    }
+    private func step(_ state: SummariesState<Template>, _ event: SummariesEvent<Template>) -> (SummariesState<Template>, SummariesEffect<Template>?) {
         var next = state
-        var effect: SummariesEffect?
+        var effect: SummariesEffect<Template>?
         let call: String
-        if let (id, stage) = SummariesReducer.answered(event), let work = state.calls[id], work.cancelling,
+        if let (id, stage) = SummariesReducer<Template>.answered(event), let work = state.calls[id], work.cancelling,
            work.stage == stage, let job = work.job {
             next.calls[id]?.stage = .discarding
             next.calls[id]?.status = format(.discarding, work.warning); next.calls[id]?.badge = badge(.discarding)
             return (next, .discard(job))
         }
+        if let (id, stage) = Self.preparationAnswer(event), let work = state.calls[id], work.stage == stage,
+           work.cancelling {
+            next.calls[id] = nil
+            return (next, nil)
+        }
         switch event {
+        case let .cancel(id) where state.calls[id].map({ [.reading, .preparing, .choosing, .selecting].contains($0.stage) && !$0.cancelling }) == true:
+            next.calls[id]?.cancelling = true
+            return (next, nil)
         case let .recover(id) where state.lifecycle == .accepting && state.calls[id] == nil:
             call = id
             next.calls[id] = .init(stage: .recovering)
@@ -228,9 +295,13 @@ public struct SummariesReducer: Sendable {
         case let .recovered(id, saved) where state.calls[id]?.stage == .recovering:
             call = id
             if let saved {
-                next.calls[id] = .init(stage: saved.stage, job: saved.job, identities: saved.identities, warning: saved.warning,
+                next.calls[id] = .init(stage: saved.stage, requestedTemplate: saved.job.template?.name ?? "Default", template: saved.job.template?.value(as: Template.self), job: saved.job, identities: saved.identities, warning: saved.warning,
                                        notes: saved.notes, terminal: saved.terminal)
-                if saved.stage == .pending && state.dispatch { next.calls[id]?.stage = .starting; effect = .start(saved.job) }
+                if Self.stale(saved) {
+                    next.calls[id]?.stage = .discarding; next.calls[id]?.replacement = .automatic
+                    next.calls[id]?.submission = state.calls[id]?.submission
+                    effect = .discard(saved.job)
+                } else if saved.stage == .pending && saved.currentInput != nil && state.dispatch { next.calls[id]?.stage = .starting; effect = .start(saved.job) }
             } else if let submission = state.calls[id]?.submission {
                 next.calls[id] = .init(stage: .preparing, requested: submission.requested, submission: submission)
                 effect = .prepare(submission)
@@ -240,23 +311,23 @@ public struct SummariesReducer: Sendable {
         case let .loadFailed(id) where state.calls[id]?.stage == .recovering:
             call = id
             next.calls[id] = .init(stage: .failed)
-        case let .finalized(id, entries, finalWrite, usable, notesOn: true) where state.lifecycle == .accepting && state.calls[id]?.stage == .recovering
+        case let .finalized(id, entries, finalWrite, usable, notesOn: true, transcriptIdentity: identity) where state.lifecycle == .accepting && state.calls[id]?.stage == .recovering
                                                               && state.calls[id]?.submission == nil:
-            // A finalized transcript waits for recovery; a saved job takes precedence over it.
-            next.calls[id]?.submission = .init(call: id, entries: entries, finalWrite: finalWrite, usable: usable)
+            // Recovery decides whether the saved input still belongs to this transcript.
+            next.calls[id]?.submission = .init(call: id, entries: entries, finalWrite: finalWrite, usable: usable, transcriptIdentity: identity)
             return (next, nil)
-        case let .finalized(id, entries, finalWrite, usable, notesOn: true) where state.lifecycle == .accepting && state.calls[id]?.stage == .discarding
+        case let .finalized(id, entries, finalWrite, usable, notesOn: true, transcriptIdentity: identity) where state.lifecycle == .accepting && state.calls[id]?.stage == .discarding
                                                               && state.calls[id]?.submission == nil:
             // A merged call's transcript waits for its parts' job to be discarded.
-            next.calls[id]?.submission = .init(call: id, entries: entries, finalWrite: finalWrite, usable: usable)
+            next.calls[id]?.submission = .init(call: id, entries: entries, finalWrite: finalWrite, usable: usable, transcriptIdentity: identity)
             return (next, nil)
         case let .waiting(id, notesOn: true) where state.lifecycle == .accepting && state.calls[id] == nil:
             call = id
             next.calls[id] = .init(stage: .waiting)
-        case let .request(id) where state.lifecycle == .accepting
-                                    && state.calls[id].map({ $0.stage == .waiting || SummariesReducer.settled.contains($0.stage) }) ?? true:
+        case let .generate(id, template) where state.lifecycle == .accepting
+                                    && state.calls[id].map({ $0.stage == .waiting || SummariesReducer<Template>.settled.contains($0.stage) }) ?? true:
             call = id
-            next.calls[id] = .init(stage: .reading, requested: true)
+            next.calls[id] = .init(stage: .reading, requestedTemplate: template, requested: true)
             effect = .read(id)
         case let .readFailed(id) where state.calls[id]?.stage == .reading:
             call = id
@@ -266,15 +337,16 @@ public struct SummariesReducer: Sendable {
             return (next, nil)
         case let .submit(submission) where state.lifecycle == .accepting && state.calls[submission.call]?.stage == .reading:
             call = submission.call
-            next.calls[call] = .init(stage: .preparing, requested: submission.requested, submission: submission)
+            next.calls[call] = .init(stage: .preparing, requestedTemplate: state.calls[call]?.requestedTemplate ?? "Default", requested: submission.requested,
+                                     replacement: state.calls[call]?.replacement, submission: submission)
             effect = .prepare(submission)
-        case let .finalized(id, _, _, _, notesOn: false) where state.calls[id]?.stage == .waiting:
+        case let .finalized(id, _, _, _, notesOn: false, transcriptIdentity: _) where state.calls[id]?.stage == .waiting:
             next.calls[id] = nil
             return (next, nil)
-        case let .finalized(id, entries, finalWrite, usable, notesOn: true) where state.lifecycle == .accepting
+        case let .finalized(id, entries, finalWrite, usable, notesOn: true, transcriptIdentity: identity) where state.lifecycle == .accepting
                                                               && (state.calls[id] == nil || state.calls[id]?.stage == .waiting):
             call = id
-            let submission = SummariesSubmission(call: id, entries: entries, finalWrite: finalWrite, usable: usable)
+            let submission = SummariesSubmission(call: id, entries: entries, finalWrite: finalWrite, usable: usable, transcriptIdentity: identity)
             next.calls[id] = .init(stage: .preparing, submission: submission)
             effect = .prepare(submission)
         case let .prepared(id, job, notesOn) where state.calls[id]?.stage == .preparing:
@@ -283,21 +355,45 @@ public struct SummariesReducer: Sendable {
             let eligible = submission.finalWrite && submission.usable && !job.entries.isEmpty
             next.calls[id]?.job = job
             next.calls[id]?.submission = nil
-            next.calls[id]?.stage = eligible ? .claiming : .unavailable
-            if eligible { effect = .claim(job) }
+            next.calls[id]?.stage = eligible ? .choosing : .unavailable
+            if eligible { effect = .readKeeping(job) }
+        case let .keepingRead(id, keeping, userName) where state.calls[id]?.stage == .choosing:
+            call = id
+            next.calls[id]?.job?.keepPrevious = keeping
+            next.calls[id]?.job?.userName = userName
+            next.calls[id]?.stage = .selecting
+            if let job = next.calls[id]?.job { effect = .selectTemplate(job, state.calls[id]?.requestedTemplate ?? "Default") }
+        case let .templateSelected(id, template) where state.calls[id]?.stage == .selecting:
+            call = id
+            next.calls[id]?.template = template
+            next.calls[id]?.job?.template = template.jobTemplate
+            next.calls[id]?.job?.requested = state.calls[id]?.requested ?? false
+            next.calls[id]?.stage = .claiming
+            if let job = next.calls[id]?.job { effect = .claim(job, intent: job.requested ? .newRun : .ifAbsent) }
+        case let .templateFailed(id, reason) where state.calls[id]?.stage == .selecting:
+            call = id
+            next.calls[id]?.stage = .failed; next.calls[id]?.failure = reason; next.calls[id]?.job = nil
         case let .claimed(id, owned, saved) where state.calls[id]?.stage == .claiming:
             call = id
             let stage = owned || saved.stage != .pending ? saved.stage : .observed
-            next.calls[id] = .init(stage: stage, job: saved.job, identities: saved.identities, warning: saved.warning,
+            next.calls[id] = .init(stage: stage, requestedTemplate: saved.job.template?.name ?? "Default", template: saved.job.template?.value(as: Template.self), job: saved.job, identities: saved.identities, warning: saved.warning,
                                    notes: saved.notes, terminal: saved.terminal, requested: state.calls[id]?.requested ?? false)
-            if stage == .pending && state.dispatch { next.calls[id]?.stage = .starting; effect = .start(saved.job) }
+            if !owned, [.pending, .failed, .interrupted].contains(saved.stage), let prepared = state.calls[id]?.job,
+               prepared.input != saved.job.input {
+                next.calls[id]?.stage = .discarding; next.calls[id]?.replacement = .automatic
+                next.calls[id]?.submission = .init(call: id, entries: prepared.entries, finalWrite: true, usable: true, requested: prepared.requested, transcriptIdentity: prepared.transcriptIdentity)
+                effect = .discard(saved.job)
+            } else if stage == .pending && state.dispatch { next.calls[id]?.stage = .starting; effect = .start(saved.job) }
         case let .started(id, owned) where state.calls[id]?.stage == .starting:
             call = id
             // Another process runs the job, so a cancel here has nothing left to stop.
             guard owned else { next.calls[id]?.stage = .observed; next.calls[id]?.cancelling = false; break }
             guard let job = state.calls[id]?.job else { return (state, nil) }
             if job.speakers { next.calls[id]?.stage = .identifying; effect = .identify(job) }
-            else { next.calls[id]?.stage = .noting; effect = .notes(job, []) }
+            else if let value = job.template?.value(as: Template.self) {
+                next.calls[id]?.template = value; next.calls[id]?.stage = .noting
+                effect = .notes(job, state.calls[id]?.identities ?? [], value)
+            } else { next.calls[id]?.stage = .resolving; effect = .resolve(job) }
         case let .identified(id, identities) where state.calls[id]?.stage == .identifying:
             guard let job = state.calls[id]?.job else { return (state, nil) }
             call = id
@@ -311,18 +407,30 @@ public struct SummariesReducer: Sendable {
         case let .checkpointed(id) where state.calls[id]?.stage == .checkpointing:
             guard let work = state.calls[id], let job = work.job else { return (state, nil) }
             call = id
-            next.calls[id]?.stage = .noting
-            effect = .notes(job, work.identities)
+            if let value = job.template?.value(as: Template.self) {
+                next.calls[id]?.template = value; next.calls[id]?.stage = .noting
+                effect = .notes(job, work.identities, value)
+            } else {
+                next.calls[id]?.stage = .resolving
+                effect = .resolve(job)
+            }
+        case let .resolved(id, template) where state.calls[id]?.stage == .resolving:
+            guard let work = state.calls[id], let job = work.job else { return (state, nil) }
+            call = id
+            if state.lifecycle == .accepting {
+                next.calls[id]?.template = template; next.calls[id]?.stage = .noting
+                effect = .notes(job, work.identities, template)
+            } else { next.calls[id]?.stage = .interrupted }
         case let .noted(id, notes) where state.calls[id]?.stage == .noting:
             guard let work = state.calls[id], let job = work.job else { return (state, nil) }
             call = id
             next.calls[id]?.notes = notes
             if state.transaction { next.calls[id]?.stage = .deferred }
-            else { next.calls[id]?.stage = .publishing; effect = .publish(job, notes, warning: work.warning) }
-        case let .notesFailed(id) where state.calls[id]?.stage == .noting:
+            else { next.calls[id]?.stage = .publishing; effect = .publish(job, notes, warning: work.warning, keeping: job.keepPrevious ? .rotation : .replacement) }
+        case let .notesFailed(id, reason) where state.calls[id]?.stage == .noting:
             guard let work = state.calls[id], let job = work.job else { return (state, nil) }
             call = id
-            next.calls[id]?.stage = .saving; next.calls[id]?.terminal = .failed
+            next.calls[id]?.stage = .saving; next.calls[id]?.terminal = .failed; next.calls[id]?.generationFailure = reason
             effect = .save(job, .failed, warning: work.warning)
         case let .published(id) where state.calls[id]?.stage == .publishing:
             guard let work = state.calls[id], let job = work.job else { return (state, nil) }
@@ -333,10 +441,10 @@ public struct SummariesReducer: Sendable {
             call = id
             next.calls[id]?.stage = state.calls[id]?.terminal ?? .failed
         case let .storageFailed(id) where state.lifecycle == .accepting && state.calls[id]?.stage == .discarding
-                                          && state.calls[id]?.submission != nil:
+                                          && state.calls[id]?.submission != nil && state.calls[id]?.replacement == nil:
             // The merged call's own job replaces the part's, so a part's job that cannot be discarded does not hold it up.
             return reduce(state, .discarded(id))
-        case let .storageFailed(id) where state.calls[id].map({ SummariesReducer.working.contains($0.stage) }) ?? false:
+        case let .storageFailed(id) where state.calls[id].map({ SummariesReducer<Template>.working.contains($0.stage) }) ?? false:
             call = id
             next.calls[id]?.stage = .failed; next.calls[id]?.cancelling = false
         case let .transaction(running) where state.transaction != running:
@@ -355,29 +463,41 @@ public struct SummariesReducer: Sendable {
             guard let job = work.job else {
                 guard work.requested && work.stage == .failed else { return (state, nil) }
                 call = id
-                next.calls[id] = .init(stage: .reading, requested: true)
+                next.calls[id] = .init(stage: .reading, requestedTemplate: work.requestedTemplate, requested: true)
                 effect = .read(id)
                 break
             }
             call = id
             next.calls[id]?.stage = .retrying; next.calls[id]?.terminal = work.stage; next.calls[id]?.retryFailed = false
-            effect = .retry(job)
+            effect = .readInput(job)
+        case let .retryInput(id, input) where state.calls[id]?.stage == .retrying:
+            guard let job = state.calls[id]?.job else { return (state, nil) }
+            call = id
+            if let input, input != job.input {
+                next.calls[id]?.stage = .discarding; next.calls[id]?.replacement = .request
+                effect = .discard(job)
+            } else if input != nil && state.lifecycle == .accepting && state.dispatch {
+                effect = .retry(job)
+            } else {
+                next.calls[id]?.stage = state.calls[id]?.terminal ?? .failed
+                next.calls[id]?.retryFailed = input == nil
+            }
         case let .retried(id, saved) where state.calls[id]?.stage == .retrying:
             call = id
-            next.calls[id] = .init(stage: saved.stage, job: saved.job, identities: saved.identities, warning: saved.warning,
+            next.calls[id] = .init(stage: saved.stage, requestedTemplate: saved.job.template?.name ?? "Default", template: saved.job.template?.value(as: Template.self), job: saved.job, identities: saved.identities, warning: saved.warning,
                                    notes: saved.notes, terminal: saved.terminal, requested: state.calls[id]?.requested ?? false)
             if saved.stage == .pending && state.dispatch { next.calls[id]?.stage = .starting; effect = .start(saved.job) }
         case let .retryFailed(id) where state.calls[id]?.stage == .retrying:
             call = id
             next.calls[id]?.stage = state.calls[id]?.terminal ?? .failed; next.calls[id]?.retryFailed = true
-        case let .forget(id) where state.calls[id].map({ SummariesReducer.settled.contains($0.stage) || $0.stage == .waiting }) ?? false:
+        case let .forget(id) where state.calls[id].map({ SummariesReducer<Template>.settled.contains($0.stage) || $0.stage == .waiting }) ?? false:
             next.calls[id] = nil
             return (next, nil)
-        case let .cancel(id) where state.calls[id].map({ (SummariesReducer.running.contains($0.stage) || $0.stage == .claiming)
+        case let .cancel(id) where state.calls[id].map({ (SummariesReducer<Template>.running.contains($0.stage) || $0.stage == .claiming)
                                                          && !$0.cancelling }) ?? false:
             call = id
             next.calls[id]?.cancelling = true
-            effect = state.calls[id]?.job.map(SummariesEffect.abort)
+            effect = state.calls[id]?.job.map(SummariesEffect<Template>.abort)
         case let .cancel(id) where state.calls[id]?.stage == .pending || state.calls[id]?.stage == .deferred:
             // A job stored but not started yet, or whose notes wait to publish, has nothing running to wait for.
             guard let job = state.calls[id]?.job else { return (state, nil) }
@@ -387,6 +507,10 @@ public struct SummariesReducer: Sendable {
         case let .cancel(id) where state.calls[id]?.stage == .observed || state.calls[id]?.stage == .unavailable:
             call = id
             next.calls[id]?.stage = .interrupted
+        case let .discarded(id) where state.calls[id]?.stage == .discarding && state.calls[id]?.replacement == .request && state.lifecycle == .accepting:
+            call = id
+            next.calls[id] = .init(stage: .reading, requestedTemplate: state.calls[id]?.requestedTemplate ?? "Default", requested: true, replacement: .request)
+            effect = .read(id)
         case let .discarded(id) where state.calls[id]?.stage == .discarding:
             // A merged call's joined transcript waits for its earliest part's job to be discarded.
             guard let submission = state.calls[id]?.submission, state.lifecycle == .accepting else {
@@ -399,10 +523,14 @@ public struct SummariesReducer: Sendable {
         case .shutdown where state.lifecycle == .accepting:
             next.lifecycle = .draining; next.dispatch = false
             var jobs: [Job] = []
+            // An accepted cancel owns its result and discard; shutdown must let both finish.
             for (id, work) in state.calls.sorted(by: { $0.key < $1.key })
-            where SummariesReducer.running.contains(work.stage) || work.stage == .discarding || work.stage == .deferred {
-                next.calls[id]?.stage = .interrupted
-                next.calls[id]?.status = format(.interrupted, work.warning); next.calls[id]?.badge = badge(.interrupted)
+            where !work.cancelling && (SummariesReducer<Template>.running.contains(work.stage) || work.stage == .deferred) {
+                // Resolution cannot be cancelled; its answer must arrive before shutdown settles.
+                if work.stage != .resolving {
+                    next.calls[id]?.stage = .interrupted
+                    next.calls[id]?.status = format(.interrupted, work.warning); next.calls[id]?.badge = badge(.interrupted)
+                }
                 if let job = work.job { jobs.append(job) }
             }
             next.releasing = !jobs.isEmpty
@@ -411,20 +539,25 @@ public struct SummariesReducer: Sendable {
             next.releasing = false
             return (next, nil)
         case .refresh where state.lifecycle != .settled && !state.refreshing:
-            let observed = state.calls.filter { SummariesReducer.reloadable($0.value) }.keys.sorted()
+            let observed = state.calls.filter { SummariesReducer<Template>.reloadable($0.value) }.keys.sorted()
             guard !observed.isEmpty else { return (state, nil) }
             next.refreshing = true
             return (next, .reload(observed))
         case let .reloaded(results):
             next.refreshing = false
-            for (id, saved) in results where state.calls[id].map(SummariesReducer.reloadable) == true {
+            for (id, saved) in results.sorted(by: { $0.key < $1.key }) where state.calls[id].map(SummariesReducer<Template>.reloadable) == true {
                 guard let saved else { next.calls[id] = nil; continue }
+                if Self.stale(saved) {
+                    next.calls[id] = .init(stage: .discarding, job: saved.job, warning: saved.warning, replacement: .queuedAutomatic,
+                                          status: format(.discarding, saved.warning), badge: badge(.discarding))
+                    continue
+                }
                 let stage = saved.stage == .pending ? .observed : saved.stage
-                next.calls[id] = .init(stage: stage, job: saved.job, identities: saved.identities, warning: saved.warning,
+                next.calls[id] = .init(stage: stage, requestedTemplate: saved.job.template?.name ?? "Default", template: saved.job.template?.value(as: Template.self), job: saved.job, identities: saved.identities, warning: saved.warning,
                                        notes: saved.notes, terminal: saved.terminal, requested: state.calls[id]?.requested ?? false,
                                        status: format(stage, saved.warning), badge: badge(stage))
             }
-            return (next, nil)
+            return (next, effect)
         default:
             return (state, nil)
         }

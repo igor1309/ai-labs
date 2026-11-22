@@ -42,7 +42,7 @@ struct LongCallFaultTests {
             // The rig's scripted captures add one piece at start and one at stop.
             #expect(try await recordedFrames(folder.appendingPathComponent("microphone.caf")) == micSent + 3)
             #expect(try await recordedFrames(folder.appendingPathComponent("call.caf")) == callSent + 3)
-            let transcript = try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
+            let transcript = try transcriptBody(at: folder.appendingPathComponent("transcript.md"))
             let words = { (side: String) in
                 tokens(transcript).filter { $0.hasPrefix(side) && $0.dropFirst(side.count).allSatisfy(\.isNumber) }
             }

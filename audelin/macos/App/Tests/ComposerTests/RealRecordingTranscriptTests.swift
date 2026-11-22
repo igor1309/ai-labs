@@ -81,7 +81,7 @@ struct RealRecordingTranscriptTests {
 
             let folders = try FileManager.default.contentsOfDirectory(at: calls, includingPropertiesForKeys: nil)
             let folder = try #require(folders.first)
-            let transcript = try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
+            let transcript = try transcriptBody(at: folder.appendingPathComponent("transcript.md"))
             #expect(!transcript.contains("No text was heard."), "transcript.md: \(transcript)")
             #expect(Self.containsSpokenWord(transcript), "transcript.md: \(transcript)")
             #expect(transcript.lowercased().contains("weather"), "The first words must be heard: \(transcript)")

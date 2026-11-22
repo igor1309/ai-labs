@@ -45,7 +45,7 @@ struct StalledConsumerTests {
             // The rig's scripted captures add one piece at start and one at stop.
             #expect(try await frames(folder.appendingPathComponent("microphone.caf")) == micSent + 3)
             #expect(try await frames(folder.appendingPathComponent("call.caf")) == callSent + 3)
-            let transcript = try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
+            let transcript = try transcriptBody(at: folder.appendingPathComponent("transcript.md"))
             let said = (1...(await speaking.words)).map { "mine\($0)" }
             let heard = tokens(transcript).filter { $0.hasPrefix("mine") && $0.dropFirst(4).allSatisfy(\.isNumber) }
             let difference = heard.difference(from: said)

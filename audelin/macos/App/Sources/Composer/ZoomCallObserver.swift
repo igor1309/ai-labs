@@ -2,43 +2,55 @@ import CallNames
 import Synchronization
 import ZoomAccessibility
 
-/// Watches Zoom's "Talking" indicator for one recording, polled only when Accessibility
-/// is already granted, and reports each change in call time. Without the permission it
-/// reports nothing and its stream ends at once.
+/// Reports Zoom's speaker reading at each poll's monotonic instant when Accessibility
+/// is already granted. Without permission the stream ends at once. The user's Zoom
+/// name distinguishes their tile and is remembered for later calls.
 final class ZoomCallObserver: CallAppObserver {
 
     static let interval = Duration.milliseconds(500)
 
     private let isPermitted: @Sendable () -> Bool
     private let windows: @Sendable () -> [Node]
-    private let clock: @Sendable () async -> Double?
+    private let now: @Sendable () -> Double
     private let sleep: @Sendable (Duration) async throws -> Void
+    private let knownName: @Sendable () -> String?
+    private let rememberName: @Sendable (String) -> Void
     /// The open poll's stream, held only so stop can finish it.
-    private let open = Mutex<AsyncStream<CallNamesEvent>.Continuation?>(nil)
+    private let open = Mutex<AsyncStream<CallNamesUpdate>.Continuation?>(nil)
 
-    /// `clock` gives call time in seconds, or nil before recording starts.
     init(isPermitted: @escaping @Sendable () -> Bool, windows: @escaping @Sendable () -> [Node],
-         clock: @escaping @Sendable () async -> Double?, sleep: @escaping @Sendable (Duration) async throws -> Void) {
-        self.isPermitted = isPermitted; self.windows = windows; self.clock = clock; self.sleep = sleep
+         now: @escaping @Sendable () -> Double, sleep: @escaping @Sendable (Duration) async throws -> Void,
+         knownName: @escaping @Sendable () -> String?, rememberName: @escaping @Sendable (String) -> Void) {
+        self.isPermitted = isPermitted; self.windows = windows; self.now = now; self.sleep = sleep
+        self.knownName = knownName; self.rememberName = rememberName
     }
 
-    func observe() -> AsyncStream<CallNamesEvent> {
-        let (stream, output) = AsyncStream.makeStream(of: CallNamesEvent.self)
+    func observe() -> AsyncStream<CallNamesUpdate> {
+        let (stream, output) = AsyncStream.makeStream(of: CallNamesUpdate.self)
         guard isPermitted() else {
             output.finish()
             return stream
         }
         open.withLock { $0 = output }
-        let windows = windows, clock = clock, sleep = sleep
-        let poll = Task {
-            var transitions = Transitions()
+        let windows = windows, now = now, sleep = sleep, rememberName = rememberName
+        let poll = Task { [knownName] in
+            var known = knownName()
             while !Task.isCancelled {
-                if let time = await clock() {
-                    for change in transitions.next(ZoomReading.read(windows: windows())) {
-                        output.yield(.zoom(Self.change(change), at: time))
-                    }
-                    output.yield(.tick(now: time))
+                let instant = now()
+                let reading = ZoomReading.read(windows: windows())
+                if let own = reading.ownName, own != known {
+                    rememberName(own)
+                    known = own
                 }
+                let report: ZoomPoll = if !reading.inMeeting {
+                    .unavailable
+                } else if let speaker = ZoomReading.speaker(in: reading, known: known) {
+                    .speaker(speaker)
+                } else {
+                    .nobody
+                }
+                output.yield(.zoom(report, at: instant))
+                output.yield(.tick(now: instant))
                 do { try await sleep(Self.interval) } catch { break }
             }
             output.finish()
@@ -49,14 +61,5 @@ final class ZoomCallObserver: CallAppObserver {
 
     func stop() async {
         open.withLock { open in defer { open = nil }; return open }?.finish()
-    }
-
-    private static func change(_ change: Change) -> ZoomChange {
-        switch change {
-        case let .started(name): .started(name)
-        case let .stopped(name): .stopped(name)
-        case .observed: .observed
-        case .lost: .lost
-        }
     }
 }

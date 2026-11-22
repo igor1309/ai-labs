@@ -4,6 +4,7 @@ import Composer
 import Foundation
 import LiveText
 import Synchronization
+import TranscriptFormat
 
 // A long call through the app's composition and panel: a call app joins,
 // detection starts the recording, both tracks are recorded, Live text is on,
@@ -159,7 +160,8 @@ private func rehearse(_ options: RehearsalOptions, voices: any RehearsalVoices, 
         microphone: { microphone.started() }, call: { _ in call.started() },
         mine: RehearsalRecognizer(voices.mine), theirs: RehearsalRecognizer(voices.theirs),
         now: { Date() }, timeZone: { .current }, sleep: { try await ContinuousClock().sleep(for: $0) },
-        intervals: rehearsalIntervals()
+        intervals: rehearsalIntervals(),
+        transcriptBuild: .init(version: "rehearsal", build: "1", mine: "rehearsal voice", theirs: "rehearsal voice")
     )
     let callApp = RehearsalCallApp()
     boundary.processes = callApp
@@ -271,18 +273,17 @@ private func written(in root: URL, fed: Double) -> String {
     guard let transcript = try? String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) else {
         return "written: \(tracks.joined(separator: ", ")) of \(format(fed)) s fed; no transcript"
     }
-    var words: [String: Int] = [:]
-    var speaker = "?"
-    for line in transcript.split(separator: "\n") {
-        if line.hasPrefix("#") { continue }
-        if line.hasPrefix("**"), let end = line.dropFirst(2).firstRange(of: "**") {
-            speaker = String(line[line.index(line.startIndex, offsetBy: 2)..<end.lowerBound])
-            continue
-        }
-        words[speaker, default: 0] += line.split(whereSeparator: \.isWhitespace).count
-    }
-    let spoken = words.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value) words" }.joined(separator: ", ")
+    let spoken = spokenWords(in: transcript).sorted { $0.key < $1.key }.map { "\($0.key) \($0.value) words" }.joined(separator: ", ")
     return "written: \(tracks.joined(separator: ", ")) of \(format(fed)) s fed; transcript \(spoken.isEmpty ? "empty" : spoken)"
+}
+
+/// Words per speaker label in a saved transcript, read the way the app reads it back:
+/// the origin block, the Speakers section and gaps are not speech.
+public func spokenWords(in transcript: String) -> [String: Int] {
+
+    TranscriptFormat.entries(transcript).reduce(into: [:]) { words, entry in
+        words[entry.label, default: 0] += entry.words.split(whereSeparator: \.isWhitespace).count
+    }
 }
 
 private func cpuSeconds() -> Double {

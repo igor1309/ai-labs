@@ -24,14 +24,14 @@ import Testing
     @Test func aFailedIdentificationDeliversAWarningCheckpoint() {
         assert(make(.identifying), .identificationFailed("call"), delivers: .checkpoint(makeJob(), [], warning: true))
     }
-    @Test func aCheckpointMakesNotes() {
+    @Test func aCheckpointResolvesDefault() {
         assert(make(.checkpointing, identities: identities), .checkpointed("call")) {
-            $0.calls["call"]?.stage = .noting; $0.calls["call"]?.status = "noting:false"
+            $0.calls["call"]?.stage = .resolving; $0.calls["call"]?.status = "resolving:false"
         }
-        #expect(format.payloads == [.init(stage: .noting, warning: false)])
+        #expect(format.payloads == [.init(stage: .resolving, warning: false)])
     }
-    @Test func aCheckpointDeliversNotesWithTheIdentities() {
-        assert(make(.checkpointing, identities: identities), .checkpointed("call"), delivers: .notes(makeJob(), identities))
+    @Test func aCheckpointDeliversDefaultResolution() {
+        assert(make(.checkpointing, identities: identities), .checkpointed("call"), delivers: .resolve(makeJob()))
     }
     @Test func notesArePublished() {
         assert(make(.noting), .noted("call", "notes")) {
@@ -40,17 +40,29 @@ import Testing
         #expect(format.payloads == [.init(stage: .publishing, warning: false)])
     }
     @Test(arguments: [false, true]) func notesDeliverPublishWithTheWarning(warning: Bool) {
-        assert(make(.noting, warning: warning), .noted("call", "notes"), delivers: .publish(makeJob(), "notes", warning: warning))
+        assert(make(.noting, warning: warning), .noted("call", "notes"), delivers: .publish(makeJob(), "notes", warning: warning, keeping: .rotation))
     }
     @Test func failedNotesAreSavedAsFailed() {
         assert(make(.noting), .notesFailed("call")) {
-            $0.calls["call"]?.stage = .saving; $0.calls["call"]?.terminal = .failed; $0.calls["call"]?.status = "saving:false"
+            $0.calls["call"]?.stage = .saving; $0.calls["call"]?.terminal = .failed; $0.calls["call"]?.generationFailure = .unknown; $0.calls["call"]?.status = "saving:false"
         }
         #expect(format.payloads == [.init(stage: .saving, warning: false)])
     }
     @Test(arguments: [false, true]) func failedNotesDeliverAFailedSave(warning: Bool) {
         assert(make(.noting, warning: warning), .notesFailed("call"), delivers: .save(makeJob(), .failed, warning: warning))
     }
+    @Test(arguments: SummariesFailure.allCases) func failedNotesRetainTheirSafeClassification(reason: SummariesFailure) {
+        assert(make(.noting), .notesFailed("call", reason)) {
+            $0.calls["call"]?.stage = .saving; $0.calls["call"]?.terminal = .failed
+            $0.calls["call"]?.status = "saving:false"; $0.calls["call"]?.generationFailure = reason
+        }
+        assert(make(.noting), .notesFailed("call", reason), delivers: .save(makeJob(), .failed, warning: false))
+        let saving = makeState(calls: ["call": .init(stage: .saving, generationFailure: reason, job: makeJob(), terminal: .failed)])
+        assert(saving, .saved("call")) {
+            $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false"; $0.calls["call"]?.retryable = true
+        }
+    }
+
     @Test func publishedNotesAreSavedAsSucceeded() {
         assert(make(.publishing), .published("call")) {
             $0.calls["call"]?.stage = .saving; $0.calls["call"]?.terminal = .succeeded; $0.calls["call"]?.status = "saving:false"
@@ -69,11 +81,11 @@ import Testing
         assert(make(.saving, terminal: .succeeded), .saved("call"), delivers: nil)
     }
 
-    @Test(arguments: [SummariesState.Call.Stage.starting, .identifying, .checkpointing, .noting, .publishing, .saving])
+    @Test(arguments: [SummariesState.Call.Stage.starting, .identifying, .checkpointing, .resolving, .noting, .publishing, .saving])
     func aStorageFailureFailsWork(stage: SummariesState.Call.Stage) {
         assert(make(stage), .storageFailed("call")) { $0.calls["call"]?.stage = .failed; $0.calls["call"]?.status = "failed:false"; $0.calls["call"]?.retryable = true }
     }
-    @Test(arguments: [SummariesState.Call.Stage.starting, .identifying, .checkpointing, .noting, .publishing, .saving])
+    @Test(arguments: [SummariesState.Call.Stage.starting, .identifying, .checkpointing, .resolving, .noting, .publishing, .saving])
     func aStorageFailureDeliversNothing(stage: SummariesState.Call.Stage) {
         assert(make(stage), .storageFailed("call"), delivers: nil)
     }
@@ -83,13 +95,13 @@ import Testing
         #expect(format.payloads.isEmpty)
     }
 
-    @Test(arguments: [SummariesEvent.identified("call", []), .identificationFailed("call"), .checkpointed("call"), .noted("call", "n"),
+    @Test(arguments: [SummariesEvent.identified("call", []), .identificationFailed("call"), .checkpointed("call"), .resolved("call", makeTemplate()), .noted("call", "n"),
                       .notesFailed("call"), .published("call"), .saved("call")])
     func aResultForAnotherStageChangesNothing(event: SummariesEvent) {
         assert(make(.pending), event)
         #expect(format.payloads.isEmpty)
     }
-    @Test(arguments: [SummariesEvent.identified("call", []), .identificationFailed("call"), .checkpointed("call"), .noted("call", "n"),
+    @Test(arguments: [SummariesEvent.identified("call", []), .identificationFailed("call"), .checkpointed("call"), .resolved("call", makeTemplate()), .noted("call", "n"),
                       .notesFailed("call"), .published("call"), .saved("call")])
     func aResultForAnotherStageDeliversNothing(event: SummariesEvent) {
         assert(make(.pending), event, delivers: nil)
@@ -129,17 +141,22 @@ import Testing
     }
     @Test func notesAsksGenerationWithTheIdentities() async {
         let generation = GenerationsSpy()
-        _ = await makeSUT(generation: generation).handle(.notes(makeJob(), identities))
-        #expect(generation.payloads == [.notes(makeJob(), identities)])
+        _ = await makeSUT(generation: generation).handle(.notes(makeJob(), identities, makeTemplate()))
+        #expect(generation.payloads == [.notes(makeJob(), identities, makeTemplate())])
     }
     @Test func notesDeliverTheNotes() async {
-        let event = await makeSUT(generation: GenerationsSpy(notes: "made")).handle(.notes(makeJob(), []))
+        let event = await makeSUT(generation: GenerationsSpy(notes: "made")).handle(.notes(makeJob(), [], makeTemplate()))
         #expect(event == .noted("call", "made"))
     }
     @Test func failedNotesDeliverNotesFailure() async {
         let storage = StorageSpy()
-        let event = await makeSUT(storage, GenerationsSpy(fails: true)).handle(.notes(makeJob(), []))
+        let event = await makeSUT(storage, GenerationsSpy(fails: true)).handle(.notes(makeJob(), [], makeTemplate()))
         #expect(event == .notesFailed("call") && storage.payloads.isEmpty)
+    }
+
+    @Test(arguments: SummariesFailure.allCases) func notesFailureDeliversTheSafeReason(reason: SummariesFailure) async {
+        let event = await makeSUT(generation: GenerationsSpy(failure: reason)).handle(.notes(makeJob(), [], makeTemplate()))
+        #expect(event == .notesFailed("call", reason))
     }
 
     @Test func checkpointWritesAndDeliversCheckpointed() async {
@@ -149,22 +166,22 @@ import Testing
     }
     @Test func publishWritesAndDeliversPublished() async {
         let storage = StorageSpy()
-        let event = await makeSUT(storage).handle(.publish(makeJob(), "notes", warning: true))
-        #expect(event == .published("call") && storage.payloads == [.publish(makeJob(), "notes", true)])
+        let event = await makeSUT(storage).handle(.publish(makeJob(), "notes", warning: true, keeping: .rotation))
+        #expect(event == .published("call") && storage.payloads == [.publish(makeJob(), "notes", true, .rotation)])
     }
     @Test func saveWritesReleasesAndDeliversSaved() async {
         let storage = StorageSpy()
         let event = await makeSUT(storage).handle(.save(makeJob(), .succeeded, warning: true))
         #expect(event == .saved("call") && storage.payloads == [.save(makeJob(), .succeeded, true), .release(makeJob())])
     }
-    @Test(arguments: [SummariesEffect.checkpoint(makeJob(), [], warning: false), .publish(makeJob(), "n", warning: false),
+    @Test(arguments: [SummariesEffect.checkpoint(makeJob(), [], warning: false), .publish(makeJob(), "n", warning: false, keeping: .rotation),
                       .save(makeJob(), .failed, warning: false)])
     func aFailedWriteReleasesAndDeliversStorageFailure(effect: SummariesEffect) async {
         let storage = StorageSpy(fails: true)
         let event = await makeSUT(storage).handle(effect)
         #expect(event == .storageFailed("call") && storage.payloads.last == .release(makeJob()) && storage.payloads.count == 2)
     }
-    @Test(arguments: [SummariesEffect.checkpoint(makeJob(), [], warning: false), .publish(makeJob(), "n", warning: false),
+    @Test(arguments: [SummariesEffect.checkpoint(makeJob(), [], warning: false), .publish(makeJob(), "n", warning: false, keeping: .rotation),
                       .save(makeJob(), .failed, warning: false)])
     func writesDoNotGenerate(effect: SummariesEffect) async {
         let generation = GenerationsSpy()
@@ -179,7 +196,7 @@ import Testing
     }
 
     private func makeSUT(_ storage: StorageSpy = StorageSpy(), _ generation: GenerationsSpy = GenerationsSpy()) -> SummariesEffectHandler {
-        .init(preparation: PreparationSpy(), claims: ClaimsSpy(), records: RecordsSpy(), starts: StartsSpy(),
+        .init(keeping: { true }, templates: TemplatesSpy(), preparation: PreparationSpy(), claims: ClaimsSpy(), records: RecordsSpy(), starts: StartsSpy(),
               storage: storage, generation: generation)
     }
     private func makeSUT(generation: GenerationsSpy) -> SummariesEffectHandler { makeSUT(StorageSpy(), generation) }
@@ -187,14 +204,14 @@ import Testing
 
 final class StorageSpy: SummariesStorage {
     enum Payload: Equatable, Sendable {
-        case checkpoint(Job, [Identity], Bool), publish(Job, String, Bool), save(Job, SummariesState.Call.Stage, Bool), discard(Job), release(Job)
+        case checkpoint(Job, [Identity], Bool), publish(Job, String, Bool, SummariesKeeping), save(Job, SummariesState.Call.Stage, Bool), discard(Job), release(Job)
     }
     private let recorded = Mutex<[Payload]>([])
     private let fails: Bool
     init(fails: Bool = false) { self.fails = fails }
     var payloads: [Payload] { recorded.withLock { $0 } }
     func checkpoint(_ job: Job, identities: [Identity], warning: Bool) async throws { try record(.checkpoint(job, identities, warning)) }
-    func publish(_ job: Job, notes: String, warning: Bool) async throws { try record(.publish(job, notes, warning)) }
+    func publish(_ job: Job, notes: String, warning: Bool, keeping: SummariesKeeping) async throws { try record(.publish(job, notes, warning, keeping)) }
     func save(_ job: Job, stage: SummariesState.Call.Stage, warning: Bool) async throws { try record(.save(job, stage, warning)) }
     func discard(_ job: Job) async throws { try record(.discard(job)) }
     func release(_ job: Job) async { recorded.withLock { $0.append(.release(job)) } }
@@ -204,19 +221,21 @@ final class StorageSpy: SummariesStorage {
     }
 }
 final class GenerationsSpy: SummariesGeneration {
-    enum Payload: Equatable, Sendable { case identify(Job), notes(Job, [Identity]), cancel(Job) }
+    enum Payload: Equatable, Sendable { case identify(Job), notes(Job, [Identity], Template), cancel(Job) }
     private let recorded = Mutex<[Payload]>([])
     private let identities: [Identity], notes: String, fails: Bool
-    init(identities: [Identity] = [], notes: String = "notes", fails: Bool = false) {
-        self.identities = identities; self.notes = notes; self.fails = fails
+    private let failure: SummariesFailure?
+    init(identities: [Identity] = [], notes: String = "notes", fails: Bool = false, failure: SummariesFailure? = nil) {
+        self.identities = identities; self.notes = notes; self.fails = fails; self.failure = failure
     }
     var payloads: [Payload] { recorded.withLock { $0 } }
     func identify(_ job: Job) async throws -> [Identity] {
         recorded.withLock { $0.append(.identify(job)) }
         if fails { throw SpyFailure() }; return identities
     }
-    func notes(_ job: Job, identities: [Identity]) async throws -> String {
-        recorded.withLock { $0.append(.notes(job, identities)) }
+    func notes(_ job: Job, identities: [Identity], template: Template) async throws -> String {
+        recorded.withLock { $0.append(.notes(job, identities, template)) }
+        if let failure { throw failure }
         if fails { throw SpyFailure() }; return notes
     }
     func cancel(_ job: Job) async { recorded.withLock { $0.append(.cancel(job)) } }

@@ -38,3 +38,11 @@ A and B each with speaker 1, named Anna and Boris: the joined rows carry
 two distinct keys, and the joined names give Anna for A's and Boris for
 B's; a row without a speaker keeps none. Evidence:
 `TranscriptJoinTests.theSameSpeakerKeyInTwoPartsIsTwoSpeakers()`.
+
+## S-7 Original calls are ordered by start
+
+A part of originals at 10:00 and 10:20 with distinct opaque origins, and a
+part at 10:10, given in reverse: the joined originals are 10:00, 10:10,
+10:20, each origin equal to what was given. Evidence:
+`TranscriptJoinTests.originalCallsInterleaveByStartWithTheirOpaqueOrigins()`
+and `equalOriginalStartsKeepTheirGivenOrderAndUnknownOriginsPassThrough()`.

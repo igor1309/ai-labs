@@ -1,6 +1,7 @@
 import Foundation
 import BleedCleanup
 import Calls
+import CallsStorage
 
 /// Audio at the composition's edge, before recording or recognition owns it.
 public struct CaptureBuffer: Equatable, Sendable {
@@ -125,6 +126,7 @@ public protocol RecordingStorage: Sendable {
 public struct ComposerBoundary: Sendable {
     public var bleedCleaning: any MicrophoneCleaning<CleanupRecording, [Float]>
     public var bleedHearing: any CleanedHearing<[Float], [TranscriptSegment]>
+    public var transcriptBuild: TranscriptBuild
     public var capturePersistence: CapturePersistence
     public var microphone: any MicrophoneSource
     public var callAudio: any CallAudioSource
@@ -136,6 +138,7 @@ public struct ComposerBoundary: Sendable {
     public var time: any ComposerClock
     public var log: any LogSink
     public var intervals: ProfileIntervals
+    public var diarizer: any TranscriptDiarizer
     public var transcripts: any TranscriptStorage
     public var recordings: any RecordingStorage
     /// macOS's preferred languages, most preferred first, as BCP 47 identifiers.
@@ -143,21 +146,30 @@ public struct ComposerBoundary: Sendable {
     /// Opens the browser extension's channel for one recording, or gives nil
     /// when it cannot; speakers then stay unnamed unless Zoom names them.
     public var browser: @Sendable () -> BrowserChannel?
+    /// Disk operations and the shared admission boundary for kept calls.
+    public var callsDisk: CallsDisk = .system
+    public var callsOperation: CallsStorageGuard = .serial()
+    /// The Mac account's full name, read when a run's notes are prepared.
+    public var accountName: @Sendable () -> String
     /// Moves a deleted call's folder to the Trash.
     public var trash: @Sendable (URL) throws -> Void
 
-    public init(capturePersistence: CapturePersistence, microphone: any MicrophoneSource, callAudio: any CallAudioSource,
+    public init(transcriptBuild: TranscriptBuild, capturePersistence: CapturePersistence, microphone: any MicrophoneSource, callAudio: any CallAudioSource,
                 recognizers: any RecognizerSource, processes: any CallProcessSource, access: any CallAudioAccessSource,
                 microphonePermission: any MicrophonePermission, capacity: any FolderCapacity,
                 time: any ComposerClock, log: any LogSink, intervals: ProfileIntervals,
                 recordings: any RecordingStorage, trash: @escaping @Sendable (URL) throws -> Void,
                 bleedCleaning: any MicrophoneCleaning<CleanupRecording, [Float]>,
-                bleedHearing: any CleanedHearing<[Float], [TranscriptSegment]>, transcripts: any TranscriptStorage,
+                bleedHearing: any CleanedHearing<[Float], [TranscriptSegment]>, diarizer: any TranscriptDiarizer, transcripts: any TranscriptStorage,
                 preferredLanguages: @escaping @Sendable () -> [String] = { Locale.preferredLanguages },
-                browser: @escaping @Sendable () -> BrowserChannel? = { nil }) {
+                browser: @escaping @Sendable () -> BrowserChannel? = { nil },
+                accountName: @escaping @Sendable () -> String) {
+        self.accountName = accountName
+        self.transcriptBuild = transcriptBuild
         self.browser = browser
         self.preferredLanguages = preferredLanguages
         self.bleedCleaning = bleedCleaning; self.bleedHearing = bleedHearing
+        self.diarizer = diarizer
         self.transcripts = transcripts
         self.capturePersistence = capturePersistence
         self.microphone = microphone; self.callAudio = callAudio; self.recognizers = recognizers

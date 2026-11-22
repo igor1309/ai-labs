@@ -1,7 +1,32 @@
 import Foundation
 
 public struct CallsListState: Equatable, Sendable {
+    public enum TranscriptOffer: Equatable, Sendable {
+        case available, unavailable(String)
+    }
+
+    public struct TranscriptWait: Equatable, Sendable {
+        public var message: String
+        public var progress: Double?
+        public init(message: String, progress: Double? = nil) { self.message = message; self.progress = progress }
+    }
+
+    public struct TranscriptBanner: Equatable, Sendable {
+        public enum Style: Equatable, Sendable { case error, info }
+        public var style: Style
+        public var title: String
+        public var message: String
+        public var retryID: String?
+        public init(style: Style, title: String, message: String, retryID: String? = nil) {
+            self.style = style; self.title = title; self.message = message; self.retryID = retryID
+        }
+    }
+
     public struct Row: Equatable, Identifiable, Sendable {
+        public var transcriptAgain: TranscriptOffer
+        /// Nil when the call has no previous transcript.
+        public var restoreTranscript: TranscriptOffer?
+        public var transcriptWait: TranscriptWait?
         /// Where the call's summary stands, drawn as an icon; `summaryStatus` says it in words.
         public enum Summary: Equatable, Sendable { case none, pending, failed }
         public var summary: Summary
@@ -29,6 +54,8 @@ public struct CallsListState: Equatable, Sendable {
         public let editable: Bool
         /// Where the call matches the search; nil when no search is on.
         public var match: Match?
+        /// The call's tags, drawn as `#tag` text at the end of its second line.
+        public var tags: [String]
 
         /// A search match: ranges are character offsets into `displayTitle` and the snippet's text.
         public struct Match: Equatable, Sendable {
@@ -52,8 +79,11 @@ public struct CallsListState: Equatable, Sendable {
 
         public init(id: String, title: String, displayTitle: String, day: Day?, time: String, duration: String, editable: Bool,
                     summaryStatus: String = "", hasNotes: Bool = false, gist: String? = nil, canRetrySummary: Bool = false, canMakeSummary: Bool = false, summary: Summary = .none,
-                    match: Match? = nil) {
+                    match: Match? = nil, tags: [String] = [], transcriptAgain: TranscriptOffer = .available,
+                    restoreTranscript: TranscriptOffer? = nil, transcriptWait: TranscriptWait? = nil) {
+            self.transcriptAgain = transcriptAgain; self.restoreTranscript = restoreTranscript; self.transcriptWait = transcriptWait
             self.match = match
+            self.tags = tags
             self.summary = summary
             self.canRetrySummary = canRetrySummary
             self.canMakeSummary = canMakeSummary
@@ -96,7 +126,16 @@ public struct CallsListState: Equatable, Sendable {
         }
     }
 
+    /// A chip of the filter strip: a tag in use, and whether it is chosen.
+    public struct TagChip: Equatable, Sendable {
+        public let name: String
+        public let on: Bool
+        public init(name: String, on: Bool) { self.name = name; self.on = on }
+    }
+
     public var rows: [Row]
+    /// The filter strip's chips, most used first; empty, and the strip hidden, when no call has tags.
+    public var tagStrip: [TagChip]
     /// Merge mode; nil when a click reads a call.
     public var merge: Merge?
     public var search: Search?
@@ -108,14 +147,18 @@ public struct CallsListState: Equatable, Sendable {
     public var deleteBody: String?
     public var busy: Bool
     public var failure: String?
+    public var transcriptBanner: TranscriptBanner?
     /// The selected call, if any.
     public var selectedID: String?
     /// The window is too narrow to show the call beside the list, so Return and Space open it in its own window.
     public var narrow: Bool
 
     public init(rows: [Row] = [], editing: Editing? = nil, deleteID: String? = nil, deleteBody: String? = nil, busy: Bool = false, failure: String? = nil,
-                selectedID: String? = nil, narrow: Bool = false, search: Search? = nil, searchText: String = "", merge: Merge? = nil) {
+                selectedID: String? = nil, narrow: Bool = false, search: Search? = nil, searchText: String = "", merge: Merge? = nil,
+                tagStrip: [TagChip] = [], transcriptBanner: TranscriptBanner? = nil) {
+        self.transcriptBanner = transcriptBanner
         self.merge = merge
+        self.tagStrip = tagStrip
         self.searchText = searchText
         self.search = search
         self.rows = rows; self.editing = editing; self.deleteID = deleteID; self.deleteBody = deleteBody; self.busy = busy; self.failure = failure
@@ -125,6 +168,7 @@ public struct CallsListState: Equatable, Sendable {
 }
 
 public enum CallsListEvent: Equatable, Sendable {
+    case makeTranscriptAgain(String), restorePreviousTranscript(String), cancelTranscriptAgain, retryTranscriptAgain(String)
     case open(String), beginRename(String), editTitle(String), submitRename, cancelRename
     case askDelete(String), confirmDelete, cancelDelete
     case select(String), selectNext, selectPrevious, retrySummary(String), makeSummary(String)
@@ -138,4 +182,6 @@ public enum CallsListEvent: Equatable, Sendable {
     case confirmMerge, leaveMerge
     /// The far-apart warning's two choices.
     case mergeAnyway, goBackFromWarning
+    /// A chip of the filter strip was clicked.
+    case toggleTag(String)
 }

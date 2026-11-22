@@ -8,13 +8,13 @@ public struct CallsRehearsalOptions: Equatable, Sendable {
     /// Where the rehearsal's Trash port moves items, so a run never reaches the user's Trash.
     public let trashFolder: URL
     /// Calls to write into the calls folder before launch, for a live test.
-    public enum Seed: String, Sendable { case merge, interruptedMerge = "interrupted-merge" }
+    public enum Seed: String, Sendable { case transcriptAgain = "transcript-again", merge, legacyMerge = "legacy-merge", interruptedMerge = "interrupted-merge" }
     public let seed: Seed?
     public var preferencesURL: URL { stateFolder.appendingPathComponent("preferences.json") }
     public var controlFolder: URL { stateFolder.appendingPathComponent("control", isDirectory: true) }
 
     public enum Failure: Error { case invalidArguments }
-    public static let usage = "CallsRehearsal --calls <absolute directory> --state <absolute directory> --trash <absolute directory> [--seed merge|interrupted-merge]"
+    public static let usage = "CallsRehearsal --calls <absolute directory> --state <absolute directory> --trash <absolute directory> [--seed merge|legacy-merge|interrupted-merge|transcript-again]"
 
     public static func parse(_ arguments: [String]) throws -> Self {
         var arguments = arguments
@@ -41,7 +41,9 @@ public struct CallsRehearsalOptions: Equatable, Sendable {
     /// Writes the seed's calls, if any; run before composition, so the calls list reads them on launch.
     public func seedCalls() async throws {
         switch seed {
+        case .transcriptAgain: try await CallsFixture.seedTranscriptAgain(in: callsFolder)
         case .merge: try await CallsFixture.seedMerge(in: callsFolder)
+        case .legacyMerge: try await CallsFixture.seedLegacyMerge(in: callsFolder)
         case .interruptedMerge: try await CallsFixture.seedInterruptedMerge(in: callsFolder)
         case nil: break
         }
@@ -75,7 +77,7 @@ public struct CallsRehearsalOptions: Equatable, Sendable {
 
     public func runtime() -> SummaryRuntime.Runtime {
         let control = SummaryFileControl(folder: controlFolder)
-        let service = LiveSummaryService(wait: control.wait, report: control.report)
+        let service = LiveSummaryService(wait: control.wait, response: control.notes, report: control.report)
         return SummaryRuntime.Runtime(process: NoRehearsalProcess(), http: service, credential: { _ in nil },
             resolveProgram: { _ in throw SummaryRuntime.Failure.unavailable }, deadline: {
                 let never = AsyncStream<Void> { _ in }

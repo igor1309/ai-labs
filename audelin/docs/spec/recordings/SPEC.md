@@ -23,10 +23,10 @@ the calls adapter does it on disk.
   confirmed.** Confirming moves every call, one at a time, oldest first,
   with progress in calls and bytes.
 - **No move starts during a recording, and no recording starts during a
-  move.** A move asked while recording is refused and the screen says why.
-  While moving, Recordings reports the calls folder as not available, so
-  Recording holds every start until the move ends (Recording waits on the
-  calls folder condition already).
+  move.** A confirmed move takes the calls-folder claim and releases it
+  once the move ends; a refused claim refuses the move and the screen says
+  why. A move holds the folder from grant to release, and Recording holds
+  its starts on that. Quitting: `../recordings-shutdown/SPEC.md`.
 - **The setting changes only when every call has moved.** Then the new
   folder is stored and the old one is left, empty of calls. A failed move
   stops at the call that failed: the state names how many moved, that
@@ -88,8 +88,8 @@ Feature: Looking after recorded calls
     When I retry it
     Then the calls left move, and then the new folder is the setting
 
-  Scenario: S-11 No move during a recording
-    Given a call being recorded
+  Scenario: S-11 No move while a recording or a relaunch has the folder
+    Given a call being recorded, or a relaunch under way
     When I pick another folder
     Then no move starts, and I can tell why
 

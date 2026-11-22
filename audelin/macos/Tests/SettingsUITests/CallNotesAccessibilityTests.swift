@@ -1,3 +1,4 @@
+import GlassLedger
 import AppKit
 import RenderedText
 import SwiftUI
@@ -11,7 +12,7 @@ struct CallNotesAccessibilityTests {
         var state = try #require(SettingsState.summaryPreviews.first?.state)
         let host = Offscreen.host(SettingsView(state: state, event: { events.append($0) }))
         let window = try #require(host.window)
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         let tabs = try segments("tabs", in: host)
         #expect(tabs.accessibilityRole() == .radioGroup)
         #expect(tabs.acceptsFirstResponder)
@@ -29,7 +30,7 @@ struct CallNotesAccessibilityTests {
         #expect(events == [.selectTab(.recording), .selectTab(.general)])
         state.selectedTab = .recording
         host.rootView = SettingsView(state: state, event: { events.append($0) })
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         #expect(try selected(in: try segments("tabs", in: host)) == ["tab-recording"])
     }
 
@@ -42,7 +43,7 @@ struct CallNotesAccessibilityTests {
         )
         host.window?.isReleasedWhenClosed = false
         defer { host.window?.close() }
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         let tabs = try segments("tabs", in: host)
         let originalFrame = tabs.convert(tabs.bounds, to: host)
         let scroll = try #require(descendants(host).compactMap { $0 as? NSScrollView }.first)
@@ -52,7 +53,7 @@ struct CallNotesAccessibilityTests {
         let originalOffset = scroll.contentView.bounds.origin
         document.scroll(NSPoint(x: 0, y: document.bounds.height))
         scroll.reflectScrolledClipView(scroll.contentView)
-        _ = try #require(Offscreen.snapshot(host))
+        Offscreen.update(host)
         #expect(scroll.contentView.bounds.origin != originalOffset)
         #expect(tabs.convert(tabs.bounds, to: host) == originalFrame)
         #expect(host.bounds.contains(originalFrame))

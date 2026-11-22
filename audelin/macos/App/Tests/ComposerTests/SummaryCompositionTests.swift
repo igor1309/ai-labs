@@ -1,3 +1,4 @@
+import TranscriptFinalization
 import CallDiarizer
 import TranscriptFormat
 import CallDetail
@@ -11,10 +12,50 @@ import SummaryFiles
 import SummaryJobs
 import SummaryRuntime
 import Testing
+import TemplateFiles
 @testable import Composer
 
 @MainActor @Suite(.timeLimit(.minutes(1)))
 struct SummaryCompositionTests {
+    @Test func automaticNotesUseTheEditedDefaultFileAndItsHeadings() async throws {
+        try await withComposeFolder { root in
+            let folder = root.appendingPathComponent("Templates")
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            var template = TemplateFiles.Template(name: "Default", instructions: "Original instructions",
+                headings: [[TemplateFiles.Heading("Topic")]])
+            let file = folder.appendingPathComponent("Default.md")
+            try TemplateFiles.Files.encode(template).write(to: file, atomically: true, encoding: .utf8)
+            let output = "## Follow-up\n\nContinue the API work.\n"
+            let http = ControlledHTTP(hold: false, notes: output)
+            let storage = ControlledTranscripts(holdFinal: true)
+            let rig = try await fixture(root: root, storage: storage, http: http)
+            do {
+                try await rig.start(); await rig.mine.heard.next(); await rig.theirs.heard.next()
+                let stopping = Task { try await rig.stop() }
+                await storage.held.next()
+                template.instructions = "Edited instructions: write follow-up notes"
+                template.headings = [[TemplateFiles.Heading("Follow-up")]]
+                try TemplateFiles.Files.encode(template).write(to: file, atomically: true, encoding: .utf8)
+                storage.release.send(); try await stopping.value
+                _ = try await summary(rig.menu) { $0.values.contains("Итоги готовы") }
+                #expect(await http.lastBody.contains(template.instructions))
+                #expect(await http.lastBody.contains("## Follow-up (required)"))
+                #expect(await http.count == 1)
+                let published = try await read(rig.folder().appendingPathComponent("summary.md"))
+                #expect(published.contains(output))
+                #expect(!published.contains("## What this was about"))
+                let files = SummaryFiles.Files(locations: callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash),
+                                               disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
+                let id = try #require(try await callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash).list().first?.id)
+                let pair = try #require(try await files.versions(call: id))
+                #expect(pair.current.text == output && pair.current.template == .default && pair.previous == nil)
+                let identity = try #require(try await callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash).text(id: id).identity)
+                #expect(pair.current.transcriptIdentity == identity)
+                await rig.finish()
+            } catch { storage.release.send(); await rig.finish(); throw error }
+        }
+    }
+
     @Test func defaultOffFinishesTheCallWithoutClaimingOrRequestingNotes() async throws {
         try await withComposeFolder { root in
             let http = ControlledHTTP(hold: false)
@@ -71,6 +112,27 @@ struct SummaryCompositionTests {
             } catch { await rig.finish(); throw error }
         }
     }
+    /// Notes are made from the final transcript's entries, so the origin the file tells
+    /// never reaches the notes request.
+    @Test func notesRequestCarriesTheWordsWithoutTheOrigin() async throws {
+        try await withComposeFolder { root in
+            let http = ControlledHTTP(hold: false)
+            let rig = try await fixture(root: root, storage: ControlledTranscripts(), http: http)
+            do {
+                try await rig.start(); await rig.mine.heard.next(); await rig.theirs.heard.next()
+                try await rig.stop()
+                _ = try await summary(rig.menu) { $0.values.contains("Итоги готовы") }
+                #expect(TranscriptFormat.read(try await transcriptFile(of: rig)).origin?.calls.first?.origin?.hearing == testTranscriptBuild.release)
+                let body = await http.lastBody
+                #expect(body.contains("mine final") && body.contains("theirs final"))
+                for told in [testTranscriptBuild.release.version, testTranscriptBuild.release.build, testTranscriptBuild.mine, testTranscriptBuild.theirs, "schemaVersion"] {
+                    #expect(!body.contains(told), "the notes request holds the origin's \(told)")
+                }
+                await rig.finish()
+            } catch { await rig.finish(); throw error }
+        }
+    }
+
     @Test func waitForFinalWriteThenPublishAndShowStatus() async throws {
         try await withComposeFolder { root in
             let storage = ControlledTranscripts(holdFinal: true), http = ControlledHTTP(hold: false)
@@ -178,11 +240,11 @@ struct SummaryCompositionTests {
         try await withComposeFolder { root in
             let id = "1970.01.01-0000", folder = root.appendingPathComponent("1970.01.01-0000")
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            try Data("saved transcript".utf8).write(to: folder.appendingPathComponent("transcript.md"))
+            try Data(savedTranscript.utf8).write(to: folder.appendingPathComponent("transcript.md"))
             try Data("previous notes".utf8).write(to: folder.appendingPathComponent("summary.md"))
             let files = Files(locations: callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
             let runtime = Job.Runtime(kind: "compatibleAPI", model: "saved", program: "", endpoint: "http://127.0.0.1/v1", credentialVariable: "")
-            let job = Job(id: "interrupted", call: id, input: "saved-input", entries: [.init(label: "A", time: "0", text: "saved transcript")], speakers: false, primary: runtime)
+            let job = Job(id: "interrupted", call: id, input: summaryInput(savedEntries), entries: savedEntries, speakers: false, primary: runtime)
             _ = try await files.claim(SummariesFilesPort.record(job, phase: "interrupted"))
             let http = ControlledHTTP(hold: true)
             let rig = try await fixture(root: root, storage: ControlledTranscripts(), http: http)
@@ -208,12 +270,12 @@ struct SummaryCompositionTests {
                     #expect(try await files.load(call: id)?.job != job.id)
                 }
                 #expect(try await files.notes(call: id)?.text == "previous notes")
-                #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == "saved transcript")
+                #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == savedTranscript)
                 if !retryFails {
                     http.complete.send()
                     _ = try await summary(rig.menu) { $0[id] == "Итоги готовы" }
                     #expect(calls.state.rows.first?.summary == CallsListState.Row.Summary.none)
-                    #expect(try await files.load(call: id)?.phase == "succeeded")
+                    #expect(try await files.load(call: id) == nil)
                 }
                 await rig.finish()
             } catch { http.complete.send(); await rig.finish(); throw error }
@@ -223,15 +285,16 @@ struct SummaryCompositionTests {
         try await withComposeFolder { root in
             let id = "1970.01.01-0000", folder = root.appendingPathComponent("1970.01.01-0000")
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try Data(savedTranscript.utf8).write(to: folder.appendingPathComponent("transcript.md"))
             let files = Files(locations: callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
             let runtime = Job.Runtime(kind: "compatibleAPI", model: "saved", program: "", endpoint: "http://127.0.0.1/v1", credentialVariable: "")
-            let job = Job(id: "interrupted", call: id, input: "saved", entries: [.init(label: "A", time: "0", text: "spoken")], speakers: false, primary: runtime)
+            let job = Job(id: "interrupted", call: id, input: summaryInput(savedEntries), entries: savedEntries, speakers: false, primary: runtime)
             _ = try await files.claim(SummariesFilesPort.record(job, phase: "interrupted"))
             let rig = try await fixture(root: root, storage: ControlledTranscripts(), http: ControlledHTTP(hold: false))
             do {
                 let calls = try #require(rig.menu.calls)
                 calls.show()
-                for await state in Observations({ calls.state }) where !state.busy && state.rows.count == 1 { break }
+                for await state in Observations({ calls.state }) where !state.busy && state.rows.count == 1 && state.rows.first?.canRetrySummary == true { break }
                 #expect(calls.state.rows.first?.canRetrySummary == true)
                 await calls.send(.askDelete(id)); await calls.send(.confirmDelete)
                 for await state in Observations({ calls.state }) where !state.busy && state.rows.isEmpty { break }
@@ -250,7 +313,7 @@ struct SummaryCompositionTests {
         try await withComposeFolder { root in
             let id = "1970.01.01-0000", folder = root.appendingPathComponent("1970.01.01-0000")
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            try Data("saved transcript".utf8).write(to: folder.appendingPathComponent("transcript.md"))
+            try Data(savedTranscript.utf8).write(to: folder.appendingPathComponent("transcript.md"))
             if previousNotes { try Data("previous notes".utf8).write(to: folder.appendingPathComponent("summary.md")) }
             let otherID = "1970.01.01-0001", otherFolder = root.appendingPathComponent("1970.01.01-0001")
             try FileManager.default.createDirectory(at: otherFolder, withIntermediateDirectories: true)
@@ -258,7 +321,7 @@ struct SummaryCompositionTests {
             try Data("other notes".utf8).write(to: otherFolder.appendingPathComponent("summary.md"))
             let files = Files(locations: callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
             let runtime = Job.Runtime(kind: "compatibleAPI", model: "saved", program: "", endpoint: "http://127.0.0.1/v1", credentialVariable: "")
-            let job = Job(id: "interrupted", call: id, input: "saved-input", entries: [.init(label: "A", time: "0", text: "saved transcript")], speakers: false, primary: runtime)
+            let job = Job(id: "interrupted", call: id, input: summaryInput(savedEntries), entries: savedEntries, speakers: false, primary: runtime)
             _ = try await files.claim(SummariesFilesPort.record(job, phase: "interrupted"))
             let http = ControlledHTTP(hold: true)
             let rig = try await fixture(root: root, storage: ControlledTranscripts(), http: http)
@@ -297,9 +360,10 @@ struct SummaryCompositionTests {
         try await withComposeFolder { root in
             let id = "1970.01.01-0000", folder = root.appendingPathComponent("1970.01.01-0000")
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try Data(savedTranscript.utf8).write(to: folder.appendingPathComponent("transcript.md"))
             let owner = Files(locations: callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("summary-ownership"))
             let runtime = Job.Runtime(kind: "compatibleAPI", model: "saved", program: "", endpoint: "http://127.0.0.1/v1", credentialVariable: "")
-            let job = Job(id: "other-owner", call: id, input: "saved-input", entries: [.init(label: "A", time: "0", text: "saved transcript")], speakers: false, primary: runtime)
+            let job = Job(id: "other-owner", call: id, input: summaryInput(savedEntries), entries: savedEntries, speakers: false, primary: runtime)
             let record = try SummariesFilesPort.record(job, phase: "pending")
             _ = try await owner.claim(record)
             #expect(try await owner.start(record))
@@ -312,7 +376,7 @@ struct SummaryCompositionTests {
                 var finished = record; finished.phase = terminal
                 try await owner.progress(finished)
                 #expect(await rig.menu.relaunchIfIdle {})
-                #expect(try await owner.load(call: id)?.phase == terminal)
+                #expect(try await owner.load(call: id)?.phase == (terminal == "succeeded" ? nil : terminal))
                 #expect(await http.count == 0)
                 await rig.finish()
             } catch { await owner.release(job: job.id, call: id, input: job.input); await rig.finish(); throw error }
@@ -381,8 +445,11 @@ private actor ControlledHTTP: HTTPRequesting {
     var count = 0
     var cancelled = false
     let failures: Int
+    let notes: String
     var lastBody = ""
-    init(hold: Bool, failures: Int = 0) { self.hold = hold; self.failures = failures }
+    init(hold: Bool, failures: Int = 0, notes: String = "## What this was about\n\nSynthetic meeting\n\n## Key points\n\n- mine final and theirs final\n\n## Decisions\n\nNone recorded.\n\n## Actions\n\nNone recorded.\n") {
+        self.hold = hold; self.failures = failures; self.notes = notes
+    }
     func request(url: URL, headers: [String: String], body: Data, loopback: Bool) async throws -> HTTPResponse {
         count += 1; started.send()
         lastBody = String(decoding: body, as: UTF8.self)
@@ -391,7 +458,6 @@ private actor ControlledHTTP: HTTPRequesting {
             do { await complete.next(); try Task.checkCancellation() }
             catch { cancelled = true; throw Failure.cancelled }
         }
-        let notes = "## What this was about\n\nSynthetic meeting\n\n## Key points\n\n- mine final and theirs final\n\n## Decisions\n\nNone recorded.\n\n## Actions\n\nNone recorded.\n"
         return .init(status: 200, body: try JSONSerialization.data(withJSONObject: ["choices": [["finish_reason": "stop", "message": ["content": notes]]]]))
     }
 }
@@ -401,8 +467,8 @@ private final class ControlledTranscripts: TranscriptStorage, Sendable {
     init(holdFinal: Bool = false, failEarly: Bool = false, failFinal: Bool = false) {
         self.holdFinal = holdFinal; self.failEarly = failEarly; self.failFinal = failFinal
     }
-    func open(at url: URL, names: RecordingNames, sink: any LogSink) async throws -> OpenedTranscript {
-        let opened = try await FileTranscriptStorage(diarizer: CallDiarizer.unavailable).open(at: url, names: names, sink: sink)
+    func open(at url: URL, names: RecordingNames, origin: TranscriptOrigin, sink: any LogSink) async throws -> OpenedTranscript {
+        let opened = try await FileTranscriptStorage(diarizer: CallDiarizer.unavailable).open(at: url, names: names, origin: origin, sink: sink)
         return OpenedTranscript(writer: ControlledTranscript(base: opened.writer, controls: self), pass: opened.pass, names: opened.names)
     }
 }
@@ -416,8 +482,8 @@ private struct ControlledTranscript: TranscriptWriter {
         try await base.write(state)
         controls.written.send()
     }
-    func replaceWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) async throws {
-        try await base.replaceWhole(segments, speakers: speakers)
+    func replaceWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker], outcomes: FinishingOutcomes) async throws {
+        try await base.replaceWhole(segments, speakers: speakers, outcomes: outcomes)
     }
 
     func close() async { await base.close() }
@@ -433,3 +499,6 @@ private func waitForCancellation() async throws {
 private func notesText(_ detail: CallsDetail?) -> String? {
     if case let .notes(text, _) = detail?.content { text } else { nil }
 }
+
+private let savedTranscript = "**Me** 00:00:00\nsaved transcript\n"
+private let savedEntries: [Job.Entry] = [.init(label: "Me", time: "0.0", text: "saved transcript")]

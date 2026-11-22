@@ -26,9 +26,11 @@ public func rehearsalBoundary(
     mine: any SpeechRecognizer, theirs: any SpeechRecognizer,
     now: @escaping @Sendable () -> Date, timeZone: @escaping @Sendable () -> TimeZone,
     sleep: @escaping @Sendable (Duration) async throws -> Void,
-    intervals: ProfileIntervals
+    intervals: ProfileIntervals,
+    transcriptBuild: TranscriptBuild
 ) -> ComposerBoundary {
-    ComposerBoundary(capturePersistence: capturePersistence, microphone: RehearsalMicrophone(startCapture: microphone),
+    let diarizer = CallDiarizer(binding: FluidDiarizationBinding())
+    return ComposerBoundary(transcriptBuild: transcriptBuild, capturePersistence: capturePersistence, microphone: RehearsalMicrophone(startCapture: microphone),
         callAudio: RehearsalCallAudio(startCapture: call),
         recognizers: RehearsalRecognizers(mine: mine, theirs: theirs), processes: RehearsalProcesses(),
         access: ComposerAccess(refresh: { true }, reserve: { true }, release: {},
@@ -50,7 +52,8 @@ public func rehearsalBoundary(
             }
         }), log: RehearsalLog(), intervals: intervals, recordings: FileRecordingStorage(), trash: ComposerBoundary.systemTrash, bleedCleaning: RehearsalCleaning(),
         bleedHearing: CleanupHearing(recognizers: RehearsalRecognizers(mine: mine, theirs: theirs)),
-        transcripts: FileTranscriptStorage(diarizer: CallDiarizer(binding: FluidDiarizationBinding())))
+        diarizer: diarizer, transcripts: FileTranscriptStorage(diarizer: diarizer),
+        accountName: { "" })
 }
 
 private struct RehearsalMicrophone: MicrophoneSource {

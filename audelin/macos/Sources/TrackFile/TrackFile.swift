@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 
 /// Each result contains only this write's audio, drained through its end.
@@ -24,6 +25,29 @@ public actor TrackFile {
     public nonisolated static func duration(at url: URL) throws -> TimeInterval {
         try DiskTrackBinding.duration(at: url)
     }
+    public struct SavedChunk: Sendable {
+        public let start: TimeInterval
+        public let samples: [Float]
+        public let fraction: Double
+    }
+
+    /// Reads a snapshot of the whole frames in a saved track, at most one second at a time.
+    /// The same validation and PCM reader serve duration, open-ended and sealed recordings.
+    public nonisolated static func readSaved(at url: URL, consume: @Sendable (SavedChunk) async throws -> Void) async throws {
+        let saved = try DiskTrackBinding.openSaved(at: url)
+        defer { Darwin.close(saved.descriptor) }
+        var position: Int64 = 0
+        while position < saved.frames {
+            try Task.checkCancellation()
+            let count = Int(min(Int64(sampleRate), saved.frames - position))
+            let samples = try DiskTrackBinding.read(descriptor: saved.descriptor, from: position, count: count)
+            let start = Double(position) / sampleRate
+            position += Int64(count)
+            try await consume(.init(start: start, samples: samples, fraction: Double(position) / Double(saved.frames)))
+        }
+        try Task.checkCancellation()
+    }
+
     public nonisolated let url: URL
 
     private let binding: any TrackFileBinding

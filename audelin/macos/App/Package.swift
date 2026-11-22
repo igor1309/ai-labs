@@ -50,7 +50,9 @@ let package = Package(
         .target(
             name: "CallsWindowShell",
             dependencies: [
+                .product(name: "SettingsUI", package: "macos"),
                 .product(name: "CallDetail", package: "macos"),
+                .product(name: "NotesMenu", package: "macos"),
                 "Composer",
                 .product(name: "GlassLedger", package: "macos"),
                 .product(name: "CallsListUI", package: "macos"),
@@ -67,6 +69,7 @@ let package = Package(
             name: "CallsRehearsal",
             dependencies: [
                 "Composer", "SessionRehearsal", "CallsWindowShell", "CallsRehearsalSupport",
+                .product(name: "CallDiarizer", package: "macos"),
             ]
         ),
         .target(
@@ -84,19 +87,23 @@ let package = Package(
         ),
         .target(
             name: "SessionRehearsal",
-            dependencies: ["Composer", .product(name: "BrowserBridge", package: "macos"), .product(name: "BleedCleanup", package: "macos"), .product(name: "CallDiarizer", package: "macos"), .product(name: "LiveText", package: "macos"), .product(name: "Preferences", package: "macos")]
+            dependencies: ["Composer", .product(name: "BrowserBridge", package: "macos"), .product(name: "BleedCleanup", package: "macos"), .product(name: "CallDiarizer", package: "macos"), .product(name: "LiveText", package: "macos"), .product(name: "Preferences", package: "macos"), .product(name: "TranscriptFormat", package: "macos")]
         ),
         .target(
             name: "Composer",
             dependencies: [
+                .product(name: "TranscriptLayout", package: "macos"),
                 .product(name: "LatestText", package: "macos"),
                 .product(name: "RecordingConditions", package: "macos"),
                 .product(name: "CallDetail", package: "macos"),
+                .product(name: "NotesMenu", package: "macos"),
                 .product(name: "BleedCleanup", package: "macos"),
                 .product(name: "SummarySettings", package: "macos"),
                 .product(name: "SummaryPreviewUI", package: "macos"),
                 .product(name: "BrowserBridge", package: "macos"),
                 .product(name: "SummaryJobs", package: "macos"),
+                .product(name: "TemplateFiles", package: "macos"),
+                .product(name: "NotesGeneration", package: "macos"),
                 .product(name: "SummaryFiles", package: "macos"),
                 .product(name: "SummaryRuntime", package: "macos"),
                 .product(name: "SpeakerIdentification", package: "macos"),
@@ -107,6 +114,9 @@ let package = Package(
                 .product(name: "Calls", package: "macos"),
                 .product(name: "CallsStorage", package: "macos"),
                 .product(name: "CallsSearch", package: "macos"),
+                .product(name: "CallTags", package: "macos"),
+                .product(name: "TagsFile", package: "macos"),
+                .product(name: "AgentsFile", package: "macos"),
                 .product(name: "CallsList", package: "macos"),
                 .product(name: "Recordings", package: "macos"),
                 .product(name: "CallsListUI", package: "macos"),
@@ -128,6 +138,7 @@ let package = Package(
                 .product(name: "TrackFile", package: "macos"),
                 .product(name: "TranscriptFormat", package: "macos"),
                 .product(name: "TranscriptJoin", package: "macos"),
+                .product(name: "ReRecognition", package: "macos"),
                 .product(name: "TranscriptFile", package: "macos"),
                 .product(name: "TranscriptWriting", package: "macos"),
                 .product(name: "TranscriptFinalization", package: "macos"),
@@ -150,6 +161,7 @@ let package = Package(
             name: "CallsWindowShellTests",
             dependencies: [
                 .product(name: "CallDetail", package: "macos"),
+                .product(name: "NotesMenu", package: "macos"),
                 "CallsWindowShell", "Composer",
                 .product(name: "CallsListUI", package: "macos"),
                 .product(name: "CallsWindowUI", package: "macos"),
@@ -160,8 +172,10 @@ let package = Package(
         .testTarget(
             name: "ComposerTests",
             dependencies: [
+                .product(name: "TranscriptFormat", package: "macos"),
                 .product(name: "RecordingConditions", package: "macos"),
                 .product(name: "CallDetail", package: "macos"),
+                .product(name: "NotesMenu", package: "macos"),
                 "Composer", "Audelin",
                 .product(name: "CallAudioAccess", package: "macos"),
                 .product(name: "CallFolder", package: "macos"),

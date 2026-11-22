@@ -1,5 +1,6 @@
 import Darwin
 import Foundation
+import SummaryRuntime
 
 /// Directory notifications are armed before the first read, so a completion cannot be missed.
 struct SummaryFileControl: Sendable {
@@ -7,6 +8,18 @@ struct SummaryFileControl: Sendable {
 
     func report(_ request: Int, _ stage: LiveSummaryService.Stage) throws {
         try Data().write(to: folder.appendingPathComponent("\(stage.rawValue)-\(request)"), options: .atomic)
+    }
+
+    func notes(_ request: Int, body: Data) throws -> String {
+        try body.write(to: folder.appendingPathComponent("request-\(request).json"), options: .atomic)
+        let content = try String(contentsOf: folder.appendingPathComponent("finish-\(request)"), encoding: .utf8)
+        if content == "echo-transcript" {
+            let request = try JSONSerialization.jsonObject(with: body) as? [String: Any]
+            let messages = request?["messages"] as? [[String: String]]
+            let prompt = messages?.first?["content"] ?? ""
+            return LiveSummaryService.notes.replacingOccurrences(of: "Обсудили выпуск Audelin.", with: prompt.components(separatedBy: "\nTRANSCRIPT DATA:\n").last ?? "")
+        }
+        return content.isEmpty ? LiveSummaryService.notes : content
     }
 
     func wait(_ request: Int) async throws {
@@ -24,6 +37,7 @@ struct SummaryFileControl: Sendable {
         output.yield(())
         for await _ in events {
             try Task.checkCancellation()
+            if FileManager.default.fileExists(atPath: folder.appendingPathComponent("fail-\(request)").path) { throw SummaryRuntime.Failure.quota }
             if FileManager.default.fileExists(atPath: completion.path) { return }
         }
         throw CancellationError()

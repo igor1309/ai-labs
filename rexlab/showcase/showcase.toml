@@ -1,7 +1,7 @@
 repo = "igor1309/rexlab"
 description = "A dinosaur learning game for children, built with React and TypeScript."
 homepage = "https://rexlab.enoa.ai"
-topics = ["react", "typescript", "vite", "kids-game", "ai-assisted"]
+topics = ["react", "typescript", "vite", "kids-game"]
 check = "sh scripts/test.sh"
 
 include = [
@@ -9,12 +9,14 @@ include = [
   "tests/**",
   "docs/features/*.feature",
   "index.html",
+  "public/**",
   "package.json",
   "package-lock.json",
   "tsconfig.json",
   "vite.config.ts",
   ".gitignore",
   "scripts/test.sh",
+  "patches/*.patch",
   "scripts/cut-skeleton.py",
   "scripts/dig-cells.ts",
   "scripts/dig-preview.ts",
@@ -28,7 +30,16 @@ include = [
   "prototypes/careSounds.ts",
   "prototypes/careHatch.css",
   "prototypes/care-hatch.html",
+  "prototypes/coloring.html",
 ]
 exclude = [
   "tests/catalogueSources.test.ts",
+  "tests/slowTestsReport.test.ts",
+  "tests/browserImage.test.ts",
+  "tests/coloringGeometry.test.ts",
+  "tests/homeTilePictures.test.ts",
+  "tests/compareResultTheme.test.tsx",
+  "tests/digSiteTokens.test.tsx",
+  "tests/homeGround.test.tsx",
+  "tests/homeSky.test.tsx",
 ]

@@ -8,6 +8,15 @@ import Synchronization
 /// the calls journal, recovers moves a crash interrupted, runs every operation
 /// one at a time, and refuses to delete, move or commit while a move is half finished.
 public final class CallsStorage: SummaryFiles.Locations, Sendable {
+    /// The saved bytes and original recording starts needed to merge a stored call.
+    public struct Part: Equatable, Sendable {
+        public let transcript: Data
+        public let originalStarts: [Date]
+        public init(transcript: Data, originalStarts: [Date]) {
+            self.transcript = transcript; self.originalStarts = originalStarts
+        }
+    }
+
     private struct State {
         var recordingFolder: URL
         var journal = CallsJournal()
@@ -15,17 +24,24 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
     private let state: Mutex<State>
     private let journal: URL?
     private let writeJournal: @Sendable (CallsJournal, URL) throws -> Void
+    private let readPart: @Sendable (URL, String) throws -> Part
     private let makeCalls: @Sendable (URL) -> Calls
     // Every operation, including summary writes through withFolder, takes this turn,
     // so one waiting for a long folder move suspends instead of blocking a thread.
-    private let turn = Turn()
+    private let operation: CallsStorageGuard
     private let published = Mutex<(state: CallsTransaction, watchers: [UUID: AsyncStream<CallsTransaction>.Continuation])>((.idle, [:]))
+    /// The calls-folder claim: the current grant, if any, and the last token handed out.
+    let folderClaim = Mutex<(holder: (CallsFolderHolder, CallsFolderToken)?, lastToken: UInt64)>((nil, 0))
 
     /// `journal` is where the journal is kept; nil keeps it in memory only.
-    /// `makeCalls` opens the calls of one folder.
+    /// `makeCalls` opens the calls of one folder; `readPart` reads a resolved call folder for merging.
     public init(folder: URL, journal: URL?, writeJournal: @escaping @Sendable (CallsJournal, URL) throws -> Void = CallsStorage.writeAtomically,
-                makeCalls: @escaping @Sendable (URL) -> Calls) {
+                readPart: @escaping @Sendable (URL, String) throws -> Part,
+                makeCalls: @escaping @Sendable (URL) -> Calls,
+                operation: CallsStorageGuard = .serial()) {
+        self.operation = operation
         state = Mutex(State(recordingFolder: directory(folder)))
+        self.readPart = readPart
         self.journal = journal; self.writeJournal = writeJournal; self.makeCalls = makeCalls
     }
 
@@ -55,25 +71,37 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
         }
     }
 
-    /// Puts back every merge interrupted in the calls folder, then recovers the moves the journal records.
+    /// Puts back every merge and transcript change interrupted in the calls folder and in
+    /// every other folder the journal says owns a call, then recovers the moves it records.
     public func restore() async throws {
         try await perform { [self] in
-            try state.withLock { state in
-                // A calls folder that is not there, such as one on an unmounted volume, holds no merge.
-                guard FileManager.default.fileExists(atPath: state.recordingFolder.path) else { return }
-                try makeCalls(state.recordingFolder).recoverInterruptedMerges()
-            }
+            try state.withLock { state in try recoverInterruptedChanges(in: state.recordingFolder) }
             guard let journal else { return }
             let data: Data
             do { data = try Data(contentsOf: journal) }
             catch let error as CocoaError where error.code == .fileReadNoSuchFile { return }
             let (saved, migrated) = try CallsJournal.read(data) { [makeCalls] root in try makeCalls(root).list().map(\.id) }
             if migrated { try save(saved) }
-            state.withLock { state in
+            try state.withLock { state in
                 state.journal = saved
+                // A transcript is changed in the folder that owns its call, so each owning folder
+                // is put back before any of its calls is listed or moved on.
+                for root in otherRoots(state) { try recoverInterruptedChanges(in: root) }
                 recover(&state)
             }
         }
+    }
+    private func recoverInterruptedChanges(in root: URL) throws {
+        // A folder that is not there, such as one on an unmounted volume, holds no change.
+        guard FileManager.default.fileExists(atPath: root.path) else { return }
+        try makeCalls(root).recoverInterruptedMerges()
+    }
+    /// The folders other than the calls folder that the journal says own a call.
+    private func otherRoots(_ state: State) -> [URL] {
+        let roots = Set((Array(state.journal.owners.values) + state.journal.moves.values.map { $0.owner.deletingLastPathComponent() }).map {
+            directory($0.resolvingSymlinksInPath())
+        })
+        return roots.filter { !sameRoot($0, state.recordingFolder) }.sorted { $0.path < $1.path }
     }
     private func save(_ record: CallsJournal) throws {
         if let journal { try writeJournal(record, journal) }
@@ -120,19 +148,17 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
             return try operation(location(id: call, state: state))
         }
     }
-    private func perform<Value: Sendable>(_ work: () throws -> Value) async throws -> Value {
-        try await turn.run(work)
+    private func perform<Value: Sendable>(_ kind: CallsStorageGuard.Operation = .access, _ work: () throws -> Value) async throws -> Value {
+        try await operation.take(kind)
+        defer { operation.give() }
+        return try work()
     }
     private func list(_ state: State) throws -> [Calls.Call] {
         var result = try makeCalls(state.recordingFolder).list().filter {
             guard let owner = ownerRoot(id: $0.id, state: state) else { return true }
             return sameRoot(owner, state.recordingFolder)
         }
-        let otherRoots = Set((Array(state.journal.owners.values) + state.journal.moves.values.map { $0.owner.deletingLastPathComponent() }).map {
-            directory($0.resolvingSymlinksInPath())
-        })
-            .filter { !sameRoot($0, state.recordingFolder) }
-        for root in otherRoots {
+        for root in otherRoots(state) {
             result += try makeCalls(root).list().filter { call in
                 ownerRoot(id: call.id, state: state).map { sameRoot($0, root) } == true
             }
@@ -140,8 +166,16 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
         return result.sorted { $0.id > $1.id }
     }
     public func list() async throws -> [Calls.Call] {
+        try await list { call, _ in call }
+    }
+    /// The listed calls, each passed with its resolved folder, wherever its root, to `enrich`
+    /// within this storage's turn; `enrich` must not call back into storage.
+    public func list<Value: Sendable>(_ enrich: @Sendable (Calls.Call, URL) throws -> Value) async throws -> [Value] {
         try await perform { [self] in
-            try state.withLock { state in recover(&state); return try list(state) }
+            try state.withLock { state in
+                recover(&state)
+                return try list(state).map { try enrich($0, location(id: $0.id, state: state)) }
+            }
         }
     }
     public func rename(id: String, title: String) async throws {
@@ -166,14 +200,48 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
             }
         }
     }
+    /// Changes a call's tags: `write` gets the call's resolved folder within this storage's
+    /// turn. A call a folder move is still copying is not written.
+    public func writeTags(id: String, _ write: @Sendable (URL) throws -> Void) async throws {
+        try await perform { [self] in
+            try state.withLock { state in
+                recover(&state, id: id)
+                if let move = state.journal.moves[id], ![.source, .destination].contains(move.phase) {
+                    throw CocoaError(.fileWriteUnknown)
+                }
+                try write(location(id: id, state: state))
+            }
+        }
+    }
     /// A call's saved transcript as written, for a merge to read back.
     public func savedTranscript(id: String) async throws -> Data {
         try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).savedTranscript(id: id) } }
     }
-    /// Merges calls of the calls folder into one, the earliest part's, with the joined
-    /// transcript `write` puts in the folder it is given; returns the merged call's id.
+
+    /// Resolves original recordings through the same disk binding as listing.
+    public func originals(id: String) async throws -> [Calls.Original] {
+        try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).originals(id: id) } }
+    }
+
+    /// Publishes within the same turn as every read and mutation of this call.
+    public func publishTranscript(id: String, write: @escaping @Sendable (URL) throws -> Void) async throws {
+        try await perform(.publishTranscript) { [self] in try folder(call: id) { try Task.checkCancellation(); try makeCalls($0.deletingLastPathComponent()).publishTranscript(id: id, write: write) } }
+    }
+
+    public func restorePreviousTranscript(id: String) async throws {
+        try await perform(.restorePreviousTranscript) { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).restorePreviousTranscript(id: id) } }
+    }
+    /// Reads a merge part within the same turn that resolves its folder.
+    public func part(id: String) async throws -> Part {
+        try await perform { [self] in try folder(call: id) { try readPart($0, id) } }
+    }
+
+    /// Merges calls of the calls folder into one, the earliest part's, with what `write`
+    /// puts in the prepared folder it is given beside the parts' resolved folders, in the
+    /// order of `ids`, within this storage's turn; returns the merged call's id. A failing
+    /// `write` fails the merge with every part back in place.
     /// A call that a folder move holds or left in another folder is not merged.
-    public func merge(ids: [String], write: @Sendable (URL) throws -> Void) async throws -> String {
+    public func merge(ids: [String], write: @Sendable (_ prepared: URL, _ parts: [URL]) throws -> Void) async throws -> String {
         try await perform { [self] in
             try state.withLock { state in
                 for id in ids {
@@ -187,7 +255,7 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
         }
     }
     public func location(id: String) async throws -> URL { try await perform { [self] in try folder(call: id) { $0 } } }
-    /// A call's notes and transcript lines, for search.
+    /// A call's transcript lines.
     public func text(id: String) async throws -> Calls.Text {
         try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).text(id: id) } }
     }

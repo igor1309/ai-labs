@@ -25,7 +25,7 @@ struct LiveSummaryServiceTests {
         let service = LiveSummaryService(wait: { request in
             reports.append("wait-\(request)"); started.send()
             await release.next()
-        }, report: { request, stage in reports.append("\(stage.rawValue)-\(request)") })
+        }, response: { _, _ in LiveSummaryService.notes }, report: { request, stage in reports.append("\(stage.rawValue)-\(request)") })
         for request in 1...2 {
             let task = Task { try await service.request(url: URL(string: "http://127.0.0.1:1")!, headers: [:], body: Data(), loopback: true) }
             await started.next()
@@ -38,9 +38,22 @@ struct LiveSummaryServiceTests {
         }
     }
 
+    @Test func eachRequestUsesItsOwnResponseAndForwardsItsBody() async throws {
+        let received = Values<String>()
+        let service = LiveSummaryService(wait: { _ in }, response: { request, body in
+            received.append("\(request):" + String(decoding: body, as: UTF8.self))
+            return "notes \(request)"
+        }, report: { _, _ in })
+        for request in 1...2 {
+            let response = try await service.request(url: URL(string: "http://127.0.0.1:1")!, headers: [:], body: Data("body \(request)".utf8), loopback: true)
+            #expect(try Runtime.api(response) == "notes \(request)")
+        }
+        #expect(received.all == ["1:body 1", "2:body 2"])
+    }
+
     @Test func cancelledRequestCannotReturnNotesEvenIfReleased() async throws {
         let started = Signal(), release = Signal(), reports = Values<String>()
-        let service = LiveSummaryService(wait: { _ in started.send(); await release.next() },
+        let service = LiveSummaryService(wait: { _ in started.send(); await release.next() }, response: { _, _ in LiveSummaryService.notes },
             report: { request, stage in reports.append("\(stage.rawValue)-\(request)") })
         let task = Task { try await service.request(url: URL(string: "http://127.0.0.1:1")!, headers: [:], body: Data(), loopback: true) }
         await started.next()
@@ -54,7 +67,7 @@ struct LiveSummaryServiceTests {
     @Test func completionFileReleasesThePendingRequest() async throws {
         try await withRehearsalFolder { root in
             let control = SummaryFileControl(folder: root), started = Signal()
-            let service = LiveSummaryService(wait: control.wait, report: { request, stage in
+            let service = LiveSummaryService(wait: control.wait, response: control.notes, report: { request, stage in
                 try control.report(request, stage)
                 if stage == .started { started.send() }
             })
@@ -67,11 +80,24 @@ struct LiveSummaryServiceTests {
         }
     }
 
+    /// Contract test: the file control carries distinct notes and safe failure outcomes.
+    @Test func fileControlReturnsChosenNotesAndQuotaFailure() async throws {
+        try await withRehearsalFolder { root in
+            let control = SummaryFileControl(folder: root)
+            try "controlled notes".write(to: root.appendingPathComponent("finish-1"), atomically: true, encoding: .utf8)
+            try await control.wait(1)
+            #expect(try control.notes(1, body: Data("request body".utf8)) == "controlled notes")
+            #expect(try Data(contentsOf: root.appendingPathComponent("request-1.json")) == Data("request body".utf8))
+            try Data().write(to: root.appendingPathComponent("fail-2"))
+            await #expect(throws: SummaryRuntime.Failure.quota) { try await control.wait(2) }
+        }
+    }
+
     /// Contract test: cancelling a file-controlled request records cancellation without notes.
     @Test func cancellationWritesItsMarkerWithoutCompletion() async throws {
         try await withRehearsalFolder { root in
             let control = SummaryFileControl(folder: root), started = Signal()
-            let service = LiveSummaryService(wait: control.wait, report: { request, stage in
+            let service = LiveSummaryService(wait: control.wait, response: control.notes, report: { request, stage in
                 try control.report(request, stage)
                 if stage == .started { started.send() }
             })

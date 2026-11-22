@@ -11,18 +11,24 @@ import LiveText
 import ParakeetRecognizer
 
 func makeRealBoundary() async -> ComposerBoundary {
-    let access = await makeCallAudioAccess()
+    let sink = SystemLogSink()
+    let access = await makeCallAudioAccess(sink: sink)
     let recognizers = RealRecognizerSource(log: SystemLogSink())
+    let build = TranscriptBuild(version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown",
+        build: Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown", mine: "Parakeet v3", theirs: "Parakeet v3")
+    let diarizer = CallDiarizer(binding: FluidDiarizationBinding())
     return ComposerBoundary(
+        transcriptBuild: build,
         capturePersistence: .recorded,
         microphone: RealMicrophone(), callAudio: RealCallAudio(), recognizers: recognizers,
         processes: RealProcessSource(), access: RealCallAudioAccess(policy: access),
-        microphonePermission: SystemMicrophonePermission(), capacity: DiskCapacity(), time: RealClock(), log: SystemLogSink(), intervals: .systemIntervals,
+        microphonePermission: SystemMicrophonePermission(), capacity: DiskCapacity(), time: RealClock(), log: sink, intervals: .systemIntervals,
         recordings: FileRecordingStorage(), trash: ComposerBoundary.systemTrash, bleedCleaning: LocalVqeCleaning(makeManager: { try await LocalVqeManager() }, process: { manager, microphone, call in
             try await manager.process(micURL: microphone, referenceURL: call)
         }), bleedHearing: CleanupHearing(recognizers: recognizers),
-        transcripts: FileTranscriptStorage(diarizer: CallDiarizer(binding: FluidDiarizationBinding())),
-        browser: openBrowserChannel
+        diarizer: diarizer, transcripts: FileTranscriptStorage(diarizer: diarizer),
+        browser: openBrowserChannel,
+        accountName: { NSFullUserName() }
     )
 }
 

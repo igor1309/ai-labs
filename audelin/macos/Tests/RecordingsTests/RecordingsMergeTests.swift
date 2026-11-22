@@ -60,7 +60,7 @@ struct RecordingsMergeTests {
             $0.phase = .warnedFarApart
         }
         assert(listed { $0.phase = .renaming("A"); $0.mergeAvailable = false }, .enterMergeMode, delivers: nil, using: busy.reducer)
-        assert(listed { $0.mergeAvailable = false }, .refresh, delivers: .list, using: busy.reducer) { $0.isListing = true }
+        assert(listed { $0.mergeAvailable = false }, .refresh, delivers: .list(request: 1), using: busy.reducer) { $0.isListing = true; $0.listRequest = 1 }
         #expect(busy.asked == 0)
     }
 
@@ -156,11 +156,11 @@ struct RecordingsMergeTests {
     }
 
     @Test func S10_aMergedCallIsSelected() {
-        assert(listed { $0.phase = .runningMerge; $0.mergeSelection = ["A", "B"] }, .merged("A"), delivers: .list) {
+        assert(listed { $0.phase = .runningMerge; $0.mergeSelection = ["A", "B"] }, .merged("A"), delivers: .list(request: 1)) {
             $0.phase = .idle
             $0.mergeSelection = []
             $0.mergedCallID = "A"
-            $0.isListing = true
+            $0.isListing = true; $0.listRequest = 1
         }
         assert(listed { $0.phase = .merging }, .merged("A"), delivers: nil)
     }
@@ -195,10 +195,14 @@ struct RecordingsMergeTests {
     }
 }
 
-private let calls = ["C", "B", "A"].map { RecordedCall(id: $0, title: "", start: .distantPast, duration: 60) }
+private let calls = ["C", "B", "A"].map { RecordedCall(id: $0, title: "", start: .distantPast, duration: 60,
+    missingTracks: [.init(id: $0, track: .call)]) }
 
 private func listed(_ change: (inout RecordingsState) -> Void = { _ in }) -> RecordingsState {
-    var state = RecordingsState(calls: calls, callsFolder: URL(fileURLWithPath: "/calls"), mergeAvailable: true); change(&state); return state
+    var state = RecordingsState(calls: calls, callsFolder: URL(fileURLWithPath: "/calls"), mergeAvailable: true, transcriptOffers: Dictionary(uniqueKeysWithValues: calls.map {
+        ($0.id, TranscriptOffers(run: .unavailable(.missingTracks($0.missingTracks), message: "transcript unavailable"),
+                                restore: .unavailable(.noPreviousTranscript, message: "transcript unavailable")))
+    })); change(&state); return state
 }
 
 private final class BusySpy: Sendable {
@@ -206,7 +210,7 @@ private final class BusySpy: Sendable {
     var asked: Int { count.withLock { $0 } }
     var reducer: RecordingsReducer {
         RecordingsReducer(failureMessage: { $0 + $1 }, moveText: stubMoveText,
-                          busyMessage: { self.count.withLock { $0 += 1 }; return "Audelin is busy" })
+                          busyMessage: { self.count.withLock { $0 += 1 }; return "Audelin is busy" }, transcriptMessage: { _ in "transcript unavailable" })
     }
 }
 

@@ -1,3 +1,4 @@
+import TranscriptFinalization
 import CallDiarizer
 import protocol BleedCleanup.MicrophoneCleaning
 import protocol BleedCleanup.CleanedHearing
@@ -63,10 +64,13 @@ struct BleedCleanupCompositionTests {
                 await rig.menu.perform(.quit)
                 await terminated.next()
                 await cancelled.next()
-                #expect(try await transcriptText(of: rig) == before)
+                // Quit commits the words as written, telling cleaning as skipped.
+                let committed = try await transcriptFile(of: rig)
+                #expect(transcriptBody(committed) == before)
+                #expect(TranscriptFormat.read(committed).origin?.calls.first?.origin?.cleaning?.outcome == .skipped)
                 await held.release()
                 await rig.log.wait { $0.message.hasPrefix("bleed cleanup kept raw:") }
-                #expect(try await transcriptText(of: rig) == before)
+                #expect(try await transcriptFile(of: rig) == committed)
                 await rig.finish()
             } catch { await held.release(); await rig.finish(); throw error }
         }
@@ -130,8 +134,8 @@ private enum CleanupFailure: Error { case failed }
 private struct ReplacementStorage: TranscriptStorage {
     let fails: Bool
     var replaced: @Sendable () -> Void = {}
-    func open(at url: URL, names: RecordingNames, sink: any LogSink) async throws -> OpenedTranscript {
-        let opened = try await FileTranscriptStorage(diarizer: CallDiarizer.unavailable).open(at: url, names: names, sink: sink)
+    func open(at url: URL, names: RecordingNames, origin: TranscriptOrigin, sink: any LogSink) async throws -> OpenedTranscript {
+        let opened = try await FileTranscriptStorage(diarizer: CallDiarizer.unavailable).open(at: url, names: names, origin: origin, sink: sink)
         return OpenedTranscript(writer: ReplacementFile(base: opened.writer, fails: fails, replaced: replaced), pass: opened.pass, names: opened.names)
     }
 }
@@ -141,9 +145,9 @@ private struct ReplacementFile: TranscriptWriter {
     let replaced: @Sendable () -> Void
     func write(_ state: CallState) async throws { try await base.write(state) }
     func close() async { await base.close() }
-    func replaceWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) async throws {
+    func replaceWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker], outcomes: FinishingOutcomes) async throws {
         if fails { throw CleanupFailure.failed }
-        try await base.replaceWhole(segments, speakers: speakers)
+        try await base.replaceWhole(segments, speakers: speakers, outcomes: outcomes)
         replaced()
     }
 }

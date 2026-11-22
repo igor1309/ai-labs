@@ -11,7 +11,7 @@ struct CallsToolbarTests {
         let sut = CallsToolbar(identifier: "test", splitView: split.splitView, title: "Звонки", text: .init(language: .russian), act: { _ in })
 
         #expect(sut.toolbarDefaultItemIdentifiers(sut.toolbar)
-                == [CallsToolbar.titleItem, .flexibleSpace, CallsToolbar.actionsItem, CallsToolbar.deleteItem, CallsToolbar.separatorItem, .flexibleSpace, CallsToolbar.copyItem])
+                == [CallsToolbar.titleItem, .flexibleSpace, CallsToolbar.actionsItem, CallsToolbar.deleteItem, CallsToolbar.separatorItem, .flexibleSpace, CallsToolbar.copyItem, CallsToolbar.notesItem])
         let separator = try #require(item(sut, CallsToolbar.separatorItem) as? NSTrackingSeparatorToolbarItem)
         #expect(separator.splitView === split.splitView)
         #expect(separator.dividerIndex == 0)
@@ -30,7 +30,7 @@ struct CallsToolbarTests {
         let sut = makeSUT()
 
         #expect(sut.toolbarDefaultItemIdentifiers(sut.toolbar)
-                == [CallsToolbar.actionsItem, CallsToolbar.deleteItem, .flexibleSpace, CallsToolbar.copyItem])
+                == [CallsToolbar.actionsItem, CallsToolbar.deleteItem, .flexibleSpace, CallsToolbar.copyItem, CallsToolbar.notesItem])
     }
 
     @Test func eachButtonNamesItselfInItsTooltipAndReportsItsAction() throws {
@@ -108,7 +108,7 @@ struct CallsToolbarTests {
 
         #expect(!makeSUT().toolbarDefaultItemIdentifiers(makeSUT().toolbar).contains(CallsToolbar.mergeItem))
         #expect(merging.toolbarDefaultItemIdentifiers(merging.toolbar)
-                == [CallsToolbar.mergeItem, CallsToolbar.actionsItem, CallsToolbar.deleteItem, .flexibleSpace, CallsToolbar.copyItem])
+                == [CallsToolbar.mergeItem, CallsToolbar.actionsItem, CallsToolbar.deleteItem, .flexibleSpace, CallsToolbar.copyItem, CallsToolbar.notesItem])
     }
 
     @Test func theMergeButtonReportsItsActionAndNamesWhatItDoes() throws {
@@ -125,9 +125,9 @@ struct CallsToolbarTests {
         button.performClick(nil)
         #expect(merges == 1)
         sut.show(.init(call: false, copy: false, merge: true, merging: true))
-        #expect(merge.toolTip == "Готово")
+        #expect(merge.toolTip == "Отменить")
         sut.retitle(text: .init(language: .english))
-        #expect(merge.toolTip == "Done")
+        #expect(merge.toolTip == "Cancel")
         sut.show(.init(call: false, copy: false, merge: false))
         #expect(!merge.isEnabled && !button.isEnabled)
         _ = (merge.target as? NSObject)?.perform(merge.action, with: merge)
@@ -147,4 +147,21 @@ struct CallsToolbarTests {
         return [try #require(item(sut, CallsToolbar.copyItem))] + group.subitems + [try #require(item(sut, CallsToolbar.deleteItem))]
     }
 
+}
+
+extension CallsToolbarTests {
+    @Test func theNativeTemplateMenuFollowsCopyAndReceivesTheSuppliedItems() throws {
+        let sut = CallsToolbar(identifier: "templates", text: .init(language: .russian), act: { _ in })
+        let state = SummaryPreviewState(title: "call", date: "date", duration: "1:00", notes: .markdown("notes", made: nil),
+                                         menu: .init(section: "СДЕЛАТЬ ЗАНОВО", templates: [.init(id: "Default", name: "Default", enabled: true)], keeping: true))
+        sut.show(callActions(state))
+        let order = sut.toolbarDefaultItemIdentifiers(sut.toolbar)
+        #expect(Array(order.suffix(2)) == [CallsToolbar.copyItem, CallsToolbar.notesItem])
+        let item = try #require(sut.toolbar(sut.toolbar, itemForItemIdentifier: CallsToolbar.notesItem, willBeInsertedIntoToolbar: true))
+        let button = try #require(item.view as? NotesMenuControl)
+        #expect(button.isEnabled)
+        #expect(button.templateMenu.items.map(\.title) == ["СДЕЛАТЬ ЗАНОВО", "Default", "", "Сохранять прежние итоги"])
+        sut.show(callActions(nil))
+        #expect(!button.isEnabled)
+    }
 }

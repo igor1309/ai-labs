@@ -135,3 +135,114 @@ Evidence: `RecordingTests.sessionFaultsStayNamedUntilTheNextRecording(_:)`.
 A fault reported with an id other than the running Session's leaves the
 state as it was.
 Evidence: `RecordingReducerTests.faultsFollowTheCurrentSession(_:)`.
+
+## S-18 to S-22 Transcript output and shutdown
+
+Pieces over a temporary calls folder and a fake transcript writer report every
+successful save and failure in order, snapshot names after the file closes,
+report nothing when opening fails, and share one output across successive calls.
+Evidence: `RecordingTranscriptOutputTests.transcriptReportsEverySaveOutcomeInOrder()`,
+`RecordingTranscriptOutputTests.closedCarriesNamesAtFileClose()`,
+`RecordingTranscriptOutputTests.unopenedTranscriptReportsNothing()`,
+`RecordingTranscriptOutputTests.successiveRecordingsShareOneOrderedOutput()`.
+
+The composed Recording ends its output after its last close on shutdown. The
+subscription forwards every value, including repeated saves, then sends
+finalization the end of its input. Quit during an opening waits for that call's
+final publication before termination, and quit with saved text makes it final as
+last saved without model work.
+Evidence: `RecordingPiecesWiringTests.shutdownFinishesTranscriptOutputAfterLastClose()`,
+`TranscriptFinalizationCompositionTests.subscriptionMapsEveryValueThenSendsInputEndedWhenTheOutputEnds()`,
+`TranscriptFinalizationCompositionTests.quitDuringTranscriptOpenPublishesItsFinalBeforeTermination()`,
+`TranscriptFinalizationCompositionTests.quitWithSavedTextPublishesLastSavedWithoutEnteringDiarizer()`.
+
+## Calls-folder claim (S-23 to S-33)
+
+Reducer rows build the given state with `makeState`, each `_state` test
+paired with an `_effect` test for the same state and event; effect handler
+rows drive a spy of the claim port and read the delivered event.
+
+## S-23 A start claims the calls folder before call audio
+
+Evidence: `aStartClaimsTheCallsFolder`; `RecordingClaimTests.aGrantGoesOnToCallAudio_state`, `_effect`; handler: `aClaimAnswersWithTheClaimsAnswerForItsSession`.
+
+## S-24 A start refused by a relaunch begins nothing
+
+Evidence: `aStartRefusedByARelaunchEnds_state`, `_effect`.
+
+## S-25 A start refused by a move begins after it
+
+Evidence: `aStartRefusedByAMoveWaits_state`, `_effect`; `theEndOfTheMoveBeginsAWaitingStart_state`, `_effect`; `aLostFolderAfterTheMoveDropsAWaitingStart_state`, `_effect`.
+
+## S-26 A start refused by a move that has already ended claims again
+
+Evidence: `aRefusalByAMoveThatHasEndedClaimsAgain_state`, `_effect`.
+
+## S-27 A start while the folder moves begins after the move
+
+Evidence: `aStartWhileTheFolderMovesWaits_state`, `_effect`; `aCallWhileTheFolderMovesWaits_state`, `_effect`; compose: `composedMoveHoldsAStartUntilReleaseAndRefreshesTheList`.
+
+## S-28 A stop drops a start waiting for a move
+
+Evidence: `aStopDropsAWaitingStart_state`, `_effect`.
+
+## S-29 A call's end drops its start waiting for a move
+
+Evidence: `aCallsEndDropsItsWaitingStart_state`, `_effect`.
+
+## S-30 A start by hand outlasts a call's end while waiting
+
+Evidence: `aWaitingStartByHandOutlastsTheCallsEnd_state`, `_effect`.
+
+## S-31 Late news of a move does not end a recording
+
+Evidence: `lateNewsOfAMoveDoesNotEndARecording_state`, `_effect`.
+
+## S-32 The claim is released last
+
+Evidence: `releasedCallAudioReleasesTheClaim_state`, `_effect`; `theReleasedClaimEndsTheSession_state`, `_effect`; handler: `releaseAnswersThatCallAudioIsReleased`, `aClaimReleaseReleasesItsTokenAndEndsTheSession`.
+
+## S-33 A stop during the take releases a late grant
+
+Evidence: `aStopDuringTheTakeWaitsForIt_state`, `_effect`; `aGrantAfterAStopIsReleased_state`, `_effect`; `aRefusalAfterAStopEndsTheStart_state`, `_effect`.
+
+## S-34 Automatic recording turned off drops only a call's waiting start
+
+Evidence: `automaticOffDropsOnlyACallsWaitingStart_state`, `_effect`.
+
+## Waiting for call audio (S-35 to S-40)
+
+Driven as the claim rows are, with a fake readiness port whose answers the
+test sets and a fake clock the test advances; rows read the state, the
+claims taken and released, and the readiness requests.
+
+## S-35 A call's start refused for call audio tries again
+
+A call starts, readiness answers false: idle, call audio missing, the claim
+released. The clock advances five seconds: a claim and a readiness request;
+it answers true and the Session comes up: a recording begun by the call.
+
+## S-36 Call audio coming back begins a waiting call's start
+
+From the wait, call audio is published available: a readiness request
+without the clock advancing; it answers true: a recording begun by the call.
+
+## S-37 A call's start goes on waiting while call audio is missing
+
+From the wait, five seconds and a false answer: idle with call audio
+missing; five more seconds: another request.
+
+## S-38 The wait for call audio ends with the call, a stop or automatic off
+
+From the wait, each of call end, user stop and automatic off, then the
+clock advances: no further request, idle.
+
+## S-39 Another missing condition or shutdown ends the wait
+
+From the wait, each of calls folder lost, room lost and shutdown, then the
+clock advances: no further request, idle.
+
+## S-40 A start by hand refused for call audio does not wait
+
+No call, the user starts, readiness answers false; the clock advances: no
+further request, idle with call audio missing.

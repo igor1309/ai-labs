@@ -30,10 +30,22 @@ import Testing
 
     @Test func aStoredCallsTranscriptBecomesARequestedSubmission() async throws {
         let sut = SummariesPreparationPort(notes: { .init(enabled: false) }, makeID: { "id-1" },
-                                           callText: { _ in .init(notes: nil, transcript: [.init(start: 3, words: "spoken", label: "A")]) })
+                                           callText: { _ in .init(transcript: [.init(start: 3, words: "spoken", label: "A")], identity: "transcript-digest") })
         let submission = try await sut.submission(call: "call")
         #expect(submission.call == "call" && submission.entries == [.init(label: "A", time: "3.0", text: "spoken")]
-                && submission.finalWrite && submission.usable && submission.requested)
+                && submission.finalWrite && submission.usable && submission.requested && submission.transcriptIdentity == "transcript-digest")
+    }
+    @Test func currentInputUsesTheSameIdentityAsAPreparedJob() async throws {
+        let sut = SummariesPreparationPort(notes: { .init(enabled: true) }, makeID: { "id-1" },
+                                           callText: { _ in .init(transcript: [.init(start: 3, words: "spoken", label: "A")], identity: "transcript-digest") })
+        let submission = try await sut.submission(call: "call")
+        let job = await sut.job(for: submission).job
+        #expect(try await sut.input(call: "call") == job.input)
+        #expect(job.transcriptIdentity == "transcript-digest")
+    }
+    @Test func currentInputPropagatesAnUnreadableTranscript() async {
+        let sut = SummariesPreparationPort(notes: { .init(enabled: true) }, makeID: { "id-1" }, callText: { _ in throw CocoaError(.fileReadNoSuchFile) })
+        await #expect(throws: CocoaError.self) { try await sut.input(call: "call") }
     }
     @Test func anEmptyTranscriptIsNotUsable() async throws {
         #expect(try await makeSUT(.init(enabled: true)).submission(call: "call").usable == false)
@@ -48,6 +60,6 @@ import Testing
         .init(call: "call", entries: entries, finalWrite: true, usable: true, requested: requested)
     }
     private func makeSUT(_ notes: NotesPreferences) -> SummariesPreparationPort {
-        .init(notes: { notes }, makeID: { "id-1" }, callText: { _ in .init(notes: nil, transcript: []) })
+        .init(notes: { notes }, makeID: { "id-1" }, callText: { _ in .init(transcript: []) })
     }
 }

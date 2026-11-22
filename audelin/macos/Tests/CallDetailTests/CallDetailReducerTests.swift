@@ -45,6 +45,15 @@ struct CallDetailReducerTests {
                .readFinished(id: "a", revision: 7, result: test.result)) {
             $0.notes = test.result
             $0.detail = .init(id: "a", title: "A title", date: "Today, 10:00", duration: "1:00", content: test.content)
+            if case let .read(pair) = test.result {
+                $0.detail?.pair = pair
+                $0.detail?.template = pair.current.templateName
+                $0.detail?.progress = test.summary.badge == .pending ? "progress Default" : nil
+                $0.detail?.failure = test.summary.badge == .failed ? test.summary.status : nil
+            }
+            $0.menuFacts = .init(call: "a", hasNotes: { if case .read = test.result { true } else { false } }(),
+                                template: { if case let .read(pair) = test.result { pair.current.templateID } else { nil } }(),
+                                busy: test.summary.badge == .pending)
         }
     }
     @Test(arguments: contentCases)
@@ -129,6 +138,15 @@ struct CallDetailReducerTests {
                .readFinished(id: "a", revision: 7, result: test.result)) {
             $0.notes = test.result
             $0.detail = .init(id: "a", title: "A title", date: "Today, 10:00", duration: "1:00", content: test.content)
+            if case let .read(pair) = test.result {
+                $0.detail?.pair = pair
+                $0.detail?.template = pair.current.templateName
+                $0.detail?.progress = test.summary.badge == .pending ? "progress Default" : nil
+                $0.detail?.failure = test.summary.badge == .failed ? test.summary.status : nil
+            }
+            $0.menuFacts = .init(call: "a", hasNotes: { if case .read = test.result { true } else { false } }(),
+                                template: { if case let .read(pair) = test.result { pair.current.templateID } else { nil } }(),
+                                busy: test.summary.badge == .pending)
             $0.pendingOpen = nil
             $0.opened = "a"
             $0.opens += 1
@@ -192,9 +210,9 @@ private let contentCases: [ContentCase] = {
     let badges: [CallDetailState.Call.Summary.Badge] = [.none, .pending, .failed]
     let notes: [ContentCase] = badges.flatMap { badge in
         [ContentCase(summary: makeSummary(badge), editable: true,
-                     result: .read(text: "# Notes", made: "12:30"), content: .notes("# Notes", made: "12:30")),
+                     result: .read(.init(current: .init(text: "# Notes", made: "12:30"))), content: .notes("# Notes", made: "12:30")),
          ContentCase(summary: makeSummary(badge), editable: false,
-                     result: .read(text: "", made: nil), content: .notes("")),
+                     result: .read(.init(current: .init(text: "", made: nil))), content: .notes("")),
          ContentCase(summary: makeSummary(badge), editable: true,
                      result: .unreadable(reason: "denied"), content: .unreadable("denied"))]
     }
@@ -218,7 +236,7 @@ private struct IgnoredCase: Sendable {
 private let ignoredCases: [IgnoredCase] = [
     .init(state: { makeEmpty() }, event: .readFinished(id: "a", revision: 0, result: .absent)),
     .init(state: { makeReading() }, event: .readFinished(id: "b", revision: 7, result: .absent)),
-    .init(state: { makeReading() }, event: .readFinished(id: "a", revision: 6, result: .read(text: "old", made: nil))),
+    .init(state: { makeReading() }, event: .readFinished(id: "a", revision: 6, result: .read(.init(current: .init(text: "old", made: nil))))),
     .init(state: { makeReading() }, event: .readFinished(id: "a", revision: 7, result: .notRead)),
     .init(state: { makeShown() }, event: .readFinished(id: "a", revision: 7, result: .absent)),
     .init(state: { makeEmpty() }, event: .summaryChanged(id: "a", summary: makeFailed())),
@@ -242,7 +260,7 @@ private func makeCall(id: String = "a", summary: CallDetailState.Call.Summary = 
 }
 
 private func makeShown() -> CallDetailState {
-    .init(selected: makeCall(), notes: .read(text: "old notes", made: nil),
+    .init(selected: makeCall(), notes: .read(.init(current: .init(text: "old notes", made: nil))),
           detail: .init(id: "a", title: "Old title", date: "Yesterday", duration: "0:59", content: .notes("old notes")), revision: 7)
 }
 
@@ -257,10 +275,10 @@ private func assert(_ state: CallDetailState, _ event: CallDetailEvent,
                     sourceLocation: SourceLocation = #_sourceLocation, mutation: (inout CallDetailState) -> Void = { _ in }) {
     var expected = state
     mutation(&expected)
-    #expect(CallDetailReducer().reduce(state, event).0 == expected, sourceLocation: sourceLocation)
+    #expect(CallDetailReducer(progress: { "progress " + $0 }, failure: { "failure \($0)" }, transcriptMark: { "mark \($0)" }).reduce(state, event).0 == expected, sourceLocation: sourceLocation)
 }
 
 private func assert(_ state: CallDetailState, _ event: CallDetailEvent, delivers effect: CallDetailEffect?,
                     sourceLocation: SourceLocation = #_sourceLocation) {
-    #expect(CallDetailReducer().reduce(state, event).1 == effect, sourceLocation: sourceLocation)
+    #expect(CallDetailReducer(progress: { "progress " + $0 }, failure: { "failure \($0)" }, transcriptMark: { "mark \($0)" }).reduce(state, event).1 == effect, sourceLocation: sourceLocation)
 }

@@ -2,10 +2,11 @@ import CallDiarizer
 import CallNames
 import Foundation
 import SpeakerNaming
+import TranscriptFinalization
 import TranscriptFormat
 
 protocol WholeTranscriptReplacing: Sendable {
-    func replaceWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) async throws
+    func replaceWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker], outcomes: FinishingOutcomes) async throws
 }
 
 /// Gives a closed call's far side to its speakers and saves the result.
@@ -21,9 +22,8 @@ struct AfterCallPass: Sendable {
     }
 
     /// A failed diarization keeps the far side plain and the live names tentative.
-    func diarize(call _: String, _ state: CallState) async -> Composer.Transcript.Attributed? {
+    func diarize(_ state: CallState, evidence board: CallNamesState, outcomes: FinishingOutcomes) async -> SavedDiarization<Composer.Transcript.Attributed>? {
 
-        let board = names.snapshot()
         guard let track else { return nil }
 
         let zoom = !board.spoken.isEmpty
@@ -46,28 +46,28 @@ struct AfterCallPass: Sendable {
         attributed.rows = Composer.Transcript.rowSpeakers(rows: rows, turns: result.turns, speakers: attributed.speakers)
         let microphone = state.entries.filter { $0.speaker == .mine }.map { Composer.Transcript.segment(from: $0) }
         do {
-            try await writer.replaceWhole(Composer.Transcript.merging(microphone, with: attributed.far), speakers: attributed.speakers)
+            try await writer.replaceWhole(Composer.Transcript.merging(microphone, with: attributed.far), speakers: attributed.speakers, outcomes: .init(split: .done(diarizer: result.diarizer), cleaning: outcomes.cleaning))
             sink.write(.init(category: .session, message: "remote speakers saved speakers=\(attributed.speakers.count)"))
-            return attributed
+            return .init(far: attributed, diarizer: result.diarizer)
         } catch {
             sink.write(.init(category: .session, message: "remote speakers not saved: \(error)"))
-            return zoom ? await saveConfirmedNames(state, names: board.confirming(confirmed)) : nil
+            return zoom ? await saveConfirmedNames(state, names: board.confirming(confirmed), outcomes: outcomes) : nil
         }
     }
 
     /// Without the attributed far side, the confirmed names still reach the file on the
     /// call's own rows, rendered afresh so rows already final take their corrected names.
     /// Once saved, those rows are the far side the pass returns.
-    private func saveConfirmedNames(_ state: CallState, names board: CallNamesState) async -> Composer.Transcript.Attributed? {
+    private func saveConfirmedNames(_ state: CallState, names board: CallNamesState, outcomes: FinishingOutcomes) async -> SavedDiarization<Composer.Transcript.Attributed>? {
 
         let rows = state.entries.map { entry in
             Composer.Transcript.segment(from: entry, speaker: board.rowNames[entry.text.id].flatMap { board.participantIDs[$0] })
         }
         let speakers = Composer.Transcript.speakers(board)
         do {
-            try await writer.replaceWhole(rows, speakers: speakers)
+            try await writer.replaceWhole(rows, speakers: speakers, outcomes: .init(split: .nothingKept, cleaning: outcomes.cleaning))
             sink.write(.init(category: .session, message: "after-call names saved"))
-            return .init(far: rows.filter { $0.side == .theirs }, speakers: speakers)
+            return .init(far: .init(far: rows.filter { $0.side == .theirs }, speakers: speakers), diarizer: nil)
         } catch {
             sink.write(.init(category: .session, message: "after-call names not saved: \(error)"))
             return nil

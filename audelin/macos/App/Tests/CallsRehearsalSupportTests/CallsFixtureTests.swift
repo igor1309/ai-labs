@@ -24,6 +24,13 @@ struct CallsFixtureTests {
                 #expect(saved.segments.map(\.side) == [.mine, .theirs, .theirs])
                 #expect(FileManager.default.fileExists(atPath: calls.appendingPathComponent("\(id)/summary.md").path))
             }
+            // A and B tell origins of their own versions, each by the start its folder names; D tells none.
+            for (id, version) in [(CallsFixture.a, "fixture-a"), (CallsFixture.b, "fixture-b")] {
+                let origin = TranscriptFormat.read(try String(contentsOf: calls.appendingPathComponent("\(id)/transcript.md"), encoding: .utf8)).origin
+                #expect(origin?.calls.map(\.start) == [try start(of: id)])
+                #expect(origin?.calls.first?.origin?.hearing.version == version)
+            }
+            #expect(TranscriptFormat.read(try String(contentsOf: calls.appendingPathComponent("\(CallsFixture.d)/transcript.md"), encoding: .utf8)).origin == nil)
             let d = try FileManager.default.contentsOfDirectory(atPath: calls.appendingPathComponent(CallsFixture.d).path).sorted()
             #expect(d == ["call.caf", "transcript.md"])
             let c = try FileManager.default.contentsOfDirectory(atPath: calls.appendingPathComponent(CallsFixture.c).path)
@@ -45,6 +52,22 @@ struct CallsFixtureTests {
         }
     }
 
+    @Test func legacyMergeHoldsAAndBUnderAnOriginlessTranscript() async throws {
+        try await withRehearsalFolder { root in
+            let calls = root.appendingPathComponent("calls")
+            let options = try CallsRehearsalOptions.parse(["--calls", calls.path, "--state", root.appendingPathComponent("state").path,
+                                                           "--trash", root.appendingPathComponent("trash").path, "--seed", "legacy-merge"])
+            #expect(options.seed == .legacyMerge)
+            try await options.seedCalls()
+            #expect(try FileManager.default.contentsOfDirectory(atPath: calls.path).sorted() == [CallsFixture.a, CallsFixture.c, CallsFixture.d])
+            let merged = calls.appendingPathComponent(CallsFixture.a)
+            #expect(try FileManager.default.contentsOfDirectory(atPath: merged.path).sorted() == [CallsFixture.a, CallsFixture.b, "transcript.md"])
+            let saved = TranscriptFormat.read(try String(contentsOf: merged.appendingPathComponent("transcript.md"), encoding: .utf8))
+            #expect(saved.origin == nil)
+            #expect(!saved.segments.isEmpty)
+        }
+    }
+
     @Test(arguments: [["--seed", "other"], ["--seed"], ["--other", "merge"]])
     func unknownSeedFails(extra: [String]) {
         #expect(throws: CallsRehearsalOptions.Failure.self) {
@@ -62,4 +85,10 @@ struct CallsFixtureTests {
             #expect(!FileManager.default.fileExists(atPath: calls.path))
         }
     }
+}
+
+private func start(of id: String) throws -> Date {
+    let format = DateFormatter()
+    format.locale = Locale(identifier: "en_US_POSIX"); format.timeZone = .current; format.dateFormat = "yyyy.MM.dd-HHmm"
+    return try #require(format.date(from: id))
 }

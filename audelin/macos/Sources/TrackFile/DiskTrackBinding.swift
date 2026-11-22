@@ -69,11 +69,18 @@ final class DiskTrackBinding: TrackFileBinding {
 
     static func duration(at url: URL) throws -> TimeInterval {
 
+        let opened = try openSaved(at: url)
+        defer { Darwin.close(opened.descriptor) }
+        return Double(opened.frames) / TrackFile.sampleRate
+    }
+
+    static func openSaved(at url: URL) throws -> (descriptor: Int32, frames: Int64) {
         guard url.isFileURL else { throw TrackFile.Failure.invalidFile }
         // Nonblocking open also lets a non-regular input be rejected without waiting on a pipe.
         let descriptor = Darwin.open(url.path, O_RDONLY | O_CLOEXEC | O_NONBLOCK)
         guard descriptor >= 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
-        defer { Darwin.close(descriptor) }
+        var accepted = false
+        defer { if !accepted { Darwin.close(descriptor) } }
         var info = stat()
         guard fstat(descriptor, &info) == 0 else { throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO) }
         guard info.st_mode & S_IFMT == S_IFREG, info.st_size >= Layout.audioOffset else {
@@ -103,7 +110,8 @@ final class DiskTrackBinding: TrackFileBinding {
             guard length >= Layout.editCountBytes, length - Layout.editCountBytes == available,
                   available % UInt64(Layout.bytesPerFrame) == 0 else { throw TrackFile.Failure.invalidFile }
         }
-        return Double(available / UInt64(Layout.bytesPerFrame)) / TrackFile.sampleRate
+        accepted = true
+        return (descriptor, Int64(available / UInt64(Layout.bytesPerFrame)))
     }
 
     func write(_ samples: [Int16], at frame: Int64) throws {
@@ -122,6 +130,10 @@ final class DiskTrackBinding: TrackFileBinding {
     }
 
     func read(from frame: Int64, count: Int) throws -> [Float] {
+        try Self.read(descriptor: descriptor, from: frame, count: count)
+    }
+
+    static func read(descriptor: Int32, from frame: Int64, count: Int) throws -> [Float] {
 
         var bytes = Data(count: count * Int(Layout.bytesPerFrame))
         try bytes.withUnsafeMutableBytes { buffer in
@@ -131,7 +143,7 @@ final class DiskTrackBinding: TrackFileBinding {
                                  Layout.audioOffset + frame * Layout.bytesPerFrame + Int64(done))
                 if size < 0 {
                     if errno == EINTR { continue }
-                    throw currentError()
+                    throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
                 }
                 guard size > 0 else { throw POSIXError(.EIO) }
                 done += size

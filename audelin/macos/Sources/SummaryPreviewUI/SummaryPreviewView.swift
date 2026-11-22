@@ -61,11 +61,22 @@ public struct SummaryPreviewView: View {
         VStack(alignment: .leading, spacing: 0) {
             if let state {
                 header(state)
+                if let progress = state.progress { remaking(progress) }
+                if let failure = state.failure { remakeFailure(failure) }
+                if let reason = state.menu?.folderFailure {
+                    Text(reason).font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.rec)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(tokens.space12).background(tokens.errBg)
+                        .accessibilityIdentifier("preview.openTemplatesFailure")
+                        .accessibilityLabel(reason).accessibilityValue(reason)
+                }
                 switch state.notes {
                 case let .markdown(source, made):
-                    NotesText(text: notes(source, made: made), background: NSColor(tokens.surface),
+                    if let mark = state.transcriptMark { transcriptMark(mark) }
+                    NotesText(text: notes(source, made: made, template: state.templateName), background: NSColor(tokens.surface),
                               inset: NSSize(width: tokens.space28 - 5, height: 0),
-                              label: text(.notes), made: made.map { text(.made, $0) })
+                              label: text(.notes), made: made.map { text(.made, $0) + (state.templateName.map { " · " + text(.templateLine, $0) } ?? "") })
+                        .opacity(state.progress == nil ? 1 : 0.5)
                 case let .unreadable(reason):
                     Text(reason)
                         .font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.rec)
@@ -98,22 +109,173 @@ public struct SummaryPreviewView: View {
                 .textSelection(.enabled)
             Text("\(state.date) · \(state.duration)").font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.sub)
                 .textSelection(.enabled)
+            metaLine(state).padding(.top, tokens.space8)
+            if let version = state.version {
+                NotesVersionControl(version: version, previous: text(.previous), current: text(.current),
+                                    tokens: tokens, event: event)
+                    .fixedSize()
+                    .padding(.top, tokens.space8)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.top, tokens.space12).padding(.leading, tokens.space28).padding(.trailing, tokens.space28 + tokens.space40)
         .padding(.bottom, tokens.space12)
     }
 
+    /// The template the notes were made with, then the tags: «Шаблон: Default · Теги: …». The template leads so its
+    /// place does not move as tags grow; its name is `text` against `sub` labels.
+    private func metaLine(_ state: SummaryPreviewState) -> some View {
+        HStack(spacing: tokens.space8) {
+            if let template = state.templateName {
+                HStack(spacing: tokens.space8) {
+                    Text(text(.templateCaption)).foregroundStyle(tokens.sub).accessibilityHidden(true)
+                    // The name carries the identifier: a container's value does not reach accessibility clients.
+                    Text(template).foregroundStyle(tokens.text).lineLimit(1)
+                        .accessibilityIdentifier("preview.template")
+                        .accessibilityLabel(text(.templateCaption))
+                        .accessibilityValue(template)
+                }
+                .fixedSize()
+                Text("·").foregroundStyle(tokens.gutter).accessibilityHidden(true)
+            }
+            tagsLine(state.tags)
+        }
+        .font(tokens.ui(tokens.typeSmall))
+    }
+
+    /// «Теги:» and the call's tags with «Изменить», or the field editing them with its hint.
+    @ViewBuilder private func tagsLine(_ tags: SummaryPreviewState.Tags) -> some View {
+        HStack(spacing: tokens.space8) {
+            Text(text(.tags)).foregroundStyle(tokens.sub)
+            switch tags {
+            case let .shown(names):
+                if names.isEmpty {
+                    Text(text(.noTags)).foregroundStyle(tokens.gutter)
+                    Text("·").foregroundStyle(tokens.gutter)
+                }
+                // Framed like the editing field, outline clear, so editing keeps the line's height and the chips' place.
+                HStack(spacing: tokens.space6) {
+                    ForEach(names, id: \.self) { chip($0, removable: false) }
+                    Button { event(.editTags) } label: {
+                        Text(text(names.isEmpty ? .addTags : .editTags)).foregroundStyle(tokens.me)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("preview.editTags")
+                    .accessibilityLabel(text(names.isEmpty ? .addTags : .editTags))
+                }
+                .padding(.horizontal, tokens.space6).padding(.vertical, tokens.space4)
+                .fixedSize()
+                .overlay(RoundedRectangle(cornerRadius: tokens.radiusControl).stroke(.clear))
+            case let .editing(field):
+                tagsField(field)
+                if field.saving {
+                    ProgressView().controlSize(.small)
+                    Text(text(.savingTags)).foregroundStyle(tokens.gutter)
+                } else if let failure = field.failure {
+                    Text(failure).foregroundStyle(tokens.rec).lineLimit(1)
+                        .accessibilityIdentifier("preview.tagsFailure")
+                } else {
+                    Text(text(.tagsHint)).foregroundStyle(tokens.gutter).lineLimit(1)
+                }
+            }
+        }
+        .font(tokens.ui(tokens.typeSmall))
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("preview.tags")
+        .accessibilityValue(tagsValue(tags))
+    }
+
+    private func tagsValue(_ tags: SummaryPreviewState.Tags) -> String {
+        switch tags {
+        case let .shown(names): names.isEmpty ? text(.noTags) : names.joined(separator: ", ")
+        case let .editing(field): (field.tags + (field.entry.isEmpty ? [] : [field.entry])).joined(separator: ", ")
+        }
+    }
+
+    /// One chip per tag, then the entry with the completion after it in `gutter`.
+    private func tagsField(_ field: SummaryPreviewState.TagsField) -> some View {
+        HStack(spacing: tokens.space6) {
+            ForEach(field.tags, id: \.self) { chip($0, removable: !field.saving) }
+            TagEntry(entry: field.entry, completion: field.completion, placeholder: text(.newTag),
+                     tokens: tokens, disabled: field.saving, event: event)
+        }
+        .padding(.horizontal, tokens.space6).padding(.vertical, tokens.space4)
+        .fixedSize()
+        .background(tokens.btn, in: .rect(cornerRadius: tokens.radiusControl))
+        .overlay(RoundedRectangle(cornerRadius: tokens.radiusControl).stroke(tokens.me))
+    }
+
+    private func chip(_ name: String, removable: Bool) -> some View {
+        HStack(spacing: tokens.space4) {
+            Text(name).foregroundStyle(tokens.text).lineLimit(1).fixedSize()
+            if removable {
+                Button { event(.removeTag(name)) } label: { Image(systemName: "xmark").foregroundStyle(tokens.sub) }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("preview.removeTag.\(name)")
+                    .accessibilityLabel(text(.removeTag, name))
+            }
+        }
+        .padding(.horizontal, tokens.space8).padding(.vertical, tokens.space2)
+        .background(tokens.chip, in: .rect(cornerRadius: tokens.radiusControl))
+        .fixedSize()
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("preview.tag.\(name)")
+    }
+
     /// The notes, then when they were made under their last line.
-    private func notes(_ source: String, made: String?) -> NSAttributedString {
+    private func notes(_ source: String, made: String?, template: String?) -> NSAttributedString {
         let rendered = NSMutableAttributedString(attributedString: render(source, style))
         guard let made else { return rendered }
         let paragraph = NSMutableParagraphStyle()
         paragraph.paragraphSpacingBefore = tokens.space16
-        rendered.append(NSAttributedString(string: "\n" + text(.made, made), attributes: [
+        rendered.append(NSAttributedString(string: "\n" + text(.made, made) + (template.map { " · " + text(.templateLine, $0) } ?? ""), attributes: [
             .font: tokens.nsUi(tokens.typeCaption), .foregroundColor: NSColor(tokens.gutter), .paragraphStyle: paragraph,
         ]))
         return rendered
+    }
+
+    private func remaking(_ progress: String) -> some View {
+        HStack(spacing: tokens.space12) {
+            ProgressView().controlSize(.small)
+            Text(progress).foregroundStyle(tokens.text)
+                .accessibilityIdentifier("preview.remaking")
+                .accessibilityValue(progress)
+            Spacer(minLength: 0)
+            Text(text(.cancel)).foregroundStyle(tokens.sub).accessibilityHidden(true)
+                .overlay { NotesCancelTarget(title: text(.cancel)) { event(.cancelSummary) } }
+        }
+        .font(tokens.ui(tokens.typeSmall))
+        .padding(tokens.space12).background(tokens.okBg)
+        .padding(.horizontal, tokens.space28).padding(.bottom, tokens.space12)
+    }
+
+    /// Notes made from another transcript: a history icon and the mark in `warn`, above the notes.
+    private func transcriptMark(_ mark: String) -> some View {
+        HStack(spacing: tokens.space8) {
+            Image(systemName: "clock.arrow.circlepath").accessibilityHidden(true)
+            Text(mark)
+                .accessibilityIdentifier("preview.transcriptMark")
+                .accessibilityLabel(mark)
+                .accessibilityValue(mark)
+        }
+        .font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.warn)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, tokens.space28).padding(.bottom, tokens.space12)
+    }
+
+    private func remakeFailure(_ failure: String) -> some View {
+        VStack(alignment: .leading, spacing: tokens.space4) {
+            Text(text(.remakeFailed)).fontWeight(.semibold)
+            // The reason itself carries the identifier: a container's value does not reach accessibility clients.
+            Text(failure).textSelection(.enabled)
+                .accessibilityIdentifier("preview.remakeFailure")
+                .accessibilityLabel(text(.remakeFailed))
+                .accessibilityValue(failure)
+        }
+        .font(tokens.ui(tokens.typeSmall)).foregroundStyle(tokens.rec)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(tokens.space12).background(tokens.errBg)
+        .padding(.horizontal, tokens.space28).padding(.bottom, tokens.space12)
     }
 
     /// «Нет итогов» and the link «✨ Сделать», one line under the header.
@@ -209,6 +371,41 @@ public struct SummaryPreviewView: View {
                              (before: tokens.space12, after: tokens.space6)],
             labelLevels: [2]
         )
+    }
+}
+
+/// The tag being typed: Return saves, Esc cancels, Tab takes the completion.
+private struct TagEntry: View {
+    let entry: String
+    let completion: String
+    let placeholder: String
+    let tokens: GlassLedger
+    let disabled: Bool
+    let event: (SummaryPreviewEvent) -> Void
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        HStack(spacing: 0) {
+            TextField(placeholder, text: Binding(get: { entry }, set: { event(.typeTag($0)) }))
+                .textFieldStyle(.plain).foregroundStyle(tokens.text)
+                .fixedSize()
+                .focused($focused)
+                .disabled(disabled)
+                .onSubmit { event(.submitTags) }
+                // The field editor takes Esc as its own cancel, so `onExitCommand` never fires here.
+                .onKeyPress(.escape) {
+                    event(.cancelTags)
+                    return .handled
+                }
+                .onKeyPress(.tab) {
+                    guard !completion.isEmpty else { return .ignored }
+                    event(.completeTag)
+                    return .handled
+                }
+                .accessibilityIdentifier("preview.tagEntry")
+            Text(completion).foregroundStyle(tokens.gutter).accessibilityHidden(true)
+        }
+        .onAppear { focused = true }
     }
 }
 

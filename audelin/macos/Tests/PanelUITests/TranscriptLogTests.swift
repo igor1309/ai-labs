@@ -67,8 +67,8 @@ struct TranscriptLogTests {
             if let value = value as? NSTextAttachment { symbols.append(value.image?.accessibilityDescription) }
         }
         #expect(symbols == ["я", "они"])
-        #expect(attribute(.foregroundColor, of: "12:44", in: text) as? NSColor == NSColor(GlassLedger.light.me))
-        #expect(attribute(.foregroundColor, of: "12:45", in: text) as? NSColor == NSColor(GlassLedger.light.them))
+        #expect(try foregroundColor(of: "12:44", in: text).isEqual(NSColor(GlassLedger.light.me)))
+        #expect(try foregroundColor(of: "12:45", in: text).isEqual(NSColor(GlassLedger.light.them)))
     }
 
     @Test func aSpeakerNameSitsOnItsOwnLineOutsideTheSelection() throws {
@@ -80,7 +80,7 @@ struct TranscriptLogTests {
 
         #expect(text.string == "\tАнна Королёва\n\t12:44\t\u{FFFC}\tпривет\n\t12:45\t\u{FFFC}\tdeploy")
         #expect(Transcript.text(in: NSRange(location: 0, length: text.string.utf16.count), of: text.attributedString()) == "привет\ndeploy")
-        #expect(attribute(.foregroundColor, of: "Анна", in: text) as? NSColor == NSColor(GlassLedger.light.them))
+        #expect(try foregroundColor(of: "Анна", in: text).isEqual(NSColor(GlassLedger.light.them)))
         #expect((attribute(.font, of: "Анна", in: text) as? NSFont)?.pointSize == GlassLedger.light.typeCaption)
     }
 
@@ -90,7 +90,7 @@ struct TranscriptLogTests {
             .entry(.init(id: 1, time: "12:44", speaker: .them, settled: "привет", label: "Анна", labelIsTentative: true)),
         ]))))
         #expect(attribute(.obliqueness, of: "Анна", in: text) as? CGFloat == 0.2)
-        #expect(attribute(.foregroundColor, of: "Анна", in: text) as? NSColor == NSColor(GlassLedger.light.gutter))
+        #expect(try foregroundColor(of: "Анна", in: text).isEqual(NSColor(GlassLedger.light.gutter)))
     }
 
     @Test func placesALateGroupWhereItsMinutesWere() throws {
@@ -862,6 +862,11 @@ struct TranscriptLogTests {
 
         let origin = fragment.layoutFragmentFrame.origin
         return line.typographicBounds.offsetBy(dx: origin.x + text.textContainerOrigin.x, dy: origin.y + text.textContainerOrigin.y)
+    }
+
+    private func foregroundColor(of part: String, in text: NSTextView,
+                                 sourceLocation: SourceLocation = #_sourceLocation) throws -> NSColor {
+        try #require(attribute(.foregroundColor, of: part, in: text) as? NSColor, sourceLocation: sourceLocation)
     }
 
     private func attribute(_ key: NSAttributedString.Key, of part: String, in text: NSTextView) -> Any? {

@@ -15,6 +15,8 @@ struct CallFolderTests {
         try await withCallsFolder { calls in
             let made = try maker(calls).make()
             #expect(made.url == calls.appendingPathComponent("2026.10.24-1405", isDirectory: true))
+            // The start is the minute the name tells, not the clock's second.
+            #expect(made.start == Date(timeIntervalSince1970: 1_792_818_300))
             try await expectDirectory(made.url)
             let places = [made.microphoneURL, made.callURL, made.transcriptURL]
             #expect(Set(places).count == 3)

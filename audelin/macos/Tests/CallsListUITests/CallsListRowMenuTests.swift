@@ -15,7 +15,7 @@ struct CallsListRowMenuTests {
         let menu = try #require(try target("2026.10.20-1600", in: host).menu(for: rightClick()))
 
         #expect(spy.events == [.select("2026.10.20-1600")])
-        #expect(menu.items.map(\.title) == ["Открыть", "Переименовать", "Повторить подготовку итогов", "", "Удалить…"])
+        #expect(menu.items.map(\.title) == ["Открыть", "Переименовать", "Распознать заново", "Повторить подготовку итогов", "", "Удалить…"])
     }
 
     @Test func menuShowsTheRowsKeys() throws {
@@ -25,8 +25,8 @@ struct CallsListRowMenuTests {
         let menu = try #require(try target("2026.10.20-1600", in: host).menu(for: rightClick()))
 
         let items = menu.items.filter { !$0.isSeparatorItem }
-        #expect(items.map(\.keyEquivalent) == ["\r", "r", "", "\u{8}"])
-        #expect(items.map(\.keyEquivalentModifierMask) == [[], .command, [], .command])
+        #expect(items.map(\.keyEquivalent) == ["r", "\r", "", "", "\u{8}"])
+        #expect(items.map(\.keyEquivalentModifierMask) == [.command, [], [], [], .command])
     }
 
     @Test func menuItemsActOnTheRightClickedRow() throws {
@@ -38,7 +38,7 @@ struct CallsListRowMenuTests {
         for index in menu.items.indices where !menu.items[index].isSeparatorItem { menu.performActionForItem(at: index) }
 
         let id = "2026.10.20-1600"
-        #expect(spy.events == [.select(id), .open(id), .beginRename(id), .retrySummary(id), .askDelete(id)])
+        #expect(spy.events == [.select(id), .open(id), .beginRename(id), .makeTranscriptAgain(id), .retrySummary(id), .askDelete(id)])
     }
 
     @Test(arguments: ["2026.10.21-1230", "2026.10.20-1600", "2026.10.19-0900"])
@@ -46,6 +46,7 @@ struct CallsListRowMenuTests {
 
         var state = makeState()
         state.busy = true
+        for index in state.rows.indices { state.rows[index].transcriptAgain = .unavailable("busy") }
         let host = Offscreen.host(view(state, EventSpy()), size: size)
 
         let menu = try #require(try target(id, in: host).menu(for: rightClick()))
@@ -59,7 +60,7 @@ struct CallsListRowMenuTests {
 
         let menu = try #require(try target("2026.10.21-1230", in: host).menu(for: rightClick()))
 
-        #expect(menu.items.map(\.title) == ["Открыть", "Переименовать", "", "Удалить…"])
+        #expect(menu.items.map(\.title) == ["Открыть", "Переименовать", "Распознать заново", "", "Удалить…"])
     }
 
     @Test func rowThatCanMakeNotesOffersToAndSaysWhich() throws {
@@ -68,7 +69,7 @@ struct CallsListRowMenuTests {
         let host = Offscreen.host(view(makeState(), spy), size: size)
         let menu = try #require(try target("2026.10.19-0900", in: host).menu(for: rightClick()))
 
-        #expect(menu.items.map(\.title) == ["Открыть", "Переименовать", "Сделать итоги", "", "Удалить…"])
+        #expect(menu.items.map(\.title) == ["Открыть", "Переименовать", "Распознать заново", "Сделать итоги", "", "Удалить…"])
         let index = try #require(menu.items.firstIndex { $0.title == "Сделать итоги" })
         menu.performActionForItem(at: index)
         #expect(spy.events == [.select("2026.10.19-0900"), .makeSummary("2026.10.19-0900")])

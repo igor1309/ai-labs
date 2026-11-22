@@ -22,7 +22,7 @@ struct SessionRecordingTests {
             #expect(try await recordedSamples(folder.appendingPathComponent("microphone.caf")) == (microphoneFails ? [] : [0.25, -0.5, 0.125]))
             #expect(try await recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5, -0.125])
             let mine = microphoneFails ? "" : "**Me** 00:00:00\nmine final\n\n"
-            #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
+            #expect(try transcriptBody(at: folder.appendingPathComponent("transcript.md"))
                 == "# Transcript\n\n" + mine + "**Them** 00:00:00\ntheirs final\n")
             #expect(await rig.mine.chunks.flatMap(\.samples) == (microphoneFails ? [] : [0.25, -0.5, 0.125]))
             #expect(await rig.theirs.chunks.flatMap(\.samples) == [-0.25, 0.5, -0.125])
@@ -86,6 +86,7 @@ struct SessionRecordingTests {
             try await rig.start()
             await rig.mine.heard.next(); await rig.theirs.heard.next()
             try await rig.stop()
+            await rig.log.wait { $0.category == .session && $0.message.hasPrefix("state id=1 phase=ended ") }
             #expect(rig.log.entries.all.contains { $0.category == .session && $0.error?.contains("\(side) capture: failed") == true })
             #expect(try await recordedSamples(rig.folder().appendingPathComponent("microphone.caf")) == [0.25, -0.5, 0.125])
             #expect(try await recordedSamples(rig.folder().appendingPathComponent("call.caf")) == [-0.25, 0.5, -0.125])

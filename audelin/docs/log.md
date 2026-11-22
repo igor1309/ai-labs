@@ -1,7 +1,70 @@
 # Log
 
+## 2026-11-21
+
+- LAB-1754: Stop in a finished call's panel no longer stops the call recording now. A far-side line said while the previous call's watch was still closing now takes its speaker's name once the new watch sees them.
+- LAB-1736: Call notes call you by name, not "Me": the name Zoom last showed for you, else your Mac account's full name. Notes keep the name they were made with; the transcript still marks your lines as yours.
+- LAB-1721: The panel keeps showing a finished call until the next recording opens, and that call's late names and confirmations still reach it. A call's names are confirmed after the next call has started, and quitting while a call waits for its speakers no longer starts speaker work.
+
+## 2026-11-20
+
+- LAB-1731: Default and Daily template files you never edited now follow the shipped text, so prompt fixes reach notes; edited files are left alone.
+- LAB-1719: A call whose start finds call audio unavailable is no longer lost: Audelin tries again every five seconds while the call is on and starts recording as soon as call audio is heard. Every failed call-audio check is logged with its reason.
+
+## 2026-11-19
+
+- LAB-1693: Transcript files tell the version, build and models that heard and finished each call; merged transcripts keep every original call’s origin.
+
+- LAB-1685: A call whose transcript was split, copied or edited no longer gets stuck on "Couldn't prepare the summary"; finished summaries leave no job record behind.
+
+- Settings use native macOS switches, grouped in cards as in System Settings, and the window is narrower: 508 pt on every tab.
+
+- Segmented controls (Settings tabs, Language, Appearance, chunk size, Предыдущие / Текущие) no longer draw an accent ring around the selected segment under keyboard focus.
+
+## 2026-11-16
+
+- LAB-1672: Zoom's stand-in for a participant without a name ("Zoom user", "Пользователь Zoom" and its other languages) no longer names a speaker, so that speaker can still be named from the conversation.
+
+- The notes' Предыдущие / Текущие switch uses the app's segmented control, as in Settings, instead of the system blue one.
+
+- LAB-1671: Deleting a call writes a line to Audelin's log, under calls: `deleted call=<start> to Trash`, or `delete failed call=<start>`. The call's title is left out, since it can name people.
+
+- LAB-1670: Notes name the far side. They use the names the call app gave (Zoom tiles, the Telemost extension), and name a speaker from the conversation when someone addresses them by name and they answer, or when they introduce themselves; such names read as inferred. Notes no longer refuse to use names.
+
+- LAB-1669: Audelin logs what the Telemost extension sends during a call, under the browser category: connections, participant counts and speaking starts and stops, never names.
+
+- LAB-1668: Telemost names also come through when a call is opened from another Telemost page, such as starting a meeting from the home page.
+
+- LAB-1663: Zoom calls name the far side in Gallery view too, where Zoom shows no Talking label: a call with one other participant is named after them, and a larger call after the only other unmuted participant, tentatively until the after-call pass. Audelin remembers the user's Zoom name whenever Zoom shows it, to tell the user's tile from the others.
+
+- The call detail shows the template and the tags on one line under the date, template first: «Шаблон: Default · Теги: …».
+
+- LAB-1662: Browser names fixed: speaking events from the Telemost extension were dropped for using the wrong field, and the roster sent on joining was lost when it reached the app before the browser clock. The extension now starts its helper only while a Telemost call page is open, without the "Native host has exited" errors.
+
+- LAB-1661: The detail's summary menu button is disabled while nothing in its menu can be used, such as while a summary is being made.
+
+- LAB-1655: Daily's content checked with the real notes model on recorded call transcripts; daily-notes S-1 to S-5 hold. `macos/scripts/daily-content.sh` reruns the check.
+
 ## 2026-11-15
 
+- LAB-1630: New templates folders include Daily for next-meeting handoffs: continuation, owners, blockers and planned fixes, and meetings, with agreements, suggestions and gaps stated explicitly. Existing folders keep their edits and deletions.
+
+- LAB-1629: Broken templates stay visible with their reasons; built-in Default stays usable, and the notes menu opens the templates folder and reports opening failures.
+
+- LAB-1628: The notes menu chooses an available template and saves the keep-previous choice. Notes show their template, switch between Previous and Current, and stay readable beside regeneration progress, cancellation and failures.
+
+- LAB-1627: Notes jobs accept a chosen template again, keep the global keep-previous choice per run, and preserve published notes on failure or cancellation. Pending runs retain their saved template instructions.
+- LAB-1609: Automatic update relaunch waits for every final transcript to finish processing, saving and reaching notes.
+- LAB-1653: A tag typed but not yet entered is saved with the others when the selection moves to another call, as it is on Return.
+- LAB-1631: Calls can carry tags, kept in `tags.txt` in each call's folder. The detail header shows and edits them, rows show them as `#tag`, a strip of chips under the search field filters the list by tag, a `#tag` in the search does the same, plain search matches tags, and merged calls keep every part's tags.
+- LAB-1626: Notes storage publishes Previous and Current together with saved template attribution; older notes read as Default, and search reads only Current.
+
+- LAB-1625: Notes use the editable Default template file, including its headings; missing or broken Default files use the built-in template without overwriting edits.
+
+- LAB-1579: A recording, a calls-folder move and an update relaunch each hold the calls folder through one claim, so none starts behind another; a start during a move waits and begins once the move ends, a quit during a move or a relaunch lets the folder go first, and a relaunch still works when call watching failed to start.
+- LAB-1616: While recording, the menu-bar icon is the normal Audelin icon with a steady 7 pt red dot instead of a solid red record disc.
+- LAB-1614: The nightly report finds its own comparison night, warns on a slow climb across a week, skips loaded nights, says what changed when it cannot compare, and names the functions that grew; one command gives the daily review its verdict.
+- LAB-1613: The nightly also runs a ten-minute composition rehearsal and compares its CPU with the last identical night, so a regression in the app's own wiring shows the next morning with the frames that cost it.
 - LAB-1601: Recording a call uses as much CPU as before LAB-1577 again; audio no longer re-reads the call folder name or redraws the menu.
 - LAB-1578: The calls list learns whether Audelin is idle enough to merge from a value the app sends whenever it changes, instead of reading the recording, transcript finishing and notes as it decides. Behaviour is unchanged.
 - LAB-1577: One state machine runs each recording, from getting call audio through bringing its pieces up and down to releasing call audio; there is no longer a separate session machine per recording. Behaviour is unchanged.

@@ -273,15 +273,20 @@ private func withFolders(_ body: (URL) async throws -> Void) async throws {
 
 @Suite(.timeLimit(.minutes(1)))
 struct CallsTextTests {
-    @Test func readsNotesAndHandsTheTranscriptToItsReader() async throws {
+    @Test(arguments: [false, true])
+    func ignoresNotesAndHandsTheTranscriptToItsReader(unreadableNotes: Bool) async throws {
         try await withFolders { root in
             let folder = try make(root, "2026.11.10-1600 Синк по OKR")
-            try Data("# Итоги\n\nOKR закрыты.".utf8).write(to: folder.appendingPathComponent("summary.md"))
+            if unreadableNotes {
+                try FileManager.default.createDirectory(at: folder.appendingPathComponent("summary.md"), withIntermediateDirectories: false)
+            } else {
+                try Data("# Итоги\n\nOKR закрыты.".utf8).write(to: folder.appendingPathComponent("summary.md"))
+            }
             try Data("**Me** 00:00:05\nИтак".utf8).write(to: folder.appendingPathComponent("transcript.md"))
             let read = Mutex<[String]>([])
             let lines = [Calls.Text.Line(start: 5, words: "Итак")]
             let text = try adapter(root, transcript: { markdown in read.withLock { $0.append(markdown) }; return lines }).text(id: "2026.11.10-1600")
-            #expect(text == .init(notes: "# Итоги\n\nOKR закрыты.", transcript: lines))
+            #expect(text == .init(transcript: lines, identity: "e98ebb9d4889a30a1d022e91f7810ef5530f92f20113de267aaa2394859322fa"))
             #expect(read.withLock { $0 } == ["**Me** 00:00:05\nИтак"])
         }
     }
@@ -290,7 +295,7 @@ struct CallsTextTests {
         try await withFolders { root in
             let folder = try make(root, "2026.11.10-1600")
             try Data().write(to: folder.appendingPathComponent("summary.md"))
-            #expect(try adapter(root).text(id: "2026.11.10-1600") == .init(notes: nil, transcript: []))
+            #expect(try adapter(root).text(id: "2026.11.10-1600") == .init(transcript: []))
         }
     }
 

@@ -21,7 +21,7 @@ light and dark themes.
 For the board's browser geometry checks, run `npx playwright install chromium`
 once, then `npm run test:browser` from `rexlab/`. The check starts and closes
 its own Vite server and browser, and prints a unique temporary directory for
-screenshots. It checks 60 reduced-motion configurations and one normal-motion
+screenshots. It checks 30 reduced-motion configurations and one normal-motion
 outward walk. Set `CHROME_PATH` to use a local Chrome executable, or `BOARD_URL`
 to check an already running server instead. CI installs Chromium with its OS
 dependencies and runs each browser check in a separate matrix job.
@@ -79,7 +79,7 @@ Run `node tests/coloringGallery.browser.cjs` for gallery previews, independent
 saved works, brush/fill/undo, cross-age restoration, thumbnails and one-time
 completion rewards. Set `COLORING_ARTIFACT_DIR` to choose the workshop screenshot
 directory. `node tests/coloringFlow.browser.cjs` checks the production Home route,
-including all four choices and T-Rex at 1180 × 820 and 1024 × 768 across the three
+including Stegosaurus, Triceratops, Ankylosaurus and T-Rex at 1180 × 820 and 1024 × 768 across the three
 age levels, both languages and themes.
 
 `npm run slow-tests` runs the whole suite three times and writes every test,

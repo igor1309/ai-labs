@@ -20,6 +20,11 @@ function fakePort({ absent = false } = {}) {
     onDisconnect: { addListener: (listener) => listeners.push(listener) },
     onMessage: { addListener: (listener) => receivers.push(listener) },
     receive: (message) => receivers.forEach((listener) => listener(message)),
+    disconnected: false,
+    disconnect() {
+      port.up = false;
+      port.disconnected = true;
+    },
     drop() {
       port.up = false;
       listeners.forEach((listener) => listener());
@@ -28,9 +33,10 @@ function fakePort({ absent = false } = {}) {
   return port;
 }
 
-function harness(ports) {
+function harness(ports, { held = true } = {}) {
   const connects = [];
   const timers = [];
+  const errors = { read: 0 };
   const forwarder = createForwarder({
     connect: () => {
       const port = ports.shift() ?? fakePort();
@@ -40,11 +46,15 @@ function harness(ports) {
     },
     setTimer: (fn, delay) => timers.push({ fn, delay }),
     now: () => 1_731_499_200_000.5,
+    lastError: () => {
+      errors.read += 1;
+    },
     retryDelay: 50,
     capacity: 3,
   });
   const fire = () => timers.splice(0).forEach((timer) => timer.fn());
-  return { forwarder, connects, timers, fire };
+  const release = held ? forwarder.hold() : null;
+  return { forwarder, connects, timers, fire, errors, release };
 }
 
 const sequences = (port) => port.sent.map((message) => message.sequence);
@@ -128,4 +138,51 @@ test("forwarder_shouldIgnoreAMessageThatIsNotAPing", () => {
   connects[0].receive({ ping: -1 });
   connects[0].receive({ hello: 1 });
   assert.deepEqual(connects[0].sent, []);
+});
+
+test("forwarder_shouldStartNoHost_whenNoCallPageHoldsItAndNothingWaits", () => {
+  const { connects, timers } = harness([], { held: false });
+  assert.equal(connects.length, 0);
+  assert.equal(timers.length, 0);
+});
+
+test("forwarder_shouldStopRetrying_afterTheLastHoldIsReleasedAndNothingWaits", () => {
+  const { connects, timers, release } = harness([fakePort()]);
+  release();
+  assert.equal(connects[0].disconnected, true);
+  connects[0].drop();
+  assert.equal(timers.length, 0);
+});
+
+test("forwarder_shouldKeepRetrying_whileACallPageHoldsIt", () => {
+  const { connects, timers, fire } = harness([fakePort(), fakePort()]);
+  connects[0].drop();
+  assert.equal(timers.length, 1);
+  fire();
+  assert.equal(connects.length, 2);
+});
+
+test("forwarder_shouldConnectForAnEvent_withoutAHold_andStopOnceItIsSent", () => {
+  const { forwarder, connects, timers } = harness([fakePort()], { held: false });
+  forwarder.send(CALL, ended(1));
+  assert.deepEqual(sequences(connects[0]), [0]);
+  connects[0].drop();
+  assert.equal(timers.length, 0);
+});
+
+test("forwarder_shouldReadTheBrowsersError_whenThePortDrops", () => {
+  const { connects, errors } = harness([fakePort()]);
+  connects[0].drop();
+  assert.equal(errors.read, 1);
+});
+
+test("forwarder_shouldIgnoreASecondRelease_ofOneHold", () => {
+  const { forwarder, connects, timers, release } = harness([fakePort()]);
+  const other = forwarder.hold();
+  release();
+  release();
+  assert.equal(connects[0].disconnected, false);
+  other();
+  assert.equal(connects[0].disconnected, true);
+  assert.equal(timers.length, 0);
 });

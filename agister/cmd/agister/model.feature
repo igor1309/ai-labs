@@ -24,7 +24,7 @@ Feature: The composition runs a step on a model runtime
   Scenario: A step on codex is given its plan's one option
     When "agister run --process ask --agent codex-sol-61 --param q=why"
       runs in "/r"
-    Then codex runs the message with the model "gpt-6.1-sol", the effort
+    Then codex runs the message with the model "gpt-6.2-sol", the effort
       "high", the option "read-only" and the bytes of the schema "answer"
 
   Scenario: A completed step prints its reply's output and usage

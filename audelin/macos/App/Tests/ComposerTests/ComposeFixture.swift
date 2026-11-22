@@ -50,7 +50,7 @@ struct ComposeFixture: Sendable {
             call: { selection in selections.append(selection); return try call.start() },
             mine: RehearsalRecognizer(recognizers?.0 ?? mine), theirs: RehearsalRecognizer(recognizers?.1 ?? theirs),
             now: { Date(timeIntervalSince1970: 0) }, timeZone: { .gmt }, sleep: clock.sleep,
-            intervals: testIntervals)
+            intervals: testIntervals, transcriptBuild: testTranscriptBuild)
         boundary.time = clock.time
         boundary.transcripts = FileTranscriptStorage(diarizer: CallDiarizer.unavailable)
         boundary.preferredLanguages = { ["ru-RU"] }
@@ -102,10 +102,25 @@ struct ComposeFixture: Sendable {
     nonisolated func folder(_ name: String = "1970.01.01-0000") -> URL { root.appendingPathComponent(name) }
 }
 
-func transcriptText(of rig: ComposeFixture, folder: String = "1970.01.01-0000") async throws -> String {
+/// The saved transcript file, its origin front matter included.
+func transcriptFile(of rig: ComposeFixture, folder: String = "1970.01.01-0000") async throws -> String {
     let url = rig.folder(folder).appendingPathComponent("transcript.md")
     return try String(contentsOf: url, encoding: .utf8)
 }
+
+/// The saved transcript as it reads below its origin front matter.
+func transcriptText(of rig: ComposeFixture, folder: String = "1970.01.01-0000") async throws -> String {
+    transcriptBody(try await transcriptFile(of: rig, folder: folder))
+}
+
+/// A transcript file's text below its origin front matter, which names the recognisers
+/// and so would read as words.
+func transcriptBody(_ file: String) -> String {
+    guard file.hasPrefix("---\n"), let header = file.range(of: "\n# Transcript\n") else { return file }
+    return String(file[file.index(after: header.lowerBound)...])
+}
+
+func transcriptBody(at url: URL) throws -> String { transcriptBody(try String(contentsOf: url, encoding: .utf8)) }
 
 /// A capture the test feeds itself, with no pieces but the ones it sends.
 struct FedCapture: Sendable {
@@ -210,8 +225,11 @@ final class FixtureClock: Sendable {
         pair.continuation.onTermination = { _ in _ = self.state.withLock { $0.ticks.removeValue(forKey: id) } }
         return pair.stream
     }
-    func advance(_ seconds: Double) {
-        let ticks = state.withLock { state in state.now += seconds; return Array(state.ticks.values) }
+    func advance(_ seconds: Double, tick: Bool = true) {
+        let ticks = state.withLock { state in
+            state.now += seconds
+            return tick ? Array(state.ticks.values) : []
+        }
         for output in ticks { output.yield(()) }
     }
     func finish() {

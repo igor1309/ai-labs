@@ -10,10 +10,11 @@ Observer: the composition root requesting and observing notes.
 - Only exclusive dispatch ownership can request generation; concurrent completion and startup recovery share arbitration. Existing records are observed, not dispatched twice.
 - Failed claim, running or speaker-checkpoint persistence prevents further requests. Corrupt records fail visibly, never become absent records.
 - Pending work retains an immutable configuration snapshot; running requests reload unchanged while their ownership lease is busy, and as interrupted only after abandoned ownership is acquired. A committed output must match the claimed job and input to recover success.
+- **A saved attempt is only resumed or retried for the transcript it was made from.** On loading a call's job, and on retrying a failed or interrupted attempt, the call's current final transcript input is compared with the attempt's saved input. When they differ, the stale pending, failed or interrupted attempt is discarded and the call is treated as having no job: an automatic request makes a fresh job from the current transcript, and an explicit retry runs as a fresh request. A running attempt is never compared or discarded; it reloads as running or interrupted as before. A call whose transcript cannot be read keeps its attempt.
 - Accepted speaker evidence is checkpointed before notes; a failed notes attempt reuses that checkpoint. Speaker acceptance is owned by speaker-identification.
-- Notes are generated directly as Markdown, not an inner JSON document. Required level-two sections in order are «О чём встреча / Ключевые моменты / Решения / Задачи» or “What this was about / Key points / Decisions / Actions”; optional open questions follow. Validation uses Foundation’s Markdown parser to require actual top-level headings and nonempty rendered section bodies; it rejects preambles/wrappers and missing/repeated/mixed sections, including required headings hidden inside code or other containers. Speaker evidence remains structured JSON; runtime success/error/truncation validation remains unchanged.
+- Notes are generated directly as Markdown, not an inner JSON document. Required and optional level-two sections are the resolved template's, validated by `../notes-generation/SPEC.md`; Default's are «О чём встреча / Ключевые моменты / Решения / Задачи» or “What this was about / Key points / Decisions / Actions”, then optional open questions. Validation uses Foundation’s Markdown parser to require actual top-level headings and nonempty rendered section bodies; it rejects preambles/wrappers and missing/repeated/mixed sections, including required headings hidden inside code or other containers. Speaker evidence remains structured JSON; runtime success/error/truncation validation remains unchanged.
 - Fence boundaries follow Markdown parsing, including implicit closure at the end of a container or document ([CommonMark fenced code blocks](https://spec.commonmark.org/0.31.2/#fenced-code-blocks)). A final code block is allowed when every required section remains visible; runtime completion and truncation checks remain independent.
-- Notes prompt forbids invented facts, decisions, commitments, owners and deadlines; only transcript-supported content is allowed. Required meeting-language sections are overview, key points, decisions and actions; absent decisions/actions say localized “none recorded”, and absent open questions omit that section. Structural/refusal/truncation validation cannot mechanically prove factual faithfulness; model quality is assessed separately against recorded transcripts.
+- Notes prompt forbids invented facts, decisions, commitments, owners and deadlines; only transcript-supported content is allowed. For Default, required meeting-language sections are overview, key points, decisions and actions; absent decisions/actions say localized “none recorded”, and absent open questions omit that section. Structural/refusal/truncation validation cannot mechanically prove factual faithfulness; model quality is assessed separately against recorded transcripts.
 
 ```gherkin
 Feature: Produce notes independently of recording
@@ -97,4 +98,19 @@ Feature: Produce notes independently of recording
     Given a claimed eligible job is held before dispatch
     When I inspect progress
     Then I can distinguish waiting from an active request
+
+  Scenario: S-18 Drop an attempt made from another transcript
+    Given a call's failed or interrupted attempt was made from a transcript that has since changed
+    When jobs are loaded
+    Then I can observe the call with no job and no failure, and no runtime work is requested for the old input
+
+  Scenario: S-19 Retry with a changed transcript
+    Given a call's failed attempt was made from a transcript that has since changed
+    When the user retries
+    Then a fresh job runs from the current transcript and the old attempt is gone
+
+  Scenario: S-20 Keep a running attempt whatever its input
+    Given another instance owns a running attempt
+    When jobs are loaded after the transcript changed
+    Then I can observe it running, unchanged
 ```

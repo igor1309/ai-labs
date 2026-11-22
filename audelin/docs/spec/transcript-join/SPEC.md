@@ -23,6 +23,9 @@ their speaker keys.
 - **Speakers stay apart across parts:** each part's speaker keys and names
   are given a key of that part, so the same number in two parts is two
   speakers. Diarization numbers each call on its own.
+- **Each part brings its original calls,** each a start and an origin join
+  never reads; the joined call's originals are all of them, ordered by start,
+  so a remerged call's originals interleave with the other part's.
 - **No state and no ports.** The same parts always join the same way.
 
 ```gherkin
@@ -57,4 +60,9 @@ Feature: Joining calls' transcripts
     Given two parts that each have a speaker 1, with different names
     When I join them
     Then I can tell the two speakers apart, each with its own name
+
+  Scenario: S-7 Original calls are ordered by start
+    Given a part whose original calls start before and after another part's start
+    When I join them
+    Then I can read every original call's origin as given, in order of start
 ```

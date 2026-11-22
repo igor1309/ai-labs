@@ -20,7 +20,7 @@ struct AppUpdateTests {
         }
     }
 
-    @Test func recordingIsNotInterruptedAndTheRelaunchFollowsItsEnd() async throws {
+    @Test func recordingIsNotInterruptedByAnUpdate() async throws {
 
         let relaunches = Values<Bool>(), terminated = Values<Bool>()
         try await withComposition(terminate: { terminated.append(true) }) { rig in
@@ -32,21 +32,17 @@ struct AppUpdateTests {
 
             try await rig.stop()
             await reachIdle(rig)
-            #expect(await rig.menu.relaunchIfIdle { relaunches.append(true) })
-            #expect(relaunches.all == [true] && terminated.all == [true])
+            #expect(relaunches.all.isEmpty && terminated.all.isEmpty)
         }
     }
 
-    @Test func folderMoveHoldsTheRelaunch() async throws {
+    @Test func relaunchTakesTheClaimWhenRecordingFailedToStart() async throws {
 
-        let terminated = Values<Bool>()
-        try await withComposition(terminate: { terminated.append(true) }) { rig in
-            #expect(await rig.menu.reserveCallsFolder())
-            #expect(await !rig.menu.relaunchIfIdle { Issue.record("relaunched during a move") })
-            #expect(terminated.all.isEmpty)
-            await rig.menu.releaseCallsFolder()
-            #expect(await rig.menu.relaunchIfIdle {})
-            #expect(terminated.all == [true])
+        let binding = CallBinding(fails: true, input: false), order = Values<String>()
+        try await withComposition(configure: { $0.processes = FixtureProcesses(binding: binding) },
+                                  terminate: { order.append("terminated") }) { rig in
+            #expect(await rig.menu.relaunchIfIdle { order.append("relaunch") })
+            #expect(order.all == ["relaunch", "terminated"])
         }
     }
 
@@ -68,14 +64,16 @@ struct AppUpdateTests {
         }
     }
 
-    @Test func failedRelaunchKeepsTheAppRunningAndFreesTheReservation() async throws {
+    @Test func failedRelaunchKeepsTheAppRunningAndFreesTheClaim() async throws {
 
         let terminated = Values<Bool>()
         try await withComposition(terminate: { terminated.append(true) }) { rig in
             #expect(await !rig.menu.relaunchIfIdle { throw Failed() })
             #expect(terminated.all.isEmpty)
-            #expect(await rig.menu.reserveCallsFolder())
-            await rig.menu.releaseCallsFolder()
+            try await rig.start()
+            try await rig.stop()
+            await reachIdle(rig)
+            #expect(terminated.all.isEmpty)
         }
     }
 

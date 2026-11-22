@@ -9,9 +9,9 @@ struct NotesMarkdownTests {
         let text = render("# Итоги\n\n## Решения\n\nТекст")
 
         #expect(text.string == "Итоги\nРешения\nТекст")
-        #expect(font(text, "Итоги") == style.headings[0])
-        #expect(font(text, "Решения") == style.headings[1])
-        #expect(font(text, "Текст") == style.body)
+        #expect(try font(text, "Итоги").isEqual(style.headings[0]))
+        #expect(try font(text, "Решения").isEqual(style.headings[1]))
+        #expect(try font(text, "Текст").isEqual(style.body))
     }
 
     @Test func labelLevelsAreUpperCaseTrackedAndSecondary() throws {
@@ -23,7 +23,7 @@ struct NotesMarkdownTests {
         let text = NotesMarkdown.render("## О чём встреча\n\nДейли команды.\n\n### Topic\n\n## Итоги\n\n### Under", style: styled)
 
         #expect(text.string.hasPrefix("О ЧЁМ ВСТРЕЧА\n"))
-        #expect(attribute(.foregroundColor, text, "О ЧЁМ") as? NSColor == .gray)
+        #expect(try color(.foregroundColor, text, "О ЧЁМ").isEqual(NSColor.gray))
         #expect(attribute(.kern, text, "О ЧЁМ") as? CGFloat == 1)
         #expect(paragraph(text, "О ЧЁМ")?.paragraphSpacing == 10)
         #expect(paragraph(text, "Дейли")?.minimumLineHeight == 26 && paragraph(text, "Дейли")?.paragraphSpacing == 9)
@@ -37,11 +37,11 @@ struct NotesMarkdownTests {
         let text = render("- Решили [02:45] и **[1:02:45]**, не `[03:00]` и не [ab:cd]")
 
         #expect(text.string.contains("Решили [02:45] и [1:02:45]"))
-        #expect(attribute(.foregroundColor, text, "[02:45]") as? NSColor == .darkGray)
-        #expect(attribute(.foregroundColor, text, "[1:02:45]") as? NSColor == .darkGray)
-        #expect(attribute(.foregroundColor, text, "Решили") as? NSColor == .black)
-        #expect(attribute(.foregroundColor, text, "[03:00]") as? NSColor == .black)
-        #expect(attribute(.foregroundColor, text, "[ab:cd]") as? NSColor == .black)
+        #expect(try color(.foregroundColor, text, "[02:45]").isEqual(NSColor.darkGray))
+        #expect(try color(.foregroundColor, text, "[1:02:45]").isEqual(NSColor.darkGray))
+        #expect(try color(.foregroundColor, text, "Решили").isEqual(NSColor.black))
+        #expect(try color(.foregroundColor, text, "[03:00]").isEqual(NSColor.black))
+        #expect(try color(.foregroundColor, text, "[ab:cd]").isEqual(NSColor.black))
     }
 
     @Test func emphasisAndInlineCodeKeepTheirText() throws {
@@ -49,9 +49,9 @@ struct NotesMarkdownTests {
         let text = render("Это **важно**, *очень* и `код`.")
 
         #expect(text.string == "Это важно, очень и код.")
-        #expect(font(text, "важно").map { NSFontManager.shared.traits(of: $0).contains(.boldFontMask) } == true)
-        #expect(font(text, "очень").map { NSFontManager.shared.traits(of: $0).contains(.italicFontMask) } == true)
-        #expect(font(text, "код") == style.code)
+        #expect(NSFontManager.shared.traits(of: try font(text, "важно")).contains(.boldFontMask))
+        #expect(NSFontManager.shared.traits(of: try font(text, "очень")).contains(.italicFontMask))
+        #expect(try font(text, "код").isEqual(style.code))
     }
 
     @Test func listsAreMarkedAndNestedListsIndentFurther() throws {
@@ -69,8 +69,8 @@ struct NotesMarkdownTests {
         let text = render("```\nlet x = 1\n```")
 
         #expect(text.string == "let x = 1")
-        #expect(font(text, "let x = 1") == style.code)
-        #expect(attribute(.backgroundColor, text, "let x = 1") as? NSColor == style.codeBackground)
+        #expect(try font(text, "let x = 1").isEqual(style.code))
+        #expect(try color(.backgroundColor, text, "let x = 1").isEqual(style.codeBackground))
     }
 
     @Test func tablesBecomeTextTableCellsInReadingOrder() throws {
@@ -84,7 +84,7 @@ struct NotesMarkdownTests {
         #expect(cells.map(\.startingColumn) == [0, 1, 0, 1])
         #expect(Set(cells.map { ObjectIdentifier($0.table) }).count == 1)
         #expect(cells.first?.table.numberOfColumns == 2)
-        #expect(font(text, "Кто").map { NSFontManager.shared.traits(of: $0).contains(.boldFontMask) } == true)
+        #expect(NSFontManager.shared.traits(of: try font(text, "Кто")).contains(.boldFontMask))
     }
 
     @Test func emptyCellsKeepTheirPlaceInTheTable() throws {
@@ -103,7 +103,7 @@ struct NotesMarkdownTests {
         let cells = blocks(text)
         #expect(cells.map(\.startingRow) == [0, 0, 1, 1])
         #expect(cells.map(\.startingColumn) == [0, 1, 0, 1])
-        #expect(font(text, "Кто").map { NSFontManager.shared.traits(of: $0).contains(.boldFontMask) } == true)
+        #expect(NSFontManager.shared.traits(of: try font(text, "Кто")).contains(.boldFontMask))
     }
 
     // MARK: - Helpers
@@ -136,7 +136,14 @@ struct NotesMarkdownTests {
         return text.attribute(key, at: range.location, effectiveRange: nil)
     }
 
-    private func font(_ text: NSAttributedString, _ part: String) -> NSFont? { attribute(.font, text, part) as? NSFont }
+    private func font(_ text: NSAttributedString, _ part: String, sourceLocation: SourceLocation = #_sourceLocation) throws -> NSFont {
+        try #require(attribute(.font, text, part) as? NSFont, sourceLocation: sourceLocation)
+    }
+
+    private func color(_ key: NSAttributedString.Key, _ text: NSAttributedString, _ part: String,
+                       sourceLocation: SourceLocation = #_sourceLocation) throws -> NSColor {
+        try #require(attribute(key, text, part) as? NSColor, sourceLocation: sourceLocation)
+    }
 
     private func paragraph(_ text: NSAttributedString, _ part: String) -> NSParagraphStyle? {
         attribute(.paragraphStyle, text, part) as? NSParagraphStyle

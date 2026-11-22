@@ -38,7 +38,6 @@ subscription and no network.
 - 196 Swift Testing tests in 20 suites, run with `swift test`.
 - Maestro flows in [`ios/.maestro/flows/`](ios/.maestro/flows/) drive the
   playback controls on a simulator.
-- Built with AI coding agents working from specs and tests.
 
 ## Running it
 

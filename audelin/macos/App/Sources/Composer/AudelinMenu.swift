@@ -1,3 +1,4 @@
+import AgentsFile
 import CoreAudioProcesses
 import Calls
 import Recordings
@@ -21,10 +22,10 @@ private struct MenuApplication {
     let send: (RecordingEvent) async -> Void
     let stopDelivery: () async -> Void
     let end: @Sendable () async -> Void
-    let reserveStorage: () async -> Bool
-    let releaseStorage: () async -> Void
-    let panelStates: () async -> AsyncStream<PanelState>
-    let sendPanel: (PanelEvent) async -> Void
+    let storageMoving: (Bool) async -> Void
+    let panelStates: () -> AsyncStream<PanelState>
+    let panelPresentations: () -> AsyncStream<PanelPresentation>
+    let sendPanel: (PanelEvent, UInt64) async -> Void
 }
 
 @MainActor @Observable
@@ -38,18 +39,24 @@ public final class AudelinMenu {
         return value
     }
     public private(set) var quitting = false
-    public private(set) var panelState = PanelState(recording: .off, log: .empty)
-    private(set) var panelPresence = PanelPresence()
+    private(set) var panelPresentation = PanelPresentation()
+    public var panelState: PanelState { panelPresentation.state }
+    /// The panel's presence, composed once the menu can show the calls list.
+    @ObservationIgnored private var presence: ObservableModel<PanelPresence, PanelPresence.Event, [PanelPresence.Effect]>!
+    @ObservationIgnored private var presenceHandler: PanelPresenceEffectHandler?
+    var panelPresence: PanelPresence { presence.state }
     public private(set) var summarySettings: AudelinSettings?
     private var chooseFolder: () async throws -> URL? = { nil }
     private var pickerFailed = false
+    /// Why the last AGENTS.md write failed, until the next attempt; the file's presence is read from disk.
+    private var agentsFailure: String?
+    /// Bumped after each write so General is built again with the disk's answer.
+    private var agentsWrites = 0
+    private let finalization: TranscriptFinalizationModel
     private var summaries: SummariesModel?
     private var presentSettings: () -> Void = {}
-    private let presentPanel: (Bool) -> Void
-    private let sleep: @Sendable (Duration) async throws -> Void
-    private let sendPanelEvent: (PanelEvent) async -> Void
+    private let sendPanelEvent: (PanelEvent, UInt64) async -> Void
     private var panelObservation: Task<Void, Never>?
-    private var hideDelay: Task<Void, Never>?
     /// What stopped call watching, written in the menu's language when shown.
     private var failure: (phrase: MenuBarPhrase, reason: String)?
     private let sink: any LogSink
@@ -59,11 +66,11 @@ public final class AudelinMenu {
     private let send: (RecordingEvent) async -> Void
     private let openFolder: (URL) -> Void
     private let openURL: (URL) -> Void
-    private let reserveStorage: () async -> Bool
-    private let releaseStorage: () async -> Void
+    private let storageMoving: (Bool) async -> Void
     private let termination: ObservableModel<TerminationState, TerminationEvent, TerminationEffect>
     private var shutdownObservation: Task<Void, Never>?
     private let pendingRelaunch = PendingRelaunch()
+    private var blockerObservation: Task<Void, Never>?
     private var finalizationSubscriptions: [Task<Void, Never>] = []
     private var observation: Task<Void, Never>?
     private var detectionObservation: Task<Void, Never>?
@@ -106,11 +113,13 @@ public final class AudelinMenu {
         summarySettings?.languageChanged()
         calls?.languageChanged(callsListText)
         summaries?.languageChanged(callsListText)
-        await panel.languageChanged(panelText)
+        panel.languageChanged(panelText)
     }
 
     init(
         storage: PreferencesStore,
+        folderClaim: RecordingFolderClaim,
+        relaunchClaim: RelaunchFolderClaim,
         occupiedCallNames: @escaping @Sendable () throws -> [String],
         boundary: ComposerBoundary,
         processes: CoreAudioProcesses,
@@ -136,20 +145,20 @@ public final class AudelinMenu {
 
         self.sink = sink
         self.panel = panel
+        self.finalization = finalization
         self.summaries = summaries
-        self.presentPanel = presentPanel
-        self.sleep = sleep
         let application: MenuApplication?
         do {
-            let recording = try await AudelinRecording(preferences: storage, occupiedCallNames: occupiedCallNames, boundary: boundary,
+            let recording = try await AudelinRecording(preferences: storage, folderClaim: folderClaim, occupiedCallNames: occupiedCallNames, boundary: boundary,
                                                        processes: processes, panel: panel, finalization: finalization, finalizationResources: finalizationResources, summaries: summaries?.callbacks(timeZone: boundary.time.timeZone(), notesOn: { storage.read().notes.enabled }) ?? .disabled)
             application = MenuApplication(
                 states: { await recording.inputs.ownStates() }, failures: recording.detectionFailures,
                 send: { await recording.inputs.send($0) },
                 stopDelivery: { await recording.stopDelivery() }, end: { await recording.inputs.end() },
-                reserveStorage: { await recording.reserveStorage() }, releaseStorage: { await recording.releaseStorage() },
-                panelStates: { await recording.panel.states() },
-                sendPanel: { await recording.panel.send($0) }
+                storageMoving: { await recording.storageMoving($0) },
+                panelStates: recording.panel.states,
+                panelPresentations: recording.panel.presentations,
+                sendPanel: { await recording.inputs.sendPanel($0, for: $1, panel: recording.panel) }
             )
         } catch {
             sink.write(.init(category: .menu, message: "startup failed", error: String(describing: error)))
@@ -163,14 +172,37 @@ public final class AudelinMenu {
         self.send = send
         self.openFolder = openFolder
         self.openURL = openURL
-        self.reserveStorage = application?.reserveStorage ?? { false }
-        self.releaseStorage = application?.releaseStorage ?? {}
-        self.sendPanelEvent = application?.sendPanel ?? { _ in }
+        self.storageMoving = application?.storageMoving ?? { _ in }
+        self.sendPanelEvent = application?.sendPanel ?? { _, _ in }
         let termination = makeTermination(
+            claimFolder: { [pendingRelaunch] in
+                let token = await relaunchClaim.take()
+                if token == nil { await pendingRelaunch.finish(scheduled: false) }
+                return token
+            },
+            releaseFolder: { [pendingRelaunch] in
+                await relaunchClaim.release($0)
+                await pendingRelaunch.finish(scheduled: false)
+            },
             relaunch: { [pendingRelaunch] in await pendingRelaunch.run() },
             unsettled: application == nil ? [.finalization, .summaries, .storage] : Set(TerminationParticipant.allCases),
             terminate: { [end = application?.end] in await end?(); await terminate() })
         self.termination = termination
+        let presenceHandler = PanelPresenceEffectHandler(
+            present: { visible, reason in
+                presentPanel(visible)
+                sink.write(.init(category: .panel, message: "\(visible ? "shown" : "hidden") reason=\(reason.rawValue)"))
+            },
+            showCalls: { [weak self] in self?.calls?.show() },
+            sleep: sleep)
+        self.presenceHandler = presenceHandler
+        presence = makePanelPresence(handler: presenceHandler)
+        // What blocks a relaunch reaches Lifecycle first as it is and then on each change.
+        blockerObservation = Task { [weak self] in
+            for await blockers in Observations({ [weak self] in self?.relaunchBlockers ?? [] }) {
+                self?.termination.event(.blockersChanged(blockers))
+            }
+        }
         shutdownObservation = Task { [weak self] in
             for await state in Observations({ termination.state }) where state.phase == .quitting {
                 // A started relaunch quits without the menu's quit, so the menu learns it here.
@@ -181,10 +213,10 @@ public final class AudelinMenu {
             }
         }
         if let application {
-            panelObservation = Task { [weak self, states = application.panelStates] in
-                for await state in await states() {
+            panelObservation = Task { [weak self, states = application.panelPresentations()] in
+                for await state in states {
                     guard let self else { return }
-                    self.panelState = state
+                    self.panelPresentation = state
                 }
             }
             observation = Task { [weak self, states = application.states] in
@@ -192,7 +224,7 @@ public final class AudelinMenu {
                     guard let self else { return }
                     self.state = state
                     self.calls?.recordingChanged(state)
-                    self.receivePanelPresence(.recordingChanged(panelRecordingID(state)))
+                    self.presence.event(.recordingChanged(panelRecordingID(state)))
                     sink.write(.init(category: .menu, message: "item symbol=\(self.menu.item.symbol) red=\(self.menu.item.isRed)"))
                 }
             }
@@ -211,10 +243,12 @@ public final class AudelinMenu {
     }
 
     func installMergeAvailability(_ subscription: Task<Void, Never>) { finalizationSubscriptions.append(subscription) }
+    func installMoveHold(_ subscription: Task<Void, Never>) { finalizationSubscriptions.append(subscription) }
+    func installNotifications(_ subscription: Task<Void, Never>) { finalizationSubscriptions.append(subscription) }
 
     func installFolderPicker(_ choose: @escaping () async throws -> URL?) { chooseFolder = choose }
-    func reserveCallsFolder() async -> Bool { await reserveStorage() }
-    func releaseCallsFolder() async { await releaseStorage() }
+    /// Whether a folder move holds the calls folder, as Recordings says; RecordingConditions hears it.
+    func callsFolderMoving(_ moving: Bool) async { await storageMoving(moving) }
 
     func installSettings(_ model: AudelinSettings, present: @escaping () -> Void) {
         summarySettings = model; presentSettings = present
@@ -227,13 +261,31 @@ public final class AudelinMenu {
                       selectedEngine: "parakeet", explainKeys: "", selectedTab: summarySettings?.selectedTab ?? .general,
                       callNotes: summarySettings?.notes ?? .loading(settingsText(.notesLoading)),
                       general: settingsText.general(languageChoice, appearance: appearance, preferred: preferredLanguages()))
+        _ = agentsWrites
+        result.general.agents = agentsOffer(in: settings.callsFolder)
         if pickerFailed, case .idle = result.folder.status { result.folder.status = .pickerFailed(reason: settingsText(.pickerFailedReason)) }
         if let recordings = calls?.recordingsState { applyFolderMove(recordings, text: settingsText, to: &result) }
         return result
     }
+    /// The General row while the recordings root has no AGENTS.md; none when it has one or is unavailable.
+    func agentsOffer(in root: URL) -> SettingsState.General.Agents? {
+        guard AgentsFile.presence(in: root) == .absent else { return nil }
+        return .init(hint: agentsFailure.map { settingsText(.agentsFailed, $0) } ?? settingsText(.agentsHint))
+    }
+
     public func sendSettings(_ event: SettingsEvent) async {
         guard !quitting else { return }
         switch event {
+        case .createAgentsFile:
+            do {
+                try AgentsFile.write(in: settings.callsFolder)
+                agentsFailure = nil
+                sink.write(.init(category: .menu, message: "AGENTS.md written"))
+            } catch {
+                sink.write(.init(category: .menu, message: "AGENTS.md write failed", error: String(describing: error)))
+                agentsFailure = error.localizedDescription
+            }
+            agentsWrites += 1
         case .changeFolder:
             choosingFolder = true
             defer { choosingFolder = false }
@@ -301,8 +353,8 @@ public final class AudelinMenu {
             await settings.setLiveText(enabled)
         case .showCalls: calls?.show()
         case .showSettings: presentSettings()
-        case .showPanel: receivePanelPresence(.reopen)
-        case .hidePanel: receivePanelPresence(.userClosed)
+        case .showPanel: presence.event(.reopen)
+        case .hidePanel: presence.event(.userClosed)
         case .openCallsFolder: openFolder(settings.callsFolder)
         case .quit:
             quitting = true
@@ -317,6 +369,7 @@ public final class AudelinMenu {
     private func shutDown(application: MenuApplication?, finalization: TranscriptFinalizationModel) {
 
         let termination = termination
+        finalization.send(.shutdown)
         if let application {
             Task {
                 await application.stopDelivery()
@@ -324,6 +377,9 @@ public final class AudelinMenu {
                 for await state in await application.states() where state.shutdown == .settled { break }
                 termination.event(.settled(.recording))
             }
+        } else {
+            // Without Recording no transcript output ends, so finalization is told directly.
+            finalization.send(.inputEnded)
         }
         if let calls {
             Task { await calls.drainMove(); termination.event(.settled(.storage)) }
@@ -331,7 +387,7 @@ public final class AudelinMenu {
             termination.event(.settled(.storage))
         }
         Task { [summaries] in
-            await finalization.shutdown()
+            await finalization.settled()
             termination.event(.settled(.finalization))
             await summaries?.shutdown()
             termination.event(.settled(.summaries))
@@ -353,115 +409,82 @@ public final class AudelinMenu {
         }
     }
 
-    /// The reservation refuses a running session and holds back a new one, so no
-    /// recording can start behind this check and be cut short by the quit.
-    /// Lifecycle decides whether the update may relaunch now; a started relaunch quits the app.
+    /// Lifecycle decides whether the update may relaunch now and holds the calls-folder claim
+    /// for it, so no recording or move starts behind the decision; a scheduled relaunch quits the app.
     func relaunchIfIdle(_ relaunch: @escaping () throws -> Void) async -> Bool {
 
         await summaries?.refresh()
         guard !quitting else { return false }
-        let request = TerminationEvent.relaunchRequested(blockers: relaunchBlockers)
-        // The event is reduced later; nothing reduced before it can change this decision while not quitting.
-        guard TerminationReducer.reduce(termination.state, request).1 == .relaunch else { return false }
+        let blockers = TerminationEvent.blockersChanged(relaunchBlockers)
+        // Events are reduced later; nothing reduced before them can change this decision while not quitting.
+        let current = TerminationReducer.reduce(termination.state, blockers).0
+        guard TerminationReducer.reduce(current, .relaunchRequested).1 == .claimFolder else { return false }
         let outcome = AsyncStream<Bool>.makeStream()
-        pendingRelaunch.start = { [weak self] in
-            let started = await self?.startRelaunch(relaunch) ?? false
-            outcome.continuation.yield(started)
-            return started
+        pendingRelaunch.outcome = outcome.continuation
+        pendingRelaunch.start = { [sink] in
+            do { try relaunch() } catch {
+                sink.write(.init(category: .menu, message: "relaunch failed", error: String(describing: error)))
+                return false
+            }
+            sink.write(.init(category: .menu, message: "relaunching for update"))
+            return true
         }
-        termination.event(request)
+        termination.event(blockers)
+        termination.event(.relaunchRequested)
         var results = outcome.stream.makeAsyncIterator()
         guard await results.next() == true else { return false }
         for await state in Observations({ self.termination.state }) where state.phase == .terminated { break }
         return true
     }
 
-    /// The reservation refuses a running session and holds back a new one, so no
-    /// recording can start behind the decision and be cut short by the quit.
-    private func startRelaunch(_ relaunch: () throws -> Void) async -> Bool {
-
-        guard await reserveStorage() else { return false }
-        do {
-            guard !quitting, relaunchBlockers.isEmpty else { throw CancellationError() }
-            try relaunch()
-        } catch {
-            if !(error is CancellationError) {
-                sink.write(.init(category: .menu, message: "relaunch failed", error: String(describing: error)))
-            }
-            await releaseStorage()
-            return false
-        }
-        sink.write(.init(category: .menu, message: "relaunching for update"))
-        return true
-    }
-
     private var relaunchBlockers: Set<RelaunchBlocker> {
         var blockers: Set<RelaunchBlocker> = []
+        if finalization.state.calls.values.contains(where: { !$0.published }) { blockers.insert(.finalization) }
         if choosingFolder { blockers.insert(.folderPicker) }
         if calls?.idle == false { blockers.insert(.callsWindow) }
         if summaries?.busy == true { blockers.insert(.summaries) }
         return blockers
     }
 
-    public func panelClosed() { receivePanelPresence(.userClosed) }
+    public func panelClosed() { presence.event(.userClosed) }
 
     public func appReopened() {
 
         guard !quitting else { return }
-        receivePanelPresence(.appReopen)
+        presence.event(.appReopen)
     }
 
     public func sendPanel(_ event: PanelEvent) async {
+        await sendPanel(event, for: panelPresentation.call)
+    }
 
+    func sendPanel(_ event: PanelEvent, for id: UInt64?) async {
         switch event {
         case .start: await perform(.start)
-        case .stop: await perform(.stop)
+        case .stop:
+            guard let id else { return await perform(.stop) }
+            guard !quitting else { return }
+            sink.write(.init(category: .menu, message: "action=stop call=\(id)"))
+            await send(.stopSession(id: id))
         case .openCallsFolder: await perform(.openCallsFolder)
         case let .openSettings(pane):
             let name = pane == .microphone ? "Privacy_Microphone" : "Privacy_ScreenCapture"
             openURL(URL(string: "x-apple.systempreferences:com.apple.preference.security?\(name)")!)
-        default: await sendPanelEvent(event)
-        }
-    }
-
-    private func receivePanelPresence(_ event: PanelPresence.Event) {
-
-        let (next, effects) = PanelPresence.reduce(panelPresence, event)
-        panelPresence = next
-        for effect in effects {
-            switch effect {
-            case let .show(reason):
-                presentPanel(true)
-                sink.write(.init(category: .panel, message: "shown reason=\(reason.rawValue)"))
-            case let .hide(reason):
-                presentPanel(false)
-                sink.write(.init(category: .panel, message: "hidden reason=\(reason.rawValue)"))
-            case .showCalls:
-                calls?.show()
-            case .cancelDelay:
-                hideDelay?.cancel()
-                hideDelay = nil
-            case let .hideAfter(seconds, generation):
-                hideDelay = Task { [weak self, sleep] in
-                    do {
-                        try await sleep(.seconds(seconds))
-                        guard !Task.isCancelled else { return }
-                        self?.receivePanelPresence(.delayElapsed(generation))
-                    } catch {}
-                }
-            }
+        default:
+            if let id { await sendPanelEvent(event, id) }
         }
     }
 
     isolated deinit {
 
         for subscription in finalizationSubscriptions { subscription.cancel() }
-        hideDelay?.cancel()
+        presenceHandler?.cancel()
         panelObservation?.cancel()
         observation?.cancel()
         detectionObservation?.cancel()
         updateWatch?.cancel()
         shutdownObservation?.cancel()
+        blockerObservation?.cancel()
     }
 }
 
@@ -473,10 +496,23 @@ private func panelRecordingID(_ state: RecordingState) -> UInt64? {
     }
 }
 
-/// The relaunch the termination machine starts, installed by the update check that asked for it.
+/// The relaunch the termination machine schedules, installed by the update check that asked for it,
+/// and where that check hears how the attempt ended.
 @MainActor
 private final class PendingRelaunch {
 
-    var start: () async -> Bool = { false }
-    func run() async -> Bool { await start() }
+    var start: () -> Bool = { false }
+    var outcome: AsyncStream<Bool>.Continuation?
+
+    func run() async -> Bool {
+        let scheduled = start()
+        if scheduled { finish(scheduled: true) }
+        return scheduled
+    }
+
+    func finish(scheduled: Bool) {
+        outcome?.yield(scheduled)
+        outcome?.finish()
+        outcome = nil
+    }
 }

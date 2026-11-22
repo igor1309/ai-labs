@@ -7,8 +7,11 @@
 #
 # 1. A real-model run at 1x, no profiler: macOS speech on both sides through the
 #    app's composition and real Parakeet, lag and footprint every audio minute.
-# 2. Short Time Profiler windows, CPU and hangs, at large preloaded sizes.
-# 3. report.md and report.json: what ran, on which build, models, machine and
+# 2. A composition rehearsal at 10x with test recognisers, under Time Profiler:
+#    the CPU of the app's own wiring without the model, where a regression in
+#    composition shows plainly, and the frames that cost it.
+# 3. Short Time Profiler windows, CPU and hangs, at large preloaded sizes.
+# 4. report.md and report.json: what ran, on which build, models, machine and
 #    toolchain, compared with the last run only when all of those match.
 #
 # Needs a logged-in GUI session for the panel and Parakeet's models on disk.
@@ -49,10 +52,13 @@ models_id="$(cd "$models" && find . -type f -print0 | sort -z | xargs -0 stat -f
 speech_id="$(cat "$speech/mine.wav" "$speech/theirs.wav" | digest)"
 
 captures=(1620 6000)
+rehearsal_args=(--minutes 10 --speed 10)
 python3 -I - "$out/identity.json" <<EOF
 import json, sys
 json.dump({
     "workload": {"endurance": "AudelinBaseline --speech mine.wav --their-speech theirs.wav --minutes $minutes --speed 1",
+                 "rehearsal": "AudelinRehearsal ${rehearsal_args[*]} (capture after 20 s for 30 s)",
+                 "rehearsal_runs": 3,
                  "speech": "$speech_id",
                  "captures": ["ProfileWord words %d 300 20" % lines for lines in (${captures[*]/%/,})]},
     "build": "swift build -c release",
@@ -73,13 +79,30 @@ trap 'rm -rf "$recordings"' EXIT
 # 1. The long run. Other work on the Mac, and on its Neural Engine, slows recognition.
 swift build --package-path Benchmarks/Baseline -c release
 baseline="$(swift build --package-path Benchmarks/Baseline -c release --show-bin-path)/AudelinBaseline"
-echo "load before the run: $(sysctl -n vm.loadavg)" > "$out/endurance.log"
+# The build's own load lingers in the 1-minute average; wait for it to settle, at most 5 minutes (NIGHTLY_SETTLE_SECONDS).
+settle() {
+  local waited=0
+  while ((waited < ${NIGHTLY_SETTLE_SECONDS:-300})) && python3 -I -c 'import os, sys; sys.exit(os.getloadavg()[0] < 3.0)'; do
+    sleep 10; waited=$((waited + 10))
+  done
+  echo "load before the run, settled after $waited s: $(sysctl -n vm.loadavg)"
+}
+settle > "$out/endurance.log"
 status=0
 "$baseline" --speech "$speech/mine.wav" --their-speech "$speech/theirs.wav" --minutes "$minutes" --speed 1 \
   --recordings-dir "$recordings" --report "$out/endurance.log" > /dev/null 2>&1 || status=$?
 [[ $status == 0 ]] || echo "endurance failed: $status" >> "$out/endurance.log"
 
-# 2. Short windows at large preloaded sizes, under Time Profiler with its hangs.
+# 2. The composition rehearsal: about a minute, its whole CPU in rehearsal.log.
+scripts/profile-rehearsal.sh capture --capture-after 20 --capture-for 30 \
+  --out "$out/capture-rehearsal" "${rehearsal_args[@]}" > /dev/null 2>&1 || status=1
+rm -rf "$out/capture-rehearsal/time.trace"
+# Two more, unprofiled: the report compares the median and calls a wide spread noise.
+for repeat in 2 3; do
+  scripts/profile-rehearsal.sh endurance --out "$out/rehearsal-$repeat" "${rehearsal_args[@]}" > /dev/null 2>&1 || status=1
+done
+
+# 3. Short windows at large preloaded sizes, under Time Profiler with its hangs.
 Benchmarks/Profile/build.sh
 profile="Benchmarks/Profile/.build/release/ProfileWord"
 for lines in "${captures[@]}"; do
@@ -97,10 +120,9 @@ for lines in "${captures[@]}"; do
   rm -rf "$capture/time.trace" "$capture"/*.xml
 done
 
-# 3. The report, against the last run.
-previous=()
-[[ -e "$history/latest/report.json" ]] && previous=(--previous "$history/latest")
-python3 -I scripts/nightly-report.py "$out" ${previous[@]+"${previous[@]}"} || {
+# 4. The report, against the last run.
+# The comparison point and noise band come from the earlier runs beside this one.
+python3 -I scripts/nightly-report.py "$out" --history "$(dirname "$out")" || {
   echo 'nightly report failed; previous baseline unchanged (see report.md)' >&2
   exit 1
 }

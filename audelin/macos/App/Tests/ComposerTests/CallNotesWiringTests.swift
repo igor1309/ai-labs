@@ -9,7 +9,12 @@ import SummaryFiles
 import SummaryRuntime
 import Synchronization
 import Testing
+import TemplateFiles
 @testable import Composer
+
+private typealias Files = SummaryFiles.Files
+private typealias Disk = SummaryFiles.Disk
+private typealias FileDisk = SummaryFiles.FileDisk
 
 /// Integrates the shipped composer, calls storage and controlled generation.
 @MainActor @Suite(.timeLimit(.minutes(1)))
@@ -102,7 +107,7 @@ struct CallNotesWiringTests {
             try #require(calls.state.rows[0].canMakeSummary)
             await calls.send(.read(a)); await calls.send(detail: .makeSummary)
             await http.started.next(); await http.fail()
-            await detail(calls) { $0?.content == .failed(reason: "Не удалось составить или сохранить итоги. Расшифровка и аудио сохранены.", canRetry: true) }
+            await detail(calls) { $0?.content == .failed(reason: "Не удалось связаться с сервисом.", canRetry: true) }
             #expect(!calls.state.rows[0].canMakeSummary)
             await calls.send(detail: .retrySummary); await http.started.next()
             await detail(calls) { $0?.content == .preparing }
@@ -275,7 +280,7 @@ private func savedCall(_ id: String, in root: URL) throws {
     try Data("# Transcript\n\n**Me** 00:00:03\n\nsaved words\n".utf8).write(to: folder.appendingPathComponent("transcript.md"))
 }
 @MainActor private func makeSummaries(files: Files, storage: CallsStorage, http: NotesHTTP, enabled: Bool) -> SummariesModel {
-    SummariesModel(text: { CallsListText(language: .russian) },
+    SummariesModel(keeping: { true }, templates: TestDefaultTemplates(), text: { CallsListText(language: .russian) },
                    preparation: SummariesPreparationPort(notes: { .init(enabled: enabled, speakers: false, primary: notesRuntime) },
                                                          makeID: { UUID().uuidString }, callText: { try await storage.text(id: $0) }),
                    files: SummariesFilesPort(files: files, makeID: { UUID().uuidString }),
@@ -292,12 +297,12 @@ private func phase(_ id: String, in root: URL) async throws -> String? {
 @MainActor private func detail(_ calls: AudelinCalls, _ matches: (CallsDetail?) -> Bool) async {
     for await value in Observations({ calls.detail }) where matches(value) { return }
 }
-@MainActor func withNotesComposition(automatic: Bool = false, _ body: (ComposeFixture, NotesHTTP) async throws -> Void) async throws {
+@MainActor func withNotesComposition(automatic: Bool = false, configure: @MainActor (inout ComposerBoundary) -> Void = { _ in }, _ body: (ComposeFixture, NotesHTTP) async throws -> Void) async throws {
     try await withComposeFolder { root in
         let http = NotesHTTP()
         let runtime = controlledRuntime(http)
         let rig = try await ComposeFixture.make(root: root,
-            preferences: Preferences(notes: .init(enabled: automatic, speakers: false, primary: notesRuntime), automaticRecording: false, callsFolder: root), summaryRuntime: runtime)
+            preferences: Preferences(notes: .init(enabled: automatic, speakers: false, primary: notesRuntime), automaticRecording: false, callsFolder: root), summaryRuntime: runtime, configure: configure)
         do { try await body(rig, http); await rig.finish() }
         catch { await rig.finish(); throw error }
     }
@@ -321,7 +326,7 @@ actor NotesHTTP: HTTPRequesting {
         let response = HTTPResponse(status: 200, body: try JSONSerialization.data(withJSONObject: ["choices": [["finish_reason": "stop", "message": ["content": generatedNotes]]]]))
         pending.values.forEach { $0.yield(response); $0.finish() }
     }
-    func fail() { pending.values.forEach { $0.yield(.init(status: 500, body: Data())); $0.finish() } }
+    func fail(status: Int = 500) { pending.values.forEach { $0.yield(.init(status: status, body: Data())); $0.finish() } }
 }
 
 let generatedNotes = "## What this was about\n\nSaved topic.\n\n## Key points\n\n- Saved words.\n\n## Decisions\n\nNone recorded.\n\n## Actions\n\nNone recorded.\n"
@@ -346,6 +351,7 @@ private final class RecoveringNotesDisk: Disk, Sendable {
         if failure.withLock({ $0 == "claim" }) { throw CocoaError(.fileWriteOutOfSpace) }
         return try base.create(data, at: url)
     }
+    func restore(_ data: Data, at url: URL, modified: Date) throws { try base.restore(data, at: url, modified: modified) }
     func remove(_ url: URL) throws {
         if failure.withLock({ $0 == "discard" }) { throw CocoaError(.fileWriteNoPermission) }
         try base.remove(url)
@@ -363,5 +369,217 @@ private actor HeldNotesLocation: Locations {
     func withFolder<Value: Sendable>(call: String, _ work: @Sendable (URL) throws -> Value) async throws -> Value {
         if held { await withCheckedContinuation { waiter = $0; entered.send() } }
         return try await storage.withFolder(call: call, work)
+    }
+}
+
+extension CallNotesWiringTests {
+    @Test func notesNameTheUserByTheMacAccountWithoutAZoomName() async throws {
+        try await withNotesComposition(configure: { $0.accountName = { "Igor Malyarov" } }) { rig, http in
+            let calls = try #require(rig.menu.calls)
+            try savedCall(a, in: rig.root)
+            await rig.menu.perform(.showCalls); await rows(calls, count: 1)
+            await calls.send(.read(a)); await calls.send(detail: .makeSummary)
+            await http.started.next()
+            #expect(await http.bodies.first?.contains("[3.0] Igor Malyarov: saved words") == true)
+            try await http.succeed()
+            await detail(calls) { if case .notes = $0?.content { true } else { false } }
+            let transcript = try String(contentsOf: rig.folder(a).appendingPathComponent("transcript.md"), encoding: .utf8)
+            #expect(!transcript.contains("Igor Malyarov"))
+        }
+    }
+
+    @Test(arguments: [true, false])
+    func chosenTemplateMakesNotesAgainWithTheCapturedKeepChoice(keeping: Bool) async throws {
+        try await withNotesComposition { rig, http in
+            let calls = try #require(rig.menu.calls)
+            try savedCall(a, in: rig.root); try savedCall(b, in: rig.root)
+            let files = templateSummaryFiles(rig.root)
+            try await seedPublishedPair(files)
+            let old = try #require(try await files.versions(call: a))
+            try writeDaily(in: rig.root)
+            await rig.menu.perform(.showCalls); await rows(calls, count: 2)
+            await calls.send(.read(a))
+            try calls.setKeepPreviousNotes(keeping)
+            #expect(calls.keepPreviousNotes == keeping)
+            await calls.send(detail: .makeSummaryWithTemplate("Daily"))
+            await http.started.next()
+            #expect(await http.bodies.last?.contains("Daily instructions from the file") == true)
+            try calls.setKeepPreviousNotes(!keeping)
+            await calls.send(detail: .makeSummaryWithTemplate("Default"))
+            // Selection changes do not own or stop a running job.
+            await calls.send(.read(b))
+            #expect(calls.detail?.id == b)
+            try await http.succeed()
+            for await statuses in rig.menu.summaryStates() where statuses[a] == "Итоги готовы" { break }
+            let pair = try #require(try await files.versions(call: a))
+            #expect(pair.current.text == generatedNotes && pair.current.template == Attribution(id: "Daily", name: "Daily"))
+            #expect(pair.previous == (keeping ? old.current : nil))
+            #expect(await http.bodies.count == 1)
+            #expect(calls.keepPreviousNotes == !keeping)
+        }
+    }
+
+    @Test(arguments: ["Default", "Daily"])
+    func aCompletedRunAcceptsAnotherChosenTemplateRun(secondTemplate: String) async throws {
+        try await withNotesComposition { rig, http in
+            let calls = try #require(rig.menu.calls)
+            try savedCall(a, in: rig.root); try writeDaily(in: rig.root)
+            await rig.menu.perform(.showCalls); await rows(calls, count: 1)
+            await calls.send(.read(a))
+            for template in ["Default", secondTemplate] {
+                await calls.send(detail: .makeSummaryWithTemplate(template)); await http.started.next()
+                try await http.succeed()
+                for await statuses in rig.menu.summaryStates() where statuses[a] == "Итоги готовы" { break }
+            }
+            let pair = try #require(try await templateSummaryFiles(rig.root).versions(call: a))
+            #expect(pair.previous?.template == .default && pair.current.template.name == secondTemplate)
+            #expect(await http.bodies.count == 2)
+        }
+    }
+
+    @Test func recoveryUsesSavedDailyInstructionsAfterItsFileChanges() async throws {
+        try await withComposeFolder { root in
+            try savedCall(a, in: root); try writeDaily(in: root)
+            let files = templateSummaryFiles(root)
+            try await seedPublishedPair(files)
+            let storage = callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
+            let preparation = SummariesPreparationPort(notes: { .init(primary: notesRuntime) }, makeID: { "pending-daily" },
+                                                       callText: { try await storage.text(id: $0) })
+            var job = await preparation.job(for: try await preparation.submission(call: a)).job
+            var template = TemplateFiles.Files.builtInDefault
+            template.name = "Daily"; template.instructions = "Saved Daily instructions"
+            job.template = notesTemplate(template).jobTemplate; job.keepPrevious = false; job.requested = true
+            _ = try await SummariesFilesPort(files: files, makeID: { "unused" }).claim(job, intent: .newRun)
+            template.instructions = "Changed Daily instructions"
+            try TemplateFiles.Files.encode(template).write(to: root.appendingPathComponent("Templates/Daily.md"), atomically: true, encoding: .utf8)
+            let http = NotesHTTP()
+            let rig = try await ComposeFixture.make(root: root,
+                preferences: Preferences(notes: .init(primary: notesRuntime), automaticRecording: false, callsFolder: root),
+                summaryRuntime: controlledRuntime(http))
+            do {
+                await http.started.next()
+                #expect(await http.bodies.last?.contains("Saved Daily instructions") == true)
+                #expect(await http.bodies.last?.contains("Changed Daily instructions") == false)
+                try await http.succeed()
+                for await statuses in rig.menu.summaryStates() where statuses[a] == "Итоги готовы" { break }
+                let pair = try #require(try await files.versions(call: a))
+                #expect(pair.current.template.name == "Daily" && pair.previous == nil)
+                await rig.finish()
+            } catch { await rig.finish(); throw error }
+        }
+    }
+
+    @Test(arguments: ["cancel", "failure", "missing"])
+    func unsuccessfulMakeAgainKeepsThePublishedPair(outcome: String) async throws {
+        try await withNotesComposition { rig, http in
+            let calls = try #require(rig.menu.calls)
+            try savedCall(a, in: rig.root); try writeDaily(in: rig.root)
+            let files = templateSummaryFiles(rig.root)
+            try await seedPublishedPair(files)
+            let old = try #require(try await files.versions(call: a))
+            await rig.menu.perform(.showCalls); await rows(calls, count: 1)
+            await calls.send(.read(a))
+            await calls.send(detail: .makeSummaryWithTemplate(outcome == "missing" ? "Missing" : "Daily"))
+            if outcome == "missing" {
+                for await statuses in rig.menu.summaryStates() where statuses[a]?.contains("Не удалось") == true { break }
+                #expect(await http.bodies.isEmpty)
+            } else {
+                await http.started.next()
+                if outcome == "cancel" { await calls.send(detail: .cancelSummary) }
+                else {
+                    await http.fail()
+                    for await statuses in rig.menu.summaryStates() where statuses[a]?.contains("Не удалось") == true { break }
+                }
+                #expect(await http.bodies.count == 1)
+            }
+            #expect(try await files.versions(call: a) == old)
+            await calls.send(.read(a))
+            await detail(calls) { if case let .notes(text, _) = $0?.content { text == old.current.text } else { false } }
+        }
+    }
+}
+
+private func writeDaily(in root: URL) throws {
+    let folder = root.appendingPathComponent("Templates")
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    var template = TemplateFiles.Files.builtInDefault
+    template.name = "Daily"; template.instructions = "Daily instructions from the file"
+    try TemplateFiles.Files.encode(template).write(to: folder.appendingPathComponent("Daily.md"), atomically: true, encoding: .utf8)
+}
+private func templateSummaryFiles(_ root: URL) -> Files {
+    Files(locations: callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash), disk: FileDisk(),
+          ownershipDirectory: root.appendingPathComponent("seed-leases"))
+}
+private func seedPublishedPair(_ files: Files) async throws {
+    for name in ["Previous", "Current"] {
+        let record = SummaryFiles.Record(job: name, call: a, input: "seed-input", snapshot: Data("{}".utf8), phase: "pending")
+        _ = try await files.claim(record)
+        #expect(try await files.start(record))
+        try await files.publish(record, notes: name, template: .default, keeping: .rotation)
+        var completed = record; completed.phase = "succeeded"
+        try await files.progress(completed)
+        await files.release(job: record.job, call: record.call, input: record.input)
+    }
+}
+
+extension CallNotesWiringTests {
+    @Test func menuChoiceDisablesTemplatesDuringTheRunAndPublicationShowsCurrent() async throws {
+        try await withNotesComposition { rig, http in
+            let calls = try #require(rig.menu.calls)
+            try savedCall(a, in: rig.root); try writeDaily(in: rig.root)
+            try await seedPublishedPair(templateSummaryFiles(rig.root))
+            await rig.menu.perform(.showCalls); await rows(calls, count: 1); await calls.send(.read(a))
+            await calls.send(detail: .chooseNotesVersion(.previous))
+            await detail(calls) { $0?.version == .previous }
+            let previous = calls.detail?.content
+            await calls.send(detail: .notesMenuOpened)
+            for await menu in Observations({ calls.notesMenu }) where menu.templates.map(\.name).contains("Daily") { break }
+            #expect(calls.notesMenu.section == "СДЕЛАТЬ ЗАНОВО" && calls.notesMenu.offersKeeping)
+            await calls.send(detail: .chooseNotesTemplate("Daily")); await http.started.next()
+            await calls.send(detail: .notesMenuOpened)
+            for await menu in Observations({ calls.notesMenu }) where menu.facts?.busy == true && menu.templates.allSatisfy({ !$0.enabled }) { break }
+            #expect(calls.detail?.content == previous)
+            #expect(calls.detail?.progress == "Делаю заново · Daily…")
+            #expect(await http.bodies.last?.contains("Daily instructions from the file") == true)
+            await calls.send(detail: .chooseNotesTemplate("Default"))
+            try await http.succeed()
+            await detail(calls) { $0?.version == .current && $0?.pair?.current.text == generatedNotes && $0?.progress == nil }
+            #expect(calls.detail?.template == "Daily")
+            #expect(await http.bodies.count == 1)
+        }
+    }
+
+    @Test(arguments: [(401, "Проверьте доступ к сервису: ошибка авторизации."), (429, "Квота сервиса исчерпана.")])
+    func regenerationFailureDisplaysTheRuntimeReason(status: Int, reason: String) async throws {
+        try await withNotesComposition { rig, http in
+            let calls = try #require(rig.menu.calls)
+            try savedCall(a, in: rig.root)
+            let files = templateSummaryFiles(rig.root)
+            try await seedPublishedPair(files)
+            let pair = try await files.versions(call: a)
+            await rig.menu.perform(.showCalls); await rows(calls, count: 1); await calls.send(.read(a))
+            await calls.send(detail: .makeSummaryWithTemplate("Default")); await http.started.next()
+            await http.fail(status: status)
+            await detail(calls) { $0?.failure == reason && $0?.progress == nil }
+            #expect(calls.detail?.content == .notes("Current", made: calls.detail?.pair?.current.made))
+            #expect(try await files.versions(call: a) == pair)
+        }
+    }
+
+    @Test func menuCancelReachesTheJobsAndKeepsThePublishedPair() async throws {
+        try await withNotesComposition { rig, http in
+            let calls = try #require(rig.menu.calls)
+            try savedCall(a, in: rig.root)
+            let files = templateSummaryFiles(rig.root)
+            try await seedPublishedPair(files)
+            let pair = try await files.versions(call: a)
+            await rig.menu.perform(.showCalls); await rows(calls, count: 1); await calls.send(.read(a))
+            await calls.send(detail: .makeSummaryWithTemplate("Default")); await http.started.next()
+            await detail(calls) { $0?.progress != nil }
+            await calls.send(detail: .cancelNotes)
+            await detail(calls) { $0?.progress == nil }
+            #expect(try await files.versions(call: a) == pair)
+            #expect(try await files.load(call: a) == nil)
+        }
     }
 }

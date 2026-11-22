@@ -50,6 +50,18 @@ not_registered() {
     echo "CI never ran for this PR: $1" >&2
     finish 1
 }
+# gh_json runs gh with its stdout in $out and its stderr in $err. gh
+# writes hints to stderr even when a call succeeds (2.105.0 adds one after
+# `pr view`), so stderr is never parsed as JSON; it explains a failure.
+gh_json() {
+    local err_file rc
+    err_file=$(mktemp)
+    out=$(gh "$@" 2> "$err_file")
+    rc=$?
+    err=$(< "$err_file")
+    rm -f "$err_file"
+    return "$rc"
+}
 # A gh call that fails otherwise, such as GitHub's API timing out
 # ("context deadline exceeded", PR 1510 on 2026-11-01), says nothing about
 # the checks: it is retried, and only WATCH_PR_GH_RETRIES failures in a row
@@ -63,14 +75,19 @@ gh_failed() {
     fi
     sleep "$interval"
 }
+# The limit is checked only after a first poll: time is in whole seconds, so
+# a start just before a second boundary could otherwise end the watch unseen.
+polled=0
 while true; do
     now=$(date +%s)
-    if ((now - started >= limit)); then
+    if ((polled && now - started >= limit)); then
         echo "still pending after ${limit}s: $waiting_on" >&2
         finish 4
     fi
 
-    view=$(gh pr view "$pr" --json state,mergeable,headRefOid 2>&1) || { gh_failed "$view"; continue; }
+    polled=1
+    gh_json pr view "$pr" --json state,mergeable,headRefOid || { gh_failed "$err$out"; continue; }
+    view=$out
     pr_state=$(jq -r .state <<< "$view")
     mergeable=$(jq -r .mergeable <<< "$view")
     head=$(jq -r .headRefOid <<< "$view")
@@ -89,9 +106,10 @@ while true; do
         finish 5
     fi
 
-    checks=$(gh pr checks "$pr" --json name,state,bucket,startedAt "$@" 2>&1) || true
+    gh_json pr checks "$pr" --json name,state,bucket,startedAt "$@" || true
+    checks=$out
     if ! jq -e 'type == "array"' > /dev/null 2>&1 <<< "$checks"; then
-        if grep -q "no checks reported" <<< "$checks"; then
+        if grep -q "no checks reported" <<< "$err"; then
             waiting_on="checks to be reported"
             # Until GitHub knows whether the PR merges, missing checks may
             # be a conflict it has not found yet; wait within the limit.
@@ -99,14 +117,15 @@ while true; do
                 echo "no checks yet, mergeable unknown" >> "$log"
                 sleep "$interval"
             else
-                not_registered "$checks"
+                not_registered "$err"
             fi
         else
-            gh_failed "$checks"
+            gh_failed "$err$checks"
         fi
         continue
     fi
-    runs=$(gh run list --commit "$head" --json status --limit 100 2>&1) || { gh_failed "$runs"; continue; }
+    gh_json run list --commit "$head" --json status --limit 100 || { gh_failed "$err$out"; continue; }
+    runs=$out
     failed_calls=0
     if ! jq -e 'length > 0' > /dev/null <<< "$runs"; then
         waiting_on="workflow runs for $head"

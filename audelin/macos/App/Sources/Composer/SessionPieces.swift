@@ -30,7 +30,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
 
     let news = AsyncStream<SessionEvent>.makeStream()
     nonisolated let transcriptFailures: TranscriptFailureReport
-    let finalization: TranscriptFinalizationModel
+    let transcriptOutput: AsyncStream<RecordingTranscript>.Continuation
     let finalizationResources: FinalizationResources
     let folder: CallFolder
     let folderTitle: String?
@@ -44,8 +44,8 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     var sides: [SessionSide: Side]
     var transcriptFile: (any TranscriptWriter)?
     var writing: WritingReader?
-    private var readingOutput: LatestText<CallState>?
-    private var readingSpeakers: AsyncStream<[Int: Int]>.Continuation?
+    private let readingOutput = SessionPieces.readingFeed()
+    private let readingSpeakers = AsyncStream<[Int: Int]>.makeStream()
     private var readingObservation: Task<Void, Never>?
 
     /// A listening state replaces the panel's text; a state of another status adds to it.
@@ -53,29 +53,24 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         LatestText { $0.status == .listening }
     }
 
-    // Register before Session begins so its first text state cannot be missed.
-    func readingText() -> (text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]>) {
-
-        let output = SessionPieces.readingFeed()
-        readingOutput = output
-        let speakers = AsyncStream<[Int: Int]>.makeStream()
-        readingSpeakers = speakers.continuation
-        return (output.stream, speakers.stream)
+    // Session can finish these feeds even while the panel is attaching to them.
+    nonisolated var readingText: (text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]>) {
+        (readingOutput.stream, readingSpeakers.stream)
     }
 
     /// Ends the events this session's pieces send it, so its forwarding finishes.
     func release() { news.continuation.finish() }
 
     func endReading() {
-        readingOutput?.finish()
-        readingSpeakers?.finish()
+        readingOutput.finish()
+        readingSpeakers.continuation.finish()
     }
 
     /// A long call's transcript is saved at most this often, and at once when its text stops.
     static let transcriptInterval: Duration = .seconds(5)
 
-    init(folder: CallFolder, folderTitle: String?, processes: CallAppProcesses, boundary: ComposerBoundary, finalization: TranscriptFinalizationModel, finalizationResources: FinalizationResources) {
-        self.finalization = finalization
+    init(folder: CallFolder, folderTitle: String?, processes: CallAppProcesses, boundary: ComposerBoundary, transcriptOutput: AsyncStream<RecordingTranscript>.Continuation, finalizationResources: FinalizationResources) {
+        self.transcriptOutput = transcriptOutput
         self.finalizationResources = finalizationResources
         self.folder = folder
         self.folderTitle = folderTitle
@@ -135,17 +130,18 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     func openTranscript(in folder: SessionCallFolder) async throws {
 
         let made = try places(in: folder)
-        let file = try await boundary.transcripts.open(at: made.transcriptURL, names: names, sink: boundary.log)
+        let file = try await boundary.transcripts.open(at: made.transcriptURL, names: names, origin: .init(start: made.start, build: boundary.transcriptBuild), sink: boundary.log)
         transcriptFile = file.writer
-        await finalization.send(.opened(call: made.url.path))
         await finalizationResources.add(call: made.url.path, transcript: file, cleanup: TranscriptCleanup(
             recording: CleanupRecording(microphoneURL: made.microphoneURL, callURL: made.callURL),
             duration: { [microphone = sides[.microphone]!.audio, call = sides[.call]!.audio] in
                 max(microphone.capturedThrough, call.capturedThrough)
             }, cleaning: boundary.bleedCleaning, hearing: boundary.bleedHearing, sink: boundary.log
-        ), speakers: { [self] rows in await self.readingSpeakers?.yield(rows) }, finishReading: { [self] in
+        ), speakers: { [readingSpeakers] rows in readingSpeakers.continuation.yield(rows) }, finishReading: { [self] in
             await self.endReading()
+            await self.names.finalizationEnded()
         })
+        transcriptOutput.yield(.opened(call: made.url.path))
     }
 
     func saveTranscript(_ state: CallState) async throws {
@@ -154,9 +150,9 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         defer { end() }
         do {
             try await file.write(state)
-            await finalization.send(.wrote(call: made.url.path, state))
+            transcriptOutput.yield(.wrote(call: made.url.path, state))
         } catch {
-            await finalization.send(.writeFailed(call: made.url.path))
+            transcriptOutput.yield(.writeFailed(call: made.url.path))
             throw error
         }
     }
@@ -165,7 +161,7 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         defer { news.continuation.finish() }
         await transcriptFile?.close()
         guard let made, transcriptFile != nil else { return }
-        await finalization.send(.closed(call: made.url.path, names: names.snapshot()))
+        transcriptOutput.yield(.closed(call: made.url.path, names: names.snapshot()))
     }
 
     func start(enabled: Bool) async throws {
@@ -188,11 +184,9 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
             }
         )
         self.writing = writing
-        if let output = readingOutput {
-            readingObservation = Task {
-                for await state in writing.updates.removingRepeats() { output.yield(state) }
-                output.finish()
-            }
+        readingObservation = Task { [readingOutput] in
+            for await state in writing.updates.removingRepeats() { readingOutput.yield(state) }
+            readingOutput.finish()
         }
         await writing.start(enabled: enabled)
     }

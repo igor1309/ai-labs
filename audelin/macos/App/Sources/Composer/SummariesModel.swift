@@ -4,6 +4,13 @@ import CallsListUI
 import IMRxObservation
 import Observation
 import SummaryJobs
+import NotesGeneration
+
+public typealias SummariesState = SummaryJobs.SummariesState<NotesGeneration.Template>
+public typealias SummariesEvent = SummaryJobs.SummariesEvent<NotesGeneration.Template>
+public typealias SummariesEffect = SummaryJobs.SummariesEffect<NotesGeneration.Template>
+public typealias SummariesReducer = SummaryJobs.SummariesReducer<NotesGeneration.Template>
+public typealias SummariesEffectHandler = SummaryJobs.SummariesEffectHandler<NotesGeneration.Template>
 
 /// The Summaries machine, assembled from its reducer, its effect handler and the ports over files and the runtime.
 @MainActor @Observable
@@ -11,12 +18,12 @@ public final class SummariesModel {
     private let model: ObservableModel<SummariesState, SummariesEvent, SummariesEffect>
     private let reducer: SummariesReducer
     private var listText: CallsListText
-    public init(text: @escaping @Sendable () -> CallsListText, preparation: any SummariesPreparation, files: SummariesFilesPort,
-         generation: any SummariesGeneration) {
+    public init(keeping: @escaping @Sendable () async -> Bool, userName: @escaping @Sendable () async -> String? = { nil }, templates: any SummariesTemplates<NotesGeneration.Template>, text: @escaping @Sendable () -> CallsListText, preparation: any SummariesPreparation, files: SummariesFilesPort,
+         generation: any SummariesGeneration<NotesGeneration.Template>) {
         listText = text()
         let reducer = SummariesReducer(format: { text().summariesStatus($0, $1) }, badge: summariesBadge)
         self.reducer = reducer
-        let handler = SummariesEffectHandler(preparation: preparation, claims: files, records: files, starts: files,
+        let handler = SummariesEffectHandler(keeping: keeping, userName: userName, templates: templates, preparation: preparation, claims: files, records: files, starts: files,
                                              storage: files, generation: generation)
         model = ObservableModel(initialState: .init(), reduce: reducer.reduce,
                                 handleEffect: { effect in oneEvent { await handler.handle(effect) } })
@@ -60,7 +67,7 @@ public final class SummariesModel {
     /// Shows a just-ended recording as waiting for its transcript while notes are on.
     public func waiting(call: String, notesOn: Bool) { model.event(.waiting(call, notesOn: notesOn)) }
     /// Makes notes the user asked for from the call's stored transcript, even when notes are off.
-    public func make(call: String) { model.event(.request(call)) }
+    public func make(call: String, template: String = "Default") { model.event(.generate(call, template: template)) }
     /// Stops the call's notes and returns once the attempt is discarded or has settled.
     public func cancel(call: String) async {
         model.event(.cancel(call))
@@ -74,7 +81,8 @@ public final class SummariesModel {
         let before = model.state
         guard before.calls[call]?.retryable == true, before.lifecycle == .accepting, before.dispatch else { throw CocoaError(.fileWriteUnknown) }
         model.event(.retry(call))
-        while model.state.calls[call] == before.calls[call] || model.state.calls[call]?.stage == .retrying { await changed() }
+        while model.state.calls[call] == before.calls[call] || model.state.calls[call]?.stage == .retrying
+                || model.state.calls[call]?.replacement == .request { await changed() }
         if model.state.calls[call]?.retryFailed == true { throw CocoaError(.fileWriteUnknown) }
     }
     /// Drops a deleted call once its notes have settled.
@@ -85,9 +93,9 @@ public final class SummariesModel {
 
     /// Replaces the merged parts' jobs with one for the merged call's joined transcript,
     /// offered for notes as an ended recording's is.
-    public func merged(call: String, parts: [String], entries: [Job.Entry], notesOn: Bool) {
+    public func merged(call: String, parts: [String], entries: [Job.Entry], notesOn: Bool, transcriptIdentity: String? = nil) {
         drop(parts: parts)
-        model.event(.finalized(call, entries: entries, finalWrite: true, usable: true, notesOn: notesOn))
+        model.event(.finalized(call, entries: entries, finalWrite: true, usable: true, notesOn: notesOn, transcriptIdentity: transcriptIdentity))
     }
     /// Picks up each stored call's job at launch.
     public func recover(calls: [String]) { calls.forEach { model.event(.recover($0)) } }
@@ -118,9 +126,9 @@ extension CallsListText {
     /// A call's notes status as its calls list row shows it, from the Summaries machine's stage.
     func summariesStatus(_ stage: SummariesState.Call.Stage, _ warning: Bool) -> String {
         switch stage {
-        case .waiting, .recovering, .preparing: self(.summaryWaiting)
+        case .waiting, .recovering, .preparing, .choosing, .selecting: self(.summaryWaiting)
         case .claiming, .pending, .observed, .retrying, .discarding: self(.summaryPending)
-        case .reading, .starting, .identifying, .checkpointing, .noting, .deferred, .publishing, .saving: self(.summaryRunning)
+        case .reading, .starting, .identifying, .checkpointing, .resolving, .noting, .deferred, .publishing, .saving: self(.summaryRunning)
         case .succeeded: warning ? self(.summaryReadyUnnamed) : self(.summaryReady)
         case .failed: self(.summaryFailed)
         case .interrupted: self(.summaryInterrupted)

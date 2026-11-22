@@ -121,11 +121,12 @@ from instances.
 | Hotkey field | `ysLzd` | `Keys` |
 | Alert | `OCKfD` | `H`, `Body`; buttons "Primary action" (destructive by default; swap for Button/Primary when the action is not destructive) and "Cancel" |
 | Calls row, /Hover | `yFtkD`, `uMMD6` | `Date`, `Title`, `Duration`, `Audio`, `Dot`, pin; Hover adds the row tint and shows Delete (a Button/Destructive in the error tint) |
-| Segment/Selected, /Selected focused, /Default; Segmented/First, /Second, /Third | on the board "Glass Ledger — call notes components" | each segment's `Label`; the variant names the selected segment. Settings tabs, Language, Appearance and the debug chunk size all use them ([general settings brief](general-settings.md)) |
+| Segment/Selected, /Default; Segmented/First, /Second, /Third | on the board "Glass Ledger — call notes components" | each segment's `Label`; the variant names the selected segment. Settings tabs, the debug chunk size ([general settings brief](general-settings.md)) and the notes' Предыдущие / Текущие switch ([notes templates brief](notes-templates.md)) all use them |
 | Settings row | `W8h2bZ` | `Name`; replace `Control` with the row's control |
+| Popup button, /Hover; Settings row/Popup | `pbtn1`, `pbtnH`, `prow1` | `Value`; the row's `Name`, `Hint` and `Popup`. Language and Appearance in General ([general settings brief](general-settings.md)) |
 | Live panel | `c0qJn` | The glass panel shell; replace `Body` with the header, banners and log |
 | Added late | `HIqfu` | `Late label`; the group of minutes filled in after live text is switched on mid-call |
-| Checkbox/On, /Off | `ufHXu`, `zhXsW` | `Label` |
+| Switch/On, /Off | `ufHXu`, `zhXsW` | `Label` |
 | Eye, /Active, /Disabled; Calls row/Selected; Summary preview | on the board "Glass Ledger — summary preview components" | see [summary preview brief](summary-preview.md); Calls row has a hidden `Eye cell` |
 | Sheet | `w9b9LL` | Scrim with a centred Alert; set x, y and size to the window under the title bar, and override the Alert through `Alert/<id>` |
 
@@ -137,6 +138,9 @@ from instances.
 | x = 0, y ≥ 0 | One frame each, Light and Dark: Glass Ledger — window sizes (how the resizable panel adapts), Glass Ledger — no footnote (the panel before any term is selected), Screens 1–8, then "Later — term chips" |
 | Right of Screen 4, x = 4100 | Screen 4b — Summary preview: an eye button and floating preview window that are not built; the calls window replaced them. Its typography is the calls window's detail ([brief](summary-preview.md)) |
 | Below everything, y ≥ 24476 | Calls window: list beside the selected call's summary, its states in Light and Dark, the boards "Calls window — shared components" and "Calls window — components" ([brief](calls-list.md)) |
+| Below the merge outcomes, y ≥ 30560 | Notes templates: the board "Notes templates — components", then the regenerate menu, broken templates, Previous / Current and making notes again, Light and Dark ([brief](notes-templates.md)) |
+| Below the notes templates, y 33400–34820, x 0–4640 | Call tags: tags filter, #tag search, editing tags, no tags, Light and Dark ([brief](call-tags.md)) |
+| Below the call tags, y ≥ 35000 | Making a transcript again: the board "Transcript again — components", the menu, the run's waits in its row, failure, stop, the notes mark, Light and Dark ([brief](transcript-again.md)) |
 | Right of Screen 7, x = 2160 | Screen 7b — Installed update: a badge and restart item, not built; Audelin relaunches into an installed update by itself once idle ([brief](app-update.md)) |
 
 Current screens:

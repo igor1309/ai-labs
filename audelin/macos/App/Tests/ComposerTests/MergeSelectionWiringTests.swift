@@ -19,7 +19,7 @@ struct MergeSelectionWiringTests {
     @Test func theToolbarControlEntersAndLeavesMergeModeAndActsOnlyWhenItCan() {
         let listing = Listing()
         var sent: [RecordingsEvent] = []
-        let sut = AudelinCalls(inputs: RecordingsInputs(state: { listing.state }, send: { sent.append($0) }),
+        let sut = AudelinCalls(inputs: RecordingsInputs(state: { listing.state }, send: { sent.append($0) }, states: { AsyncStream { $0.yield(listing.state); $0.finish() } }),
                                timeZone: .gmt, now: Date.init, recordingState: { .init() },
                                location: { URL(fileURLWithPath: "/calls/\($0)") }, openFolder: { _ in true }, present: {})
         let control = { (sut.mergeControl.enabled, sut.mergeControl.merging) }
@@ -40,10 +40,10 @@ struct MergeSelectionWiringTests {
 
     @Test func aMergedCallIsSelectedAndItsNotesAreRead() async throws {
         let listing = Listing()
-        let sut = AudelinCalls(inputs: RecordingsInputs(state: { listing.state }, send: { _ in }),
+        let sut = AudelinCalls(inputs: RecordingsInputs(state: { listing.state }, send: { _ in }, states: { AsyncStream { $0.yield(listing.state); $0.finish() } }),
                                timeZone: .gmt, now: { Date(timeIntervalSince1970: 40_000) }, recordingState: { .init() },
                                location: { URL(fileURLWithPath: "/calls/\($0)") }, openFolder: { _ in true }, present: {},
-                               notes: { $0 == "1970.01.01-1000" ? (text: "# merged notes", made: nil) : nil })
+                               notes: { $0 == "1970.01.01-1000" ? .init(current: .init(text: "# merged notes", made: nil)) : nil })
         sut.show()
         await sut.send(.select("1970.01.01-0900"))
         for await detail in Observations({ sut.detail }) where detail?.id == "1970.01.01-0900" { break }

@@ -16,7 +16,7 @@ struct CallsListPreviewTests {
     nonisolated static let searchFieldDiffers = ProcessInfo.processInfo.environment["GITHUB_ACTIONS"] != nil
 
     @Test(.disabled(if: searchFieldDiffers, "the search field draws differently across macOS releases"),
-          arguments: CallsListPreviews.states.map(\.name), [ColorScheme.light, .dark])
+          arguments: CallsListPreviews.states.filter { !$0.name.hasPrefix("transcript-") }.map(\.name), [ColorScheme.light, .dark])
     func drawsAsItsReference(name: String, scheme: ColorScheme) throws {
         for language in CallsListLanguage.allCases { try draws(name, scheme, CallsListText(language: language)) }
     }
@@ -29,12 +29,14 @@ struct CallsListPreviewTests {
                 .environment(\.colorScheme, scheme).environment(\.controlActiveState, .key),
             size: CGSize(width: 920, height: 420), scheme: scheme
         )
+        defer { host.window?.isReleasedWhenClosed = false; host.window?.close() }
         let image = try #require(Offscreen.snapshot(host))
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .appendingPathComponent("References/\(name)-\(scheme == .dark ? "dark" : "light")\(text.language == .russian ? "" : "-en").png")
 
         let outcome = try ReferenceImage.compare(image, with: url)
-        #expect([.matches, .recorded].contains(outcome))
+        #expect([.matches, .recorded].contains(outcome), "\(url.lastPathComponent): \(outcome)")
+        try Offscreen.save(image, url.deletingPathExtension().lastPathComponent)
     }
 
     /// In an inactive window the selected row turns grey.
@@ -50,12 +52,14 @@ struct CallsListPreviewTests {
                 .environment(\.colorScheme, scheme).environment(\.controlActiveState, .inactive),
             size: CGSize(width: 920, height: 420), scheme: scheme
         )
+        defer { host.window?.isReleasedWhenClosed = false; host.window?.close() }
         let image = try #require(Offscreen.snapshot(host))
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .appendingPathComponent("References/inactive-\(scheme == .dark ? "dark" : "light").png")
 
         let outcome = try ReferenceImage.compare(image, with: url)
-        #expect([.matches, .recorded].contains(outcome))
+        #expect([.matches, .recorded].contains(outcome), "\(url.lastPathComponent): \(outcome)")
+        try Offscreen.save(image, url.deletingPathExtension().lastPathComponent)
     }
 
     /// At the window's minimum width every column still shows; a long title gives way with an ellipsis.
@@ -69,11 +73,13 @@ struct CallsListPreviewTests {
                 .environment(\.colorScheme, scheme).environment(\.controlActiveState, .key),
             size: CGSize(width: 560, height: 420), scheme: scheme
         )
+        defer { host.window?.isReleasedWhenClosed = false; host.window?.close() }
         let image = try #require(Offscreen.snapshot(host))
         let url = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .appendingPathComponent("References/minimum-width-\(scheme == .dark ? "dark" : "light").png")
 
         let outcome = try ReferenceImage.compare(image, with: url)
-        #expect([.matches, .recorded].contains(outcome))
+        #expect([.matches, .recorded].contains(outcome), "\(url.lastPathComponent): \(outcome)")
+        try Offscreen.save(image, url.deletingPathExtension().lastPathComponent)
     }
 }

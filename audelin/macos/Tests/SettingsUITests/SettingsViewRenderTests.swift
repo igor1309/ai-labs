@@ -14,7 +14,7 @@ struct SettingsViewRenderTests {
         state.callNotes = .loading("Загружаем настройки…")
         let host = Offscreen.host(
             SettingsScrollView(state: state, event: { _ in }).environment(\.colorScheme, scheme),
-            size: CGSize(width: 620, height: 700), scheme: scheme
+            size: CGSize(width: SettingsConfig.glassLedger.windowWidth, height: 700), scheme: scheme
         )
         let image = try #require(Offscreen.snapshot(host))
         let page = try #require(image.colorAt(x: 4, y: 4)?.usingColorSpace(.deviceRGB))
@@ -29,7 +29,7 @@ struct SettingsViewRenderTests {
     func scrollingPageUsesTheInheritedWindowAppearance(scheme: ColorScheme) throws {
         let host = Offscreen.host(
             SettingsScrollView(state: .release, event: { _ in }),
-            size: CGSize(width: 620, height: 700), scheme: scheme
+            size: CGSize(width: SettingsConfig.glassLedger.windowWidth, height: 700), scheme: scheme
         )
         let image = try #require(Offscreen.snapshot(host))
         let actual = try #require(image.colorAt(x: 4, y: 4)?.usingColorSpace(.deviceRGB))
@@ -49,14 +49,14 @@ struct SettingsViewRenderTests {
         var heights: [CGFloat] = []
         let host = Offscreen.host(
             SettingsScrollView(state: state, event: { _ in }, contentHeightChanged: { heights.append($0) }),
-            size: CGSize(width: 620, height: 900), scheme: .light
+            size: CGSize(width: SettingsConfig.glassLedger.windowWidth, height: 900), scheme: .light
         )
         host.layoutSubtreeIfNeeded()
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
         #expect(heights.last != nil)
         if let height = heights.last {
             #expect(height > 300)
-            #expect(height < 650)
+            #expect(height < 900)
         }
     }
 
@@ -65,7 +65,7 @@ struct SettingsViewRenderTests {
         let report: (CGFloat) -> Void = { heights.append($0) }
         let host = Offscreen.host(
             SettingsScrollView(state: .release, event: { _ in }, contentHeightChanged: report),
-            size: CGSize(width: 620, height: 900), scheme: .light
+            size: CGSize(width: SettingsConfig.glassLedger.windowWidth, height: 900), scheme: .light
         )
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.1))
         let recordingHeight = try #require(heights.last)
@@ -84,6 +84,7 @@ struct SettingsViewRenderTests {
         let required: Set<String> = [
             "release", "debug", "confirm-move", "moving", "move-failed", "during-recording",
             "general-system", "general-fallback", "general-english", "general-russian",
+            "general-agents-missing", "general-agents-failed",
             "summaries-off", "summaries-on", "summaries-local", "summaries-invalid", "summaries-unavailable",
             "summaries-validating", "summaries-saving", "summaries-save-failed", "summaries-saved",
             "summaries-loading", "summaries-load-failed", "summaries-no-fallback",

@@ -13,7 +13,7 @@ final class TranscriptFinalizationModel {
     private let model: ObservableModel<State, Event, Effect>
     private let feed = StateFeed<State>()
 
-    init(diarizing: any TranscriptDiarizing<CallState, Transcript.Attributed>,
+    init(diarizing: any TranscriptDiarizing<CallState, CallNamesState, Transcript.Attributed>,
          cleanup: any MicrophoneCleanup<CallState, Transcript.Attributed, [TranscriptSegment]>,
          replacement: any TranscriptReplacement<CallState, CallNamesState, Transcript.Attributed, [TranscriptSegment]>,
          finals: any FinalTranscripts<Job.Entry>) {
@@ -25,23 +25,15 @@ final class TranscriptFinalizationModel {
             let (next, effect) = reducer.reduce(state, event)
             if next != state { feed.publish(next) }
             return (next, effect)
-        }, handleEffect: { effect in
-            AsyncStream { output in
-                let work = Task {
-                    output.yield(await handler.handle(effect))
-                    output.finish()
-                }
-                output.onTermination = { _ in work.cancel() }
-            }
-        })
+        }, handleEffect: handler.handle)
     }
 
     var state: State { model.state }
     func send(_ event: Event) { model.event(event) }
     func states() -> AsyncStream<State> { feed.subscribe(from: model.state) }
 
-    func shutdown() async {
-        model.event(.shutdown)
+    /// Returns once shutdown, the end of transcript input and every final publication have settled.
+    func settled() async {
         for await state in Observations({ self.model.state }) where state.settled { return }
     }
 }

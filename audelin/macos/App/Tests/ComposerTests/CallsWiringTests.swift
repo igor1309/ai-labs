@@ -23,6 +23,12 @@ struct CallsWiringTests {
         ])
     }
 
+    @Test func aNamedSpeakersLinesCarryItsName() {
+        let markdown = "# Transcript\n\n**Them 2** 00:00:05\nДа\n\n## Speakers\n\n- Them 1: unknown\n- Them 2: Анна\n\n"
+            + #"<!-- audelin-speakers {"revision":1,"schemaVersion":1,"speakers":[{"id":"a","state":"diarized"},{"id":"b","name":"Анна","state":"confirmed"}]} -->"# + "\n"
+        #expect(transcriptLines(markdown).map(\.label) == ["Them 2 (Анна)"])
+    }
+
     @Test func mappingNamesTheFailedCallAndProtectsOnlyTheRecording() {
         var state = RecordingsState()
         state.calls = [call("A"), call("B")]
@@ -259,6 +265,7 @@ struct CallsWiringTests {
         var state = RecordingState(missing: [])
         state = reducer.reduce(state, .userStart).0
         let session = state.session!.id
+        state = reducer.reduce(state, .folderClaimed(id: session, .granted(token: 1))).0
         state = reducer.reduce(state, .callAudioPrepared(id: session, ready: true, liveText: false)).0
         state = report(.init(callID: "A"), state, session)
         #expect(recordedCallID(state) == "A")

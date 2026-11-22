@@ -11,12 +11,12 @@ public struct MenuBarItem: Equatable, Sendable {
         case let .recording(call, faults):
             let line = text(!liveText ? .recordingNoText : (call ? .recordingCall : .recording))
             return MenuBarItem(
-                title: text(.itemTitle), symbol: "record.circle.fill", stateLine: line + faultLine(faults, text),
+                title: text(.itemTitle), symbol: "text.alignleft", stateLine: line + faultLine(faults, text),
                 isRed: true
             )
         case let .ending(faults):
             return MenuBarItem(
-                title: text(.itemTitle), symbol: "record.circle.fill",
+                title: text(.itemTitle), symbol: "text.alignleft",
                 stateLine: text(.ending) + faultLine(faults, text), isRed: false
             )
         case let .idle(automatic, unavailable, failure):

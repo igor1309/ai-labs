@@ -18,18 +18,26 @@ LANES = {
     "compose": ("Composition", "#60a5fa", 40, 110, 1800, 130, 6),
     "ui": ("UI", "#7dd3fc", 40, 280, 460, 380, 2),
     "machines": ("State machines", "#fbbf24", 560, 280, 1240, 380, 5),
-    "text": ("Live text and plain components", "#bef264", 40, 680, 820, 550, 3),
+    "text": ("Live text and plain components", "#bef264", 40, 680, 820, 636, 3),
     "capture": ("Capture and processes", "#fb923c", 900, 680, 440, 550, 2),
     "storage": ("Storage", "#a78bfa", 1380, 680, 460, 550, 2),
-    "tools": ("Rehearsal and integration helpers", "#60a5fa", 40, 1270, 1800, 140, 4),
-    "external": ("Platform and packages", "#94a3b8", 40, 1430, 1800, 206, 4),
+    "tools": ("Rehearsal and integration helpers", "#60a5fa", 40, 1356, 1800, 140, 4),
+    "external": ("Platform and packages", "#94a3b8", 40, 1516, 1800, 206, 4),
 }
 
 # Target: (lane, line under its name, slot in the lane). Planned boxes have no target yet.
 TARGETS = {
+    "TranscriptLayout": ("text", "orders one call’s transcript rows", 20),
+    "NotesMenu": ("machines", "chooses how the shown call’s notes are made", 13),
+    "TemplateFiles": ("storage", "resolves editable notes templates", 13),
+    "NotesGeneration": ("text", "builds and validates template notes", 17),
+    "NameCarry": ("text", "carries names by mutual\nmajority of speaker time", 18),
+    "ReRecognition": ("text", "makes a kept call's\ntranscript from its tracks", 19),
     "SummarySettings": ("machines", "validates and saves call-note settings", 6),
     "SummaryJobs": ("machines", "coordinates durable call-note jobs", 7),
     "SummaryFiles": ("storage", "claims and publishes call notes", 9),
+    "TagsFile": ("storage", "reads and writes a call's tags.txt", 9),
+    "AgentsFile": ("storage", "writes the recordings root's AGENTS.md once", 14),
     "SummaryRuntime": ("capture", "executes bounded note requests", 6),
     "BleedCleanup": ("text", "cleans far-side bleed\nfrom the mic after a call", 13),
     "SpeakerIdentification": ("text", "validates self-introduction evidence", 10),
@@ -61,6 +69,7 @@ TARGETS = {
     "Calls": ("storage", "lists and manages recorded folders", 7),
     "CallsStorage": ("storage", "journals call moves; one\ntransaction for calls and notes", 12),
     "CallsSearch": ("text", "finds a query in a call's\ntitle, transcript and notes", 15),
+    "CallTags": ("text", "the rules for a call's tags:\nfolding, #tag queries, filtering", 15),
     "LatestText": ("text", "keeps the newest text,\nby a replace policy", 16),
     "PanelUI": ("ui", "the live panel and its transcript", 0),
     "SettingsUI": ("ui", "the Settings window", 1),
@@ -154,12 +163,12 @@ def main():
         sys.exit(f"update TARGETS: not drawn {unknown}, no longer in the package {gone}")
 
     cells = [
-        cell("canvas", "", "rounded=0;whiteSpace=wrap;html=1;fillColor=#252525;strokeColor=none;container=1;pointerEvents=0;", "1", 0, 0, 1880, 1706),
+        cell("canvas", "", "rounded=0;whiteSpace=wrap;html=1;fillColor=#252525;strokeColor=none;container=1;pointerEvents=0;", "1", 0, 0, 1880, 1792),
         cell("title", "Audelin", "text;html=1;align=left;verticalAlign=middle;fontSize=28;fontColor=#f8fafc;fontStyle=1;", "canvas", 40, 24, 400, 40),
         cell("subtitle", "components as built — generated from both package manifests by scripts/component-diagram.py",
              "text;html=1;align=left;verticalAlign=middle;fontSize=15;fontColor=#94a3b8;", "canvas", 42, 66, 900, 26),
         cell("legend", "solid box: a target · dashed box: planned · arrow: depends on",
-             "text;html=1;align=left;verticalAlign=middle;fontSize=13;fontColor=#94a3b8;", "canvas", 40, 1666, 900, 26),
+             "text;html=1;align=left;verticalAlign=middle;fontSize=13;fontColor=#94a3b8;", "canvas", 40, 1752, 900, 26),
     ]
     for lane, (title, colour, x, y, w, h, _) in LANES.items():
         cells.append(cell(f"lane-{lane}", title,

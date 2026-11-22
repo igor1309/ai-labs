@@ -19,6 +19,84 @@ import ZoomAccessibility
         let windows = [Node(role: "AXWindow", identifier: "zm.meeting.window.main", children: [Node(role: "AXStaticText", value: "Talking: ")])]
         #expect(ZoomReading.read(windows: windows).talking == nil)
     }
+    @Test func recordedGalleryCallAloneShowsMyNameAndTile() throws {
+        let reading = ZoomReading.read(windows: try fixture("gallery-alone"))
+        #expect(reading.ownName == "Анна Петрова")
+        #expect(reading.tiles == [.init(name: "Анна Петрова", unmuted: false)])
+        #expect(reading.talking == nil)
+    }
+    @Test func recordedGalleryCallWithOneOtherNamesThemByMyRememberedName() throws {
+        let reading = ZoomReading.read(windows: try fixture("gallery-one-other"))
+        #expect(reading.talking == nil && reading.ownName == nil)
+        #expect(reading.tiles == [.init(name: "Борис Смирнов", unmuted: true), .init(name: "Анна Петрова", unmuted: true)])
+        #expect(ZoomReading.speaker(in: reading, known: "Анна Петрова") == "Борис Смирнов")
+        #expect(ZoomReading.speaker(in: reading, known: nil) == nil)
+    }
+    @Test func theOnlyUnmutedOtherSpeaksInALargerCall() {
+        let reading = gallery([("Me", true), ("Anna", true), ("Boris", false), ("Vera", false)])
+        #expect(ZoomReading.speaker(in: reading, known: "Me") == "Anna")
+    }
+    @Test(arguments: ["Пользователь Zoom", "Zoom user", " ZOOM USER "])
+    func zoomsStandInForANamelessParticipantNamesNobody(placeholder: String) {
+        #expect(ZoomReading.speaker(in: gallery([("Me", true), (placeholder, true)]), known: "Me") == nil)
+        #expect(ZoomReading.speaker(in: Reading(inMeeting: true, talking: placeholder, participantCount: 2), known: nil) == nil)
+        #expect(ZoomReading.speaker(in: gallery([("Me", true), ("Anna", true)]), known: "Me") == "Anna")
+    }
+    @Test func severalUnmutedOthersNameNobody() {
+        let reading = gallery([("Me", false), ("Anna", true), ("Boris", true)])
+        #expect(ZoomReading.speaker(in: reading, known: "Me") == nil)
+    }
+    @Test func noUnmutedOtherNamesNobody() {
+        let reading = gallery([("Me", true), ("Anna", false), ("Boris", false)])
+        #expect(ZoomReading.speaker(in: reading, known: "Me") == nil)
+    }
+    @Test func aRememberedNameWithoutItsTileNamesNobody() {
+        let reading = gallery([("Me (renamed)", true), ("Anna", true)])
+        #expect(ZoomReading.speaker(in: reading, known: "Me") == nil)
+    }
+    @Test func theTalkingLabelWinsOverTheUnmutedRule() {
+        var reading = gallery([("Me", false), ("Anna", false), ("Boris", true)])
+        reading.talking = "Anna"
+        #expect(ZoomReading.speaker(in: reading, known: "Me") == "Anna")
+    }
+    @Test func theTalkingLabelNamesWithoutMyName() {
+        var reading = gallery([("Me", false), ("Anna", true)])
+        reading.talking = "Anna"
+        #expect(ZoomReading.speaker(in: reading, known: nil) == "Anna")
+    }
+    @Test func theTalkingLabelNeverNamesMe() {
+        var reading = gallery([("Me", true), ("Anna", false)])
+        reading.talking = "Me"
+        #expect(ZoomReading.speaker(in: reading, known: "Me") == nil)
+    }
+    @Test func theNameZoomShowsWinsOverTheRememberedOne() {
+        var reading = gallery([("Me", true), ("Old", true)])
+        reading.ownName = "Me"
+        #expect(ZoomReading.speaker(in: reading, known: "Old") == "Old")
+    }
+    @Test func outsideAMeetingNobodySpeaks() {
+        var reading = gallery([("Me", true), ("Anna", true)])
+        reading.inMeeting = false
+        #expect(ZoomReading.speaker(in: reading, known: "Me") == nil)
+    }
+    @Test func tilesOutsideTheMeetingWindowAreNotRead() {
+        let windows = [Node(role: "AXWindow", title: "Zoom Workplace", children: [
+            Node(role: "AXTabGroup", description: "Anna, Computer audio unmuted, Video off"),
+        ])]
+        #expect(ZoomReading.read(windows: windows).tiles.isEmpty)
+    }
+    @Test func aTileNameWithACommaIsKeptWhole() {
+        let windows = [Node(role: "AXWindow", identifier: "zm.meeting.window.main", children: [
+            Node(role: "AXTabGroup", description: "Smith, Anna, No audio connected, Video off"),
+        ])]
+        #expect(ZoomReading.read(windows: windows).tiles == [.init(name: "Smith, Anna", unmuted: false)])
+    }
+    @Test func aTileSpeakerChangeIsReportedWithTheRememberedName() {
+        var transitions = Transitions()
+        #expect(transitions.next(gallery([("Me", true)]), known: "Me") == [.observed])
+        #expect(transitions.next(gallery([("Me", true), ("Anna", true)]), known: "Me") == [.started(name: "Anna"), .observed])
+        #expect(transitions.next(gallery([("Me", true), ("Anna", true), ("Boris", true)]), known: "Me") == [.stopped(name: "Anna"), .observed])
+    }
     @Test func aChangeOfSpeakerStopsOneAndStartsTheOther() {
         var transitions = Transitions()
         #expect(transitions.next(.init(inMeeting: true, talking: "A", participantCount: 3)) == [.started(name: "A"), .observed])
@@ -32,6 +110,10 @@ import ZoomAccessibility
         #expect(transitions.next(.init(inMeeting: false, talking: nil, participantCount: nil)) == [.stopped(name: "A"), .lost])
         #expect(transitions.next(.init(inMeeting: false, talking: nil, participantCount: nil)) == [])
     }
+}
+
+private func gallery(_ tiles: [(String, Bool)]) -> Reading {
+    Reading(inMeeting: true, talking: nil, participantCount: tiles.count, tiles: tiles.map { .init(name: $0.0, unmuted: $0.1) })
 }
 
 /// Reads a probe dump (`docs/research/probes/zoom-ax.swift`): two spaces per depth, `Key=Value` fields.

@@ -34,7 +34,7 @@ import Testing
                 http.release.send()
                 for await status in owner.updates() where status[id] == "Итоги готовы" { break }
                 await observer.refresh()
-                #expect(!owner.busy && !observer.busy && observer.statuses[id] == "Итоги готовы")
+                #expect(!owner.busy && !observer.busy && observer.statuses[id] == nil)
                 #expect(await http.requests == 1)
                 await owner.shutdown(); await observer.shutdown()
             } catch { http.release.send(); await owner.shutdown(); await observer.shutdown(); throw error }
@@ -61,7 +61,7 @@ import Testing
                 http.release.send()
                 for await status in owner.updates() where status[id] == "Итоги готовы" { break }
                 await observer.refresh()
-                #expect(!observer.busy && observer.statuses[id] == "Итоги готовы")
+                #expect(!observer.busy && observer.statuses[id] == nil)
                 #expect(await http.requests == 1)
                 await owner.shutdown(); await observer.shutdown()
             } catch { http.release.send(); await owner.shutdown(); await observer.shutdown(); throw error }
@@ -121,7 +121,7 @@ import Testing
         try await withComposeFolder { root in
             try makeCall(root)
             let folder = root.appendingPathComponent(id)
-            try Data("newer transcript must not replace snapshot".utf8).write(to: folder.appendingPathComponent("transcript.md"))
+            try Data("saved spoken".utf8).write(to: folder.appendingPathComponent("transcript.md"))
             if interrupted {
                 try await storeInterrupted(root)
                 try Data("previous notes".utf8).write(to: folder.appendingPathComponent("summary.md"))
@@ -143,11 +143,10 @@ import Testing
                 #expect(await http.urls == ["http://127.0.0.1:8181/saved/chat/completions"])
                 let payload = try JSONDecoder().decode(SentRequest.self, from: request)
                 #expect(payload.model == "saved-model")
-                #expect(payload.messages.map(\.content) == [NotesResponse.prompt + "\nACCEPTED EVIDENCE:\n\nTRANSCRIPT DATA:\n[0] A: saved spoken"])
+                #expect(payload.messages.map(\.content) == [defaultNotesPrompt() + "\nACCEPTED EVIDENCE:\n\nTRANSCRIPT DATA:\n[0.0] A: saved spoken"])
                 http.release.send()
                 for await status in sut.updates() where status[id] == "Итоги готовы" { break }
-                let record = try #require(try await files(root).load(call: id))
-                #expect(record.phase == "succeeded" && (record.job != saved.id) == interrupted && record.input == saved.input)
+                #expect(try await files(root).load(call: id) == nil)
                 #expect(!sut.busy && sut.retryable.isEmpty)
                 #expect(try String(contentsOf: folder.appendingPathComponent("summary.md"), encoding: .utf8).hasSuffix(heldNotes))
                 #expect(await http.requests == 1)
@@ -178,7 +177,7 @@ import Testing
     private var spoken: Job.Entry { .init(label: "A", time: "0", text: "spoken") }
     private var saved: Job {
         let runtime = Job.Runtime(kind: "compatibleAPI", model: "saved-model", program: "", endpoint: "http://127.0.0.1:8181/saved", credentialVariable: "")
-        return .init(id: "saved-job", call: id, input: "saved-input", entries: [.init(label: "A", time: "0", text: "saved spoken")],
+        return .init(id: "saved-job", call: id, input: summaryInput([.init(label: "A", time: "0.0", text: "saved spoken")]), entries: [.init(label: "A", time: "0.0", text: "saved spoken")],
                      speakers: false, primary: runtime, fallback: runtime)
     }
     private func makeCall(_ root: URL) throws {
@@ -204,9 +203,9 @@ import Testing
             for await _ in never {}
             try Task.checkCancellation()
         })
-        return SummariesModel(text: { CallsListText(language: .russian) },
+        return SummariesModel(keeping: { true }, templates: TestDefaultTemplates(), text: { CallsListText(language: .russian) },
                               preparation: SummariesPreparationPort(notes: { .init(enabled: true, speakers: false, primary: current, fallback: current) },
-                                                                    makeID: { UUID().uuidString }, callText: { _ in .init(notes: nil, transcript: []) }),
+                                                                    makeID: { UUID().uuidString }, callText: { _ in .init(transcript: [.init(start: 0, words: "saved spoken", label: "A")]) }),
                               files: port(root), generation: SummaryGeneration(runtime: runtime, sink: TestLogSink()))
     }
 }

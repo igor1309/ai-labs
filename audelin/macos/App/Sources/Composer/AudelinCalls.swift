@@ -1,10 +1,13 @@
 import CallDetail
+import NotesMenu
+import SummaryPreviewUI
 import IMRxObservation
 import SettingsUI
 import Calls
 import CallsList
 import CallsListUI
 import CallsSearch
+import CallTags
 import Foundation
 import NotesMarkdown
 import Observation
@@ -16,29 +19,54 @@ import Recordings
 struct RecordingsInputs {
     let state: () -> RecordingsState
     let send: (RecordingsEvent) -> Void
+    /// The current state followed by every changed state, in reduction order.
+    let states: () -> AsyncStream<RecordingsState>
 
-    init(state: @escaping () -> RecordingsState, send: @escaping (RecordingsEvent) -> Void) {
-        self.state = state; self.send = send
+    init(state: @escaping () -> RecordingsState, send: @escaping (RecordingsEvent) -> Void,
+         states: @escaping () -> AsyncStream<RecordingsState>) {
+        self.state = state; self.send = send; self.states = states
     }
 }
 
 /// What the detail asks of the call it shows.
-public enum CallsDetailEvent: Equatable, Sendable { case copy, open, rename, makeSummary, cancelSummary, retrySummary, delete }
+public enum CallsDetailEvent: Equatable, Sendable {
+    case notesMenuOpened, chooseNotesTemplate(String), toggleKeeping, openTemplatesFolder, chooseNotesVersion(CallNotesVersion), cancelNotes
+    case makeSummaryWithTemplate(String)
+    case copy, open, rename, makeSummary, cancelSummary, retrySummary, delete
+    /// The tags line: open the field, type, take the completion, remove a chip, save, cancel.
+    case editTags, typeTag(String), completeTag, removeTag(String), submitTags, cancelTags
+}
+
+/// The detail header's tags line for the call shown.
+public enum CallsDetailTags: Equatable, Sendable {
+    case shown([String])
+    /// The field: its chips, the tag being typed, the rest of a tag in use it starts, a save
+    /// under way and why the last save failed.
+    case editing(tags: [String], entry: String, completion: String, saving: Bool, failure: String?)
+}
 
 @MainActor @Observable
 public final class AudelinCalls {
     /// The selected call, nil when none is selected.
     public var detail: CallsDetail? { detailModel.state.detail }
+    public var notesMenu: NotesMenuState { menuModel.state }
+    private let menuModel: ObservableModel<NotesMenuState, NotesMenuEvent, NotesMenuEffect>
+    private var notesConnections: [Task<Void, Never>] = []
     private let detailModel: ObservableModel<CallDetailState, CallDetailEvent, CallDetailEffect>
     private let copy: (String) -> Void
     private let readCall: () -> Void
     /// The window is too narrow for the call beside the list.
     private var narrow = false
-    private let notes: (String) async throws -> (text: String, made: String?)?
+    private let notes: (String) async throws -> CallNotesPair?
+    private let makeWithTemplate: (String, String) -> Void
+    private let saveKeeping: (Bool) throws -> Void
+    private let readKeeping: () -> Bool
+    public var keepPreviousNotes: Bool { readKeeping() }
+    public func setKeepPreviousNotes(_ keeping: Bool) throws { try saveKeeping(keeping) }
     private let makeSummary: (String) -> Void
     private let cancelSummary: (String) async -> Void
     /// The list's selection and rename editing.
-    private let list = SyncModel<CallsListMachineState, CallsListMachineEvent>(initialState: .init(), reduce: CallsListReducer().reduce)
+    private let list = SyncModel<CallsListMachineState, CallsListMachineEvent>(initialState: .init(), reduce: CallsListReducer(splitQuery: { let query = CallTags.query($0); return (query.tags, query.text) }, tagKey: CallTags.key, normalizeTags: CallTags.normalized, complete: { CallTags.completion(of: $0, draft: $1, inUse: $2) }).reduce)
     private var withNotes: Set<String> = []
     /// Each call's gist, read with its notes.
     private var gists: [String: String] = [:]
@@ -48,6 +76,8 @@ public final class AudelinCalls {
     private let retryableSummaries: () -> Set<String>
     private let retrySummary: (String) async throws -> Void
     private let summaryStatuses: () -> [String: String]
+    private let summaryTemplates: () -> [String: String]
+    private let summaryFailures: () -> [String: CallDetailFailure]
     private let summaryBadges: () -> [String: CallsListState.Row.Summary]
     private let inputs: RecordingsInputs
     private let location: (String) async throws -> URL
@@ -59,8 +89,9 @@ public final class AudelinCalls {
     private let describe: (any Error) -> String
     /// The calls list's text, in the language Audelin is shown in.
     public private(set) var listText: CallsListText
-    private let callText: (String) async throws -> Calls.Text
-    private var query = ""
+    private let callText: (String) async throws -> CallsText
+    /// The tag being typed in the detail's tags field; it joins the draft on Return.
+    private var tagsFollow: Task<Void, Never>?
     /// Each read call's transcript or notes match, nil when they hold none; a call
     /// not yet read is absent. Titles are matched afresh, so a rename shows at once.
     private var textMatches: [String: CallsSearch.Snippet?] = [:]
@@ -71,8 +102,18 @@ public final class AudelinCalls {
          location: @escaping (String) async throws -> URL, openFolder: @escaping (URL) -> Bool,
          present: @escaping () -> Void, summaryStatuses: @escaping () -> [String: String] = { [:] },
          summaryBadges: @escaping () -> [String: CallsListState.Row.Summary] = { [:] },
-         notes: @escaping (String) async throws -> (text: String, made: String?)? = { _ in nil },
+         notes: @escaping (String) async throws -> CallNotesPair? = { _ in nil },
          makeSummary: @escaping (String) -> Void = { _ in },
+         makeWithTemplate: @escaping (String, String) -> Void = { _, _ in },
+         catalogue: @escaping @Sendable () async -> NotesMenuState.Catalogue = { .init(templates: [.init(id: "Default", name: "Default", enabled: true, isFile: false)]) },
+         openTemplatesFolder: @escaping @Sendable () async throws -> Void = {},
+         previewText: @escaping @Sendable () -> SummaryPreviewText = { .init(language: .russian) },
+         summaryTemplates: @escaping () -> [String: String] = { [:] },
+         summaryFailures: @escaping () -> [String: CallDetailFailure] = { [:] },
+         publications: @escaping () -> [String: String] = { [:] },
+         keepingChanges: AsyncStream<Bool> = AsyncStream { $0.finish() },
+         readKeeping: @escaping () -> Bool = { true },
+         saveKeeping: @escaping (Bool) throws -> Void = { _ in },
          cancelSummary: @escaping (String) async -> Void = { _ in },
          copy: @escaping (String) -> Void = { _ in },
          readCall: @escaping () -> Void = {},
@@ -80,7 +121,7 @@ public final class AudelinCalls {
          retrySummary: @escaping (String) async throws -> Void = { _ in throw CocoaError(.fileWriteUnknown) },
          describe: @escaping (any Error) -> String = SettingsText(language: .russian).callsFailure,
          listText: CallsListText = .init(language: .russian),
-         callText: @escaping (String) async throws -> Calls.Text = { _ in .init(notes: nil, transcript: []) }) {
+         callText: @escaping (String) async throws -> CallsText = { _ in .init(notes: nil, transcript: []) }) {
         self.callText = callText
         self.describe = describe
         self.listText = listText
@@ -88,33 +129,116 @@ public final class AudelinCalls {
         self.retrySummary = retrySummary
         self.copy = copy
         self.readCall = readCall
+        self.makeWithTemplate = makeWithTemplate; self.readKeeping = readKeeping; self.saveKeeping = saveKeeping
         self.makeSummary = makeSummary; self.cancelSummary = cancelSummary
+        self.summaryTemplates = summaryTemplates
+        self.summaryFailures = summaryFailures
         self.summaryStatuses = summaryStatuses
         self.summaryBadges = summaryBadges
         self.notes = notes
         let handler = CallDetailEffectHandler(notes: { @MainActor id in try await notes(id) })
-        detailModel = ObservableModel(initialState: .init(), reduce: CallDetailReducer().reduce,
+        detailModel = ObservableModel(initialState: .init(), reduce: CallDetailReducer(progress: { previewText()(.remaking, $0) }, failure: { previewText()(failurePhrase($0)) }, transcriptMark: { _ in previewText()(.earlierTranscript) }).reduce,
                                       handleEffect: { effect in oneEvent { await handler.handle(effect) } })
         self.inputs = inputs; self.timeZone = timeZone; self.now = now; self.recordingState = recordingState
         self.location = location; self.openFolder = openFolder; self.present = present
+        let menuHandler = NotesMenuEffectHandler(catalogue: catalogue, save: { @MainActor in try saveKeeping($0) }, openFolder: openTemplatesFolder)
+        menuModel = ObservableModel(initialState: .init(keeping: readKeeping()),
+                                    reduce: NotesMenuReducer(section: { previewText()($0 ? .makeAgainSection : .makeSection) }, noUsableFiles: { previewText()(.noUsableTemplates) }).reduce,
+                                    handleEffect: { effect in oneEvent { await menuHandler.handle(effect) } })
+        let forwardCancellation: @MainActor @Sendable (String) async -> Void = { [weak self] call in
+            await self?.cancelSummary(call)
+        }
+        notesConnections = [
+            Task { @MainActor [weak self] in
+                var seen: TranscriptSelection?
+                for await state in inputs.states() {
+                    let selection = TranscriptSelection(state)
+                    guard let self, let id = selection.id, selection != seen else { continue }
+                    seen = selection
+                    _ = await syncRows()
+                    await sendList(.select(id))
+                    selectDetail()
+                    detailModel.event(.transcriptChanged(id: id))
+                }
+            },
+            Task { @MainActor [weak self] in
+                var seen: TranscriptChange?
+                for await change in Observations({ inputs.state().transcriptChanged }) {
+                    guard let self, let change, change != seen else { continue }
+                    seen = change
+                    detailModel.event(.transcriptChanged(id: change.id))
+                }
+            },
+            Task { @MainActor [weak self] in
+                var seen: [String: String] = [:]
+                for await current in Observations({ publications() }) {
+                    guard let self else { return }
+                    for (call, publication) in current where seen[call] != publication {
+                        detailModel.event(.publicationNotified(id: call))
+                    }
+                    seen = current
+                }
+            },
+            Task { @MainActor [weak self] in
+                for await facts in Observations({ self?.detailModel.state.menuFacts }) {
+                    guard let self else { return }
+                    menuModel.event(.factsChanged(facts.map { .init(call: $0.call, hasNotes: $0.hasNotes, template: $0.template, busy: $0.busy) }))
+                }
+            },
+            Task { @MainActor [weak self] in
+                var seen = 0
+                for await (count, intention) in Observations({ (self?.menuModel.state.intentions ?? 0, self?.menuModel.state.intention) }) {
+                    guard let self else { return }
+                    guard count > seen, let intention else { continue }
+                    seen = count
+                    makeWithTemplate(intention.call, intention.template)
+                }
+            },
+            Task { @MainActor [weak self] in
+                await withDiscardingTaskGroup { group in
+                    var seen = 0
+                    for await (count, call) in Observations({ (self?.detailModel.state.cancellations ?? 0, self?.detailModel.state.cancelCall) }) {
+                        guard self != nil else { break }
+                        guard count > seen, let call else { continue }
+                        seen = count
+                        group.addTask { await forwardCancellation(call) }
+                    }
+                }
+            },
+            Task { @MainActor [weak self] in
+                for await keeping in keepingChanges {
+                    guard let self else { return }
+                    menuModel.event(.keepingChanged(keeping))
+                }
+            },
+        ]
     }
+
+    isolated deinit { notesConnections.forEach { $0.cancel() } }
 
     public var state: CallsListState {
         var recordings = inputs.state()
+        let everyCall = recordings.calls
+        let filter = list.state.filterTags, words = list.state.searchText
+        recordings.calls = CallTags.keep(recordings.calls, having: filter, tags: knownTags)
         var found: [String: CallsListState.Row.Match] = [:]
-        let searchOn = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let searchOn = !words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         if searchOn {
             for call in recordings.calls {
-                let title = CallsSearch.match(query, title: call.title, transcript: [], notes: nil)?.title ?? []
+                let match = CallsSearch.match(words, title: call.title, tags: knownTags(call), transcript: [], notes: nil)
+                let title = match?.title ?? [], tags = match?.tags ?? []
                 let snippet = textMatches[call.id] ?? nil
-                guard !title.isEmpty || snippet != nil else { continue }
+                guard !title.isEmpty || !tags.isEmpty || snippet != nil else { continue }
                 found[call.id] = .init(title: title, snippet: snippet.map(rowSnippet))
             }
             recordings.calls = recordings.calls.filter { found[$0.id] != nil }
         }
         var state = callsListState(recordings, timeZone: timeZone, now: now(), text: listText)
-        state.searchText = query
-        state.search = searchOn ? .init(query: query, searching: searching) : nil
+        state.searchText = list.state.query
+        state.search = searchOn ? .init(query: words, searching: searching) : nil
+        let on = Set(filter.map(CallTags.key))
+        state.tagStrip = CallTags.inUse(everyCall.map(knownTags)).map { .init(name: $0, on: on.contains(CallTags.key($0))) }
+        let tagsByID = Dictionary(recordings.calls.map { ($0.id, knownTags($0)) }, uniquingKeysWith: { first, _ in first })
         let statuses = summaryStatuses()
         let badges = summaryBadges()
         let retryable = retryableSummaries().subtracting(list.state.retrying)
@@ -127,6 +251,7 @@ public final class AudelinCalls {
                 && state.rows[index].summary == .none
             state.rows[index].gist = gists[state.rows[index].id]
             state.rows[index].match = found[state.rows[index].id]
+            state.rows[index].tags = tagsByID[state.rows[index].id] ?? []
         }
         let selectedID = list.state.selectedID
         state.selectedID = state.rows.contains { $0.id == selectedID } ? selectedID : nil
@@ -161,10 +286,11 @@ public final class AudelinCalls {
 
     /// Reads each listed call's transcript and notes once for the query; a newer query
     /// cancels the older reading. Rows join as their calls are read.
-    private func search(_ text: String) {
+    private func search(_ query: String) {
         searchTask?.cancel()
         let previousSelection = state.selectedID
-        query = text
+        list.event(.search(query))
+        let text = list.state.searchText
         textMatches = [:]
         defer { followSelection(previousSelection) }
         guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -179,7 +305,7 @@ public final class AudelinCalls {
                 let read = try? await callText(id)
                 guard !Task.isCancelled else { return }
                 let match = read.flatMap { read in
-                    CallsSearch.match(text, title: "", transcript: read.transcript.map { .init(start: $0.start, words: $0.words) }, notes: read.notes)
+                    CallsSearch.match(text, title: "", tags: [], transcript: read.transcript.map { .init(start: $0.start, words: $0.words) }, notes: read.notes)
                 }
                 let previousSelection = state.selectedID
                 textMatches[id] = .some(match?.snippet)
@@ -214,12 +340,62 @@ public final class AudelinCalls {
     }
 
     public func show() {
-        search(query)
         list.event(.shown)
+        search("")
         inputs.send(.refresh)
         present()
         scanNotes()
         followMerges()
+        followTagsSaves()
+    }
+
+    /// Hands the list each answer to a tags save, as Recordings gives it.
+    private func followTagsSaves() {
+        tagsFollow?.cancel()
+        tagsFollow = Task {
+            for await outcome in Observations({ self.inputs.state().tagsOutcome }) {
+                guard let outcome else { continue }
+                let result: CallsListMachineState.TagsOutcome
+                switch outcome.result {
+                case .saved: result = .saved
+                case let .failed(reason): result = .failed(reason)
+                }
+                await sendList(.tagsFinished(request: outcome.request, result))
+            }
+        }
+    }
+
+    /// The tags line for the call the detail shows.
+    public var detailTags: CallsDetailTags {
+        guard let id = detail?.id else { return .shown([]) }
+        guard let editor = list.state.tagsEditor, editor.id == id else {
+            return .shown(inputs.state().calls.first { $0.id == id }.map(knownTags) ?? [])
+        }
+        return .editing(tags: editor.draft, entry: editor.entry, completion: editor.completion,
+                        saving: editor.pending != nil, failure: editor.failure)
+    }
+
+    /// Hands the list the rows as they are listed, so its actions see each call's state and tags.
+    private func syncRows() async -> CallsListState {
+        let snapshot = state
+        await sendList(.rowsChanged(snapshot.rows.map { .init(id: $0.id, title: $0.title, editable: $0.editable,
+                                                               canRetry: $0.canRetrySummary, tags: $0.tags) },
+                                    busy: snapshot.busy))
+        return snapshot
+    }
+
+    private func sendTags(_ event: CallsDetailEvent, id: String) async {
+        switch event {
+        case .editTags:
+            _ = await syncRows()
+            await sendList(.beginTags(id, inUse: CallTags.inUse(inputs.state().calls.map(knownTags))))
+        case let .typeTag(text): await sendList(.typeTag(text))
+        case .completeTag: await sendList(.completeTag)
+        case let .removeTag(tag): await sendList(.editTags((list.state.tagsEditor?.draft ?? []).filter { $0 != tag }))
+        case .submitTags: await sendList(.submitTags)
+        case .cancelTags: await sendList(.cancelTags)
+        default: break
+        }
     }
 
     /// The calls window became narrow or wide: below the width for the call beside the list,
@@ -234,6 +410,8 @@ public final class AudelinCalls {
         notesScan = nil
         mergeFollow?.cancel()
         mergeFollow = nil
+        tagsFollow?.cancel()
+        tagsFollow = nil
     }
 
     /// Selects the call a merge made, so the detail reads it as any selected call.
@@ -268,7 +446,7 @@ public final class AudelinCalls {
                     do {
                         guard let text = try await notes(id) else { continue }
                         found.insert(id)
-                        gists[id] = NotesMarkdown.gist(text.text)
+                        gists[id] = NotesMarkdown.gist(text.current.text)
                     } catch { found.insert(id) }
                 }
                 if Task.isCancelled { return }
@@ -300,7 +478,7 @@ public final class AudelinCalls {
         case .failed: badge = .failed
         }
         return .init(id: id, title: row.displayTitle, date: date, duration: row.duration, editable: row.editable,
-                     summary: .init(badge: badge, status: row.summaryStatus, canRetry: row.canRetrySummary))
+                     summary: .init(badge: badge, status: row.summaryStatus, canRetry: row.canRetrySummary, template: summaryTemplates()[id], failure: summaryFailures()[id]))
     }
 
     /// Connects summary updates separately from changes to the selected call's display fields.
@@ -317,13 +495,21 @@ public final class AudelinCalls {
     public func send(detail event: CallsDetailEvent) async {
         guard let shown = detail else { return }
         switch event {
+        case .notesMenuOpened: menuModel.event(.opened)
+        case .openTemplatesFolder: menuModel.event(.openFolder)
+        case let .chooseNotesTemplate(template): menuModel.event(.choose(template))
+        case .toggleKeeping: menuModel.event(.toggleKeeping)
+        case let .chooseNotesVersion(version): detailModel.event(.versionChosen(version))
+        case .cancelNotes: detailModel.event(.cancelChosen)
         case .copy: if case let .notes(source, _) = shown.content { copy(source) }
         case .open: await send(.open(shown.id))
         case .rename: await send(.beginRename(shown.id))
+        case let .makeSummaryWithTemplate(template): makeWithTemplate(shown.id, template)
         case .makeSummary: await send(.makeSummary(shown.id))
         case .cancelSummary: await cancelSummary(shown.id)
         case .retrySummary: await send(.retrySummary(shown.id))
         case .delete: await send(.askDelete(shown.id))
+        case .editTags, .typeTag, .completeTag, .removeTag, .submitTags, .cancelTags: await sendTags(event, id: shown.id)
         }
     }
 
@@ -335,6 +521,7 @@ public final class AudelinCalls {
         for request in list.state.requests {
             switch request {
             case let .rename(id, title): inputs.send(.rename(id: id, title: title))
+            case let .setTags(request, id, tags): inputs.send(.setTags(request: request, id: id, tags: tags))
             case .clearFailure: inputs.send(.clearFailure)
             case let .retrySummary(id):
                 let succeeded: Bool
@@ -353,15 +540,17 @@ public final class AudelinCalls {
         let id = recordedCallID(state)
         list.event(.recordingChanged(id: id))
         inputs.send(.recordingChanged(id))
+        if id != nil { inputs.send(.recordingStarted) }
     }
 
     public func send(_ event: CallsListEvent) async {
         guard !list.state.opening else { return }
         recordingChanged(recordingState())
-        let snapshot = state
-        await sendList(.rowsChanged(snapshot.rows.map { .init(id: $0.id, title: $0.title, editable: $0.editable, canRetry: $0.canRetrySummary) },
-                                     busy: snapshot.busy))
+        let snapshot = await syncRows()
         switch event {
+        case let .makeTranscriptAgain(id), let .retryTranscriptAgain(id): inputs.send(.makeTranscriptAgain(id))
+        case let .restorePreviousTranscript(id): inputs.send(.restorePreviousTranscript(id))
+        case .cancelTranscriptAgain: inputs.send(.cancelTranscriptAgain)
         case let .beginRename(id): await sendList(.beginRename(id))
         case let .editTitle(title): await sendList(.editTitle(title))
         case .cancelRename: await sendList(.cancelRename)
@@ -377,6 +566,10 @@ public final class AudelinCalls {
             await sendList(.select(id))
             selectDetail()
         case let .search(text): search(text)
+        case let .toggleTag(tag):
+            let previous = state.selectedID
+            await sendList(.toggleTag(tag))
+            followSelection(previous)
         case let .toggleMark(id): inputs.send(.toggleMergeSelection(id))
         case .confirmMerge: inputs.send(.confirmMerge)
         case .leaveMerge: inputs.send(.leaveMergeMode)
@@ -443,10 +636,64 @@ func callsListState(_ state: RecordingsState, timeZone: TimeZone, now: Date, tex
         let opens = index == 0 || days[index - 1] != day
         return .init(id: call.id, title: call.title, displayTitle: call.title.isEmpty ? format.stamp(call.start) : call.title,
                      day: opens ? .init(title: day, count: format.count(days[index...].prefix { $0 == day }.count)) : nil,
-                     time: format.time(call.start), duration: format.duration(call.duration), editable: call.id != state.recordingID)
+                     time: format.time(call.start), duration: format.duration(call.duration), editable: call.id != state.recordingID && call.id != state.transcriptRun?.id,
+                     transcriptAgain: transcriptOffer(state.transcriptOffers[call.id]?.run, text: text),
+                     restoreTranscript: call.hasPreviousTranscript ? transcriptOffer(state.transcriptOffers[call.id]?.restore, text: text) : nil,
+                     transcriptWait: state.transcriptRun.flatMap { $0.id == call.id ? transcriptWait($0.wait, text: text) : nil })
     }, deleteID: deleteID, deleteBody: state.calls.first { $0.id == deleteID }.map { call in
         text(.deleteBody, call.id + (call.title.isEmpty ? "" : " " + call.title))
-    }, busy: busy || state.isListing, failure: state.failure.map { failure in
-        (failure.id.map { "«\($0)»: " } ?? "") + failure.reason
-    }, merge: merge)
+    }, busy: busy || state.isListing, failure: state.failure.flatMap { failure in
+        guard failure.kind == .action else { return nil }
+        return (failure.id.map { "«\($0)»: " } ?? "") + failure.reason
+    }, merge: merge, transcriptBanner: transcriptBanner(state.failure, text: text))
+}
+
+/// A call's tags; unreadable ones count as none for filtering and showing.
+func knownTags(_ call: RecordedCall) -> [String] {
+    if case let .known(tags) = call.tags { tags } else { [] }
+}
+
+private func transcriptOffer(_ offer: TranscriptOffer?, text: CallsListText) -> CallsListState.TranscriptOffer {
+    switch offer {
+    case .available: .available
+    case let .unavailable(_, message): .unavailable(message)
+    case nil: .unavailable(text(.transcriptUnavailable))
+    }
+}
+
+private func transcriptWait(_ wait: TranscriptWait, text: CallsListText) -> CallsListState.TranscriptWait {
+    switch wait {
+    case .preparing: .init(message: text(.transcriptPreparing))
+    case let .hearing(progress): .init(message: text(.transcriptHearing), progress: progress)
+    case .finishing: .init(message: text(.transcriptFinishing))
+    }
+}
+
+private func transcriptBanner(_ failure: RecordingsState.Failure?, text: CallsListText) -> CallsListState.TranscriptBanner? {
+    guard let failure else { return nil }
+    switch failure.kind {
+    case .action: return nil
+    case .transcriptRun:
+        return .init(style: .error, title: text(.transcriptFailed),
+                     message: failure.reason + " " + text(.transcriptPreserved), retryID: failure.id)
+    case .transcriptRestore:
+        return .init(style: .error, title: text(.transcriptRestoreFailed), message: failure.reason)
+    case .transcriptStopped:
+        return .init(style: .info, title: text(.transcriptStopped),
+                     message: failure.reason + " " + text(.transcriptPreserved))
+    }
+}
+
+/// Requests and terminal outcomes each select again, even when they concern the same call.
+private struct TranscriptSelection: Equatable {
+    let id: String?
+    let request: Int
+    let running: Bool
+    let restoring: Bool
+    init(_ state: RecordingsState) {
+        id = state.selectedCallID
+        request = state.transcriptRequest
+        running = state.transcriptRun != nil
+        if case .restoring = state.phase { restoring = true } else { restoring = false }
+    }
 }

@@ -34,6 +34,7 @@ struct RemoteSpeakers: Sendable {
 
     struct Attribution: Sendable {
 
+        let diarizer: String
         let turns: [CallDiarizer.Turn]
         let pieces: [SpeakerAttribution.Piece<TranscriptSegment>]
     }
@@ -51,7 +52,7 @@ struct RemoteSpeakers: Sendable {
             let model = result.model == .nemotron ? "nemotron" : "vbx"
             let count = Set(pieces.compactMap(\.speaker)).count
             sink.write(.init(category: .session, message: "remote speakers model=\(model) turns=\(result.turns.count) speakers=\(count)"))
-            return Attribution(turns: result.turns, pieces: pieces)
+            return Attribution(diarizer: model, turns: result.turns, pieces: pieces)
         } catch is CancellationError {
             return nil
         } catch {

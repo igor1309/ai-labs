@@ -10,10 +10,35 @@ public enum SummaryPreviewLanguage: String, CaseIterable, Sendable {
 /// A fixed piece of summary preview text; its raw value is the key in the strings tables.
 public enum SummaryPreviewPhrase: String, CaseIterable, Sendable {
 
+    case earlierTranscript = "preview.earlierTranscript"
+    case failureUnavailable = "preview.failureUnavailable"
+    case failureAuthentication = "preview.failureAuthentication"
+    case failureQuota = "preview.failureQuota"
+    case failureTransport = "preview.failureTransport"
+    case failureInvalidResponse = "preview.failureInvalidResponse"
+    case failureOutputLimit = "preview.failureOutputLimit"
+    case failureTimeout = "preview.failureTimeout"
+    case failureCancelled = "preview.failureCancelled"
+    case failureConfiguration = "preview.failureConfiguration"
+    case failureUnknown = "preview.failureUnknown"
+
+    case templateFiles = "preview.templateFiles"
+    case noUsableTemplates = "preview.noUsableTemplates"
+    case openTemplatesFolder = "preview.openTemplatesFolder"
+    case notesMenu = "preview.notesMenu"
+    case makeSection = "preview.makeSection"
+    case makeAgainSection = "preview.makeAgainSection"
+    case keepPrevious = "preview.keepPrevious"
+    case previous = "preview.previous"
+    case current = "preview.current"
+    case templateLine = "preview.templateLine"
+    case templateCaption = "preview.templateCaption"
+    case remaking = "preview.remaking"
+    case remakeFailed = "preview.remakeFailed"
     case notes = "preview.notesLabel"
     case copy = "preview.copy"
     case mergeCalls = "preview.mergeCalls"
-    case mergeDone = "preview.mergeDone"
+    case mergeCancel = "preview.mergeCancel"
     case open = "preview.open"
     case rename = "preview.rename"
     case retrySummary = "preview.retrySummary"
@@ -26,6 +51,15 @@ public enum SummaryPreviewPhrase: String, CaseIterable, Sendable {
     /// Takes when the summary was made.
     case made = "preview.made"
     case noSelection = "preview.noSelection"
+    case tags = "preview.tags"
+    case noTags = "preview.noTags"
+    case editTags = "preview.editTags"
+    case addTags = "preview.addTags"
+    case newTag = "preview.newTag"
+    case tagsHint = "preview.tagsHint"
+    case savingTags = "preview.savingTags"
+    /// Takes the tag's name.
+    case removeTag = "preview.removeTag"
     /// Takes the system's reason.
     case unreadable = "preview.unreadable"
 }

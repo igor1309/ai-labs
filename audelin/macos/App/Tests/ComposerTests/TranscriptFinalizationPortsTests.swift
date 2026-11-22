@@ -11,6 +11,59 @@ import TranscriptFormat
 
 @MainActor @Suite(.timeLimit(.minutes(1)))
 struct TranscriptFinalizationPortsTests {
+    @Test func shutdownPublishesAndReleasesOneCallWhileAnotherReplacementIsHeld() async throws {
+        let raw = try await publishedCall(status: .finished,
+            mine: [.init(text: line("shared words here", start: 1))],
+            theirs: [.init(text: line("shared words here", start: 0))])
+        let cleaningA = Signal(), cleaningB = Signal(), finishCleaningA = Signal(), finishCleaningB = Signal()
+        let replacingA = Signal(), replacingB = Signal(), finishA = Signal(), finishB = Signal()
+        defer {
+            cleaningA.end(); cleaningB.end(); finishCleaningA.end(); finishCleaningB.end()
+            replacingA.end(); replacingB.end(); finishA.end(); finishB.end()
+        }
+        let resources = FinalizationResources(), log = FixtureLog()
+        let received = Values<String>(), released = Values<String>()
+        for (id, cleaning, finishCleaning, replacing, finish) in [
+            ("a", cleaningA, finishCleaningA, replacingA, finishA), ("b", cleaningB, finishCleaningB, replacingB, finishB)
+        ] {
+            let bytes = FinalizationBytes(beforeReplacement: { replacing.send(); await finish.next() })
+            resources.add(call: id,
+                transcript: openedTranscript(bytes: bytes, names: RecordingNames(), diarizer: .unused, sink: log),
+                cleanup: TranscriptCleanup(recording: .init(microphoneURL: URL(fileURLWithPath: "/mic"), callURL: URL(fileURLWithPath: "/call")),
+                    duration: { 60 }, cleaning: CleaningStub { _ in
+                        cleaning.send(); await finishCleaning.next(); return []
+                    }, hearing: HearingStub { _ in Issue.record("Stopped cleanup must not hear again"); return nil }, sink: log),
+                speakers: { _ in }, finishReading: { released.append(id) })
+        }
+        let model = TranscriptFinalizationModel(diarizing: FinalizationDiarizing(resources: resources),
+            cleanup: FinalizationCleanup(resources: resources), replacement: FinalizationReplacement(resources: resources),
+            finals: FinalTranscriptsPort(resources: resources, deliver: { call, _ in received.append(call) }))
+        for id in ["a", "b"] {
+            model.send(.opened(call: id)); model.send(.wrote(call: id, raw)); model.send(.closed(call: id, names: .init()))
+            model.send(.evidenceClosed(call: id, .init()))
+        }
+        await cleaningA.next(); await cleaningB.next()
+        model.send(.shutdown); model.send(.inputEnded)
+        await replacingA.next()
+        #expect(received.all.isEmpty)
+        finishA.send()
+        await replacingB.next()
+        for await state in model.states() where state.calls["a"]?.published == true { break }
+        #expect(model.state.calls["a"]?.stage == .finalized)
+        #expect(model.state.calls["b"]?.stage == .committing)
+        #expect(model.state.calls["b"]?.published == false)
+        #expect(!model.state.settled)
+        #expect(received.all == ["a"])
+        #expect(released.all == ["a"])
+        #expect(resources.resource(call: "a") == nil)
+        #expect(resources.resource(call: "b") != nil)
+        finishB.send()
+        await model.settled()
+        #expect(received.all == ["a", "b"])
+        #expect(released.all == ["a", "b"])
+        #expect(resources.resource(call: "b") == nil)
+    }
+
     enum CleanupCase: CaseIterable {
         case cleaned, noBleed, differentWordTimes, longRecording, silent, emptyWords, cleaningFails, hearingFails
     }
@@ -81,7 +134,7 @@ struct TranscriptFinalizationPortsTests {
         add(call: "a", to: resources, opened: openedTranscript(bytes: bytes, names: RecordingNames(), diarizer: .unused, sink: log), sink: log)
         let sut = FinalizationReplacement(resources: resources)
         do {
-            try await sut.replace(call: "a", raw, names: liveNames([0: "Boris"]), far: attributedFar, heard: [line("my answer", start: 3)])
+            try await sut.replace(call: "a", raw, names: liveNames([0: "Boris"]), far: attributedFar, heard: [line("my answer", start: 3)], outcomes: .init(cleaning: .done))
             #expect(!fails)
         } catch { #expect(fails && error as? FinalizationFailure == .failed) }
         if fails {
@@ -108,7 +161,7 @@ struct TranscriptFinalizationPortsTests {
         add(call: "a", to: resources, opened: openedTranscript(bytes: bytes, names: names, diarizer: .unused, sink: log), sink: log)
         names.published(liveNames([0: "Boris"]))
         try await FinalizationReplacement(resources: resources).replace(
-            call: "a", raw, names: liveNames([0: "Anna"]), far: nil, heard: [line("my answer", start: 3)])
+            call: "a", raw, names: liveNames([0: "Anna"]), far: nil, heard: [line("my answer", start: 3)], outcomes: .init(cleaning: .done))
         let text = try #require(await bytes.replacements.first)
         #expect(text.contains("- Them: Anna") && !text.contains("Vera") && !text.contains("Boris"))
         await resources.published(call: "a")
@@ -125,11 +178,11 @@ struct TranscriptFinalizationPortsTests {
                 .init(text: line("first", start: 0)), .init(text: line("second", start: 2)),
             ])
             let sut = FinalizationDiarizing(resources: resources)
-            #expect(await sut.diarize(call: "missing", raw) == nil)
+            #expect(await sut.diarize(call: "missing", raw, evidence: .init(), outcomes: .init()) == nil)
             #expect(samples.all.isEmpty)
-            let far = try #require(await sut.diarize(call: "a", raw))
-            #expect(far.rows == [0: 1, 2: 2])
-            #expect(far.speakers.map(\.id) == ["d0", "d1"])
+            let far = try #require(await sut.diarize(call: "a", raw, evidence: .init(), outcomes: .init()))
+            #expect(far.far.rows == [0: 1, 2: 2])
+            #expect(far.far.speakers.map(\.id) == ["d0", "d1"])
             #expect(samples.all == [160])
             let text = try #require(await bytes.replacements.first)
             #expect(text.contains("**Them 1** 00:00:00\nfirst"))
@@ -192,7 +245,7 @@ private func line(_ text: String, start: Double) -> TranscriptSegment {
 }
 
 private func openedTranscript(bytes: FinalizationBytes, names: RecordingNames, track: URL? = nil, diarizer: CallDiarizer, sink: any LogSink) -> OpenedTranscript {
-    let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: names, sink: sink)
+    let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: names, origin: testTranscriptOrigin, sink: sink)
     return OpenedTranscript(writer: writer, pass: AfterCallPass(writer: writer, track: track, names: names, diarizer: diarizer, sink: sink), names: names)
 }
 
@@ -210,9 +263,13 @@ private enum FinalizationFailure: Error { case failed }
 private actor FinalizationBytes: TranscriptBytes {
     let fails: Bool
     private(set) var replacements: [String] = []
-    init(fails: Bool = false) { self.fails = fails }
+    let beforeReplacement: @Sendable () async -> Void
+    init(fails: Bool = false, beforeReplacement: @escaping @Sendable () async -> Void = {}) {
+        self.fails = fails; self.beforeReplacement = beforeReplacement
+    }
     func write(_ chunks: [Data], finalLength: Int?) {}
-    func replace(_ chunks: [Data], finalLength: Int?) throws {
+    func replace(_ chunks: [Data], finalLength: Int?) async throws {
+        await beforeReplacement()
         if fails { throw FinalizationFailure.failed }
         replacements.append(String(decoding: chunks.reduce(Data(), +), as: UTF8.self))
     }

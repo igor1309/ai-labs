@@ -1,0 +1,58 @@
+Role=AXWindow Subrole=AXStandardWindow Title=Zoom Meeting  40-minutes Identifier=zm.meeting.window.main
+  Role=AXTabGroup Description=Борис Смирнов, Computer audio unmuted, Video off Help=Press Control+Command+Arrow key to move order
+    Role=AXImage
+    Role=AXButton Description=Борис Смирнов
+  Role=AXTabGroup Description=Анна Петрова, Computer audio unmuted, Video off Help=Press Control+Command+Arrow key to move order
+    Role=AXImage
+    Role=AXButton Description=Анна Петрова
+  Role=AXButton Description=Mute my audio Identifier=audio Help=Noise removal is on. Mute my audio (⇧⌘A)
+  Role=AXButton Description=Audio options
+  Role=AXButton Description=Start video Identifier=video Help=Start video (⇧⌘V)
+  Role=AXButton Description=Video options
+  Role=AXButton Description=End Identifier=leave Help=End (⌘W)
+  Role=AXButton Description=Open participants panel, closed, 2 participants Identifier=participant Help=Show the participants list (⌘U), press Shift+F10 key to open the context menu, Press Ctrl + Command + Arrow Keys to reorder
+  Role=AXButton Description=Participants options
+  Role=AXButton Description=Open chat panel  Identifier=chat Help=Show chat (⇧⌘H), press Shift+F10 key to open the context menu, Press Ctrl + Command + Arrow Keys to reorder
+  Role=AXButton Description=Chat options
+  Role=AXButton Description=More meeting controls, collapsed Identifier=more Help=Opens the navigation tabs in a grid
+  Role=AXStaticText Description=Host tools
+  Role=AXButton Description=Pop out, Host tools Help=Pop out 
+  Role=AXButton Description=Close, Host tools Help=Close 
+  Role=AXScrollArea Description=Host tools
+    Role=AXStaticText Description=Meeting controls
+    Role=AXStaticText Description=Waiting room
+    Role=AXCheckBox Subrole=AXSwitch Description=Waiting room Value=0
+    Role=AXStaticText Description=Lock meeting
+    Role=AXCheckBox Subrole=AXSwitch Description=Lock meeting Value=0
+    Role=AXButton Description=Advanced
+    Role=AXStaticText Description=Participant permissions
+    Role=AXButton Title= Description=Turn all off Help= 
+    Description=
+    Role=AXStaticText Description=Unmute self
+    Role=AXCheckBox Subrole=AXSwitch Description=Unmute self Value=1
+    Description=
+    Role=AXStaticText Description=Start video
+    Role=AXCheckBox Subrole=AXSwitch Description=Start video Value=1
+    Description=
+    Role=AXStaticText Description=Chat
+    Role=AXCheckBox Subrole=AXSwitch Description=Chat Value=1
+    Description=
+    Role=AXStaticText Description=Rename self
+    Role=AXCheckBox Subrole=AXSwitch Description=Rename self Value=1
+    Role=AXButton Description=Zoom AI
+    Role=AXButton Description=Share
+    Role=AXButton Description=Recording
+    Role=AXButton Description=My Notes
+    Role=AXButton Description=Captions
+    Role=AXButton Description=Apps
+  Role=AXSplitter Value=0.6019210245464247
+  Role=AXButton Description=Meeting  40-minutes Identifier=MeetingTopBarInfoButton
+  Role=AXButton Description=Open Notes pop-up; My Notes is off Help=Press Enter to open Notes panel
+  Role=AXButton Description=Open Zoom AI pop-up; Zoom AI is off Help=Press Enter to open AI chat
+  Role=AXButton Description=View options, Gallery
+  Role=AXButton Description=Open meeting security popup
+  Role=AXButton Description=Upgrade to Zoom Pro Identifier=upgrade button
+  Role=AXButton Description=My connected time is 04:12 Help=Meeting duration
+  Role=AXButton Subrole=AXCloseButton
+  Role=AXButton Subrole=AXMinimizeButton
+  Role=AXButton Subrole=AXFullScreenButton

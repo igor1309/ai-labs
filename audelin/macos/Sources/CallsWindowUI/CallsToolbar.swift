@@ -5,21 +5,22 @@ import SummaryPreviewUI
 /// Which of the toolbar's buttons act: all need a selected call, Копировать
 /// also its notes. Merge needs no call; while `merging`, it leaves merge mode.
 public struct CallActions: Equatable, Sendable {
+    public var notesMenu: SummaryPreviewState.Menu?
     public var call: Bool
     public var copy: Bool
     public var merge: Bool
     public var merging: Bool
 
-    public init(call: Bool, copy: Bool, merge: Bool = false, merging: Bool = false) {
-        self.call = call; self.copy = copy; self.merge = merge; self.merging = merging
+    public init(call: Bool, copy: Bool, merge: Bool = false, merging: Bool = false, notesMenu: SummaryPreviewState.Menu? = nil) {
+        self.notesMenu = notesMenu; self.call = call; self.copy = copy; self.merge = merge; self.merging = merging
     }
 }
 
 /// The toolbar's buttons for the call the detail shows.
 public func callActions(_ state: SummaryPreviewState?) -> CallActions {
     guard let state else { return .init(call: false, copy: false) }
-    if case .markdown = state.notes { return .init(call: true, copy: true) }
-    return .init(call: true, copy: false)
+    if case .markdown = state.notes { return .init(call: true, copy: true, notesMenu: state.menu) }
+    return .init(call: true, copy: false, notesMenu: state.menu)
 }
 
 /// The selected call's row actions over the list, with Copy trailing over the detail.
@@ -29,6 +30,7 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
     public static let titleItem = NSToolbarItem.Identifier("calls.title")
     public static let actionsItem = NSToolbarItem.Identifier("calls.actions")
     public static let deleteItem = NSToolbarItem.Identifier("calls.delete")
+    public static let notesItem = NSToolbarItem.Identifier("calls.notesMenu")
     public static let copyItem = NSToolbarItem.Identifier("calls.copy")
     public static let mergeItem = NSToolbarItem.Identifier("calls.merge")
     public static let separatorItem = NSToolbarItem.Identifier("calls.divider")
@@ -39,6 +41,8 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
     private let title: NSToolbarItem?
     private let actions = NSToolbarItemGroup(itemIdentifier: actionsItem)
     private let delete = NSToolbarItem(itemIdentifier: deleteItem)
+    private let notes = NSToolbarItem(itemIdentifier: notesItem)
+    private let notesControl: NotesMenuControl
     private let copy = NSToolbarItem(itemIdentifier: copyItem)
     /// Enters and leaves merge mode; only the calls window, which passes `merge`, has it.
     private let mergeButton: NSToolbarItem?
@@ -56,6 +60,9 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
     public init(identifier: String, splitView: NSSplitView? = nil, title: String? = nil, text: SummaryPreviewText,
          act: @escaping (SummaryPreviewEvent) -> Void, merge: (() -> Void)? = nil,
          settle: @escaping @MainActor () async -> Void = { try? await Task.sleep(for: .seconds(1.5)) }) {
+        notesControl = NotesMenuControl(text: text, presentMenu: { menu, view in
+            menu.popUp(positioning: nil, at: NSPoint(x: view.bounds.minX, y: view.bounds.maxY), in: view)
+        }, event: act)
         self.act = act
         self.settle = settle
         self.merge = merge
@@ -75,6 +82,7 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
             NSTrackingSeparatorToolbarItem(identifier: Self.separatorItem, splitView: $0, dividerIndex: 0)
         }
         super.init()
+        notes.view = notesControl
         actions.subitems = Self.grouped.enumerated().map { index, entry in
             let item = NSToolbarItem(itemIdentifier: .init(entry.id))
             item.image = NSImage(systemSymbolName: entry.symbol, accessibilityDescription: nil)
@@ -113,11 +121,13 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
     /// The buttons' names, as when the language changes.
     public func retitle(text: SummaryPreviewText, title: String? = nil) {
         self.text = text
-        if let mergeButton { name(mergeButton, text(enabled.merging ? .mergeDone : .mergeCalls)) }
+        if let mergeButton { name(mergeButton, text(enabled.merging ? .mergeCancel : .mergeCalls)) }
         if let title { (self.title?.view as? NSTextField)?.stringValue = title }
         for (item, phrase) in zip(actions.subitems, [SummaryPreviewPhrase.open, .rename]) { name(item, text(phrase)) }
         name(delete, text(.delete))
         name(copy, text(.copy))
+        name(notes, text(.notesMenu))
+        notesControl.show(enabled.notesMenu, text: text)
     }
 
     /// Enables the buttons that act on the call shown; disabled ones stay in place.
@@ -126,12 +136,14 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
         actions.subitems.forEach { $0.isEnabled = enabled.call }
         delete.isEnabled = enabled.call
         copy.isEnabled = enabled.copy
+        notes.isEnabled = enabled.call
+        notesControl.show(enabled.notesMenu, text: text)
         if let mergeButton {
             mergeButton.isEnabled = enabled.merge
-            name(mergeButton, text(enabled.merging ? .mergeDone : .mergeCalls))
+            name(mergeButton, text(enabled.merging ? .mergeCancel : .mergeCalls))
             let button = mergeButton.view as? NSButton
             button?.isEnabled = enabled.merge
-            button?.image = NSImage(systemSymbolName: enabled.merging ? "checkmark" : "arrow.triangle.merge",
+            button?.image = NSImage(systemSymbolName: enabled.merging ? "xmark" : "arrow.triangle.merge",
                                     accessibilityDescription: mergeButton.label)
         }
         toolbar.validateVisibleItems()
@@ -175,7 +187,7 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
     }
 
     private var identifiers: [NSToolbarItem.Identifier] {
-        (title == nil ? [] : [Self.titleItem, .flexibleSpace]) + (mergeButton == nil ? [] : [Self.mergeItem]) + [Self.actionsItem, Self.deleteItem] + (separator == nil ? [] : [Self.separatorItem]) + [.flexibleSpace, Self.copyItem]
+        (title == nil ? [] : [Self.titleItem, .flexibleSpace]) + (mergeButton == nil ? [] : [Self.mergeItem]) + [Self.actionsItem, Self.deleteItem] + (separator == nil ? [] : [Self.separatorItem]) + [.flexibleSpace, Self.copyItem, Self.notesItem]
     }
 
     public func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { identifiers }
@@ -186,6 +198,7 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
         case Self.titleItem: title
         case Self.actionsItem: actions
         case Self.deleteItem: delete
+        case Self.notesItem: notes
         case Self.copyItem: copy
         case Self.mergeItem: mergeButton
         case Self.separatorItem: separator

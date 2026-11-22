@@ -70,7 +70,7 @@ struct CallsMergeTests {
             try call(root, "2026.10.24-1000 Sync", seconds: 60, transcript: "a")
             let before = try files(root)
             let sut = sut(root, lengths: ["2026.10.24-1000 Sync": 60, "2026.10.24-1010": 60])
-            let id = try sut.merge(ids: ["2026.10.24-1010", "2026.10.24-1000"]) { folder in
+            let id = try sut.merge(ids: ["2026.10.24-1010", "2026.10.24-1000"]) { folder, _ in
                 try Data("joined".utf8).write(to: folder.appendingPathComponent("transcript.md"))
             }
             #expect(id == "2026.10.24-1000")
@@ -92,7 +92,7 @@ struct CallsMergeTests {
             try call(root, "2026.10.24-1010", seconds: 60, transcript: "b only")
             let sut = Calls(folder: root, timeZone: utc, duration: { _ in 60 },
                             transcript: { [Calls.Text.Line(start: 0, words: $0)] }, disk: .system)
-            try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { folder in
+            try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { folder, _ in
                 try Data("joined".utf8).write(to: folder.appendingPathComponent("transcript.md"))
             }
             #expect(try sut.text(id: "2026.10.24-1000").transcript.map(\.words) == ["joined"])
@@ -105,7 +105,7 @@ struct CallsMergeTests {
             try call(root, "2026.10.24-1010", seconds: 60)
             let sut = sut(root, lengths: ["2026.10.24-1000": 60, "2026.10.24-1010": 60])
             var seen: [String] = []
-            try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { folder in
+            try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { folder, _ in
                 #expect(folder.deletingLastPathComponent().standardizedFileURL == root.standardizedFileURL)
                 seen = try sut.list().map(\.id)
                 try Data("joined".utf8).write(to: folder.appendingPathComponent("transcript.md"))
@@ -127,7 +127,7 @@ struct CallsMergeTests {
                 try FileManager.default.moveItem(at: url, to: trash.appendingPathComponent(url.lastPathComponent))
             }
             let sut = Calls(folder: root, timeZone: utc, duration: { _ in 60 }, transcript: { _ in [] }, disk: disk)
-            try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { _ in }
+            try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { _, _ in }
             try sut.delete(id: "2026.10.24-1000")
             #expect(try sut.list().isEmpty)
             #expect(try names(trash.appendingPathComponent("2026.10.24-1000")) == ["2026.10.24-1000", "2026.10.24-1010"])
@@ -140,7 +140,7 @@ struct CallsMergeTests {
                 try call(root, "2026.10.24-1000", seconds: 60)
                 try call(root, "2026.10.24-1010", seconds: 60)
                 let calls = sut(root, lengths: ["2026.10.24-1000": 60, "2026.10.24-1010": 60])
-                try calls.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { _ in }
+                try calls.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { _, _ in }
                 try calls.move(id: "2026.10.24-1000", to: target)
                 let moved = try sut(target, lengths: ["2026.10.24-1000": 60, "2026.10.24-1010": 60]).list()
                 #expect(moved.map(\.id) == ["2026.10.24-1000"])
@@ -159,6 +159,35 @@ struct CallsMergeTests {
         }
     }
 
+    @Test func S12_aMergedPartsOriginalLeafStartsReadInOrderOnce() throws {
+        try withRoot { root in
+            let merged = try folder(root, "2026.10.24-1000")
+            let inner = try folder(merged, "2026.10.24-1000")
+            let deeper = try folder(inner, "2026.10.24-1000")
+            try call(deeper, "2026.10.24-1020", seconds: 60)
+            try call(deeper, "2026.10.24-1000", seconds: 60)
+            try call(merged, "2026.10.24-1010", seconds: 60)
+            let bytes = Data("# Transcript\n\nold merged words\n".utf8)
+            try bytes.write(to: merged.appendingPathComponent("transcript.md"))
+            // Non-call folders and symlinks cannot add originals or follow a cycle.
+            _ = try folder(merged, "other")
+            try FileManager.default.createSymbolicLink(at: merged.appendingPathComponent("2026.10.24-1030"), withDestinationURL: merged)
+            let part = try sut(root, lengths: [:]).part(id: "2026.10.24-1000")
+            #expect(part.transcript == bytes)
+            let start = Date(timeIntervalSince1970: 1_792_836_000)
+            #expect(part.originalStarts == [start, start.addingTimeInterval(600), start.addingTimeInterval(1200)])
+        }
+    }
+
+    @Test func S12_aPlainPartsOriginalStartIsItsOwn() throws {
+        try withRoot { root in
+            try call(root, "2026.10.24-1010", seconds: 60, transcript: "plain")
+            let part = try sut(root, lengths: [:]).part(id: "2026.10.24-1010")
+            #expect(part.transcript == Data("plain".utf8))
+            #expect(part.originalStarts == [Date(timeIntervalSince1970: 1_792_836_600)])
+        }
+    }
+
     @Test func S6_aMergeFailingAfterAPartMovedLeavesTheParts() throws {
         try withRoot { root in
             try call(root, "2026.10.24-1000", seconds: 60, transcript: "a")
@@ -171,7 +200,7 @@ struct CallsMergeTests {
             }
             let sut = Calls(folder: root, timeZone: utc, duration: { _ in 60 }, transcript: { _ in [] }, disk: disk)
             #expect(throws: CallsFailure.mergeFailed(step: .movingPart(folder: "2026.10.24-1010"), reason: POSIXError(.EIO).localizedDescription)) {
-                try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { folder in
+                try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { folder, _ in
                     try Data("joined".utf8).write(to: folder.appendingPathComponent("transcript.md"))
                 }
             }
@@ -188,7 +217,7 @@ struct CallsMergeTests {
             let before = try files(root)
             let sut = sut(root, lengths: ["2026.10.24-1000": 60, "2026.10.24-1010": 60])
             #expect(throws: CallsFailure.mergeFailed(step: .writingTranscript, reason: POSIXError(.ENOSPC).localizedDescription)) {
-                try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { _ in throw POSIXError(.ENOSPC) }
+                try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { _, _ in throw POSIXError(.ENOSPC) }
             }
             #expect(try names(root) == ["2026.10.24-1000", "2026.10.24-1010"])
             #expect(try files(root) == before)
@@ -203,7 +232,7 @@ struct CallsMergeTests {
             var wrote = false
             let sut = sut(root, lengths: ["2026.10.24-1000": 60])
             #expect(throws: CallsFailure.unknownLength(id: "2026.10.24-1010")) {
-                try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { _ in wrote = true }
+                try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { _, _ in wrote = true }
             }
             #expect(!wrote)
             #expect(try names(root) == ["2026.10.24-1000", "2026.10.24-1010"])
@@ -246,7 +275,7 @@ struct CallsMergeTests {
             try call(root, "2026.10.24-1000", seconds: 60)
             try call(root, "2026.10.24-1010", seconds: 60)
             let sut = sut(root, lengths: ["2026.10.24-1000": 60, "2026.10.24-1010": 60])
-            try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { _ in }
+            try sut.merge(ids: ["2026.10.24-1000", "2026.10.24-1010"]) { _, _ in }
             let before = try files(root)
             try sut.recoverInterruptedMerges()
             #expect(try sut.list().map(\.id) == ["2026.10.24-1000"])

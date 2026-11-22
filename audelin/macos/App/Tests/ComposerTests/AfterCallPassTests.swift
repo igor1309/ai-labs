@@ -18,8 +18,8 @@ struct AfterCallPassTests {
                 tracks.append($0)
                 return [0, 4, 8, 12].enumerated().map { CallDiarizer.Turn(speaker: $0.offset % 2, start: Double($0.element), end: Double($0.element + 4)) }
             })
-            let (logs, bytes, pass, raw) = try await zoomPass(track: track, binding: binding)
-            _ = await pass.diarize(call: track.path, raw)
+            let (logs, bytes, pass, raw, evidence) = try await zoomPass(track: track, binding: binding)
+            _ = await pass.diarize(raw, evidence: evidence, outcomes: .init())
             #expect(tracks.all == [track])
             #expect(await bytes.calls == ["replace"])
             let text = try #require(await bytes.replaced.last)
@@ -32,8 +32,8 @@ struct AfterCallPassTests {
     @Test func aFailedPassOnAZoomCallKeepsTheTentativeNames() async throws {
         try await withPassTrack { track in
             let binding = PassDiarizer(turns: { _ in throw PassFailure() })
-            let (logs, bytes, pass, raw) = try await zoomPass(track: track, binding: binding)
-            _ = await pass.diarize(call: track.path, raw)
+            let (logs, bytes, pass, raw, evidence) = try await zoomPass(track: track, binding: binding)
+            _ = await pass.diarize(raw, evidence: evidence, outcomes: .init())
             #expect(logs.all.map(\.message).contains { $0.hasPrefix("remote speakers failed") })
             #expect(await bytes.calls == [])
         }
@@ -42,9 +42,9 @@ struct AfterCallPassTests {
     @Test func aPassThatHearsNoOneKeepsTheLiveNamesTentative() async throws {
         try await withPassTrack { track in
             let names = RecordingNames()
-            let (_, bytes, pass, raw) = try await zoomPass(track: track, binding: PassDiarizer(turns: { _ in [] }),
+            let (_, bytes, pass, raw, evidence) = try await zoomPass(track: track, binding: PassDiarizer(turns: { _ in [] }),
                                                           given: [1: "Anna", 2: "Boris"], names: names)
-            #expect(await pass.diarize(call: track.path, raw) == nil)
+            #expect(await pass.diarize(raw, evidence: evidence, outcomes: .init()) == nil)
             #expect(await bytes.calls == [])
             #expect(names.snapshot().rowNames == [1: "Anna", 2: "Boris"])
             #expect(!names.snapshot().confirmed)
@@ -55,9 +55,11 @@ struct AfterCallPassTests {
         try await withPassTrack { track in
             let names = RecordingNames()
             let heard = Values<[Int]>()
-            names.connect { turns, rows in if !turns.isEmpty { heard.append(rows.map(\.id)) } }
-            let (_, _, pass, raw) = try await zoomPass(track: track, binding: Self.alternating, names: names)
-            _ = await pass.diarize(call: track.path, raw)
+            names.connect(diarized: { turns, rows in
+                if !turns.isEmpty { heard.append(rows.map(\.id)) }
+            }, finalized: {})
+            let (_, _, pass, raw, evidence) = try await zoomPass(track: track, binding: Self.alternating, names: names)
+            _ = await pass.diarize(raw, evidence: evidence, outcomes: .init())
             #expect(heard.all == [[1, 2, 3]])
         }
     }
@@ -65,18 +67,20 @@ struct AfterCallPassTests {
     @Test func aFailedAttributedSaveStillWritesTheCorrectedNamesOnEveryRow() async throws {
         try await withPassTrack { track in
             let bytes = PassBytes(failingReplaces: 1)
-            let (logs, _, pass, raw) = try await zoomPass(track: track, binding: Self.alternating, given: [1: "Boris", 2: "Anna", 3: "Boris"], bytes: bytes)
-            let returned = try #require(await pass.diarize(call: track.path, raw))
+            let (logs, _, pass, raw, evidence) = try await zoomPass(track: track, binding: Self.alternating, given: [1: "Boris", 2: "Anna", 3: "Boris"], bytes: bytes)
+            let returned = try #require(await pass.diarize(raw, evidence: evidence, outcomes: .init()))
+            #expect(returned.diarizer == nil)
             #expect(await bytes.calls == ["replace", "replace"])
-            let ids = Dictionary(uniqueKeysWithValues: returned.speakers.map { ($0.name, $0.id) })
-            #expect(returned.far.map(\.settled) == ["far1", "far2", "far3"])
-            #expect(returned.far.map(\.speaker) == [ids["Anna"], ids["Boris"], ids["Anna"]])
-            #expect(returned.speakers.map(\.state) == ["confirmed", "confirmed"])
+            let ids = Dictionary(uniqueKeysWithValues: returned.far.speakers.map { ($0.name, $0.id) })
+            #expect(returned.far.far.map(\.settled) == ["far1", "far2", "far3"])
+            #expect(returned.far.far.map(\.speaker) == [ids["Anna"], ids["Boris"], ids["Anna"]])
+            #expect(returned.far.speakers.map(\.state) == ["confirmed", "confirmed"])
             let text = try #require(await bytes.replaced.last)
+            #expect(TranscriptFormat.read(text).origin == expectedTranscriptOrigin(split: .nothingKept(release: .init(version: "test-version", build: "test-build"))))
             let anna = try #require(text.firstMatch(of: /- Them (\d): Anna/)?.1)
             let boris = try #require(text.firstMatch(of: /- Them (\d): Boris/)?.1)
-            let offered = summaryEntries(.init(status: .finished, entries: [], finalCount: 0), attributed: returned)
-            #expect(offered.map(\.label) == ["Them \(anna)", "Them \(boris)", "Them \(anna)"])
+            let offered = summaryEntries(.init(status: .finished, entries: [], finalCount: 0), attributed: returned.far)
+            #expect(offered.map(\.label) == ["Them \(anna) (Anna)", "Them \(boris) (Boris)", "Them \(anna) (Anna)"])
             #expect(text.contains("**Them \(anna)** 00:00:00\nfar1\n\n**Them \(boris)** 00:00:04\nfar2\n\n**Them \(anna)** 00:00:08\nfar3\n"))
             #expect(text.contains("\"state\":\"confirmed\""))
             #expect(!text.contains("tentative"))
@@ -86,8 +90,8 @@ struct AfterCallPassTests {
 
     @Test func aFailedRenderingOnAZoomCallReplacesNothing() async throws {
         try await withPassTrack { track in
-            let (logs, bytes, pass, raw) = try await zoomPass(track: track, binding: Self.alternating, format: WholeFailingFormat())
-            _ = await pass.diarize(call: track.path, raw)
+            let (logs, bytes, pass, raw, evidence) = try await zoomPass(track: track, binding: Self.alternating, format: WholeFailingFormat())
+            _ = await pass.diarize(raw, evidence: evidence, outcomes: .init())
             #expect(await bytes.calls == [])
             #expect(logs.all.map(\.message).contains { $0.hasPrefix("after-call names not saved") })
         }
@@ -97,13 +101,13 @@ struct AfterCallPassTests {
         try await withPassTrack { track in
             let binding = PassDiarizer(turns: { _ in throw PassFailure() })
             let names = RecordingNames()
-            let (_, bytes, pass, raw) = try await zoomPass(track: track, binding: binding, given: [1: "Anna", 2: "Boris"], names: names)
-            let attributed = await pass.diarize(call: track.path, raw)
+            let (_, bytes, pass, raw, evidence) = try await zoomPass(track: track, binding: binding, given: [1: "Anna", 2: "Boris"], names: names)
+            let attributed = await pass.diarize(raw, evidence: evidence, outcomes: .init())
             #expect(names.snapshot().rowNames == [1: "Anna", 2: "Boris"])
             let state = CallState(status: .finished, entries: .init(tail: [far(1, 0, 3), far(2, 4, 7), far(3, 8, 11)]), finalCount: 3)
-            let replacement = Transcript.microphoneReplacement(in: state, far: attributed, names: names.snapshot(), heard: [])
-            let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: names, sink: PassLog(entries: Values<LogEntry>()))
-            try await writer.replaceWhole(replacement.segments, speakers: replacement.speakers)
+            let replacement = Transcript.microphoneReplacement(in: state, far: attributed?.far, names: names.snapshot(), heard: [])
+            let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: names, origin: testTranscriptOrigin, sink: PassLog(entries: Values<LogEntry>()))
+            try await writer.replaceWhole(replacement.segments, speakers: replacement.speakers, outcomes: .init())
             let text = try #require(await bytes.replaced.last)
             #expect(text.contains("**Them 1** 00:00:00\nfar1\n\n**Them 2** 00:00:04\nfar2\n\n**Them** 00:00:08\nfar3\n"))
             #expect(text.contains("- Them 1: Anna\n- Them 2: Boris\n"))
@@ -121,7 +125,7 @@ struct AfterCallPassTests {
                 [CallDiarizer.Turn(speaker: 3, start: 0, end: 2), CallDiarizer.Turn(speaker: 5, start: 2, end: 4), CallDiarizer.Turn(speaker: 3, start: 4, end: 6)]
             })
             let (_, bytes, pass, raw) = try await unnamedPass(track: track, binding: binding, theirs: [(1, 0, 1), (2, 2, 3), (3, 4, 5)])
-            _ = await pass.diarize(call: track.path, raw)
+            _ = await pass.diarize(raw, evidence: .init(), outcomes: .init())
             let text = try #require(await bytes.replaced.last)
             #expect(text.contains("**Them 1** 00:00:00\nfar1\n\n**Them 2** 00:00:02\nfar2\n\n**Them 1** 00:00:04\nfar3\n"))
             #expect(text.contains("- Them 1: unknown\n- Them 2: unknown\n"))
@@ -135,7 +139,7 @@ struct AfterCallPassTests {
                 [CallDiarizer.Turn(speaker: 3, start: 0, end: 2), CallDiarizer.Turn(speaker: 5, start: 2, end: 4), CallDiarizer.Turn(speaker: 3, start: 4, end: 6)]
             })
             let (logs, _, pass, raw) = try await unnamedPass(track: track, binding: binding, theirs: [(1, 0, 1), (2, 2, 3), (3, 4, 5)])
-            #expect(await pass.diarize(call: track.path, raw)?.rows == [1: 1, 2: 2, 3: 1])
+            #expect(await pass.diarize(raw, evidence: .init(), outcomes: .init())?.far.rows == [1: 1, 2: 2, 3: 1])
             #expect(logs.all.filter { $0.message.hasPrefix("remote speakers model=") }.count == 1)
         }
     }
@@ -145,7 +149,7 @@ struct AfterCallPassTests {
             let binding = PassDiarizer(turns: { _ in [CallDiarizer.Turn(speaker: 0, start: 0, end: 2), CallDiarizer.Turn(speaker: 1, start: 2, end: 4)] })
             let (_, _, pass, raw) = try await unnamedPass(track: track, binding: binding, entries: [far(1, 0, 1), far(2, 2, 3)],
                                                          bytes: PassBytes(failingReplaces: 1))
-            #expect(await pass.diarize(call: track.path, raw) == nil)
+            #expect(await pass.diarize(raw, evidence: .init(), outcomes: .init()) == nil)
         }
     }
 
@@ -153,7 +157,7 @@ struct AfterCallPassTests {
         try await withPassTrack { track in
             let binding = PassDiarizer(turns: { _ in [CallDiarizer.Turn(speaker: 0, start: 0, end: 6)] })
             let (_, bytes, pass, raw) = try await unnamedPass(track: track, binding: binding, theirs: [(1, 0, 1), (2, 2, 3)])
-            _ = await pass.diarize(call: track.path, raw)
+            _ = await pass.diarize(raw, evidence: .init(), outcomes: .init())
             let text = try #require(await bytes.replaced.last)
             #expect(text.contains("**Them** 00:00:00\nfar1\n\n**Them** 00:00:02\nfar2\n"))
             #expect(!text.contains("Them 1"))
@@ -164,7 +168,7 @@ struct AfterCallPassTests {
         try await withPassTrack { track in
             let binding = PassDiarizer(turns: { _ in throw PassFailure() })
             let (logs, bytes, pass, raw) = try await unnamedPass(track: track, binding: binding, theirs: [(1, 0, 1)])
-            _ = await pass.diarize(call: track.path, raw)
+            _ = await pass.diarize(raw, evidence: .init(), outcomes: .init())
             #expect(await bytes.calls == [])
             #expect(logs.all.map(\.message).contains { $0.hasPrefix("remote speakers failed") })
         }
@@ -178,13 +182,13 @@ struct AfterCallPassTests {
             ], settledCount: 2), writtenLater: true)
             let entries = [far(1, 0, 1, later: true), mine(10, 1, 1.5), split]
             let (_, bytes, pass, raw) = try await unnamedPass(track: track, binding: binding, entries: entries)
-            let returned = try #require(await pass.diarize(call: track.path, raw))
-            #expect(returned.far.map(\.settled) == ["far1", "a", "b"])
-            #expect(returned.far.map(\.start) == [0, 2, 4])
-            #expect(returned.far.map(\.filledInLater) == [true, true, true])
-            #expect(returned.speakers.map(\.state) == ["diarized", "diarized"])
-            let ids = returned.speakers.map(\.id)
-            #expect(returned.far.map(\.speaker) == [ids.first, ids.first, ids.last])
+            let returned = try #require(await pass.diarize(raw, evidence: .init(), outcomes: .init()))
+            #expect(returned.far.far.map(\.settled) == ["far1", "a", "b"])
+            #expect(returned.far.far.map(\.start) == [0, 2, 4])
+            #expect(returned.far.far.map(\.filledInLater) == [true, true, true])
+            #expect(returned.far.speakers.map(\.state) == ["diarized", "diarized"])
+            let ids = returned.far.speakers.map(\.id)
+            #expect(returned.far.far.map(\.speaker) == [ids.first, ids.first, ids.last])
             let text = try #require(await bytes.replaced.last)
             #expect(text.contains("""
                 **Them 1** 00:00:00 (filled in later)
@@ -208,15 +212,15 @@ struct AfterCallPassTests {
             let binding = PassDiarizer(turns: { _ in [CallDiarizer.Turn(speaker: 0, start: 0, end: 2), CallDiarizer.Turn(speaker: 1, start: 2, end: 4)] })
             let bytes = PassBytes(failingReplaces: 1)
             let (logs, _, pass, raw) = try await unnamedPass(track: track, binding: binding, entries: [far(1, 0, 1), far(2, 2, 3)], bytes: bytes)
-            let attributed = await pass.diarize(call: track.path, raw)
+            let attributed = await pass.diarize(raw, evidence: .init(), outcomes: .init())
             #expect(await bytes.calls == ["replace"])
             #expect(await bytes.replaced.isEmpty)
             #expect(logs.all.map(\.message).contains { $0.hasPrefix("remote speakers not saved") })
             let names = RecordingNames()
             let state = CallState(status: .finished, entries: .init(tail: [far(1, 0, 1), far(2, 2, 3)]), finalCount: 2)
-            let replacement = Transcript.microphoneReplacement(in: state, far: attributed, names: names.snapshot(), heard: [])
-            let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: names, sink: PassLog(entries: Values<LogEntry>()))
-            try await writer.replaceWhole(replacement.segments, speakers: replacement.speakers)
+            let replacement = Transcript.microphoneReplacement(in: state, far: attributed?.far, names: names.snapshot(), heard: [])
+            let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: names, origin: testTranscriptOrigin, sink: PassLog(entries: Values<LogEntry>()))
+            try await writer.replaceWhole(replacement.segments, speakers: replacement.speakers, outcomes: .init())
             let text = try #require(await bytes.replaced.last)
             #expect(text.contains("**Them** 00:00:00\nfar1\n\n**Them** 00:00:02\nfar2\n"))
         }
@@ -227,7 +231,7 @@ struct AfterCallPassTests {
             let binding = PassDiarizer(turns: { _ in [CallDiarizer.Turn(speaker: 0, start: 0, end: 2), CallDiarizer.Turn(speaker: 1, start: 2, end: 4)] })
             let (logs, bytes, pass, raw) = try await unnamedPass(track: track, binding: binding, entries: [far(1, 0, 1), far(2, 2, 3)],
                                                                 format: WholeFailingFormat())
-            _ = await pass.diarize(call: track.path, raw)
+            _ = await pass.diarize(raw, evidence: .init(), outcomes: .init())
             #expect(await bytes.calls == [])
             #expect(logs.all.map(\.message).contains { $0.hasPrefix("remote speakers not saved") })
         }
@@ -253,7 +257,7 @@ struct AfterCallPassTests {
         async throws -> (Values<LogEntry>, PassBytes, AfterCallPass, CallState) {
         let names = RecordingNames()
         let logs = Values<LogEntry>()
-        let writer = WritingTranscript(file: bytes, format: format, names: names, sink: PassLog(entries: logs))
+        let writer = WritingTranscript(file: bytes, format: format, names: names, origin: testTranscriptOrigin, sink: PassLog(entries: logs))
         let pass = AfterCallPass(writer: writer, track: track, names: names, diarizer: binding, sink: PassLog(entries: logs))
         let state = CallState(status: .finished, entries: .init(tail: entries), finalCount: entries.count)
         return (logs, bytes, pass, state)
@@ -262,17 +266,18 @@ struct AfterCallPassTests {
     /// Anna and Boris take turns for four seconds each, as Zoom showed and the diarizer finds.
     private func zoomPass(track: URL, binding: PassDiarizer, given: [Int: String] = [:],
                             format: any TranscriptRenderer = TranscriptFormat(), bytes: PassBytes = PassBytes(),
-                            names: RecordingNames = RecordingNames()) async throws -> (Values<LogEntry>, PassBytes, AfterCallPass, CallState) {
-        names.published(liveNames(given, roster: ["Anna", "Boris"], spoken: [
+                            names: RecordingNames = RecordingNames()) async throws -> (Values<LogEntry>, PassBytes, AfterCallPass, CallState, CallNamesState) {
+        let evidence = liveNames(given, roster: ["Anna", "Boris"], spoken: [
             .init(name: "Anna", start: 0, end: 4), .init(name: "Boris", start: 4, end: 8),
             .init(name: "Anna", start: 8, end: 12), .init(name: "Boris", start: 12, end: 16),
-        ], through: 30))
+        ], through: 30)
+        names.published(evidence)
         let logs = Values<LogEntry>()
-        let writer = WritingTranscript(file: bytes, format: format, names: names, sink: PassLog(entries: logs))
+        let writer = WritingTranscript(file: bytes, format: format, names: names, origin: testTranscriptOrigin, sink: PassLog(entries: logs))
         let pass = AfterCallPass(writer: writer, track: track, names: names, diarizer: binding, sink: PassLog(entries: logs))
         let entries = [far(1, 0, 3), far(2, 4, 7), far(3, 8, 11)]
         let state = CallState(status: .finished, entries: .init(tail: entries), finalCount: entries.count)
-        return (logs, bytes, pass, state)
+        return (logs, bytes, pass, state, evidence)
     }
 }
 
@@ -299,10 +304,10 @@ private struct PassLog: LogSink {
 /// The real format for live saves; every whole rendering fails.
 private struct WholeFailingFormat: TranscriptRenderer {
     var live = TranscriptFormat()
-    mutating func render(count: Int, finalCount: Int, speakers: [TranscriptFormat.Speaker], segment: (Int) -> TranscriptFormat.Segment) throws -> TranscriptFormat.Rendering {
-        try live.render(count: count, finalCount: finalCount, speakers: speakers, segment: segment)
+    mutating func render(count: Int, finalCount: Int, speakers: [TranscriptFormat.Speaker], origin: TranscriptFormat.Origin?, segment: (Int) -> TranscriptFormat.Segment) throws -> TranscriptFormat.Rendering {
+        try live.render(count: count, finalCount: finalCount, speakers: speakers, origin: origin, segment: segment)
     }
-    func renderWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker]) throws -> TranscriptFormat.Rendering {
+    func renderWhole(_ segments: [TranscriptFormat.Segment], speakers: [TranscriptFormat.Speaker], origin: TranscriptFormat.Origin?) throws -> TranscriptFormat.Rendering {
         throw TranscriptFormat.Failure.invalidStart
     }
 }

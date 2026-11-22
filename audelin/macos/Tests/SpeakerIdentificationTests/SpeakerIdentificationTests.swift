@@ -51,6 +51,41 @@ import Testing
             .init(label: honest.label, name: String(honest.text.dropFirst(4).dropLast()), time: honest.time, quote: honest.text),
         ])
     }
+    @Test func aSpeakerAddressedByNameWhoAnswersIsNamed() throws {
+        let entries = [
+            Entry(label: "Me", time: "1", text: "Женя, а у тебя что?"),
+            Entry(label: "Them 2", time: "2", text: "У меня всё готово."),
+        ]
+        #expect(try Validator().validate(claims(entries, [("Them 2", "Женя", "1", "Женя, а у тебя что?")]), entries: entries) == [
+            .init(label: "Them 2", name: "Женя", time: "1", quote: "Женя, а у тебя что?"),
+        ])
+    }
+    @Test func aNameNobodyAnswersToNamesNobody() throws {
+        let entries = [
+            Entry(label: "Me", time: "1", text: "Женя обещал прислать отчёт."),
+            Entry(label: "Me", time: "2", text: "Ладно, дальше."),
+            Entry(label: "Them 1", time: "3", text: "Да."),
+            Entry(label: "Them 2", time: "4", text: "Окей."),
+        ]
+        #expect(try Validator().validate(claims(entries, [("Them 2", "Женя", "1", "Женя обещал прислать отчёт.")]), entries: entries).isEmpty)
+        #expect(try Validator().validate(claims(entries, [("Them 1", "Женя", "1", "Женя обещал прислать отчёт.")]), entries: entries) == [
+            .init(label: "Them 1", name: "Женя", time: "1", quote: "Женя обещал прислать отчёт."),
+        ])
+        #expect(try Validator().validate(claims(entries, [("Them 1", "Женя", "2", "Ладно, дальше.")]), entries: entries).isEmpty)
+    }
+    @Test func oneNameForTwoSpeakersNamesNeither() throws {
+        let entries = [
+            Entry(label: "Me", time: "1", text: "Андрей, привет."),
+            Entry(label: "Them 1", time: "2", text: "Привет."),
+            Entry(label: "Them 2", time: "3", text: "Меня зовут Андрей."),
+        ]
+        let data = claims(entries, [("Them 1", "Андрей", "1", "Андрей, привет."), ("Them 2", "Андрей", "3", "Меня зовут Андрей.")])
+        #expect(try Validator().validate(data, entries: entries).isEmpty)
+    }
+    @Test func aSpeakerTheCallAppNamedKeepsItsName() throws {
+        let entries = [Entry(label: "Me", time: "1", text: "Вася, привет."), Entry(label: "Them 1 (Василий)", time: "2", text: "Привет.")]
+        #expect(try Validator().validate(claims(entries, [("Them 1 (Василий)", "Вася", "1", "Вася, привет.")]), entries: entries).isEmpty)
+    }
     @Test func unknownSpeakerIsValidWithoutInventedName() throws {
         let data = Data(#"{"speakers":[{"label":"A","name":null,"time":null,"quote":null}]}"#.utf8)
         #expect(try Validator().validate(data, entries: [.init(label: "A", time: "0", text: "API review")]).isEmpty)
@@ -58,4 +93,14 @@ import Testing
 }
 private func response(label: String, name: String, time: String, quote: String) -> Data {
     try! JSONSerialization.data(withJSONObject: ["speakers": [["label": label, "name": name, "time": time, "quote": quote]]])
+}
+/// Every label in `entries` once, named only as `named` says.
+private func claims(_ entries: [Entry], _ named: [(String, String, String, String)]) -> Data {
+    var seen: [String] = []
+    for entry in entries where !seen.contains(entry.label) { seen.append(entry.label) }
+    let speakers: [[String: Any]] = seen.map { label in
+        if let claim = named.first(where: { $0.0 == label }) { return ["label": label, "name": claim.1, "time": claim.2, "quote": claim.3] }
+        return ["label": label, "name": NSNull(), "time": NSNull(), "quote": NSNull()]
+    }
+    return try! JSONSerialization.data(withJSONObject: ["speakers": speakers])
 }

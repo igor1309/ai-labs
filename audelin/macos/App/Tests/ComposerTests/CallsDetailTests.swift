@@ -256,7 +256,7 @@ private struct Unreadable: LocalizedError { var errorDescription: String? { "Ð½Ð
             .init(id: b, title: "B", start: Date(timeIntervalSince1970: 32_400), duration: 120),
         ])
         calls = AudelinCalls(
-            inputs: RecordingsInputs(state: { listing }, send: { [unowned self] in sent.append($0) }),
+            inputs: RecordingsInputs(state: { listing }, send: { [unowned self] in sent.append($0) }, states: { AsyncStream { $0.yield(listing); $0.finish() } }),
             timeZone: .gmt, now: { Date(timeIntervalSince1970: 40_000) }, recordingState: { .init() },
             location: { [unowned self] in folder($0) }, openFolder: { [unowned self] in opened.append($0); return true },
             present: {}, summaryStatuses: { [summaries] in summaries.statuses }, summaryBadges: { [summaries] in summaries.badges },
@@ -268,7 +268,7 @@ private struct Unreadable: LocalizedError { var errorDescription: String? { "Ð½Ð
                 readWaiters.removeAll { $0.count <= reads.count }
                 ready.forEach { $0.resume() }
                 if unreadable.contains(id) { throw Unreadable() }
-                return self.notes[id].map { (text: $0, made: nil) }
+                return self.notes[id].map { .init(current: .init(text: $0, made: nil)) }
             },
             makeSummary: { [unowned self] in made.append($0) }, cancelSummary: { [unowned self] in cancelled.append($0) },
             copy: { [unowned self] in copies.append($0) }, readCall: { [unowned self] in readCalls += 1; readDetails.append(calls.detail?.id) },

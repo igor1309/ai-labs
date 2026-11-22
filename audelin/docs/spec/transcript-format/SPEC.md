@@ -1,43 +1,31 @@
 # Transcript format
 
-Observer: compose, which renders call text's text for the transcript file
-during a call and renders a replaced transcript after it
-(`../../../ARCHITECTURE.md`, Transcript pipeline and Bleed cleanup), so the
-user can read the call's transcript of user S-7 and S-17 (`../SPEC.md`).
-An adapter over a file format: the only writer and the only reader of the
-transcript's Markdown. It knows no disk.
+Observer: compose, rendering call text live and a replaced or merged transcript after it
+(`../../../ARCHITECTURE.md`), for user S-7, S-17 and `../transcript-origin/`. An adapter, the format's only writer and reader; it knows no disk.
 
 ## Decided
 
-- **Split from the transcript file** (LAB-1140): the format changes when what
-  a transcript holds changes, the disk when durability does, and together
-  they were one adapter whose spec passed 100 lines.
-- **Markdown the user reads, one part per segment in call text's order,**
-  each marked mine or theirs with its start in call time, as Amanu keeps
-  `transcript.md`. Text call text filled in after live text was switched
-  on is marked so, as the panel groups it (design, Added late). Settled
-  and pending text are rendered alike: pending is the latest heard.
-- **Their side's parts name the diarized speaker by a stable generic ID,
-  never a name,** so final text never changes when names do (LAB-1123). The
-  current names follow the parts, readable and in one versioned
-  machine-readable block, rendered again each time; while there are names,
-  the rendering tells no final length, so the block is only ever written whole.
-- **No text renders as a transcript saying no text was heard,** so a call
-  recorded with live text off still has a transcript that says so. Final
-  parts without words do not count as text.
-- **During a call, final text with words renders once.** Call text never revises or
-  moves an entry it has made final, so its rendering is kept and only what
-  follows is rendered again, and the rendering tells how much of it is
-  final, which the transcript file may keep on disk. A replaced transcript
-  after the call is a new rendering from nothing.
+- **Split from the transcript file** (LAB-1140): it changes with content, the file with durability.
+- **Markdown the user reads, one part per segment in call text's order,** each marked
+  mine or theirs with its start in call time, as Amanu keeps `transcript.md`. Text filled
+  in after live text was switched on is marked so (design, Added late). Pending renders as settled.
+- **Their side's parts name the diarized speaker by a stable generic ID, never a
+  name,** so final text never changes when names do (LAB-1123). The current
+  names follow the parts, readable and in one versioned machine-readable block,
+  rendered whole each time; while there are names, no final length is told.
+- **No text, or only wordless final parts, renders as saying no text was heard.**
+- **During a call, final text with words renders once:** call text never revises a
+  final entry, so its rendering is kept, only what follows renders again, and the
+  length of the final text is told for the file to keep. A replacement renders anew.
+- **The origin is front matter above the transcript** (`../transcript-origin/`):
+  each call's hearing and finishing outcomes and a merge's version, a call with
+  none unknown. It renders whole every time, as the start of the final text:
+  a told final length counts it; a changed origin tells none, so the file is replaced whole.
 - **Reading gives back what rendering needs to render it again:** each part
-  with words, its side, speaker, start in whole seconds, filled-in mark and
-  words, each gap, and the speakers' names, so a merge renders a saved part
-  again as it was. Text before the first part is skipped.
-- **A gap is a row of its own** at its time, saying how long the call was
-  cut off; it has no side and no words, and reads back as a gap.
-- **A failed rendering keeps the final text:** it is told, and the final
-  text rendered before stays, so the next rendering goes on from it.
+  with words, side, speaker, start in whole seconds, filled-in mark and words,
+  each gap as a gap, the names and the origin, if any. Other leading text is skipped.
+- **A gap is a row of its own,** with no side or words, saying how long the call was cut off.
+- **A failed rendering is told and keeps the final text** the next one goes on from.
 
 ```gherkin
 Feature: Rendering a call's transcript
@@ -89,11 +77,24 @@ Feature: Rendering a call's transcript
     Then I can tell the speakers apart, and read each one's current name after the text
 
   Scenario: S-11 A rendered transcript reads back
-    Given a transcript I rendered, with named speakers, a gap and filled-in text
+    Given a transcript I rendered, with origin, named speakers, a gap and filled-in text
     When I read it back and render what I read
     Then I can read the same transcript
 
   Scenario: S-12 A gap reads as the call cut off
     When I render text with a gap of two minutes
     Then I can read at its time that the call was cut off for two minutes
+
+  Scenario: S-13 The origin reads above the text
+    When I render text with an origin
+    Then I can read the origin above the transcript, and the text as without it
+
+  Scenario: S-15 A changed origin is not kept as final
+    Given text I rendered with an origin and final parts
+    When I render it with another origin
+    Then I can tell that no final text is kept
+
+  Scenario: S-14 A transcript without origin reads as before
+    When I read back a transcript saved before origins
+    Then I can render it again as it was, with no origin
 ```

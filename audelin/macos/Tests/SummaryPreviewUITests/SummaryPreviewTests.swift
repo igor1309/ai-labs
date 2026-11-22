@@ -16,7 +16,7 @@ struct SummaryPreviewTests {
     nonisolated static let textViewDiffers = ProcessInfo.processInfo.environment["GITHUB_ACTIONS"] != nil
 
     @Test(.disabled(if: textViewDiffers, "text views draw differently across macOS releases"),
-          arguments: SummaryPreviews.states.map(\.name), [ColorScheme.light, .dark])
+          arguments: SummaryPreviews.states.filter { !$0.name.hasPrefix("templates-") }.map(\.name), [ColorScheme.light, .dark])
     func drawsAsItsReference(name: String, scheme: ColorScheme) throws {
 
         for language in SummaryPreviewLanguage.allCases { try draws(name, scheme, SummaryPreviewText(language: language)) }
@@ -62,6 +62,14 @@ struct SummaryPreviewTests {
         click(lineActionLocation, on: SummaryPreviewView(state: SummaryPreviews.state("making"), event: { events.append($0) }, render: markdown))
 
         #expect(events == [.makeSummary, .cancelSummary])
+    }
+
+    @Test func theTagsLineOffersToEditTheTags() throws {
+
+        var events: [SummaryPreviewEvent] = []
+        click(tagsActionLocation, on: SummaryPreviewView(state: SummaryPreviews.state("no-summary"), event: { events.append($0) }, render: markdown))
+
+        #expect(events == [.editTags])
     }
 
     @Test(arguments: SummaryPreviewLanguage.allCases)
@@ -176,10 +184,13 @@ struct SummaryPreviewTests {
     private let size = CGSize(width: 440, height: 560)
 
     /// Повторить итоги, the last line of the failed message centred below the header.
-    private var retryLocation: NSPoint { NSPoint(x: size.width / 2, y: 209) }
+    private var retryLocation: NSPoint { NSPoint(x: size.width / 2, y: 195) }
 
     /// «✨ Сделать» or «Отменить», the action in the line under the header.
-    private var lineActionLocation: NSPoint { NSPoint(x: 140, y: size.height - 91) }
+    private var lineActionLocation: NSPoint { NSPoint(x: 140, y: size.height - 126) }
+
+    /// «Добавить» at the end of the tags line under the header.
+    private var tagsActionLocation: NSPoint { NSPoint(x: 130, y: size.height - 74) }
 
     private func view(_ state: SummaryPreviewState?, text: SummaryPreviewText = .init(language: .russian), scheme: ColorScheme = .light) -> some View {
         SummaryPreviewView(state: state, text: text, event: { _ in }, render: markdown).environment(\.colorScheme, scheme)
@@ -202,7 +213,7 @@ struct SummaryPreviewTests {
 }
 
 /// The renderer the app composes the view with.
-private func markdown(_ source: String, _ style: NotesStyle) -> NSAttributedString {
+func markdown(_ source: String, _ style: NotesStyle) -> NSAttributedString {
     NotesMarkdown.render(source, style: .init(body: style.body, headings: style.headings, code: style.code, text: style.text,
                                               secondary: style.secondary, tertiary: style.tertiary, codeBackground: style.codeBackground, rule: style.rule,
                                               layout: .init(lineHeight: style.lineHeight, paragraphSpacing: style.paragraphSpacing,

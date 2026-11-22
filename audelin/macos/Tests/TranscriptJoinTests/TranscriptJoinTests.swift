@@ -61,14 +61,37 @@ struct TranscriptJoinTests {
         #expect(rows[1].speaker == nil)
     }
 
+    @Test func originalCallsInterleaveByStartWithTheirOpaqueOrigins() {
+        struct Opaque: Equatable { let marker: String; let payload: [Int] }
+        let start = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let a = TranscriptJoin.Original(start: start, origin: Opaque(marker: "a", payload: [1, 2]))
+        let b = TranscriptJoin.Original(start: start.addingTimeInterval(600), origin: Opaque(marker: "b", payload: []))
+        let c = TranscriptJoin.Original(start: start.addingTimeInterval(1200), origin: Opaque(marker: "c", payload: [3]))
+        let merged = TranscriptJoin.Part<Row, Speaker, Opaque>(start: start, length: 1260, rows: [], speakers: [], originals: [c, a])
+        let plain = TranscriptJoin.Part<Row, Speaker, Opaque>(start: b.start, length: 60, rows: [], speakers: [], originals: [b])
+        let joined = TranscriptJoin.join([plain, merged])
+        #expect(joined.originals.map(\.start) == [a.start, b.start, c.start])
+        #expect(joined.originals.map(\.origin) == [a.origin, b.origin, c.origin])
+    }
+
+    @Test func equalOriginalStartsKeepTheirGivenOrderAndUnknownOriginsPassThrough() {
+        let start = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let part = TranscriptJoin.Part<Row, Speaker, String?>(start: start, length: 60, rows: [], speakers: [], originals: [
+            .init(start: start, origin: "first"), .init(start: start, origin: nil), .init(start: start, origin: "third"),
+        ])
+        #expect(TranscriptJoin.join([part]).originals.map(\.origin) == ["first", nil, "third"])
+    }
+
     @Test func noPartsJoinToNothing() {
 
-        #expect(TranscriptJoin.join([TranscriptJoin.Part<Row, Speaker>]()).items.isEmpty)
+        let joined = TranscriptJoin.join([TranscriptJoin.Part<Row, Speaker, Never>]())
+        #expect(joined.items.isEmpty)
+        #expect(joined.originals.isEmpty)
     }
 }
 
 /// The joined rows alone, gaps left out.
-private func rows(_ parts: [TranscriptJoin.Part<Row, Speaker>]) -> [Row] {
+private func rows(_ parts: [TranscriptJoin.Part<Row, Speaker, Never>]) -> [Row] {
 
     TranscriptJoin.join(parts).items.compactMap { if case .row(let row) = $0 { row } else { nil } }
 }
@@ -100,7 +123,7 @@ private func row(_ time: Double, _ marker: String, extra: [Int] = [], speaker: S
     Row(time: time, marker: marker, extra: extra, speaker: speaker)
 }
 
-private func part(at seconds: Double, length: Double = 60, rows: [Row], speakers: [Speaker] = []) -> TranscriptJoin.Part<Row, Speaker> {
+private func part(at seconds: Double, length: Double = 60, rows: [Row], speakers: [Speaker] = []) -> TranscriptJoin.Part<Row, Speaker, Never> {
 
-    .init(start: Date(timeIntervalSinceReferenceDate: 800_000_000 + seconds), length: length, rows: rows, speakers: speakers)
+    .init(start: Date(timeIntervalSinceReferenceDate: 800_000_000 + seconds), length: length, rows: rows, speakers: speakers, originals: [])
 }

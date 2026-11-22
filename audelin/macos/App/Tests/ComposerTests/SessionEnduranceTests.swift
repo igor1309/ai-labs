@@ -96,9 +96,7 @@ struct SessionEnduranceTests {
             // The rig's scripted captures add one piece at start and one at stop.
             #expect(try await frames(folder.appendingPathComponent("microphone.caf")) == micSent + 3)
             #expect(try await frames(folder.appendingPathComponent("call.caf")) == callSent + 3)
-            let transcript = try {
-                try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8)
-            }()
+            let transcript = try transcriptBody(at: folder.appendingPathComponent("transcript.md"))
             let entries = transcript.components(separatedBy: "\n**").count - 1
             let longest = transcript.components(separatedBy: "\n\n").map(\.count).max() ?? 0
             log("transcript: \(transcript.utf8.count) bytes, \(entries) entries, longest entry \(longest) characters")

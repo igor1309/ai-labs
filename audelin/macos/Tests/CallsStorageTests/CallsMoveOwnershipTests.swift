@@ -230,7 +230,7 @@ import CallsStorage
             }
             let storage = CallsStorage(folder: source, journal: journal,
                 writeJournal: { try JSONEncoder().encode($0).write(to: $1, options: .atomic) },
-                makeCalls: { folder in
+                readPart: { _, _ in throw CocoaError(.fileReadUnknown) }, makeCalls: { folder in
                     Calls(folder: folder, timeZone: .gmt,
                         duration: { _ in 0 },
                         transcript: { _ in [] },
@@ -311,7 +311,7 @@ import CallsStorage
             }
             let storage = CallsStorage(folder: source, journal: journal,
                 writeJournal: { try JSONEncoder().encode($0).write(to: $1, options: .atomic) },
-                makeCalls: { folder in
+                readPart: { _, _ in throw CocoaError(.fileReadUnknown) }, makeCalls: { folder in
                     Calls(folder: folder, timeZone: .gmt,
                         duration: { _ in 0 },
                         transcript: { _ in [] },
@@ -354,7 +354,7 @@ import CallsStorage
             }
             let storage = CallsStorage(folder: source, journal: journal,
                 writeJournal: { try JSONEncoder().encode($0).write(to: $1, options: .atomic) },
-                makeCalls: { folder in
+                readPart: { _, _ in throw CocoaError(.fileReadUnknown) }, makeCalls: { folder in
                     Calls(folder: folder, timeZone: .gmt,
                         duration: { _ in 0 },
                         transcript: { _ in [] },

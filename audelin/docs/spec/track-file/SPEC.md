@@ -103,3 +103,12 @@ Feature: Keeping a track's audio on disk
     When closing it fails
     Then I can tell it failed, and the user can play what was written
 ```
+
+## Reading a saved track
+
+`readSaved(at:consume:)` validates a saved file by the same rules as duration
+and reads a snapshot of its available whole frames, sealed or open-ended.
+The consumer receives consecutive chunks of at most 48,000 mono samples,
+their start in seconds and the fraction read, ending at one for nonempty
+audio. Invalid files fail before delivery. Cancellation ends delivery before
+the next chunk. No new file is created and the saved bytes are never changed.

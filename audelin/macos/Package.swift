@@ -6,6 +6,8 @@ let package = Package(
     defaultLocalization: "ru",
     platforms: [.macOS(.v26)],
     products: [
+        .library(name: "TemplateFiles", targets: ["TemplateFiles"]),
+        .library(name: "NotesGeneration", targets: ["NotesGeneration"]),
         .library(name: "SummarySettings", targets: ["SummarySettings"]),
         .library(name: "SummaryJobs", targets: ["SummaryJobs"]),
         .library(name: "SummaryFiles", targets: ["SummaryFiles"]),
@@ -13,6 +15,8 @@ let package = Package(
         .library(name: "BleedCleanup", targets: ["BleedCleanup"]),
         .library(name: "SpeakerIdentification", targets: ["SpeakerIdentification"]),
         .library(name: "SpeakerNaming", targets: ["SpeakerNaming"]),
+        .library(name: "NameCarry", targets: ["NameCarry"]),
+        .library(name: "ReRecognition", targets: ["ReRecognition"]),
         .library(name: "CallObservation", targets: ["CallObservation"]),
         .library(name: "CallNames", targets: ["CallNames"]),
         .library(name: "ZoomAccessibility", targets: ["ZoomAccessibility"]),
@@ -26,10 +30,14 @@ let package = Package(
         .library(name: "Calls", targets: ["Calls"]),
         .library(name: "CallsStorage", targets: ["CallsStorage"]),
         .library(name: "CallDetail", targets: ["CallDetail"]),
+        .library(name: "NotesMenu", targets: ["NotesMenu"]),
         .library(name: "CallsList", targets: ["CallsList"]),
         .library(name: "Recordings", targets: ["Recordings"]),
         .library(name: "CallsListUI", targets: ["CallsListUI"]),
         .library(name: "CallsSearch", targets: ["CallsSearch"]),
+        .library(name: "CallTags", targets: ["CallTags"]),
+        .library(name: "TagsFile", targets: ["TagsFile"]),
+        .library(name: "AgentsFile", targets: ["AgentsFile"]),
         .library(name: "CallAudioProbe", targets: ["CallAudioProbe"]),
         .library(name: "CallAudioAccess", targets: ["CallAudioAccess"]),
         .library(name: "CallAppProcesses", targets: ["CallAppProcesses"]),
@@ -53,6 +61,7 @@ let package = Package(
         .library(name: "Preferences", targets: ["Preferences"]),
         .library(name: "RecordedCapture", targets: ["RecordedCapture"]),
         .library(name: "Reading", targets: ["Reading"]),
+        .library(name: "TranscriptLayout", targets: ["TranscriptLayout"]),
         .library(name: "Recording", targets: ["Recording"]),
         .library(name: "SettingsUI", targets: ["SettingsUI"]),
         .library(name: "SideText", targets: ["SideText"]),
@@ -75,6 +84,12 @@ let package = Package(
         .package(url: "https://github.com/swiftlang/swift-markdown.git", from: "0.6.0"),
     ],
     targets: [
+        .target(name: "ReRecognition", dependencies: ["NameCarry"]),
+        .testTarget(name: "ReRecognitionTests", dependencies: ["ReRecognition"]),
+        .target(name: "TemplateFiles"),
+        .testTarget(name: "TemplateFilesTests", dependencies: ["TemplateFiles"]),
+        .target(name: "NotesGeneration"),
+        .testTarget(name: "NotesGenerationTests", dependencies: ["NotesGeneration"]),
         .target(name: "SummarySettings"),
         .testTarget(name: "SummarySettingsTests", dependencies: ["SummarySettings", "BlockingTestWork"]),
         .target(name: "SummaryJobs"),
@@ -91,6 +106,8 @@ let package = Package(
         .testTarget(name: "SpeakerIdentificationTests", dependencies: ["SpeakerIdentification", "BlockingTestWork"]),
         .target(name: "SpeakerNaming"),
         .testTarget(name: "SpeakerNamingTests", dependencies: ["SpeakerNaming"]),
+        .target(name: "NameCarry"),
+        .testTarget(name: "NameCarryTests", dependencies: ["NameCarry"]),
         .target(name: "CallObservation"),
         .testTarget(name: "CallObservationTests", dependencies: ["CallObservation"]),
         .target(name: "CallNames", dependencies: ["CallObservation", "SpeakerNaming"]),
@@ -104,6 +121,8 @@ let package = Package(
         .testTarget(name: "BrowserBridgeTests", dependencies: ["BrowserBridge", "CallObservation"], resources: [.copy("Fixtures")]),
 
         .testTarget(name: "SourceChecksTests", dependencies: ["BlockingTestWork"]),
+        .target(name: "NotesMenu"),
+        .testTarget(name: "NotesMenuTests", dependencies: ["NotesMenu"]),
         .target(name: "CallDetail"),
         .testTarget(name: "CallDetailTests", dependencies: ["CallDetail"]),
         .target(name: "CallsList"),
@@ -112,6 +131,12 @@ let package = Package(
         .target(name: "CallsStorage", dependencies: ["Calls", "Recordings", "SummaryFiles"]),
         .testTarget(name: "CallsStorageTests", dependencies: ["CallsStorage", "Calls", "CallFolder", "Recordings", "SummaryFiles"]),
         .target(name: "CallsSearch"),
+        .target(name: "CallTags"),
+        .testTarget(name: "CallTagsTests", dependencies: ["CallTags"]),
+        .target(name: "TagsFile"),
+        .testTarget(name: "TagsFileTests", dependencies: ["TagsFile"]),
+        .target(name: "AgentsFile"),
+        .testTarget(name: "AgentsFileTests", dependencies: ["AgentsFile", "CallFolder", "TagsFile"]),
         .target(name: "Recordings"),
         .target(name: "CallsListUI", dependencies: ["GlassLedger"], resources: [.process("Resources")]),
         .target(name: "NotesMarkdown", dependencies: [.product(name: "Markdown", package: "swift-markdown")]),
@@ -218,6 +243,8 @@ let package = Package(
             name: "Reading",
             dependencies: ["SplitRows"]
         ),
+        .target(name: "TranscriptLayout"),
+        .testTarget(name: "TranscriptLayoutTests", dependencies: ["TranscriptLayout", "SplitRows"]),
         .target(
             name: "SplitRows"
         ),
@@ -368,7 +395,7 @@ let package = Package(
         ),
         .testTarget(
             name: "SettingsUITests",
-            dependencies: ["SettingsUI", "RenderedText"]
+            dependencies: ["SettingsUI", "GlassLedger", "RenderedText"]
         ),
         .testTarget(
             name: "SideTextTests",

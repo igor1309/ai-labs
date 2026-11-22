@@ -1,0 +1,249 @@
+import Foundation
+import Synchronization
+import TemplateFiles
+import Testing
+
+@Suite struct TemplateFilesTests {
+    @Test(arguments: [false, true]) func openingReportsTheBindingOutcomeAndUsesTheTemplatesFolder(fails: Bool) async {
+        let folder = URL(fileURLWithPath: "/fixture/Templates")
+        let opened = Mutex<[URL]>([])
+        let sut = Files(folder: folder, disk: UnusedDisk(), openFolder: { path in
+            opened.withLock { $0.append(path) }
+            if fails { throw Failure("Finder unavailable") }
+        })
+        do {
+            try await sut.open()
+            #expect(!fails)
+        } catch {
+            #expect(fails)
+            #expect(error as? Failure == Failure("Finder unavailable"))
+            #expect(error.localizedDescription == "Finder unavailable")
+        }
+        #expect(opened.withLock { $0 } == [folder])
+    }
+
+    @Test func firstListingWritesDefaultAndDailyAndAnExistingFolderIsNeverReplenished() throws {
+        try withFolder { root in
+            let folder = root.appendingPathComponent("Templates")
+            let sut = Files(folder: folder, disk: FileDisk(), openFolder: { _ in })
+            let catalogue = sut.list()
+            #expect(catalogue == Catalogue(entries: [
+                Entry(name: "Daily", file: "Daily.md", reason: nil),
+                Entry(name: "Default", file: "Default.md", reason: nil),
+            ], folderReason: nil))
+            #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path).sorted() == ["Daily.md", "Default.md"])
+            #expect(try sut.resolve("Daily") == Files.parse(String(contentsOf: folder.appendingPathComponent("Daily.md"), encoding: .utf8)))
+            #expect(try Files.parse(String(contentsOf: folder.appendingPathComponent("Default.md"), encoding: .utf8)) == Files.builtInDefault)
+            try FileManager.default.removeItem(at: folder.appendingPathComponent("Default.md"))
+            try FileManager.default.removeItem(at: folder.appendingPathComponent("Daily.md"))
+            #expect(sut.list().entries == [Entry(name: "Default", file: nil, reason: nil)])
+            #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path).isEmpty)
+            #expect(try sut.resolve("Default") == Files.builtInDefault)
+            let fallback = sut.resolveDefault()
+            #expect(fallback.headings.map { $0.filter(\.required).map(\.name) } == [
+                ["What this was about", "Key points", "Decisions", "Actions"],
+                ["О чём встреча", "Ключевые моменты", "Решения", "Задачи"],
+            ])
+            #expect(fallback.headings.map { $0.filter { !$0.required }.map(\.name) } == [["Open questions"], ["Открытые вопросы"]])
+            #expect(fallback.instructions.contains("Each action names the"))
+            #expect(try FileManager.default.contentsOfDirectory(atPath: folder.path).isEmpty)
+        }
+    }
+    @Test(arguments: [false, true]) func anExistingFolderIsNotReplenished(hasDefault: Bool) throws {
+        try withFolder { root in
+            let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
+            if hasDefault {
+                try Files.encode(Files.builtInDefault).write(to: root.appendingPathComponent("Default.md"), atomically: true, encoding: .utf8)
+            }
+            #expect(sut.list().entries == [Entry(name: "Default", file: hasDefault ? "Default.md" : nil, reason: nil)])
+            #expect(try FileManager.default.contentsOfDirectory(atPath: root.path) == (hasDefault ? ["Default.md"] : []))
+        }
+    }
+    @Test func validFilesAndEditsResolveTheirWholeContract() throws {
+        try withFolder { root in
+            let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
+            for name in ["Default", "Daily", "Custom"] {
+                let template = Template(name: name, instructions: "Write the marker \(name)", headings: [[Heading("Topic"), Heading("Questions", required: false), Heading("Actions")]])
+                let file = root.appendingPathComponent(name + ".md")
+                try Files.encode(template).write(to: file, atomically: true, encoding: .utf8)
+                #expect(try sut.resolve(name) == template)
+                var edited = template; edited.instructions = "Edited instructions for \(name)"
+                try Files.encode(edited).write(to: file, atomically: true, encoding: .utf8)
+                #expect(try sut.resolve(name) == edited)
+            }
+        }
+    }
+    @Test func shippedDailyResolvesTheHandoffContract() throws {
+        try withFolder { root in
+            let folder = root.appendingPathComponent("Templates")
+            let sut = Files(folder: folder, disk: FileDisk(), openFolder: { _ in })
+            let daily = try sut.resolve("Daily")
+            #expect(daily.name == "Daily")
+            #expect(daily.headings == [
+                [Heading("What to continue"), Heading("Who does what"), Heading("Blockers and planned fixes"), Heading("Planned meetings")],
+                [Heading("Что продолжить"), Heading("Кто что делает"), Heading("Блокеры и планируемые решения"), Heading("Запланированные встречи")],
+            ])
+            let instructions = daily.instructions.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+            for instruction in [
+                "Focus on what to pick up next, not a recap or a speaker-by-speaker account.",
+                "name the work to continue and its next steps",
+                "list each action with its explicitly stated owner, deadline or condition",
+                "pair each blocker with its planned fix and the explicitly stated owner of that fix",
+                "Distinguish a planned fix from a completed one",
+                "list the meetings planned, their purpose, participants and dates or times only as stated in the transcript",
+                "label agreed actions and meetings as agreed, and suggestions as suggested",
+                "never turn a suggestion into a commitment",
+                "If an action or fix has no stated owner, write \"owner unclear\"",
+                "If a blocker has no stated fix, write \"fix unclear\"",
+                "If a date or time is unstated, write \"date unclear\" or \"time unclear\"",
+                "For any topic not raised, explicitly write \"not discussed\", never \"none\"",
+                "blockers not mentioned must read \"blockers not discussed\"",
+                "Translate these labels into the transcript's language",
+            ] {
+                #expect(instructions.contains(instruction), "Missing Daily instruction: \(instruction)")
+            }
+            var edited = daily
+            edited.instructions = "Use my daily handoff instructions"
+            edited.headings = [[Heading("Next steps"), Heading("Questions", required: false)]]
+            try Files.encode(edited).write(to: folder.appendingPathComponent("Daily.md"), atomically: true, encoding: .utf8)
+            #expect(try sut.resolve("Daily") == edited)
+        }
+    }
+    @Test(arguments: [
+        ("---\n{", "Metadata"),
+        ("---\n{\"name\":\"Default\",\"headings\":[]}\n---\nWrite notes", "required headings"),
+        ("---\n{\"name\":\"Default\"}\n---\nWrite notes", "required headings"),
+        ("---\n{\"name\":\"Default\",\"headings\":[[{\"name\":\"Questions\",\"required\":false}]]}\n---\nWrite notes", "required headings"),
+        ("---\n{\"name\":\"Default\",\"headings\":[[{\"name\":\"Topic\",\"required\":true}]]}\n---\n  ", "Instructions"),
+    ])
+    func brokenFilesAreVisibleUnchangedAndDefaultStillResolves(text: String, reason: String) throws {
+        try withFolder { root in
+            let file = root.appendingPathComponent("Default.md")
+            try text.write(to: file, atomically: true, encoding: .utf8)
+            let before = try file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+            let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
+            let listed = sut.list()
+            #expect(listed.entries.count == 2)
+            #expect(listed.entries[0].file == "Default.md")
+            #expect(listed.entries[0].reason?.contains(reason) == true)
+            #expect(listed.entries[1] == Entry(name: "Default", file: nil, reason: nil))
+            #expect(try sut.resolve("Default") == Files.builtInDefault)
+            #expect(try String(contentsOf: file, encoding: .utf8) == text)
+            #expect(try file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate == before)
+        }
+    }
+    @Test(arguments: [" Topic", "Topic ", "\tTopic", "Topic\t", "Topic\r", "Topic\n", "Top\ric", "Top\nic", "\u{00a0}Topic", "Topic\u{00a0}"])
+    func unpreservableHeadingsAreUnusableAndDefaultFallsBack(heading: String) throws {
+        try withFolder { root in
+            let template = Template(name: "Default", instructions: "Write notes", headings: [[Heading(heading)]])
+            let text = try Files.encode(template)
+            let file = root.appendingPathComponent("Default.md")
+            try text.write(to: file, atomically: true, encoding: .utf8)
+            let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
+            let entries = sut.list().entries
+            #expect(entries.count == 2)
+            #expect(entries.first?.file == "Default.md")
+            #expect(entries.first?.reason?.contains("headings") == true)
+            #expect(entries.last == Entry(name: "Default", file: nil, reason: nil))
+            #expect(sut.resolveDefault() == Files.builtInDefault)
+            #expect(try String(contentsOf: file, encoding: .utf8) == text)
+        }
+    }
+    @Test(arguments: ["Custom", "Daily"]) func aMissingOrBrokenChosenTemplateNeverUsesDefault(name: String) throws {
+        try withFolder { root in
+            let folder = root.appendingPathComponent("Templates")
+            let file = folder.appendingPathComponent(name + ".md")
+            let sut = Files(folder: folder, disk: FileDisk(), openFolder: { _ in })
+            _ = sut.list()
+            if name == "Custom" {
+                let template = Template(name: name, instructions: "Custom instructions", headings: [[Heading("Topic")]])
+                try Files.encode(template).write(to: file, atomically: true, encoding: .utf8)
+            }
+            #expect(sut.list().entries.contains(Entry(name: name, file: name + ".md", reason: nil)))
+            try FileManager.default.removeItem(at: file)
+            do { _ = try sut.resolve(name); Issue.record("Missing template resolved") }
+            catch { #expect(String(describing: error).contains(name)) }
+            #expect(!sut.list().entries.contains(where: { $0.name == name }))
+            #expect(!FileManager.default.fileExists(atPath: file.path))
+            try "broken".write(to: file, atomically: true, encoding: .utf8)
+            #expect(throws: Failure.self) { try sut.resolve(name) }
+            #expect(try String(contentsOf: file, encoding: .utf8) == "broken")
+        }
+    }
+    @Test func unreadableFolderReportsItsReasonAndOffersDefault() throws {
+        try withFolder { root in
+            try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: root.path)
+            defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: root.path) }
+            let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
+            let listed = sut.list()
+            #expect(listed.folderReason?.isEmpty == false)
+            #expect(listed.entries == [Entry(name: "Default", file: nil, reason: nil)])
+            #expect(try sut.resolve("Default") == Files.builtInDefault)
+        }
+    }
+    @Test(arguments: ["", ".", "..", "Weekly\\Review"])
+    func rejectedNamesAreListedWithTheirReasonAndBuiltInDefault(name: String) throws {
+        try withFolder { root in
+            let template = Template(name: name, instructions: "Write notes", headings: [[Heading("Topic")]])
+            let text = try Files.encode(template)
+            let file = root.appendingPathComponent(name + ".md")
+            try text.write(to: file, atomically: true, encoding: .utf8)
+            let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
+            let reason = "Invalid template name: \(name)"
+            #expect(sut.list() == Catalogue(entries: [
+                Entry(name: name, file: name + ".md", reason: reason),
+                Entry(name: "Default", file: nil, reason: nil),
+            ], folderReason: nil))
+            #expect(throws: Failure(reason)) { try sut.resolve(name) }
+            #expect(try sut.resolve("Default") == Files.builtInDefault)
+            #expect(try String(contentsOf: file, encoding: .utf8) == text)
+        }
+    }
+    @Test(arguments: ["../Other", "/tmp/Other", "", ".", "..", "Other\\File"])
+    func resolutionRejectsPaths(name: String) throws {
+        try withFolder { root in
+            #expect(throws: Failure.self) { try Files(folder: root, disk: FileDisk(), openFolder: { _ in }).resolve(name) }
+        }
+    }
+}
+private func withFolder(_ body: (URL) throws -> Void) throws {
+    let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: folder) }
+    try body(folder)
+}
+
+private struct UnusedDisk: Disk {
+    func createFolder(_ folder: URL) throws -> Bool { throw Failure("Unexpected create") }
+    func files(_ folder: URL) throws -> [String] { throw Failure("Unexpected listing") }
+    func read(_ file: URL) throws -> String { throw Failure("Unexpected read") }
+    func write(_ text: String, to file: URL) throws { throw Failure("Unexpected write") }
+}
+
+@Suite struct ShippedTemplateUpdateTests {
+    @Test func anUneditedEarlierShippedFileIsBroughtUpToDate() throws {
+        try withFolder { root in
+            let file = root.appendingPathComponent("Default.md")
+            var earlier = Files.builtInDefault
+            earlier.instructions = earlierShippedDefault
+            try Files.encode(earlier).write(to: file, atomically: true, encoding: .utf8)
+            let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
+            #expect(try sut.resolve("Default") == Files.builtInDefault)
+            #expect(try Files.parse(String(contentsOf: file, encoding: .utf8)) == Files.builtInDefault)
+        }
+    }
+
+    @Test(arguments: [false, true]) func anEditedShippedFileIsKept(changesHeadings: Bool) throws {
+        try withFolder { root in
+            let file = root.appendingPathComponent("Default.md")
+            var edited = Files.builtInDefault
+            edited.instructions = changesHeadings ? earlierShippedDefault : earlierShippedDefault.replacingOccurrences(of: "faithful", with: "short")
+            if changesHeadings { edited.headings = [[Heading("Summary")]] }
+            let text = try Files.encode(edited)
+            try text.write(to: file, atomically: true, encoding: .utf8)
+            let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
+            #expect(try sut.resolve("Default") == edited)
+            #expect(try String(contentsOf: file, encoding: .utf8) == text)
+        }
+    }
+}

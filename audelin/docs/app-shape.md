@@ -68,8 +68,10 @@ down. Deciding that a recording should end and taking its pieces down
 change for the same reason, so they are one machine.
 
 - **State:** automatic or manual, the conditions, and the current
-  recording's stage: claiming call audio, claiming the calls folder,
-  bringing its pieces up, running, bringing them down, released. Each
+  recording's stage: claiming the calls folder, claiming call audio,
+  bringing its pieces up, running, bringing them down, releasing call
+  audio, releasing the calls folder, released. The folder is claimed first
+  and released last, so no move or relaunch overlaps any of it. Each
   piece's state and fault, the calls-folder claim it holds, and whether a
   shutdown has settled.
 - **Events, from merged sources:** a call starting and ending (Core Audio

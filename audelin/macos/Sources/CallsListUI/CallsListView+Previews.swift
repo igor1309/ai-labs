@@ -6,3 +6,9 @@ import SwiftUI
 #Preview("Notes · Selected") { CallsListView(state: CallsListPreviews.state("notes-selected"), text: .init(language: .russian), event: { _ in }).frame(width: 920, height: 420) }
 #Preview("Delete") { CallsListView(state: CallsListPreviews.state("delete"), text: .init(language: .russian), event: { _ in }).frame(width: 920, height: 420) }
 #Preview("Rename") { CallsListView(state: CallsListPreviews.state("rename"), text: .init(language: .russian), event: { _ in }).frame(width: 920, height: 420) }
+
+#Preview("Transcript again · Hearing") { CallsListView(state: CallsListPreviews.state("transcript-hearing"), text: .init(language: .russian), event: { _ in }).frame(width: 560, height: 420) }
+#Preview("Transcript again · Menu") {
+    let item = CallsListPreviews.transcriptMenuStates(in: .init(language: .russian))[2]
+    CallsListMenuPreview(state: item.state, rowID: item.rowID, text: .init(language: .russian)).frame(width: 360, height: 180)
+}

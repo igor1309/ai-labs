@@ -6,16 +6,44 @@ import Foundation
 import Preferences
 import SummaryFiles
 import SummaryJobs
+import NotesGeneration
+import Observation
+import Synchronization
 import Testing
 
 @MainActor @Suite struct SummariesModelTests {
+    @Test(arguments: [false, true])
+    func retryWithChangedTextWaitsForDiscardAndFreshAdmission(discardFails: Bool) async throws {
+        let files = FilesFake(fails: discardFails)
+        files.stored = try await record(phase: "failed")
+        let transcript = Mutex<[Calls.Text.Line]>([])
+        let preparation = SummariesPreparationPort(notes: { .init(enabled: true, speakers: false) }, makeID: { "new-job" },
+                                                   callText: { _ in .init(transcript: transcript.withLock { $0 }) })
+        let sut = SummariesModel(keeping: { true }, templates: TestDefaultTemplates(), text: { CallsListText(language: .english) },
+                                 preparation: preparation, files: .init(files: files, makeID: { "retry-id" }), generation: GenerationStub())
+        sut.recover(calls: ["call"])
+        for await state in Observations({ sut.state }) where state.calls["call"]?.retryable == true { break }
+        transcript.withLock { $0 = [.init(start: 3, words: "current transcript", label: "A")] }
+        if discardFails {
+            await #expect(throws: CocoaError.self) { try await sut.retry(call: "call") }
+            #expect(sut.state.calls["call"]?.retryFailed == true && files.claimed.isEmpty)
+        } else {
+            try await sut.retry(call: "call")
+            for await state in Observations({ sut.state }) where state.calls["call"]?.stage == .succeeded { break }
+            #expect(files.claimed.map(\.job) == ["new-job"])
+            #expect(files.claimed.first?.input == summaryInput([.init(label: "A", time: "3.0", text: "current transcript")]))
+        }
+        #expect(files.retried.isEmpty)
+        #expect(files.writes.contains { if case .discard = $0 { true } else { false } })
+        await sut.shutdown()
+    }
     @Test func aSubmissionRunsThroughFilesAndGenerationToPublishedNotes() async throws {
         let files = FilesFake()
         let sut = makeSUT(files)
-        sut.send(.finalized("call", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true, notesOn: true))
+        sut.send(.finalized("call", entries: [.init(label: "A", time: "0", text: "spoken")], finalWrite: true, usable: true, notesOn: true, transcriptIdentity: "submitted-transcript"))
         try await waitUntil("notes are saved") { sut.state.calls["call"]?.stage == .succeeded }
         #expect(files.claimed.map(\.job) == ["job"])
-        #expect(files.writes.contains { if case .publish(_, "notes") = $0 { true } else { false } })
+        #expect(files.writes.contains { if case .publish(_, "notes", .default, .rotation, "submitted-transcript") = $0 { true } else { false } })
         #expect(sut.state.calls["call"]?.status == CallsListText(language: .english)(.summaryReady))
         #expect(sut.state.calls["call"]?.badge == SummariesState.Call.Badge.none)
     }
@@ -135,7 +163,7 @@ import Testing
         #expect(!files.writes.contains { if case .publish = $0 { true } else { false } })
         transactions.continuation.yield(.idle)
         try await waitUntil("notes are saved") { sut.state.calls["call"]?.stage == .succeeded }
-        #expect(files.writes.contains { if case .publish(_, "notes") = $0 { true } else { false } })
+        #expect(files.writes.contains { if case .publish(_, "notes", .default, .rotation, nil) = $0 { true } else { false } })
     }
     @Test func shutdownReturnsOnceTheMachineHasSettled() async {
         let sut = makeSUT(FilesFake())
@@ -144,15 +172,15 @@ import Testing
     }
 
     private func makeSUT(_ files: FilesFake, notes: Bool = true, transcript: [Calls.Text.Line] = [], readFails: Bool = false) -> SummariesModel {
-        SummariesModel(text: { CallsListText(language: .english) },
+        SummariesModel(keeping: { true }, templates: TestDefaultTemplates(), text: { CallsListText(language: .english) },
                        preparation: SummariesPreparationPort(notes: { .init(enabled: notes, speakers: false, primary: .init(kind: "cli", model: "m", executable: "/bin/p", endpoint: "", credentialVariable: "")) },
                                                              makeID: { "job" },
-                                                             callText: { _ in if readFails { throw CocoaError(.fileReadNoSuchFile) }; return .init(notes: nil, transcript: transcript) }),
+                                                             callText: { _ in if readFails { throw CocoaError(.fileReadNoSuchFile) }; return .init(transcript: transcript) }),
                        files: .init(files: files, makeID: { "fresh" }), generation: GenerationStub())
     }
     private func record(phase: String) async throws -> SummaryFiles.Record {
         let files = FilesFake()
-        let job = Job(id: "job", call: "call", input: "input", entries: [], speakers: false,
+        let job = Job(id: "job", call: "call", input: summaryInput([]), entries: [], speakers: false,
                       primary: .init(kind: "cli", model: "m", program: "p", endpoint: "", credentialVariable: ""))
         _ = try await SummariesFilesPort(files: files, makeID: { "fresh" }).claim(job)
         var value = try #require(files.claimed.first); value.phase = phase; return value
@@ -161,6 +189,6 @@ import Testing
 
 private struct GenerationStub: SummariesGeneration {
     func identify(_ job: Job) async throws -> [Identity] { [] }
-    func notes(_ job: Job, identities: [Identity]) async throws -> String { "notes" }
+    func notes(_ job: Job, identities: [Identity], template: NotesGeneration.Template) async throws -> String { "notes" }
     func cancel(_ job: Job) async {}
 }

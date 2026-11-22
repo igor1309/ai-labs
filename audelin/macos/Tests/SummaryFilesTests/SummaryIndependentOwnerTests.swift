@@ -25,7 +25,7 @@ import Testing
             try await owner.publish(job, notes: "complete")
             var terminal = job; terminal.phase = "succeeded"
             try await owner.progress(terminal)
-            #expect(try await observer.load(call: "call") == terminal)
+            #expect(try await observer.load(call: "call") == nil)
         } cleanup: {
             try FileManager.default.removeItem(at: root)
         }
@@ -44,6 +44,7 @@ private final class LeaseProbingDisk: Disk, Sendable {
     func exists(_ url: URL) throws -> Bool { try disk.exists(url) }
     func create(_ data: Data, at url: URL) throws -> Bool { try disk.create(data, at: url) }
     func readStamped(_ url: URL) throws -> (data: Data, modified: Date) { try FileDisk().readStamped(url) }
+    func restore(_ data: Data, at url: URL, modified: Date) throws { try disk.restore(data, at: url, modified: modified) }
     func remove(_ url: URL) throws { try disk.remove(url) }
     func replace(_ data: Data, at url: URL) throws {
         if url.lastPathComponent == ".summary-job.json", try JSONDecoder().decode(Record.self, from: data).phase == "running",

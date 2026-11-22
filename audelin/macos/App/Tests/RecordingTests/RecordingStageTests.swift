@@ -5,10 +5,10 @@ import Testing
 @Suite(.timeLimit(.minutes(1)))
 struct RecordingStageTests {
 
-    @Test func aStartPreparesCallAudio() {
+    @Test func aStartClaimsTheCallsFolder() {
         let start = makeIdle()
-        assert(start, .userStart) { $0.phase = .beginning; $0.stage = .preparing; $0.session = .init(id: 1, origin: .hand); $0.lastSessionID = 1 }
-        assert(start, .userStart, delivers: .prepareCallAudio(id: 1))
+        assert(start, .userStart) { $0.phase = .beginning; $0.stage = .claiming; $0.session = .init(id: 1, origin: .hand); $0.lastSessionID = 1 }
+        assert(start, .userStart, delivers: .claimFolder(id: 1))
     }
 
     @Test(arguments: [false, true])
@@ -53,6 +53,22 @@ struct RecordingStageTests {
         assert(makeRunning(), .userStop, delivers: down.1.map { .session(id: 1, $0) })
     }
 
+    @Test func aStopForTheRecordingSessionBringsThePiecesDown() {
+        let down = SessionReducer.reduce(makeRecordingPieces(), .end)
+        assert(makeRunning(), .stopSession(id: 1)) { $0.phase = .ending; $0.pieces = down.0 }
+        assert(makeRunning(), .stopSession(id: 1), delivers: down.1.map { .session(id: 1, $0) })
+    }
+
+    @Test func aStopForAnotherSessionKeepsRecording() {
+        assert(makeRunning(), .stopSession(id: 99))
+        assert(makeRunning(), .stopSession(id: 99), delivers: nil)
+    }
+
+    @Test func aStopWhileIdleChangesNothing() {
+        assert(makeIdle(), .stopSession(id: 1))
+        assert(makeIdle(), .stopSession(id: 1), delivers: nil)
+    }
+
     @Test func piecesThatCannotRecordAreBroughtDown() {
         let pieces = makeState(makeStarting()) { $0.pieces?.folder = .starting }
         let failed = SessionReducer.reduce(pieces.pieces!, .folderFinished(error: "no folder"))
@@ -79,19 +95,14 @@ struct RecordingStageTests {
         assert(makeReleasing(), .sessionReported(id: 1, .ended), delivers: nil)
     }
 
-    @Test func theNextSessionPreparesOnlyAfterRelease() {
+    @Test func theNextSessionClaimsOnlyAfterRelease() {
         let waiting = makeState(makeReleasing()) { $0.callOn = true; $0.pendingCall = true }
         assert(waiting, .callAudioPrepared(id: 2, ready: true, liveText: true))
         assert(waiting, .sessionReported(id: 1, .ended)) {
-            $0.phase = .beginning; $0.stage = .preparing; $0.pendingCall = false; $0.pieces = nil
+            $0.phase = .beginning; $0.stage = .claiming; $0.pendingCall = false; $0.pieces = nil
             $0.lastSessionID = 2; $0.session = .init(id: 2, origin: .call); $0.sessionBeganDuringCall = true
         }
-        assert(waiting, .sessionReported(id: 1, .ended), delivers: .prepareCallAudio(id: 2))
-    }
-
-    @Test func storageIsNotReservedWhileReleasing() {
-        assert(makeReleasing(), .reserveStorage(request: 1)) { $0.reservations = [1: false] }
-        assert(makeReleasing(), .reserveStorage(request: 1), delivers: nil)
+        assert(waiting, .sessionReported(id: 1, .ended), delivers: .claimFolder(id: 2))
     }
 
     @Test func shutdownSettlesOnlyOnceCallAudioIsReleased() {
@@ -132,7 +143,7 @@ struct RecordingStageTests {
 }
 
 /// Pieces whose only work left is releasing their output.
-private func makeLastPieceDown() -> SessionState {
+func makeLastPieceDown() -> SessionState {
     SessionState(phase: .ending, folder: .up, processes: .up, microphoneTrack: .closed, callTrack: .closed,
                  microphoneCapture: .closed, callCapture: .closed, transcript: .closed, callText: .closed, textFeed: .closed, output: .stopping)
 }
@@ -149,12 +160,38 @@ struct RecordingEffectHandlerTests {
         #expect(await event == .callAudioPrepared(id: 3, ready: ready, liveText: true))
     }
 
-    @Test func releaseAnswersThatTheSessionEnded() async {
+    @Test func aCallAudioWaitSleepsFiveSecondsBeforeRetryingItsAttempt() async {
+        let (sut, spies) = makeHandler()
+        async let event = sut.handle(.waitForCallAudio(id: 3))
+        await spies.sleep.complete()
+        #expect(await event == .callAudioRetry(id: 3))
+        #expect(await spies.delays.calls == [.seconds(5)])
+        #expect(await spies.prepare.count == 0)
+    }
+
+    @Test func releaseAnswersThatCallAudioIsReleased() async {
         let (sut, spies) = makeHandler()
         async let event = sut.handle(.releaseCallAudio(id: 3))
         await spies.release.complete()
-        #expect(await event == .sessionReported(id: 3, .ended))
+        #expect(await event == .callAudioReleased(id: 3))
         #expect(await spies.release.count == 1)
+    }
+
+    @Test(arguments: [CallsFolderAnswer.granted(token: 7), .refusedByMove, .refused])
+    func aClaimAnswersWithTheClaimsAnswerForItsSession(_ answer: CallsFolderAnswer) async {
+        let (sut, spies) = makeHandler()
+        async let event = sut.handle(.claimFolder(id: 3))
+        await spies.claim.complete(with: answer)
+        #expect(await event == .folderClaimed(id: 3, answer))
+        #expect(await spies.claim.count == 1)
+    }
+
+    @Test func aClaimReleaseReleasesItsTokenAndEndsTheSession() async {
+        let (sut, spies) = makeHandler()
+        async let event = sut.handle(.releaseFolder(id: 3, token: 7))
+        await spies.releaseClaim.complete()
+        #expect(await event == .sessionReported(id: 3, .ended))
+        #expect(await spies.releasedTokens.calls == [7])
     }
 
     @Test func aPieceEffectAnswersWithThePieceResultForItsSession() async {
@@ -167,10 +204,25 @@ struct RecordingEffectHandlerTests {
 }
 
 private struct HandlerSpies {
+    let sleep = CallSpy<Void>()
+    let delays = Delays()
+    let claim = CallSpy<CallsFolderAnswer>()
+    let releaseClaim = CallSpy<Void>()
+    let releasedTokens = Tokens()
     let prepare = CallSpy<Bool>()
     let release = CallSpy<Void>()
     let piece = CallSpy<SessionEvent>()
     let pieceCalls = PieceCalls()
+}
+
+actor Delays {
+    private(set) var calls: [Duration] = []
+    func record(_ duration: Duration) { calls.append(duration) }
+}
+
+actor Tokens {
+    private(set) var calls: [UInt64] = []
+    func record(_ token: UInt64) { calls.append(token) }
 }
 
 actor PieceCalls {
@@ -181,7 +233,15 @@ actor PieceCalls {
 
 private func makeHandler() -> (RecordingEffectHandler, HandlerSpies) {
     let spies = HandlerSpies()
-    let sut = RecordingEffectHandler(prepareCallAudio: { [prepare = spies.prepare] in await prepare.call() },
+    let sut = RecordingEffectHandler(sleep: { delay in
+                                         await spies.delays.record(delay)
+                                         await spies.sleep.call()
+                                     }, claimFolder: { [claim = spies.claim] in await claim.call() },
+                                     releaseFolder: { [release = spies.releaseClaim, tokens = spies.releasedTokens] token in
+                                         await tokens.record(token)
+                                         await release.call()
+                                     },
+                                     prepareCallAudio: { [prepare = spies.prepare] in await prepare.call() },
                                      liveText: { true },
                                      releaseCallAudio: { [release = spies.release] in await release.call() },
                                      runPiece: { [piece = spies.piece, calls = spies.pieceCalls] id, effect in

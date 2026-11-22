@@ -21,14 +21,22 @@ public enum TranscriptJoin {
 
     /// One call being merged: when it started, how long it lasted, its rows in order and
     /// its speakers.
-    public struct Part<Row: JoinRow, Speaker: JoinSpeaker> {
+    public struct Part<Row: JoinRow, Speaker: JoinSpeaker, Origin> {
         public let start: Date
         public let length: Double
         public let rows: [Row]
         public let speakers: [Speaker]
-        public init(start: Date, length: Double, rows: [Row], speakers: [Speaker]) {
-            self.start = start; self.length = length; self.rows = rows; self.speakers = speakers
+        public let originals: [Original<Origin>]
+        public init(start: Date, length: Double, rows: [Row], speakers: [Speaker], originals: [Original<Origin>]) {
+            self.start = start; self.length = length; self.rows = rows; self.speakers = speakers; self.originals = originals
         }
+    }
+
+    /// One original call's absolute start and a value joining never inspects.
+    public struct Original<Origin> {
+        public let start: Date
+        public let origin: Origin
+        public init(start: Date, origin: Origin) { self.start = start; self.origin = origin }
     }
 
     /// A joined row, or where the call was cut off between two parts.
@@ -40,9 +48,10 @@ public enum TranscriptJoin {
     }
 
     /// The joined call: its items, and every part's speakers under keys of their part.
-    public struct Joined<Row: JoinRow, Speaker: JoinSpeaker> {
+    public struct Joined<Row: JoinRow, Speaker: JoinSpeaker, Origin> {
         public let items: [Item<Row>]
         public let speakers: [Speaker]
+        public let originals: [Original<Origin>]
     }
 
     /// The parts' rows in time order, each moved by its part's start less the earliest
@@ -51,10 +60,10 @@ public enum TranscriptJoin {
     /// order within a part. Each part's speaker keys, on its rows and its speakers, are
     /// given a key of that part, `N.key` for the Nth part in time order, so the same key
     /// in two parts is two speakers.
-    public static func join<Row, Speaker>(_ parts: [Part<Row, Speaker>]) -> Joined<Row, Speaker> {
+    public static func join<Row, Speaker, Origin>(_ parts: [Part<Row, Speaker, Origin>]) -> Joined<Row, Speaker, Origin> {
 
         let ordered = parts.enumerated().sorted { ($0.element.start, $0.offset) < ($1.element.start, $1.offset) }.map(\.element)
-        guard let earliest = ordered.first?.start else { return Joined(items: [], speakers: []) }
+        guard let earliest = ordered.first?.start else { return Joined(items: [], speakers: [], originals: []) }
         var items: [Item<Row>] = []
         var speakers: [Speaker] = []
         for (index, part) in ordered.enumerated() {
@@ -68,6 +77,8 @@ public enum TranscriptJoin {
             items += part.rows.map { .row($0.moved(to: $0.time + offset, speaker: $0.speaker.map(key))) }
             speakers += part.speakers.map { $0.keyed(key($0.key)) }
         }
-        return Joined(items: items, speakers: speakers)
+        let originals = ordered.flatMap(\.originals).enumerated()
+            .sorted { ($0.element.start, $0.offset) < ($1.element.start, $1.offset) }.map(\.element)
+        return Joined(items: items, speakers: speakers, originals: originals)
     }
 }

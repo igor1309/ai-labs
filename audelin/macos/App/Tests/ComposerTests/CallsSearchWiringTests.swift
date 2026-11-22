@@ -1,6 +1,7 @@
 import CallsListUI
 import Foundation
 import Observation
+import SummaryFiles
 import Testing
 @testable import Composer
 
@@ -8,6 +9,33 @@ import Testing
 @MainActor
 @Suite(.timeLimit(.minutes(1)))
 struct CallsSearchWiringTests {
+    @Test func searchAndGistsReadOnlyCurrentOfAPair() async throws {
+        try await withComposition { rig in
+            let id = "2024.01.01-1030"
+            try call(id, in: rig.root)
+            let storage = callsStorage(folder: rig.root, timeZone: .gmt, trash: removeForTrash)
+            let files = SummaryFiles.Files(locations: storage, disk: FileDisk(), ownershipDirectory: rig.root.appendingPathComponent("leases"))
+            for (index, text) in ["## Topic\n\nPreviousword.", "## Topic\n\nCurrentword."].enumerated() {
+                let record = Record(job: "job-\(index)", call: id, input: "input", snapshot: Data(), phase: "pending")
+                _ = try await files.claim(record); #expect(try await files.start(record))
+                try await files.publish(record, notes: text, template: .default, keeping: .rotation)
+                var terminal = record; terminal.phase = "succeeded"
+                try await files.progress(terminal)
+            }
+            let calls = try #require(rig.menu.calls)
+            await rig.menu.perform(.showCalls)
+            await wait(calls) { $0.rows.count == 1 && !$0.busy && $0.rows[0].gist == "Currentword." }
+            #expect(calls.state.rows[0].gist == "Currentword.")
+            await calls.send(.search("Currentword"))
+            await wait(calls) { $0.search == .init(query: "Currentword", searching: false) }
+            #expect(calls.state.rows.map(\.id) == [id])
+            #expect(calls.state.rows[0].match?.snippet?.text.contains("Currentword") == true)
+            await calls.send(.search("Previousword"))
+            await wait(calls) { $0.search == .init(query: "Previousword", searching: false) }
+            #expect(calls.state.rows.isEmpty)
+        }
+    }
+
     @Test func aSearchKeepsMatchingCallsWithTheirDaysAndClearingRestoresTheList() async throws {
         try await withComposition { rig in
             let calls = try #require(rig.menu.calls)

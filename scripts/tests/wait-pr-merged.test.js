@@ -13,7 +13,8 @@ function pr(state, extra = {}) {
 }
 
 // withFakeGh runs wait-pr-merged.sh with a fake gh whose nth `pr view`
-// gives views[n], and the last one from then on.
+// gives views[n], and the last one from then on. Like gh, it also writes
+// a hint to stderr on success.
 function withFakeGh(views, env, fn) {
   const dir = mkdtempSync(join(tmpdir(), 'wait-pr-merged-test-'));
   try {
@@ -28,6 +29,7 @@ function withFakeGh(views, env, fn) {
 echo x >> "${dir}/calls"
 n=$(wc -l < "${dir}/calls" | tr -d ' ')
 [ "$n" -gt ${views.length} ] && n=${views.length}
+echo "hint: if you need to wait for this pull request, use gh event listen" >&2
 cat "${dir}/view-$n"
 `,
     );

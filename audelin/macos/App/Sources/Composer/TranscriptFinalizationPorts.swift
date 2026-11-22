@@ -5,10 +5,9 @@ import TranscriptFinalization
 struct FinalizationDiarizing: TranscriptDiarizing {
     let resources: FinalizationResources
 
-    func diarize(call: String, _ raw: CallState) async -> Transcript.Attributed? {
+    func diarize(call: String, _ raw: CallState, evidence: CallNamesState, outcomes: FinishingOutcomes) async -> SavedDiarization<Transcript.Attributed>? {
         guard let resource = await resources.resource(call: call) else { return nil }
-        let far = await resource.transcript.pass.diarize(call: call, raw)
-        return far
+        return await resource.transcript.pass.diarize(raw, evidence: evidence, outcomes: outcomes)
     }
 }
 
@@ -26,11 +25,11 @@ struct FinalizationCleanup: MicrophoneCleanup {
 struct FinalizationReplacement: TranscriptReplacement {
     let resources: FinalizationResources
 
-    func replace(call: String, _ raw: CallState, names: CallNamesState?, far: Transcript.Attributed?, heard: [TranscriptSegment]) async throws {
+    func replace(call: String, _ raw: CallState, names: CallNamesState?, far: Transcript.Attributed?, heard: [TranscriptSegment]?, outcomes: FinishingOutcomes) async throws {
         guard let resource = await resources.resource(call: call) else { throw CancellationError() }
         let replacement = Transcript.microphoneReplacement(in: raw, far: far, names: names ?? .init(), heard: heard)
         do {
-            try await resource.transcript.writer.replaceWhole(replacement.segments, speakers: replacement.speakers)
+            try await resource.transcript.writer.replaceWhole(replacement.segments, speakers: replacement.speakers, outcomes: outcomes)
         } catch {
             resource.cleanup.sink.write(.init(category: .session, message: "bleed cleanup kept raw: replacing failed", error: String(describing: error)))
             throw error

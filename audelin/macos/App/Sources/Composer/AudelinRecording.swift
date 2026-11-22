@@ -16,7 +16,7 @@ final class AudelinRecording: Sendable {
     private let delivery: ApplicationDelivery
 
     init(
-        preferences: PreferencesStore, occupiedCallNames: @escaping @Sendable () throws -> [String],
+        preferences: PreferencesStore, folderClaim: RecordingFolderClaim, occupiedCallNames: @escaping @Sendable () throws -> [String],
         boundary: ComposerBoundary, processes: CoreAudioProcesses,
         panel: AudelinPanel, finalization: TranscriptFinalizationModel, finalizationResources: FinalizationResources, summaries: SummaryCallbacks = .disabled
     ) async throws {
@@ -24,7 +24,7 @@ final class AudelinRecording: Sendable {
         let app = RecordingCallApp()
         self.panel = panel
         let (recording, conditions) = await composeRecordingWithPreferences(
-            preferences: preferences, occupiedCallNames: occupiedCallNames, callApp: app, processes: processes, boundary: boundary, panel: panel, finalization: finalization, finalizationResources: finalizationResources, summaries: summaries
+            preferences: preferences, folderClaim: folderClaim, occupiedCallNames: occupiedCallNames, callApp: app, processes: processes, boundary: boundary, panel: panel, finalization: finalization, finalizationResources: finalizationResources, summaries: summaries
         )
         let inputs = recording
         self.inputs = inputs
@@ -53,16 +53,8 @@ final class AudelinRecording: Sendable {
         }
     }
 
-    func reserveStorage() async -> Bool {
-        guard await inputs.reserveStorage() else { return false }
-        await conditions.setStorageMoving(true)
-        return true
-    }
-    func releaseStorage() async {
-        await conditions.setStorageMoving(false)
-        await refresh()
-        await inputs.releaseStorage()
-    }
+    /// Tells RecordingConditions whether a folder move holds the calls folder.
+    func storageMoving(_ moving: Bool) async { await conditions.setStorageMoving(moving) }
 
     /// Stops call detection, the processes it watches and the model load, so no new
     /// recording is reported while the app quits.
