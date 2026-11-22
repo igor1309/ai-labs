@@ -1298,8 +1298,8 @@
     "group": "dinosaur",
     "hidden": true,
     "attributes": {
-      "heightMeters": 0.46,
-      "lengthMeters": 1,
+      "heightMeters": 0.5,
+      "lengthMeters": 1.1,
       "massKg": 0.5
     },
     "diet": "meat",
@@ -1333,7 +1333,7 @@
       "legs": "either",
       "horns": false,
       "feathers": false,
-      "size": "big"
+      "size": null
     },
     "lookAlike": "duck-bill",
     "description": {
@@ -1350,16 +1350,16 @@
     "group": "dinosaur",
     "hidden": true,
     "attributes": {
-      "heightMeters": 0.83,
-      "lengthMeters": 6,
-      "massKg": 2500
+      "heightMeters": 0.96,
+      "lengthMeters": 7,
+      "massKg": 2000
     },
     "diet": "plants",
     "traits": {
       "legs": 4,
       "horns": false,
       "feathers": false,
-      "size": "big"
+      "size": null
     },
     "lookAlike": "armoured",
     "description": {
@@ -1376,8 +1376,8 @@
     "group": "dinosaur",
     "hidden": true,
     "attributes": {
-      "heightMeters": 2.2,
-      "lengthMeters": 7,
+      "heightMeters": 1.9,
+      "lengthMeters": 6,
       "massKg": 1100
     },
     "diet": "meat",
@@ -1385,7 +1385,7 @@
       "legs": 2,
       "horns": false,
       "feathers": false,
-      "size": "big"
+      "size": null
     },
     "lookAlike": "big-hunter",
     "description": {
@@ -1435,7 +1435,7 @@
       "legs": null,
       "horns": false,
       "feathers": null,
-      "size": "big"
+      "size": null
     },
     "lookAlike": "big-head-swimmer",
     "description": {
@@ -1477,7 +1477,7 @@
     "group": "sea-reptile",
     "hidden": true,
     "attributes": {
-      "massKg": 300,
+      "massKg": 260,
       "lengthMeters": 4
     },
     "diet": "meat",
@@ -1502,7 +1502,7 @@
     "group": "flying-reptile",
     "hidden": true,
     "attributes": {
-      "massKg": 7,
+      "massKg": 11,
       "wingspanMeters": 4
     },
     "diet": "both",
@@ -1527,7 +1527,7 @@
     "group": "flying-reptile",
     "hidden": true,
     "attributes": {
-      "massKg": 2,
+      "massKg": 2.7,
       "wingspanMeters": 2.5
     },
     "diet": "meat",
