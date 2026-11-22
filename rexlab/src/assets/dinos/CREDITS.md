@@ -56,3 +56,13 @@ Each dinosaur's body picture, `<id>/body.webp`, with the generator that made it 
 | `kronosaurus` | artwork | Codex image generation (OpenAI), `scripts/body-picture.sh` | 2026-10-21 |
 | `plesiosaurus` | artwork | Codex image generation (OpenAI), `scripts/body-picture.sh` | 2026-10-21 |
 | `ophthalmosaurus` | artwork | Codex image generation (OpenAI), `scripts/body-picture.sh` | 2026-10-21 |
+| `sinosauropteryx` | artwork | Codex image generation (OpenAI), built-in imagegen | 2026-11-22 |
+| `ouranosaurus` | artwork | Codex image generation (OpenAI), built-in imagegen | 2026-11-22 |
+| `euoplocephalus` | artwork | Codex image generation (OpenAI), built-in imagegen | 2026-11-22 |
+| `majungasaurus` | artwork | Codex image generation (OpenAI), built-in imagegen | 2026-11-22 |
+| `shonisaurus` | artwork | Codex image generation (OpenAI), built-in imagegen | 2026-11-22 |
+| `liopleurodon` | artwork | Codex image generation (OpenAI), built-in imagegen | 2026-11-22 |
+| `tylosaurus` | artwork | Codex image generation (OpenAI), built-in imagegen | 2026-11-22 |
+| `nothosaurus` | artwork | Codex image generation (OpenAI), built-in imagegen | 2026-11-22 |
+| `tupandactylus` | artwork | Codex image generation (OpenAI), built-in imagegen | 2026-11-22 |
+| `pterodaustro` | artwork | Codex image generation (OpenAI), built-in imagegen | 2026-11-22 |

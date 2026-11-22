@@ -2,6 +2,8 @@
 
 ## 2026-11-22
 
+- LAB-1768: Batch 2 has body artwork for all ten creatures in the catalogue picture-book style; the batch remains hidden until its games stage.
+
 - LAB-1766: On CARE's FRIENDS, a long name such as PACHYCEPHALOSAURUS shrinks to fit its card on a wide desktop: the name no longer grows its grid cell past the card, so its fitting sees the overflow. The care walk failed whenever that visitor came.
 - LAB-1767: Batch 2's facts are checked against `docs/sources.md`, still hidden. NHM's lengths replace the proposal's for Sinosauropteryx (1.1 m), Euoplocephalus (7 m, with NHM's 2,000 kg) and Majungasaurus (6 m); the four dinosaurs' hip heights are worked out from their closest relatives; Nothosaurus (260 kg), Tupandactylus (11 kg) and Pterodaustro (2.7 kg) are scaled by the cube of their size, the working in References. Size is `big` or `small` only past 3,000 kg or under 500 kg, so Ouranosaurus, Euoplocephalus, Majungasaurus and Liopleurodon sort by no size.
 - LAB-1766: Batch 2's ten creatures are in the data with their English and Russian names, groups, look-alikes, traits and descriptions, each marked hidden so no screen or game shows them yet: Sinosauropteryx, Ouranosaurus, Euoplocephalus and Majungasaurus; Shonisaurus, Liopleurodon, Tylosaurus and Nothosaurus; Tupandactylus and Pterodaustro. Their sizes and masses are the proposal's working figures until the facts stage checks them (LAB-1767). The app and its tests read the shown records through `src/shownRecords.ts`.
