@@ -13,7 +13,7 @@ import meat from "../src/assets/care/meat.webp";
 import nest from "../src/assets/care/nest.webp";
 import plants from "../src/assets/care/plants.webp";
 import water from "../src/assets/care/water.webp";
-import records from "../src/data/dinosaurs.json";
+import { SHOWN_RECORDS as records } from "../src/shownRecords.ts";
 import { careSounds, type Sounds } from "./careSounds.ts";
 
 export type Item = "plants" | "meat" | "water" | "bath" | "nest";

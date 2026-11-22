@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const { readFile, mkdir, writeFile } = require('node:fs/promises');
 const { join, resolve, extname } = require('node:path');
 const { chromium } = require('playwright');
-const dinosaurs = require('../src/data/dinosaurs.json');
+const dinosaurs = require('../src/data/dinosaurs.json').filter(record => !record.hidden);
 
 const levels = ['hatchling', 'explorer', 'paleontologist'];
 const bestKeys = ['bestScore', 'explorerBest', 'paleontologistBest'];

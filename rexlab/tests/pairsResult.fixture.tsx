@@ -4,7 +4,7 @@ import "../src/app.css";
 import { createRoot } from "react-dom/client";
 import { flushSync } from "react-dom";
 import type { AgeLevel } from "../src/ageLevel.ts";
-import shippedDinosaurs from "../src/data/dinosaurs.json";
+import { SHOWN_RECORDS as shippedDinosaurs } from "../src/shownRecords.ts";
 import type { Language } from "../src/language/language.ts";
 import { mediaViewport } from "../src/mediaViewport.ts";
 import { PairsResultScreen, type PairsResultScreenProps } from "../src/PairsResultScreen.tsx";

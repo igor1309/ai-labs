@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import jaws from "../src/data/jaws.json";
-import dinosaurs from "../src/data/dinosaurs.json";
+import { SHOWN_RECORDS as dinosaurs } from "../src/shownRecords.ts";
 import { jawPictures, readJaws } from "../src/jawContent.ts";
 
 describe("jaw content adapters", () => {

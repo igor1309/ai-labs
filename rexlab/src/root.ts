@@ -8,7 +8,7 @@ import welcomeJaw from "./assets/jaws/tyrannosaurus.webp";
 import welcomeGummy from "./assets/dinos/tyrannosaurus/gummy.webp";
 import type { AppProps } from "./App.tsx";
 import digFile from "./data/dig.json";
-import records from "./data/dinosaurs.json";
+import { SHOWN_RECORDS as records } from "./shownRecords.ts";
 import skeletonPlaces from "./data/skeletons.json";
 import { decodedPictures, type DecodingImage } from "./decodedPictures.ts";
 import { readDig, type DigFile } from "./dig/index.ts";

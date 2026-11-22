@@ -16,7 +16,7 @@ import {
   type Round
 } from "../src/quiz/round.ts";
 import { SHIPPED_DINOSAURS, seededRandom } from "./support.ts";
-import records from "../src/data/dinosaurs.json";
+import { SHOWN_RECORDS as records } from "../src/shownRecords.ts";
 
 const SEEDS = Array.from({ length: 10 }, (_, i) => i + 1);
 

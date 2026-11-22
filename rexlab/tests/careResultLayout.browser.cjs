@@ -30,7 +30,7 @@ const VIEWPORTS = [
 const LEVELS = ["hatchling", "explorer", "paleontologist"];
 // The longest visitor's name in each language: the result is checked with
 // it in the friend's chip, whichever dinosaur came.
-const RECORDS = require("../src/data/dinosaurs.json").filter(record => record.group === "dinosaur");
+const RECORDS = require("../src/data/dinosaurs.json").filter(record => !record.hidden).filter(record => record.group === "dinosaur");
 const LONGEST = Object.fromEntries(["en", "ru"].map(language => [language, RECORDS.map(record => record.name[language]).reduce((a, b) => (b.length > a.length ? b : a)).toLocaleUpperCase(language)]));
 const FRIENDS = ["tyrannosaurus", "triceratops", "stegosaurus", "brachiosaurus", "parasaurolophus"];
 const WORDS = { en: { newVisitor: "NEW VISITOR", home: "HOME" }, ru: { newVisitor: "НОВЫЙ ГОСТЬ", home: "ДОМОЙ" } };

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { catalogueColumns } from "../src/catalogueColumns.ts";
-import records from "../src/data/dinosaurs.json";
+import { SHOWN_RECORDS as records } from "../src/shownRecords.ts";
 import { anchoredListScroll, listAnchor, type ListAnchor, type ListRows } from "../src/listAnchor.ts";
 
 // The list of every dinosaur, in its order.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import digFile from "../src/data/dig.json";
-import records from "../src/data/dinosaurs.json";
+import { SHOWN_RECORDS as records } from "../src/shownRecords.ts";
 import { FRAME, readDig, SPOT_KINDS, spotCells, TELLING_KINDS, type DigFile, type Spot } from "../src/dig/index.ts";
 import { alphaOf, bodyPicture, cellsOf } from "../scripts/digGrid.ts";
 

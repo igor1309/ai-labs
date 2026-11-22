@@ -1,6 +1,6 @@
 import { jawMouth } from "../src/jawPresentation.ts";
 import jaws from "../src/data/jaws.json";
-import dinosaurs from "../src/data/dinosaurs.json";
+import { SHOWN_RECORDS as dinosaurs } from "../src/shownRecords.ts";
 import { readJaws } from "../src/jawContent.ts";
 import type { JawSound } from "../src/jawSounds.ts";
 import type { Language } from "../src/language/language.ts";

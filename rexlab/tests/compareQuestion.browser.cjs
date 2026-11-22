@@ -4,7 +4,7 @@ const { join, resolve, extname } = require('node:path');
 const { mkdtemp, rm, readFile } = require('node:fs/promises');
 const { tmpdir } = require('node:os');
 const { chromium } = require('playwright');
-const dinosaurs = require('../src/data/dinosaurs.json');
+const dinosaurs = require('../src/data/dinosaurs.json').filter(record => !record.hidden);
 const sizes = [[1180,820,false], [1133,744,false], [744,1133,false], [393,852,false], [852,393,false], [1440,900,false], [375,667,true], [320,568,true], [568,200,true], [567,360,true], [568,360,false], [667,375,false], [932,430,false], [393,759,false], [430,932,false], [700,700,true], [500,500,true]];
 const prompts = ['mass', 'height', 'lighter', 'shorter', 'longer'];
 async function settle(page) {

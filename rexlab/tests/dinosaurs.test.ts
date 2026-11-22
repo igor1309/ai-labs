@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import records from "../src/data/dinosaurs.json";
+import allRecords from "../src/data/dinosaurs.json";
+import { SHOWN_RECORDS as records } from "../src/shownRecords.ts";
 import { DIETS } from "../src/catalogue.ts";
 import { CLIMB_LEVELS, TOP_CLIMB_LEVEL } from "../src/pairs/index.ts";
 import { readCatalogue, readDinosaurs, readPals, readSortables, readVisitors, type DinosaurRecord } from "../src/dinosaurs.ts";
@@ -466,5 +467,40 @@ describe("the sorting traits in the shipped sources", () => {
     const swimmers = ["mosasaurus", "elasmosaurus", "kronosaurus", "plesiosaurus", "ophthalmosaurus"];
 
     expect(reptileTraits).toEqual([...fliers.map((id) => [id, null, false, "unknown"]), ...swimmers.map((id) => [id, null, false, null])]);
+  });
+});
+
+// A creature of a batch still being staged is in the data with its names
+// and texts, hidden from every screen and game until the batch's last stage.
+describe("the hidden creatures of a staged batch", () => {
+  const hidden = allRecords.filter((record) => "hidden" in record && record.hidden === true);
+
+  it("hides batch 2's ten creatures from every screen and game (LAB-1766)", () => {
+    expect(hidden.map(({ id }) => id)).toEqual([
+      "sinosauropteryx", "ouranosaurus", "euoplocephalus", "majungasaurus",
+      "shonisaurus", "liopleurodon", "tylosaurus", "nothosaurus",
+      "tupandactylus", "pterodaustro"
+    ]);
+    for (const { id } of hidden) expect(records.map((record) => record.id)).not.toContain(id);
+    expect(records).toHaveLength(allRecords.length - hidden.length);
+  });
+
+  it("names each in English and Russian, with a known group and look-alike, and reads as the shown ones do", () => {
+    expect(readCatalogue(hidden)).toHaveLength(hidden.length);
+    expect(readSortables(hidden)).toHaveLength(hidden.length);
+    const lookAlikes = new Set(records.map(({ lookAlike }) => lookAlike));
+    for (const { id, name, lookAlike } of hidden) {
+      expect({ id, en: name.en.trim() !== "", ru: /^[А-ЯЁ][а-яё]+$/.test(name.ru), lookAlike: lookAlikes.has(lookAlike) }).toEqual({ id, en: true, ru: true, lookAlike: true });
+    }
+  });
+
+  it.each([
+    ["en", /^[^a-zа-яёА-ЯЁ]*[A-Z][^a-zа-яёА-ЯЁ]*$/, "NOT A DINOSAUR! "],
+    ["ru", /^[^a-zA-Zа-яё]*[А-ЯЁ][^a-zA-Zа-яё]*$/, "НЕ ДИНОЗАВР! "]
+  ] as const)("describes each in %s, in capitals, opening NOT A DINOSAUR when it is none", (language, text, opening) => {
+    for (const { id, group, description } of hidden) {
+      expect({ id, description: description[language] }).toEqual({ id, description: expect.stringMatching(text) });
+      expect({ id, opens: description[language].startsWith(opening) }).toEqual({ id, opens: group !== "dinosaur" });
+    }
   });
 });

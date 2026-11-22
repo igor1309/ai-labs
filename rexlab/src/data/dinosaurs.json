@@ -1288,5 +1288,259 @@
       "en": "NOT A DINOSAUR! ITS EYES WERE AS BIG AS PLATES, AND ITS BABIES WERE BORN IN THE SEA.",
       "ru": "НЕ ДИНОЗАВР! ЕГО ГЛАЗА БЫЛИ С ТАРЕЛКУ, А ДЕТЁНЫШИ РОЖДАЛИСЬ ПРЯМО В МОРЕ."
     }
+  },
+  {
+    "id": "sinosauropteryx",
+    "name": {
+      "en": "Sinosauropteryx",
+      "ru": "Синозавроптерикс"
+    },
+    "group": "dinosaur",
+    "hidden": true,
+    "attributes": {
+      "heightMeters": 0.46,
+      "lengthMeters": 1,
+      "massKg": 0.5
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": true,
+      "size": "small"
+    },
+    "lookAlike": "small-runner",
+    "description": {
+      "en": "THE FIRST DINOSAUR FOUND WITH FEATHERS. WE EVEN KNOW ITS COLOUR: A GINGER TAIL WITH STRIPES.",
+      "ru": "ПЕРВЫЙ ДИНОЗАВР, НАЙДЕННЫЙ С ПЕРЬЯМИ. МЫ ДАЖЕ ЗНАЕМ ЕГО ЦВЕТ: РЫЖИЙ ХВОСТ В ПОЛОСКУ."
+    }
+  },
+  {
+    "id": "ouranosaurus",
+    "name": {
+      "en": "Ouranosaurus",
+      "ru": "Уранозавр"
+    },
+    "group": "dinosaur",
+    "hidden": true,
+    "attributes": {
+      "heightMeters": 1.5,
+      "lengthMeters": 7,
+      "massKg": 2200
+    },
+    "diet": "plants",
+    "traits": {
+      "legs": "either",
+      "horns": false,
+      "feathers": false,
+      "size": "big"
+    },
+    "lookAlike": "duck-bill",
+    "description": {
+      "en": "IT HAD A SAIL ON ITS BACK LIKE SPINOSAURUS, BUT IT ATE PLANTS.",
+      "ru": "У НЕГО БЫЛ ПАРУС НА СПИНЕ, КАК У СПИНОЗАВРА, НО ОН ЕЛ РАСТЕНИЯ."
+    }
+  },
+  {
+    "id": "euoplocephalus",
+    "name": {
+      "en": "Euoplocephalus",
+      "ru": "Эуоплоцефал"
+    },
+    "group": "dinosaur",
+    "hidden": true,
+    "attributes": {
+      "heightMeters": 0.83,
+      "lengthMeters": 6,
+      "massKg": 2500
+    },
+    "diet": "plants",
+    "traits": {
+      "legs": 4,
+      "horns": false,
+      "feathers": false,
+      "size": "big"
+    },
+    "lookAlike": "armoured",
+    "description": {
+      "en": "IT HAD ARMOUR EVEN ON ITS EYELIDS, AND A HEAVY CLUB ON ITS TAIL.",
+      "ru": "БРОНЯ БЫЛА У НЕГО ДАЖЕ НА ВЕКАХ, А НА ХВОСТЕ — ТЯЖЁЛАЯ БУЛАВА."
+    }
+  },
+  {
+    "id": "majungasaurus",
+    "name": {
+      "en": "Majungasaurus",
+      "ru": "Майюнгазавр"
+    },
+    "group": "dinosaur",
+    "hidden": true,
+    "attributes": {
+      "heightMeters": 2.2,
+      "lengthMeters": 7,
+      "massKg": 1100
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": false,
+      "size": "big"
+    },
+    "lookAlike": "big-hunter",
+    "description": {
+      "en": "A HUNTER FROM MADAGASCAR WITH A BUMP ON TOP OF ITS HEAD.",
+      "ru": "ОХОТНИК С МАДАГАСКАРА С ШИШКОЙ НА МАКУШКЕ."
+    }
+  },
+  {
+    "id": "shonisaurus",
+    "name": {
+      "en": "Shonisaurus",
+      "ru": "Шонизавр"
+    },
+    "group": "sea-reptile",
+    "hidden": true,
+    "attributes": {
+      "massKg": 50000,
+      "lengthMeters": 15
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": null,
+      "size": "big"
+    },
+    "lookAlike": "big-head-swimmer",
+    "description": {
+      "en": "NOT A DINOSAUR! ONE OF THE BIGGEST SEA REPTILES EVER, LONGER THAN A BUS.",
+      "ru": "НЕ ДИНОЗАВР! ОДИН ИЗ САМЫХ БОЛЬШИХ МОРСКИХ ЯЩЕРОВ, ДЛИННЕЕ АВТОБУСА."
+    }
+  },
+  {
+    "id": "liopleurodon",
+    "name": {
+      "en": "Liopleurodon",
+      "ru": "Лиоплевродон"
+    },
+    "group": "sea-reptile",
+    "hidden": true,
+    "attributes": {
+      "massKg": 2700,
+      "lengthMeters": 6.4
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": null,
+      "size": "big"
+    },
+    "lookAlike": "big-head-swimmer",
+    "description": {
+      "en": "NOT A DINOSAUR! A SEA HUNTER WITH A SHORT NECK AND HUGE JAWS.",
+      "ru": "НЕ ДИНОЗАВР! МОРСКОЙ ОХОТНИК С КОРОТКОЙ ШЕЕЙ И ОГРОМНОЙ ПАСТЬЮ."
+    }
+  },
+  {
+    "id": "tylosaurus",
+    "name": {
+      "en": "Tylosaurus",
+      "ru": "Тилозавр"
+    },
+    "group": "sea-reptile",
+    "hidden": true,
+    "attributes": {
+      "massKg": 10000,
+      "lengthMeters": 12
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": null,
+      "size": "big"
+    },
+    "lookAlike": "big-head-swimmer",
+    "description": {
+      "en": "NOT A DINOSAUR! IT HAD A POINTED SNOUT AND MAY HAVE RAMMED ITS PREY.",
+      "ru": "НЕ ДИНОЗАВР! У НЕГО БЫЛА ОСТРАЯ МОРДА, И ОН, МОЖЕТ БЫТЬ, ТАРАНИЛ ДОБЫЧУ."
+    }
+  },
+  {
+    "id": "nothosaurus",
+    "name": {
+      "en": "Nothosaurus",
+      "ru": "Нотозавр"
+    },
+    "group": "sea-reptile",
+    "hidden": true,
+    "attributes": {
+      "massKg": 300,
+      "lengthMeters": 4
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": null,
+      "size": "small"
+    },
+    "lookAlike": "long-neck-swimmer",
+    "description": {
+      "en": "NOT A DINOSAUR! IT SWAM IN THE SEA BUT RESTED ON THE SHORE, LIKE A SEAL.",
+      "ru": "НЕ ДИНОЗАВР! ОН ПЛАВАЛ В МОРЕ, А ОТДЫХАЛ НА БЕРЕГУ, КАК ТЮЛЕНЬ."
+    }
+  },
+  {
+    "id": "tupandactylus",
+    "name": {
+      "en": "Tupandactylus",
+      "ru": "Тупандактиль"
+    },
+    "group": "flying-reptile",
+    "hidden": true,
+    "attributes": {
+      "massKg": 7,
+      "wingspanMeters": 4
+    },
+    "diet": "both",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": "unknown",
+      "size": null
+    },
+    "lookAlike": "winged",
+    "description": {
+      "en": "NOT A DINOSAUR! IT HAD A GIANT CREST ON ITS HEAD, LIKE A SAIL.",
+      "ru": "НЕ ДИНОЗАВР! НА ГОЛОВЕ У НЕГО БЫЛ ОГРОМНЫЙ ГРЕБЕНЬ, КАК ПАРУС."
+    }
+  },
+  {
+    "id": "pterodaustro",
+    "name": {
+      "en": "Pterodaustro",
+      "ru": "Птеродаустро"
+    },
+    "group": "flying-reptile",
+    "hidden": true,
+    "attributes": {
+      "massKg": 2,
+      "wingspanMeters": 2.5
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": null,
+      "horns": false,
+      "feathers": "unknown",
+      "size": "small"
+    },
+    "lookAlike": "winged",
+    "description": {
+      "en": "NOT A DINOSAUR! ITS BRISTLE TEETH SIEVED FOOD LIKE A FLAMINGO, AND IT MAY HAVE BEEN PINK.",
+      "ru": "НЕ ДИНОЗАВР! ЗУБЫ-ЩЕТИНКИ ЦЕДИЛИ ЕДУ, КАК У ФЛАМИНГО, И ОН, МОЖЕТ БЫТЬ, БЫЛ РОЗОВЫМ."
+    }
   }
 ]

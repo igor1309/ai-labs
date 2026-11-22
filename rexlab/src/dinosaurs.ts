@@ -28,6 +28,9 @@ export type DinosaurRecord = {
   // The group of dinosaurs whose silhouettes look alike, such as
   // "duck-bill"; read as any value, as the JSON gives it.
   lookAlike: unknown;
+  // A creature of a catalogue batch still being staged, kept from every
+  // screen and game by shownRecords.ts.
+  hidden?: boolean;
 };
 
 const SIZE_FIELDS = { height: "heightMeters", wingspan: "wingspanMeters", length: "lengthMeters" } as const;

@@ -3,7 +3,7 @@ import { THEMES } from "../src/theme.ts";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AGE_LEVELS, type AgeLevelSetting } from "../src/ageLevel.ts";
-import records from "../src/data/dinosaurs.json";
+import { SHOWN_RECORDS as records } from "../src/shownRecords.ts";
 import { readPictureDinosaurs } from "../src/dinosaurs.ts";
 import { LANGUAGES, type Language } from "../src/language/language.ts";
 import { TEXTS } from "../src/language/texts.ts";
