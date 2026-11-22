@@ -19,7 +19,7 @@ async function main() {
   const files = await appFiles();
   const records = JSON.parse(await readFile(resolve(__dirname, '../src/data/dinosaurs.json'), 'utf8')).filter(record => !record.hidden);
   const ids = records.filter(d => d.group === 'dinosaur').map(d => d.id);
-  assert.equal(ids.length, 42);
+  assert.equal(ids.length, 46);
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, headless: true });
   let checked = 0;
   try {
@@ -39,7 +39,7 @@ async function main() {
         }, { language, theme });
         const page = await context.newPage();
         page.setDefaultTimeout(15000);
-        for (const count of [0, 5, 42]) {
+        for (const count of [0, 5, 46]) {
           await page.goto('http://friends.test/');
           await page.evaluate(friends => {
             localStorage.setItem('rexlab-progress', JSON.stringify({ schemaVersion: 1, games: {

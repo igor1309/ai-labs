@@ -25,7 +25,7 @@ Feature: The dinosaur catalogue in a tall window
     When I open "ANCIENT REPTILES"
     Then I see no picture asking to turn sideways or to make the window wider
     And "HOME" and all four icon-only food chips stand in one row at the top left
-    And I see the 52 cards <columns> to a row, each <card> CSS pixels wide, in the order of the dinosaur list
+    And I see the 62 cards <columns> to a row, each <card> CSS pixels wide, in the order of the dinosaur list
 
     Examples:
       | width | height | columns | card | window                         |
@@ -64,9 +64,9 @@ Feature: The dinosaur catalogue in a tall window
   Scenario: Choosing a food upright
     Given a window of 820 by 1180 CSS pixels on the list of every dinosaur
     When I tap "MEAT"
-    Then I see only the 26 meat-eaters' cards, three to a row
+    Then I see only the 33 meat-eaters' cards, three to a row
     When I tap "ALL"
-    Then I see all 52 cards
+    Then I see all 62 cards
 
   Scenario: A tall-narrow window stands the list one card to a row
     Given a window of 820 by 1180 CSS pixels on the list of every dinosaur, the device's screen upright

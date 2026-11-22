@@ -2,7 +2,7 @@ Feature: Dig: the reveal and its star
   After the gust and lift, the dinosaur glides in whole with its name: the
   reveal is the round's result. Beside it is the "DUG UP" card: a ⭐,
   the words "DUG UP" and the count of dinosaurs dug up, out of all of
-  them, such as "5/52". Each dinosaur dug up for the first time, at any
+  them, such as "5/62". Each dinosaur dug up for the first time, at any
   level, earns its star once, with the best-score celebrations of the
   other games when the count grows. The 🦴 badge
   (dig-question.feature) shows on the same card. Under them stand
@@ -18,30 +18,30 @@ Feature: Dig: the reveal and its star
     Then I see the whole Triceratops and its name "TRICERATOPS", large
     And the board slides away as Triceratops glides into place on the left, never cut off at any edge
     And on the right the name, the "DUG UP" card, the celebration if any, the level switch, "DIG AGAIN" and "HOME" arrive one after another, 60 ms apart
-    And the card shows its star already in place, "5/52" and "NEW!", with no second star flight
+    And the card shows its star already in place, "5/62" and "NEW!", with no second star flight
     And with reduced motion everything arrives together on one short fade
     And I see the level switch above "DIG AGAIN" and "HOME"
 
   Scenario: The first dinosaur dug up is the first best
     Given I have never dug up a dinosaur
     When I dig up Stegosaurus
-    Then I see a first best score celebration and "1/52"
+    Then I see a first best score celebration and "1/62"
 
   Scenario: A new dinosaur is a new best
     Given I have dug up 4 dinosaurs
     When I dig up one more
-    Then I see a new best score celebration and "5/52"
+    Then I see a new best score celebration and "5/62"
 
   Scenario: A dinosaur dug up again earns no new star
     Given I have dug up Triceratops before, among 5
     When I dig up Triceratops again, at any level
-    Then I see its name and "5/52" on the "DUG UP" card, with no "NEW!", no flying star and no celebration
+    Then I see its name and "5/62" on the "DUG UP" card, with no "NEW!", no flying star and no celebration
 
   Scenario: The last dinosaur completes the collection
-    Given I have dug up 51 of the 52 creatures
+    Given I have dug up 61 of the 62 creatures
     When I dig up the last one
-    Then I see the new best score celebration, "52/52" and a 🏆 on the "DUG UP" card
-    And every later reveal shows "52/52" with the 🏆
+    Then I see the new best score celebration, "62/62" and a 🏆 on the "DUG UP" card
+    And every later reveal shows "62/62" with the 🏆
 
   Scenario: The reveal takes taps once its last item has arrived
     Given I am dabbing the sand as the gust blows

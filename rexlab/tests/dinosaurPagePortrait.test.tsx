@@ -163,7 +163,7 @@ describe("the app's dinosaur page upright", () => {
     expect([document.documentElement.dataset.size, gateShown(), part(".gated-screen").hasAttribute("inert")]).toEqual(["tall", false, false]);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("PACHYCEPHALOSAURUS");
     expect(screen.getByRole("button", { name: TEXTS.en.catalogue })).toBe(part(".dinosaur-bar .home-button"));
-    expect(part(".dinosaur-position").textContent).toBe("10 / 52");
+    expect(part(".dinosaur-position").textContent).toBe("10 / 62");
     const words = dinosaurWordsWidth(width, 0, 0);
     expect(Math.abs(dinosaurPageGeometry(width, height, 0, 0).nameSize - name)).toBeLessThanOrEqual(1);
     uprightRules([width, height], words);

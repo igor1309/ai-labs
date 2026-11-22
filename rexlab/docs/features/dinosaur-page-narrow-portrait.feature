@@ -24,7 +24,7 @@ Feature: A dinosaur's page in a tall-narrow window
     Given a window of <width> by <height> CSS pixels, with no safe areas
     When I open the page of Pachycephalosaurus
     Then I see no picture asking to turn sideways or to make the window wider
-    And the book button stands at the top left and "10 / 52" at the top right
+    And the book button stands at the top left and "10 / 62" at the top right
     And under them the stage spans the width, the picture across it and the ← and → buttons under it
     And under the stage the name, the food tag, the description in <description> lines, the facts one over the other and the note in <note> lines
 
@@ -38,7 +38,7 @@ Feature: A dinosaur's page in a tall-narrow window
   Scenario Outline: Every word fits a phone's width
     Given the app is in <language>
     And a window of <width> by 667 CSS pixels
-    When I open the page of each of the 52 creatures in turn
+    When I open the page of each of the 62 creatures in turn
     Then its name stands on one line, none cut
     And its description and the note take no more than their kept lines
     And each fact's label and value stand on one line

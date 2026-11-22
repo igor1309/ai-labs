@@ -210,10 +210,10 @@ describe.each(LEVEL_RULES)("%s generation", (level, size, properties) => {
           expect(board.cards.filter((card) => card.basket === basket).length).toBeGreaterThanOrEqual(2);
         }
         if (level === "explorer" && board.property === "diet") {
-          expect(board.cards.filter(({ basket }) => basket === "both").length).toBeLessThanOrEqual(3);
+          expect(board.cards.filter(({ basket }) => basket === "both").length).toBeLessThanOrEqual(4);
         }
         if (level === "paleontologist" && board.property === "feathers") {
-          expect(board.cards.filter(({ basket }) => basket === "no-feathers").map(({ dinosaur }) => dinosaur.id).sort()).toEqual(["allosaurus", "carnotaurus"]);
+          expect(board.cards.filter(({ basket }) => basket === "no-feathers").map(({ dinosaur }) => dinosaur.id).filter((id) => !["allosaurus", "carnotaurus", "majungasaurus"].includes(id))).toEqual([]);
         }
         previous = sorting;
       }

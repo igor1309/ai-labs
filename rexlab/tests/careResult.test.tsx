@@ -212,8 +212,8 @@ describe("friends", () => {
     await user.click(button("FRIENDS"));
 
     expect(friendCards().map((card) => card.getAttribute("aria-label"))).toEqual(SHIPPED_VISITORS.map(({ name }) => name.en));
-    expect(SHIPPED_VISITORS).toHaveLength(42);
-    expect(friendCount()).toBe("42");
+    expect(SHIPPED_VISITORS).toHaveLength(46);
+    expect(friendCount()).toBe("46");
     expect(getComputedStyle(screen.getByRole("group", { name: "FRIENDS" })).overflowY).toBe("auto");
     expect(getComputedStyle(screen.getByRole("group", { name: "FRIENDS" })).gridTemplateColumns).toBe("repeat(var(--friends-columns), minmax(0, 1fr))");
     expect(["NEW VISITOR", "BACK", "HOME"].map((name) => symbolOf(button(name)))).toEqual(["footprints", "arrow-left", "house"]);

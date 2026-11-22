@@ -46,7 +46,7 @@ function hatched(baby: Baby, wants: readonly Want[] = WANTS): Nursery {
 
 describe("the nursery", () => {
   it("hatches only land dinosaurs, each with its picture", () => {
-    expect(BABIES).toHaveLength(42);
+    expect(BABIES).toHaveLength(46);
     expect(BABIES.every((baby) => baby.picture !== "")).toBe(true);
     expect(BABIES.map((baby) => baby.id)).not.toContain("pteranodon");
   });
@@ -151,7 +151,7 @@ describe("the Explorer's twins", () => {
         ),
       ).toBe(true);
     }
-    expect([PLANT_EATERS.length, MEAT_EATERS.length]).toEqual([23, 16]);
+    expect([PLANT_EATERS.length, MEAT_EATERS.length]).toEqual([25, 18]);
   });
 
   it("gives an item to the twin last tapped", () => {

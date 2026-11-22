@@ -465,10 +465,13 @@ describe("the whole skeletons", () => {
   // Two of each group of two or more, so a Paleontologist board after
   // another can deal fresh dinosaurs of the groups they share (LAB-386).
   it("cover every look-alike group, twice where it has two dinosaurs or more", () => {
+    // Batch 2 skips SKELETONS (LAB-1762): no skeleton art was drawn for it.
+    const skeletonless = new Set(["sinosauropteryx", "ouranosaurus", "euoplocephalus", "majungasaurus", "shonisaurus", "liopleurodon", "tylosaurus", "nothosaurus", "tupandactylus", "pterodaustro"]);
     const groups = [...new Set(records.map(({ lookAlike }) => lookAlike))];
+    const drawable = records.filter(({ id }) => !skeletonless.has(id));
     const count = (group: string, list: ReadonlyArray<{ lookAlike: string }>) => list.filter(({ lookAlike }) => lookAlike === group).length;
 
-    expect(groups.map((group) => [group, count(group, drawn)])).toEqual(groups.map((group) => [group, Math.min(2, count(group, records))]));
+    expect(groups.map((group) => [group, count(group, drawn)])).toEqual(groups.map((group) => [group, Math.min(2, count(group, drawable))]));
   });
 
   it("are each a see-through picture in the body picture's 800 by 600 frame", () => {

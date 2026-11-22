@@ -9,7 +9,10 @@ import { BASKET_EMS } from "./basketWidths.ts";
 export const COUNT_EMS: Record<string, number> = {
   "3": 0.6,
   "23": 1.2,
-  "26": 1.2
+  "26": 1.2,
+  "4": 0.7,
+  "25": 1.2,
+  "33": 1.2
 };
 
 const px = (value: string | null) => Number.parseFloat(value ?? "") || 0;

@@ -55,7 +55,7 @@ const WIDTHS = [...new Set([
 
 describe("an upright question's words fit", () => {
   it("sizes the type by the widest prompt and the widest name of either language", () => {
-    expect(SHIPPED_DINOSAURS).toHaveLength(52);
+    expect(SHIPPED_DINOSAURS).toHaveLength(62);
     expect(prompts).toHaveLength(10);
     expect(Math.max(...prompts.map((prompt) => emWidth(prompt, PROMPT_EMS)))).toBeCloseTo(PORTRAIT_QUESTION.widestPromptEms, 6);
     expect(Math.max(...names.map(nameEms))).toBe(PORTRAIT_QUESTION.widestNameEms);

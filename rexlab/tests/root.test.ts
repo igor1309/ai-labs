@@ -248,7 +248,7 @@ describe("the app in a browser", () => {
     const { skeletons, catalogue } = appProps(browser());
     const reptiles = catalogue.filter(({ group }) => group !== "dinosaur").map(({ id }) => id);
 
-    expect(reptiles).toHaveLength(10);
+    expect(reptiles).toHaveLength(16);
     expect(skeletons.filter(({ id }) => reptiles.includes(id))).toEqual([]);
   });
 

@@ -26,7 +26,7 @@ Feature: The dinosaur catalogue: choosing dinosaurs by their food
   Scenario: ALL shows every dinosaur again
     Given I chose "PLANTS"
     When I tap "ALL"
-    Then I see all 52 cards
+    Then I see all 62 cards
 
   Scenario: Tapping the chosen chip changes nothing
     Given I chose "BOTH"
@@ -56,7 +56,7 @@ Feature: The dinosaur catalogue: choosing dinosaurs by their food
   Scenario: The list opens on ALL after HOME
     Given I chose "MEAT"
     When I tap "HOME" and open "ANCIENT REPTILES" again
-    Then "ALL" is chosen and I see all 52 cards
+    Then "ALL" is chosen and I see all 62 cards
 
   Scenario: A chip changes the list smoothly
     Given I am on the list of every dinosaur
