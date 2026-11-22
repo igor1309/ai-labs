@@ -59,6 +59,7 @@ public protocol SummariesTemplates<Template>: Sendable {
 /// Hands each effect to its collaborator and answers with the event its result means; it keeps nothing.
 public struct SummariesEffectHandler<Template: SummariesTemplate>: Sendable {
     private let keeping: @Sendable () async -> Bool
+    private let userName: @Sendable () async -> String?
     private let templates: any SummariesTemplates<Template>
     private let preparation: any SummariesPreparation
     private let claims: any SummariesClaims
@@ -66,16 +67,16 @@ public struct SummariesEffectHandler<Template: SummariesTemplate>: Sendable {
     private let starts: any SummariesStarts
     private let storage: any SummariesStorage
     private let generation: any SummariesGeneration<Template>
-    public init(keeping: @escaping @Sendable () async -> Bool, templates: any SummariesTemplates<Template>, preparation: any SummariesPreparation, claims: any SummariesClaims, records: any SummariesRecords,
+    public init(keeping: @escaping @Sendable () async -> Bool, userName: @escaping @Sendable () async -> String? = { nil }, templates: any SummariesTemplates<Template>, preparation: any SummariesPreparation, claims: any SummariesClaims, records: any SummariesRecords,
                 starts: any SummariesStarts, storage: any SummariesStorage, generation: any SummariesGeneration<Template>) {
-        self.keeping = keeping
+        self.keeping = keeping; self.userName = userName
         self.templates = templates
         self.preparation = preparation; self.claims = claims; self.records = records; self.starts = starts
         self.storage = storage; self.generation = generation
     }
     public func handle(_ effect: SummariesEffect<Template>) async -> SummariesEvent<Template> {
         switch effect {
-        case let .readKeeping(job): return .keepingRead(job.call, await keeping())
+        case let .readKeeping(job): return .keepingRead(job.call, await keeping(), userName: await userName())
         case let .selectTemplate(job, name):
             do { return .templateSelected(job.call, try await templates.resolve(name)) }
             catch { return .templateFailed(job.call, String(describing: error)) }

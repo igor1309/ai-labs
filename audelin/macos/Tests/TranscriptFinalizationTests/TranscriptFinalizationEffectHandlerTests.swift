@@ -8,15 +8,15 @@ struct TranscriptFinalizationEffectHandlerTests {
 
     @Test func diarizeDeliversTheAttributedFarSide() async {
         let (sut, spies) = makeHandler()
-        await expect(sut, with: .diarize(call: callID, "raw", .init()), toDeliver: .diarized(call: callID, .init(far: "far", diarizer: "nemotron")), on: {
+        await expect(sut, with: .diarize(call: callID, "raw", "evidence", .init()), toDeliver: .diarized(call: callID, .init(far: "far", diarizer: "nemotron")), on: {
             await spies.diarizing.complete(with: .init(far: "far", diarizer: "nemotron"))
         })
-        #expect(await spies.diarizing.payloads == [.init(call: callID, raw: "raw", outcomes: .init())])
+        #expect(await spies.diarizing.payloads == [.init(call: callID, raw: "raw", evidence: "evidence", outcomes: .init())])
     }
 
     @Test func failedDiarizationDeliversNoFarSide() async {
         let (sut, spies) = makeHandler()
-        await expect(sut, with: .diarize(call: callID, "raw", .init()), toDeliver: .diarized(call: callID, nil), on: {
+        await expect(sut, with: .diarize(call: callID, "raw", "evidence", .init()), toDeliver: .diarized(call: callID, nil), on: {
             await spies.diarizing.complete(with: nil)
         })
     }
@@ -67,11 +67,12 @@ struct TranscriptFinalizationEffectHandlerTests {
         let (handler, spies) = makeHandler()
         let reducer = makeSUT().sut
         let initial = makeState(makeCall())
-        let (diarizing, diarize) = reducer.reduce(initial, .closed(call: callID, names: "names"))
+        let (closed, _) = reducer.reduce(initial, .closed(call: callID, names: "names"))
+        let (diarizing, diarize) = reducer.reduce(closed, .evidenceClosed(call: callID, "evidence"))
         async let splitEvent = firstEvent(handler, diarize!)
         let saved: SavedDiarization<String>? = split == "failed" ? nil : .init(far: "far", diarizer: split == "names-only" ? nil : split)
         await spies.diarizing.complete(with: saved)
-        #expect(await spies.diarizing.payloads == [.init(call: callID, raw: "raw", outcomes: .init())])
+        #expect(await spies.diarizing.payloads == [.init(call: callID, raw: "raw", evidence: "evidence", outcomes: .init())])
         let (cleaning, clean) = reducer.reduce(diarizing, await splitEvent)
         async let cleanEvent = firstEvent(handler, clean!)
         await spies.cleanup.complete(with: heard ? "heard" : nil)
@@ -95,11 +96,12 @@ struct TranscriptFinalizationEffectHandlerTests {
     }
 
     /// Every cleanup stops before any replacement begins; publication follows the reducer's commit result.
-    @Test func stopCleaningStopsEachCallThenPublishesEachCompletedCommit() async throws {
+    @Test func shutdownStopsEachCleanupThenDeliversEachCompletedCommit() async throws {
         let (sut, spies) = makeHandler()
         let outcomes = FinishingOutcomes(split: .done(diarizer: "vbx"), cleaning: .skipped)
-        let commits = ["a": commit("ra", outcomes: outcomes), "b": commit("rb", outcomes: outcomes)]
-        var events = sut.handle(.stopCleaning(commits)).makeAsyncIterator()
+        let skipped = FinishingOutcomes(split: .skipped, cleaning: .skipped)
+        let commits = ["a": commit("ra", outcomes: outcomes), "b": commit("rb", outcomes: outcomes), "c": commit("rc", outcomes: skipped)]
+        var events = sut.handle(.commitOnShutdown(stoppingCleanup: ["a", "b"], commits: commits)).makeAsyncIterator()
         await spies.stops.complete(with: ())
         #expect(await spies.replacement.payloads.isEmpty)
         await spies.stops.complete(with: ())
@@ -120,18 +122,21 @@ struct TranscriptFinalizationEffectHandlerTests {
         #expect(await spies.finals.payloads == [["a": final()]])
         await spies.replacement.complete(with: .failure(Refused()))
         #expect(await events.next() == .committed(call: "b", succeeded: false))
+        await spies.replacement.complete(with: .success(()))
+        #expect(await events.next() == .committed(call: "c", succeeded: true))
         #expect(await events.next() == nil)
         #expect(await spies.stops.payloads == ["a", "b"])
         #expect(await spies.replacement.payloads == [
             .init(call: "a", raw: "ra", names: nil, far: nil, heard: nil, outcomes: outcomes),
-            .init(call: "b", raw: "rb", names: nil, far: nil, heard: nil, outcomes: outcomes)])
+            .init(call: "b", raw: "rb", names: nil, far: nil, heard: nil, outcomes: outcomes),
+            .init(call: "c", raw: "rc", names: nil, far: nil, heard: nil, outcomes: skipped)])
     }
 
 }
 
 private struct Refused: Error {}
 
-private struct Diarized: Equatable { let call: String; let raw: String; let outcomes: FinishingOutcomes }
+private struct Diarized: Equatable { let call: String; let raw: String; let evidence: String; let outcomes: FinishingOutcomes }
 private struct Cleaned: Equatable { let call: String; let raw: String; let far: String? }
 private struct Replaced: Equatable { let call: String; let raw: String; let names: String?; let far: String?; let heard: String?; let outcomes: FinishingOutcomes }
 
@@ -161,7 +166,9 @@ private func expect(
 
 private struct Diarizing: TranscriptDiarizing {
     let spy: Spy<Diarized, SavedDiarization<String>?>
-    func diarize(call: String, _ raw: String, outcomes: FinishingOutcomes) async -> SavedDiarization<String>? { await spy.call(.init(call: call, raw: raw, outcomes: outcomes)) }
+    func diarize(call: String, _ raw: String, evidence: String, outcomes: FinishingOutcomes) async -> SavedDiarization<String>? {
+        await spy.call(.init(call: call, raw: raw, evidence: evidence, outcomes: outcomes))
+    }
 }
 
 private struct Cleanup: MicrophoneCleanup {

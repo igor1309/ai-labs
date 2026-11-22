@@ -10,11 +10,11 @@ entries tests. Build with `swift build --build-tests`, then run
 `../scripts/swift-test-bounded.sh 120 --filter TranscriptFinalizationTests`
 from `audelin/macos` with `GITHUB_ACTIONS=1`.
 
-## S-1 Saved call is diarized after it closes
+## S-1 Saved call is diarized after its speaker evidence closes
 
-Evidence: `TranscriptFinalizationReducerTests.closingASavedCallDiarizes_state`, `_effect`; `TranscriptFinalizationEffectHandlerTests.diarizeDeliversTheAttributedFarSide`.
+Closing a saved transcript leaves it waiting. Evidence: `TranscriptFinalizationReducerTests.closingASavedCallWaitsForEvidence_state`, `_effect`.
 
-The diarizer port's spy gets no finishing outcome. Evidence: `TranscriptFinalizationEffectHandlerTests.diarizeDeliversTheAttributedFarSide`, `TranscriptFinalizationReducerTests.closingASavedCallDiarizes_effect`.
+The diarizer port receives the closed speaker evidence and empty finishing outcomes. Evidence: `TranscriptFinalizationReducerTests.callsAreIndependent_effect`, `TranscriptFinalizationEffectHandlerTests.diarizeDeliversTheAttributedFarSide`.
 
 ## S-2 Failed write is final as last saved
 
@@ -66,7 +66,7 @@ Evidence: `TranscriptFinalizationReducerTests.callsAreIndependent_state`, `_effe
 At shutdown, both cleanups stop before any replacement. Complete A's
 replacement while B's remains held: A finalizes, publishes and releases its
 resources; B remains committing and shutdown stays unsettled. Evidence:
-`TranscriptFinalizationEffectHandlerTests.stopCleaningStopsEachCallThenPublishesEachCompletedCommit`;
+`TranscriptFinalizationEffectHandlerTests.shutdownStopsEachCleanupThenDeliversEachCompletedCommit`;
 `TranscriptFinalizationPortsTests.shutdownPublishesAndReleasesOneCallWhileAnotherReplacementIsHeld`.
 
 ## S-11 Late results change nothing

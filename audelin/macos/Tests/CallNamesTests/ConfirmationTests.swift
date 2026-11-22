@@ -47,4 +47,30 @@ struct ConfirmationTests {
         assert(makeState(), .diarized(turns, rows: rows), using: sut)
         #expect(confirm.requests.isEmpty)
     }
+
+    @Test(arguments: [false, true])
+    func confirmationUsesTheEvidenceAfterCloseAndDrain(closeFirst: Bool) {
+        let (sut, _, confirm) = makeConfirmingSUT(confirmed: [1: "Anna"])
+        let input = makeModel(makeObservedState { $0.observation = .stopping })
+        let pending = assert(input, .update(1, .diarized(turns, rows: rows)), using: sut) {
+            $0.calls[1]?.pendingConfirmation = .init(turns: turns, rows: rows)
+        }
+        let waiting = assert(pending, closeFirst ? .observationStopped(1) : .observationReportsEnded(1), using: sut) {
+            $0.calls[1]?.sourcesClosed = closeFirst
+            $0.calls[1]?.reportsEnded = !closeFirst
+        }
+        #expect(confirm.requests.isEmpty)
+        assert(waiting, closeFirst ? .observationReportsEnded(1) : .observationStopped(1), using: sut) {
+            $0.calls[1]?.names.observation = .stopped
+            $0.calls[1]?.names.rowNames = [1: "Anna"]
+            $0.calls[1]?.names.participantIDs = ["Anna": "z1"]
+            $0.calls[1]?.names.participantOrder = ["Anna"]
+            $0.calls[1]?.names.confirmed = true
+            $0.calls[1]?.pendingConfirmation = nil
+            $0.calls[1]?.sourcesClosed = true
+            $0.calls[1]?.reportsEnded = true
+        }
+        #expect(confirm.requests == [.init(rows: rows, turns: turns, evidence: .init(
+            roster: ["Anna"], spoken: [.init(name: "Anna", start: 1, end: nil)], through: 5))])
+    }
 }

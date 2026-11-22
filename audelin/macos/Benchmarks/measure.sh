@@ -36,7 +36,7 @@ for round in 1 2 3; do
   for ref in "$base" "$tip"; do
     dir="$base_dir"; [ "$ref" = "$tip" ] && dir="$tip_dir"
     note "benchmark $ref $round"
-    (cd "$dir" && swift package --disable-sandbox benchmark baseline compare base --format markdown) > "$out/$ref-$round.md" 2>&1
+    (cd "$dir" && swift package --disable-sandbox benchmark --format markdown) > "$out/$ref-$round.md" 2>&1
     echo "benchmark $ref $round: exit $?" >> "$out/load.txt"
   done
 done
@@ -54,7 +54,7 @@ note done
 {
   echo "# $base against $tip, tools $tools"
   echo
-  echo "## Instructions per word"
+  echo "## Instructions per word or tick"
   echo
   python3 -I "$here/percentiles.py" "$out" "$base" "$tip"
   echo

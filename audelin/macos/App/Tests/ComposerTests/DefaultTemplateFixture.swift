@@ -10,7 +10,7 @@ struct TestDefaultTemplates: SummariesTemplates {
 }
 func defaultJobTemplate() -> NotesGeneration.Template { notesTemplate(TemplateFiles.Files.builtInDefault) }
 func defaultNotesPrompt() -> String {
-    let request = NotesGeneration.Generator.request(transcript: "", evidence: "", template: defaultJobTemplate())
+    let request = NotesGeneration.Generator.request(lines: [], userName: nil, evidence: "", template: defaultJobTemplate())
     return String(request.dropLast("\nACCEPTED EVIDENCE:\n\nTRANSCRIPT DATA:\n".count))
 }
 

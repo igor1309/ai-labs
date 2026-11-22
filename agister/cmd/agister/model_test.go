@@ -141,7 +141,7 @@ func TestAStepOnCodexIsGivenItsPlansOneOption(t *testing.T) {
 		t.Fatalf("stderr %q, exit %d, stdout %s; want none, 0", got.stderr, got.code, got.stdout)
 	}
 	want := []codex.Turn{{Message: askMessage, Dir: "/r", Env: append(slices.Clone(environ), "A=1"), Instruction: "i",
-		Model: "gpt-6.1-sol", Effort: "high", Options: []string{"read-only"}, Schema: []byte(answerSchema)}}
+		Model: "gpt-6.2-sol", Effort: "high", Options: []string{"read-only"}, Schema: []byte(answerSchema)}}
 	if ran := f.runtimes.codex.ran(); !reflect.DeepEqual(ran, want) {
 		t.Errorf("ran\n%#v\nwant\n%#v", ran, want)
 	}
