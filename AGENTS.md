@@ -264,6 +264,11 @@ Background and sources: `research/swift-structured-concurrency.md`.
   `@concurrent` function (Swift 6.2) rather than `Task.detached`.
 - Do protect shared mutable state with an actor, or `Mutex` in a `let`
   property; never hold a lock across `await`.
+- Do run cleanup that must survive cancellation inside
+  `withTaskCancellationShield`, and use async `defer` (Swift 6.4), not a
+  fire-and-forget `Task {}` or `Task.detached`.
+- Do use `Mutex` (a `let` property) instead of `NSLock` +
+  `@unchecked Sendable`, test helpers included.
 - Don't use `Task.detached`, `@unchecked Sendable`, `nonisolated(unsafe)`
   or `MainActor.assumeIsolated` without a comment saying why it is safe.
 - Don't block a task on a `DispatchSemaphore`, group wait or lock held by

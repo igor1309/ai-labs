@@ -1,8 +1,17 @@
 # Swift Structured Concurrency — Current Guidance
 
-Last reviewed: 2026-11-15
+Last reviewed: 2026-11-22
 
 ## Changes since last review
+
+### 2026-11-22
+
+- Swift 6.4 (released 2026-09, Xcode 27) adds concurrency features worth using once a package's toolchain allows ([InfoQ](https://www.infoq.com/news/2026/09/swift-6-4-released/), [Kodeco](https://www.kodeco.com/53754585-what-s-new-in-swift-6-4), [Michael Tsai](https://mjtsai.com/blog/2026/06/24/swift-6-4/)):
+  - SE-0493 async calls in `defer` — async cleanup no longer needs a trailing `Task {}`.
+  - `withTaskCancellationShield` — cleanup that must finish after cancellation (flush, close, release) runs shielded instead of in a detached or unstructured task.
+  - SE-0518 `~Sendable` — state that a type is deliberately not Sendable rather than leaving it implicit.
+- Swift Forums pitch for official, comprehensive concurrency documentation ([forum](https://forums.swift.org/t/pitch-create-official-comprehensive-concurrency-documentation-and-adopt-related-enhanced-processes/88124)); no change to guidance yet.
+- Repo finding: a new test helper (`audelin` `CallsStorageMergeTests.Seen`) used `NSLock` + `@unchecked Sendable`; replaced with a `Mutex`, per the rule below.
 
 ### 2026-11-15
 

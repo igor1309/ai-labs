@@ -1,6 +1,7 @@
 import Calls
 import CallsStorage
 import Foundation
+import Synchronization
 import Testing
 
 @Suite(.timeLimit(.minutes(1)))
@@ -87,9 +88,8 @@ struct CallsStorageMergeTests {
     }
 }
 
-private final class Seen: @unchecked Sendable {
-    private let lock = NSLock()
-    private var stored: [String] = []
-    var value: [String] { lock.withLock { stored } }
-    func set(_ value: [String]) { lock.withLock { stored = value } }
+private final class Seen: Sendable {
+    private let stored = Mutex<[String]>([])
+    var value: [String] { stored.withLock { $0 } }
+    func set(_ value: [String]) { stored.withLock { $0 = value } }
 }
