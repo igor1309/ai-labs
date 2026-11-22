@@ -42,14 +42,14 @@ Feature: Coloring workshop T-Rex, Mosasaurus and Brachiosaurus scenes
     And the entire scene fits supported iPad and iPhone viewports without clipping
     And the canvas has the localized uppercase accessible name MOSASAURUS or МОЗАЗАВР
 
-  Scenario: Rich Mosasaurus sea scene
+  Scenario: Mosasaurus in a prehistoric sea for older levels
     Given I start a new Mosasaurus work at Explorer or Paleontologist
-    Then the workshop renders the original mosasaurus-explorer-1 vector scene
-    And the same recognizable reptile swims in a richer prehistoric sea
-    And its belly, back, head and tail markings add independent coloring regions beyond the Hatchling version
-    And water, sky, two fish, an ammonite, a rock and seaweed offer additional broad independent coloring regions
-    And bubbles, fish eyes and fins, the ammonite spiral, teeth and paddle bones remain protected rather than tiny fill targets
-    And the entire scene fits supported iPad and iPhone viewports without clipping
+    Then the workshop renders the mosasaurus-explorer-2 traced line-art scene of 36 regions
+    And a Mosasaurus in its own proportions swims with a long narrow head, long toothy jaws, four broad paddles and a downturned crescent tail fin
+    And its head, belly, the five bands on its back, the two bands on its tail, its tail tip, tail fin and each paddle are regions of their own
+    And sky, water with two light rays, a seabed, two rocks, an ammonite's chambers, two fish and the leaves of two kelp plants offer broad scenery regions
+    And its outline, small eye, teeth and the fish eyes are one protected ink drawing above every fill
+    And the entire scene fits supported iPad landscape viewports without clipping
 
   Scenario Outline: Independent Mosasaurus fills preserve the drawing
     Given I open a Mosasaurus work using <artwork>
@@ -62,6 +62,7 @@ Feature: Coloring workshop T-Rex, Mosasaurus and Brachiosaurus scenes
       | artwork                |
       | mosasaurus-hatchling-1 |
       | mosasaurus-explorer-1  |
+      | mosasaurus-explorer-2  |
 
   Scenario: Simple Brachiosaurus for Hatchling
     Given I start a new Brachiosaurus work at Hatchling
