@@ -13,9 +13,10 @@ import { brachiosaurusHatchlingProbes, brachiosaurusExplorerProbes } from "./bra
 import { MOSASAURUS_HATCHLING, MOSASAURUS_EXPLORER } from "../src/coloring/mosasaurusScene.ts";
 import { mosasaurusHatchlingProbes, mosasaurusExplorerProbes } from "./mosasaurusSceneProbes.ts";
 import { TREX_HATCHLING, TREX_EXPLORER_1 } from "../src/coloring/trexScene.ts";
-import { TREX_EXPLORER } from "../src/coloring/trexExplorer.ts";
+import { TREX_EXPLORER_3 } from "../src/coloring/trexExplorer.ts";
+import { TREX_EXPLORER } from "../src/coloring/trexExplorer4.ts";
 import { TREX_EXPLORER_2 } from "../src/coloring/trexExplorer2.ts";
-import { trexHatchlingProbes, trexExplorerProbes, trexExplorer1Probes, trexExplorer2Probes } from "./trexSceneProbes.ts";
+import { trexHatchlingProbes, trexExplorerProbes, trexExplorer1Probes, trexExplorer2Probes, trexExplorer3Probes } from "./trexSceneProbes.ts";
 import { ANKYLOSAURUS_HATCHLING, ANKYLOSAURUS_EXPLORER } from "../src/coloring/ankylosaurusScene.ts";
 import { ankylosaurusHatchlingProbes, ankylosaurusExplorerProbes } from "./ankylosaurusSceneProbes.ts";
 import { ANKYLOSAURUS } from "../src/coloring/ankylosaurus.ts";
@@ -60,16 +61,20 @@ describe("T-Rex workshop scenes", () => {
     [TREX_HATCHLING, "trex-hatchling-1", trexHatchlingProbes],
     [TREX_EXPLORER_1, "trex-explorer-1", trexExplorer1Probes],
     [TREX_EXPLORER_2, "trex-explorer-2", trexExplorer2Probes],
-    [TREX_EXPLORER, "trex-explorer-3", trexExplorerProbes]
+    [TREX_EXPLORER_3, "trex-explorer-3", trexExplorer3Probes],
+    [TREX_EXPLORER, "trex-explorer-4", trexExplorerProbes]
   ] as const)("registers enclosed regions with matching parents (scene %#)", (geometry, version, probes) => {
     expect(geometry.artwork.version).toBe(version);
     expect(artworkFor(version)).toEqual({ geometry, names: { en: "T-REX", ru: "ТИРАННОЗАВР" } });
     expect(geometry.artwork.regions).toEqual(probes.map(([, , id]) => id));
     expect(new Set(geometry.artwork.regions).size).toBe(geometry.regions.length);
-    expect(geometry.regions.filter(({ id }) => id.startsWith("arm-")).map(({ id }) => id)).toEqual(["arm-far", "arm-near"]);
+    // The traced scene draws every line as one protected ink layer; its tiny arms are ink inside
+    // the neighbouring stripe and throat, since they are narrower than a fingertip target.
+    const traced = geometry === TREX_EXPLORER;
+    expect(geometry.regions.filter(({ id }) => id.startsWith("arm-")).map(({ id }) => id)).toEqual(traced ? [] : ["arm-far", "arm-near"]);
     expect(geometry.regions.filter(({ id }) => id.startsWith("leg-")).map(({ id }) => id)).toEqual(["leg-far", "leg-near"]);
     for (const region of geometry.regions) {
-      expect(region.outline).toBeGreaterThanOrEqual(1.7);
+      expect(region.outline).toBe(traced ? 0 : Math.max(region.outline, 1.7));
       expect("path" in region && region.path.endsWith(" Z")).toBe(true);
       const visited = new Set([region.id]);
       let parent = region.parent;
@@ -82,9 +87,9 @@ describe("T-Rex workshop scenes", () => {
       }
     }
     expect(geometry.regions.filter(({ parent }) => parent).map(({ id, parent }) => [id, parent])).toEqual(
-      geometry === TREX_HATCHLING ? [] : geometry === TREX_EXPLORER_1 ? [
+      geometry === TREX_HATCHLING || geometry === TREX_EXPLORER ? [] : geometry === TREX_EXPLORER_1 ? [
         ["tail-mark", "tail"], ["belly", "body"], ["back-mark", "body"], ["thigh-mark", "leg-near"], ["rock-face", "rock"]
-      ] : geometry === TREX_EXPLORER ? [
+      ] : geometry === TREX_EXPLORER_3 ? [
         ["lava", "volcano"], ["rock-face", "rock"], ["tail-stripe-1", "tail"], ["tail-stripe-2", "tail"], ["tail-stripe-3", "tail"],
         ["back-stripe-1", "body"], ["back-stripe-2", "body"], ["back-stripe-3", "body"], ["back-stripe-4", "body"], ["belly", "body"]
       ] : [
@@ -99,6 +104,7 @@ describe("T-Rex workshop scenes", () => {
     ["Hatchling", TREX_HATCHLING, trexHatchlingProbes],
     ["first Explorer", TREX_EXPLORER_1, trexExplorer1Probes],
     ["second Explorer", TREX_EXPLORER_2, trexExplorer2Probes],
+    ["third Explorer", TREX_EXPLORER_3, trexExplorer3Probes],
     ["Explorer", TREX_EXPLORER, trexExplorerProbes]
   ] as const)("keeps every %s animal and landscape target independently fillable", async (_, geometry, probes) => {
     for (const [, , id] of probes) {
@@ -594,6 +600,6 @@ describe("Explorer coloring standard", () => {
     const counts = coloringVersionsFor(level).filter(version => !awaitingRedraw.includes(version))
       .map(version => [version, artworkFor(version).geometry.regions.length] as const);
     expect(counts.filter(([, count]) => count < 35)).toEqual([]);
-    expect(counts.map(([version]) => version)).toEqual(expect.arrayContaining(["spinosaurus-explorer-3", "trex-explorer-3"]));
+    expect(counts.map(([version]) => version)).toEqual(expect.arrayContaining(["spinosaurus-explorer-3", "trex-explorer-4"]));
   });
 });

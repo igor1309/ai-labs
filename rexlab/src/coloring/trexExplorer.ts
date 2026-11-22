@@ -79,7 +79,8 @@ const details: readonly ProtectedDetail[] = [
   line("M190 240 Q200 236 210 240 M330 236 Q340 232 350 236 M60 248 Q70 242 80 248", 1.2)
 ];
 
-export const TREX_EXPLORER: Geometry = {
+// The third Explorer picture; saved journals resolve it.
+export const TREX_EXPLORER_3: Geometry = {
   artwork: Object.freeze({ version: "trex-explorer-3", regions: Object.freeze(regions.map(({ id }) => id)) }),
   regions, details
 };

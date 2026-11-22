@@ -74,7 +74,9 @@ Paleontologist uses the Explorer one.
   its telling features as regions of their own (plates and their panels,
   armour, a sail and its bands, a frill, a wing membrane, stripes or bands on
   the flank and tail), in a scene with sky, landscape and plants. Every
-  region stays a broad target; small marks are protected ink.
+  region stays a broad target; small marks are protected ink. T-Rex's is
+  traced from generated line art (`art/coloring.md`), the way to redraw the
+  rest.
 - Mosasaurus, Brachiosaurus, Pteranodon and Parasaurolophus still
   have Explorer pictures of 22–27 regions in the cartoon style, below this
   standard until they are redrawn.
