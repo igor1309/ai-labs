@@ -2,7 +2,7 @@ import type { AgeLevel } from "../src/ageLevel.ts";
 import { act, fireEvent, screen, within } from "@testing-library/react";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import records from "../src/data/dinosaurs.json";
+import { SHOWN_RECORDS as records } from "../src/shownRecords.ts";
 import digFile from "../src/data/dig.json";
 import skeletonPlaces from "../src/data/skeletons.json";
 import type { AppProps, Appearance, PageVisibility, SizeClass, Viewport, ViewportInsets } from "../src/App.tsx";

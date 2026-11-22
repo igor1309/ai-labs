@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import records from "../src/data/dinosaurs.json";
+import { SHOWN_RECORDS as records } from "../src/shownRecords.ts";
 import { mysteryChoices, pickMystery } from "../src/skeletons/index.ts";
 import { SHIPPED_PALS, SHIPPED_SKELETONS, seededRandom } from "./support.ts";
 

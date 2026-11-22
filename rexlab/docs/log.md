@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-11-22
+
+- LAB-1766: Batch 2's ten creatures are in the data with their English and Russian names, groups, look-alikes, traits and descriptions, each marked hidden so no screen or game shows them yet: Sinosauropteryx, Ouranosaurus, Euoplocephalus and Majungasaurus; Shonisaurus, Liopleurodon, Tylosaurus and Nothosaurus; Tupandactylus and Pterodaustro. Their sizes and masses are the proposal's working figures until the facts stage checks them (LAB-1767). The app and its tests read the shown records through `src/shownRecords.ts`.
+
 ## 2026-11-10
 
 - LAB-1137: the test seam reads `color` and `background-color` by cascading only the rules that declare them, as it already did display, visibility and pointer-events; the slowest test, which checks those reads against jsdom's whole computed style, runs about a quarter faster. The two theme tests on a board of silhouettes join the slow-test skip list: their time is the var() resolution seam, not the test.

@@ -17,7 +17,7 @@ async function settle(page) {
 }
 async function main() {
   const files = await appFiles();
-  const records = JSON.parse(await readFile(resolve(__dirname, '../src/data/dinosaurs.json'), 'utf8'));
+  const records = JSON.parse(await readFile(resolve(__dirname, '../src/data/dinosaurs.json'), 'utf8')).filter(record => !record.hidden);
   const ids = records.filter(d => d.group === 'dinosaur').map(d => d.id);
   assert.equal(ids.length, 42);
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, headless: true });

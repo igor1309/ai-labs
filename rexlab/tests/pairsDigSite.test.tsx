@@ -6,7 +6,7 @@ import { TEXTS } from "../src/language/texts.ts";
 import { LevelOfferDialog } from "../src/LevelOfferDialog.tsx";
 import { PairsBoardScreen, type PairCardView } from "../src/PairsBoardScreen.tsx";
 import { PairsResultScreen, type PairsResultScreenProps, foundName } from "../src/PairsResultScreen.tsx";
-import shippedDinosaurs from "../src/data/dinosaurs.json";
+import { SHOWN_RECORDS as shippedDinosaurs } from "../src/shownRecords.ts";
 import { PairsWelcomeScreen } from "../src/PairsWelcomeScreen.tsx";
 import { THEMES } from "../src/theme.ts";
 import { withManualPictures } from "./pictures.tsx";

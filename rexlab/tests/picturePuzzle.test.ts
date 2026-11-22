@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AgeLevel } from "../src/ageLevel.ts";
-import records from "../src/data/dinosaurs.json";
+import { SHOWN_RECORDS as records } from "../src/shownRecords.ts";
 import { readPictureDinosaurs } from "../src/dinosaurs.ts";
 import { LANGUAGES } from "../src/language/language.ts";
 import { cutPicture, fitPicturePiece, pictureComplete, PICTURE_FRAME, startPicturePuzzle } from "../src/picturePuzzle/index.ts";

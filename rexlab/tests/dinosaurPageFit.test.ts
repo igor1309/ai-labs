@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import records from "../src/data/dinosaurs.json";
+import { SHOWN_RECORDS as records } from "../src/shownRecords.ts";
 import { readCatalogue } from "../src/dinosaurs.ts";
 import { dinosaurWordsWidth, keptLines, NARROW_PAGE } from "../src/dinosaurPageLayout.ts";
 import { TEXTS } from "../src/language/texts.ts";
