@@ -23,18 +23,17 @@ struct PanelSessionHealthTests {
         ]
         for (piece, health, banner, reason) in variants {
             let clock = FixtureClock(), text = AsyncStream<CallState>.makeStream()
-            let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals, browser: { nil }, sleep: { _ in }, zoomName: unknownZoomName)
-            let reading = await panel.begin(id: 1, text: text.stream, enableLiveText: {})
-            reading.sessionChanged(SessionState(health: [piece: health], phase: .recording))
-            for await shown in await panel.states() where shown.banners == [banner] {
+            let panel = makeAudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals, browser: { nil }, sleep: { _ in }, zoomName: unknownZoomName)
+            panel.begin(id: 1, text: text.stream)
+            panel.sessionChanged(id: 1, SessionState(health: [piece: health], phase: .recording), at: clock.time.monotonicNow())
+            for await shown in panel.states() where shown.banners == [banner] {
                 #expect(shown.log == .liveTextOff(kept: .init(rows: [
                     .gap(.init(speaker: side == .microphone ? .me : .them, text: "— \(reason) с 00:00 —")),
                 ])))
                 break
             }
             text.continuation.finish()
-            await reading.end()
-            await panel.end(id: 1)
+            panel.sessionChanged(id: 1, .init(phase: .ended), at: clock.time.monotonicNow())
             clock.finish()
         }
     }
@@ -42,17 +41,16 @@ struct PanelSessionHealthTests {
     @MainActor
     @Test func folderAndTranscriptHealthDoNotCreateAudioProblems() async throws {
         let clock = FixtureClock(), text = AsyncStream<CallState>.makeStream()
-        let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals, browser: { nil }, sleep: { _ in }, zoomName: unknownZoomName)
-        let reading = await panel.begin(id: 1, text: text.stream, enableLiveText: {})
-        reading.sessionChanged(SessionState(health: [.folder: .failed("folder"), .transcript: .failed("text")], phase: .recording))
-        for await shown in await panel.states() where shown.recording == .on(elapsed: "00:00:00") {
+        let panel = makeAudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals, browser: { nil }, sleep: { _ in }, zoomName: unknownZoomName)
+        panel.begin(id: 1, text: text.stream)
+        panel.sessionChanged(id: 1, SessionState(health: [.folder: .failed("folder"), .transcript: .failed("text")], phase: .recording), at: clock.time.monotonicNow())
+        for await shown in panel.states() where shown.recording == .on(elapsed: "00:00:00") {
             #expect(shown.banners.isEmpty)
             #expect(shown.log == .liveTextOff(kept: nil))
             break
         }
         text.continuation.finish()
-        await reading.end()
-        await panel.end(id: 1)
+        panel.sessionChanged(id: 1, .init(phase: .ended), at: clock.time.monotonicNow())
         clock.finish()
     }
 }

@@ -38,12 +38,12 @@ struct LanguageSwitchTests {
     @MainActor
     @Test func panelMapsWhatItShowsAgainInTheNewLanguage() async throws {
         let clock = FixtureClock(), text = AsyncStream<CallState>.makeStream()
-        let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals, browser: { nil }, sleep: { _ in }, zoomName: unknownZoomName)
-        let reading = await panel.begin(id: 1, text: text.stream, enableLiveText: {})
-        reading.sessionChanged(SessionState(health: [.access(.microphone): .accessLost], phase: .recording))
-        var shown = await panel.states().makeAsyncIterator()
+        let panel = makeAudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: TestLogSink(), intervals: testIntervals, browser: { nil }, sleep: { _ in }, zoomName: unknownZoomName)
+        panel.begin(id: 1, text: text.stream)
+        panel.sessionChanged(id: 1, SessionState(health: [.access(.microphone): .accessLost], phase: .recording), at: clock.time.monotonicNow())
+        var shown = panel.states().makeAsyncIterator()
         while let state = await shown.next(), state.banners != [.microphone] {}
-        await panel.languageChanged(PanelText(language: .english))
+        panel.languageChanged(PanelText(language: .english))
         while let state = await shown.next() {
             guard case let .liveTextOff(kept?) = state.log, case let .gap(gap)? = kept.rows.first else { continue }
             #expect(!gap.text.contains("микрофон"))
@@ -51,8 +51,7 @@ struct LanguageSwitchTests {
             break
         }
         text.continuation.finish()
-        await reading.end()
-        await panel.end(id: 1)
+        panel.sessionChanged(id: 1, .init(phase: .ended), at: clock.time.monotonicNow())
         clock.finish()
     }
 }

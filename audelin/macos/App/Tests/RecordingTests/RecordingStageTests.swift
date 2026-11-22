@@ -53,6 +53,22 @@ struct RecordingStageTests {
         assert(makeRunning(), .userStop, delivers: down.1.map { .session(id: 1, $0) })
     }
 
+    @Test func aStopForTheRecordingSessionBringsThePiecesDown() {
+        let down = SessionReducer.reduce(makeRecordingPieces(), .end)
+        assert(makeRunning(), .stopSession(id: 1)) { $0.phase = .ending; $0.pieces = down.0 }
+        assert(makeRunning(), .stopSession(id: 1), delivers: down.1.map { .session(id: 1, $0) })
+    }
+
+    @Test func aStopForAnotherSessionKeepsRecording() {
+        assert(makeRunning(), .stopSession(id: 99))
+        assert(makeRunning(), .stopSession(id: 99), delivers: nil)
+    }
+
+    @Test func aStopWhileIdleChangesNothing() {
+        assert(makeIdle(), .stopSession(id: 1))
+        assert(makeIdle(), .stopSession(id: 1), delivers: nil)
+    }
+
     @Test func piecesThatCannotRecordAreBroughtDown() {
         let pieces = makeState(makeStarting()) { $0.pieces?.folder = .starting }
         let failed = SessionReducer.reduce(pieces.pieces!, .folderFinished(error: "no folder"))

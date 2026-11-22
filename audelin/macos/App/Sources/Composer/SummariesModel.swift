@@ -18,12 +18,12 @@ public final class SummariesModel {
     private let model: ObservableModel<SummariesState, SummariesEvent, SummariesEffect>
     private let reducer: SummariesReducer
     private var listText: CallsListText
-    public init(keeping: @escaping @Sendable () async -> Bool, templates: any SummariesTemplates<NotesGeneration.Template>, text: @escaping @Sendable () -> CallsListText, preparation: any SummariesPreparation, files: SummariesFilesPort,
+    public init(keeping: @escaping @Sendable () async -> Bool, userName: @escaping @Sendable () async -> String? = { nil }, templates: any SummariesTemplates<NotesGeneration.Template>, text: @escaping @Sendable () -> CallsListText, preparation: any SummariesPreparation, files: SummariesFilesPort,
          generation: any SummariesGeneration<NotesGeneration.Template>) {
         listText = text()
         let reducer = SummariesReducer(format: { text().summariesStatus($0, $1) }, badge: summariesBadge)
         self.reducer = reducer
-        let handler = SummariesEffectHandler(keeping: keeping, templates: templates, preparation: preparation, claims: files, records: files, starts: files,
+        let handler = SummariesEffectHandler(keeping: keeping, userName: userName, templates: templates, preparation: preparation, claims: files, records: files, starts: files,
                                              storage: files, generation: generation)
         model = ObservableModel(initialState: .init(), reduce: reducer.reduce,
                                 handleEffect: { effect in oneEvent { await handler.handle(effect) } })

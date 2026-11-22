@@ -142,6 +142,8 @@ public enum RecordingEvent: Equatable, Sendable {
     case callEnded
     case userStart
     case userStop
+    /// A stop from the panel showing the session with this id; ignored unless that session is current.
+    case stopSession(id: UInt64)
     case automaticChanged(Bool)
     case conditionChanged(RecordingCondition, available: Bool)
     /// A folder move holds the calls folder; the next calls-folder condition ends the move.
@@ -368,6 +370,10 @@ public struct RecordingReducer: Sendable {
         case .userStart:
             if state.folderMoving, state.shutdown == nil { state.callAudioWait = nil; state.pendingStart = .hand; return state }
             return begin(&state, origin: .hand)
+
+        case let .stopSession(id):
+            guard state.session?.id == id else { return state }
+            return policy(state, .userStop)
 
         case .userStop:
             state.callAudioWait = nil

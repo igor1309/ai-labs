@@ -27,6 +27,7 @@ LANES = {
 
 # Target: (lane, line under its name, slot in the lane). Planned boxes have no target yet.
 TARGETS = {
+    "TranscriptLayout": ("text", "orders one call’s transcript rows", 20),
     "NotesMenu": ("machines", "chooses how the shown call’s notes are made", 13),
     "TemplateFiles": ("storage", "resolves editable notes templates", 13),
     "NotesGeneration": ("text", "builds and validates template notes", 17),

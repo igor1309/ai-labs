@@ -1,5 +1,5 @@
 {
-  "originHash" : "be46baf563d6604742ce6074bfc790e7d4b1128d39f9c1e933f2c8dd46e22fd5",
+  "originHash" : "2f342c3751b6dbebe5d0b47492e6bbb999dd627cea2967be686e0c674652aaad",
   "pins" : [
     {
       "identity" : "combine-schedulers",
@@ -11,12 +11,12 @@
       }
     },
     {
-      "identity" : "fluidaudio",
+      "identity" : "swift-cmark",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/FluidInference/FluidAudio.git",
+      "location" : "https://github.com/swiftlang/swift-cmark.git",
       "state" : {
-        "revision" : "503b4bd1bbf7220882de39fe8ae6716aae4132da",
-        "version" : "0.17.7"
+        "revision" : "08ddb528923cc1a6527e02b7a1aee9e516ca749a",
+        "version" : "0.9.0"
       }
     },
     {
@@ -35,6 +35,15 @@
       "state" : {
         "revision" : "127a9c5bf723010d6742ba8e228312fae2d74177",
         "version" : "1.1.0"
+      }
+    },
+    {
+      "identity" : "swift-markdown",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/swiftlang/swift-markdown.git",
+      "state" : {
+        "revision" : "25cb61d3482054b09ae76ca4f281b1bfe7fe5a43",
+        "version" : "0.9.0"
       }
     },
     {

@@ -11,6 +11,9 @@ S-1, S-11 to S-13, `../daily-notes/SPEC.md` and `../../ARCHITECTURE.md`
 - **Shipped Default and Daily are written only when the folder is absent**
   (notes-templates Decided); an existing folder, empty included, is never
   replenished, so a deletion stays.
+- **An unedited shipped file follows the shipped text:** earlier shipped instructions with the
+  shipped headings are rewritten to today's, as dpkg does for an unmodified conffile; anything
+  else is the user's edit and stays.
 - **A bad file is an unusable entry with its reason, never rewritten,** so
   an edit is never lost or silently fixed.
 - **A built-in Default always resolves,** independent of any file
@@ -97,4 +100,14 @@ Feature: Templates folder and catalogue
     Given the shipped Daily file
     When it is resolved
     Then I can read instructions asking for each part `../daily-notes/SPEC.md` S-1 to S-5 names
+
+  Scenario: S-18 An unedited earlier shipped file is brought up to date
+    Given the Default file holds an earlier shipped Default unchanged
+    When Default is resolved
+    Then I can read the current shipped Default's instructions
+
+  Scenario: S-19 An edited shipped file is kept
+    Given the Default file holds an earlier shipped Default with one word changed
+    When Default is resolved
+    Then I can read the edited instructions
 ```

@@ -1,6 +1,6 @@
 # Make each recorded transcript final
 
-Observer: the composition root, which sends transcript output, input ended and shutdown,
+Observer: the composition root, which sends transcript output, closed speaker evidence, input ended and shutdown,
 answers the ports and reads final transcripts and settled. Shutdown and input ended are
 specified in [SHUTDOWN.md](SHUTDOWN.md); both files describe one machine.
 
@@ -8,6 +8,7 @@ specified in [SHUTDOWN.md](SHUTDOWN.md); both files describe one machine.
 
 - Every recorded call is made final, whether or not notes are on; the machine knows nothing of notes, and its final transcript goes to a receiver port the root answers.
 - Eligibility follows the latest attempted write: a call whose latest write failed is final as last saved, with no model work, even after earlier saved writes.
+- A saved call waits after its transcript closes until it receives its own closed speaker evidence. Diarizing uses that evidence.
 - A commit renders with the speaker names taken at close, read once, so a name published later cannot race the replacement.
 - Each finishing stage's outcome is kept with the call and given with every replacing write, so the file tells it (`../transcript-origin/`): split by the diarizer the port names, or not; cleaned or nothing kept; skipped once shutdown stops it. Every call whose latest write was saved ends with one commit, which carries the outcomes, and is final when it returns; a failed write keeps the origin saved before it.
 - A call's final transcript is published once, and only after its receiver has taken it.
@@ -15,10 +16,12 @@ specified in [SHUTDOWN.md](SHUTDOWN.md); both files describe one machine.
 ```gherkin
 Feature: Make each recorded transcript final
 
-  Scenario: S-1 Saved call is diarized after it closes
+  Scenario: S-1 Saved call is diarized after its speaker evidence closes
     Given a call whose latest write was saved
     When its transcript closes
-    Then I can see its far side being given to speakers, with no finishing outcome given
+    Then I can see it waiting for its speaker evidence
+    When its closed speaker evidence arrives
+    Then I can see its far side being given to speakers using that evidence, with no finishing outcome given
 
   Scenario: S-2 Failed write is final as last saved
     Given a call whose latest write failed

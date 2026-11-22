@@ -19,10 +19,6 @@ err_file=$(mktemp)
 trap 'rm -f "$err_file"' EXIT
 
 while true; do
-    if (($(date +%s) - started >= limit)); then
-        echo "not merged after ${limit}s; merge state: $merge_state" >&2
-        exit 4
-    fi
     # gh writes hints to stderr even on success (2.105.0 adds one after
     # `pr view`), so only stdout is parsed; stderr explains a failure.
     view=$(gh pr view "$pr" --json state,mergeable,mergeStateStatus,autoMergeRequest 2> "$err_file") || {
@@ -52,6 +48,12 @@ while true; do
         fi
     else
         no_auto=0
+    fi
+    # The limit is checked after a poll, so even a short limit reads the PR
+    # once and names a real merge state.
+    if (($(date +%s) - started >= limit)); then
+        echo "not merged after ${limit}s; merge state: $merge_state" >&2
+        exit 4
     fi
     sleep "$interval"
 done

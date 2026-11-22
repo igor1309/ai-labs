@@ -22,9 +22,8 @@ struct AfterCallPass: Sendable {
     }
 
     /// A failed diarization keeps the far side plain and the live names tentative.
-    func diarize(call _: String, _ state: CallState, outcomes: FinishingOutcomes) async -> SavedDiarization<Composer.Transcript.Attributed>? {
+    func diarize(_ state: CallState, evidence board: CallNamesState, outcomes: FinishingOutcomes) async -> SavedDiarization<Composer.Transcript.Attributed>? {
 
-        let board = names.snapshot()
         guard let track else { return nil }
 
         let zoom = !board.spoken.isEmpty

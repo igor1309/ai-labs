@@ -482,9 +482,11 @@ describe("Ankylosaurus prehistoric scenes", () => {
     const pixel = (x: number, y: number) => [...blank.subarray((y * WIDTH + x) * 4, (y * WIDTH + x) * 4 + 4)];
     expect(pixel(737, 400)).toEqual([9, 30, 64, 255]);
     expect(pixel(732, 392)).toEqual([255, 255, 255, 255]);
+    // Render every region's painted and mask pictures at once: sharp works on
+    // its own threads, so the renders overlap instead of queueing one by one.
+    const renders = await Promise.all(probes.map(([, , id]) => Promise.all([illustration(geometry, id), illustration(geometry, id, true)])));
     for (const [index, [, , id]] of probes.entries()) {
-      const painted = await illustration(geometry, id);
-      const mask = await illustration(geometry, id, true);
+      const [painted, mask] = renders[index]!;
       for (const [other, [x, y, sample]] of probes.entries()) {
         const offset = (y * WIDTH + x) * 4;
         expect([...painted.subarray(offset, offset + 4)], `${id} at ${sample}`).toEqual(index === other ? [239, 83, 80, 255] : [255, 240, 207, 255]);
@@ -494,7 +496,8 @@ describe("Ankylosaurus prehistoric scenes", () => {
       let changedInk = 0, leaks = 0, outsideMask = 0;
       for (let i = 0; i < painted.length; i += 4) {
         if (painted[i] === 239 && painted[i + 1] === 83 && painted[i + 2] === 80 && painted[i + 3] === 255) interior++;
-        const differs = [0, 1, 2, 3].some(channel => Math.abs(painted[i + channel]! - blank[i + channel]!) > 1);
+        const differs = Math.abs(painted[i]! - blank[i]!) > 1 || Math.abs(painted[i + 1]! - blank[i + 1]!) > 1
+          || Math.abs(painted[i + 2]! - blank[i + 2]!) > 1 || Math.abs(painted[i + 3]! - blank[i + 3]!) > 1;
         if (differs && mask[i] === 0) outsideMask++;
         if (blank[i] === 9 && blank[i + 1] === 30 && blank[i + 2] === 64 && blank[i + 3] === 255) {
           if (differs) changedInk++;

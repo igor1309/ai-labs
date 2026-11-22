@@ -82,8 +82,17 @@ struct SystemClockTests {
     }
 
     @Test func countdownStopsWhenReaderIsCancelled() async {
-        let clock = SystemClock()
+        // A wall-clock wake may be late enough to skip a step, so the first wake
+        // is pinned through a binding.
+        let binding = ManualClock()
+        let clock = SystemClock(now: { binding.now }, sleep: { try await binding.sleep(until: $0) })
         let stream = clock.countdown(from: 3, every: .milliseconds(250))
+        let driver = Task {
+            var requests = binding.requests.makeAsyncIterator()
+            if let deadline = await requests.next() {
+                await binding.advance(to: deadline)
+            }
+        }
         let reader = Task {
             var values: [Int] = []
             for await value in stream {
@@ -93,7 +102,11 @@ struct SystemClockTests {
             return values
         }
 
-        #expect(await reader.value == [2])
+        let values = await reader.value
+        await driver.value
+        await binding.waitUntilIdle()
+        #expect(values == [2])
+        #expect(await binding.pendingSleeps == 0)
     }
 
     @Test(arguments: [0, -1, Int.min])

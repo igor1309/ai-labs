@@ -1,8 +1,25 @@
 # Swift Structured Concurrency — Current Guidance
 
-Last reviewed: 2026-11-08
+Last reviewed: 2026-11-22
 
 ## Changes since last review
+
+### 2026-11-22
+
+- Swift 6.4 (released 2026-09, Xcode 27) adds concurrency features worth using once a package's toolchain allows ([InfoQ](https://www.infoq.com/news/2026/09/swift-6-4-released/), [Kodeco](https://www.kodeco.com/53754585-what-s-new-in-swift-6-4), [Michael Tsai](https://mjtsai.com/blog/2026/06/24/swift-6-4/)):
+  - SE-0493 async calls in `defer` — async cleanup no longer needs a trailing `Task {}`.
+  - `withTaskCancellationShield` — cleanup that must finish after cancellation (flush, close, release) runs shielded instead of in a detached or unstructured task.
+  - SE-0518 `~Sendable` — state that a type is deliberately not Sendable rather than leaving it implicit.
+- Swift Forums pitch for official, comprehensive concurrency documentation ([forum](https://forums.swift.org/t/pitch-create-official-comprehensive-concurrency-documentation-and-adopt-related-enhanced-processes/88124)); no change to guidance yet.
+- Repo finding: a new test helper (`audelin` `CallsStorageMergeTests.Seen`) used `NSLock` + `@unchecked Sendable`; replaced with a `Mutex`, per the rule below.
+
+### 2026-11-15
+
+- Swift 6.3 (released 2026-03) reports new isolation warnings for `@Sendable @escaping` closures under complete checking with nonisolated default isolation ([Swift Forums](https://forums.swift.org/t/new-swift-6-3-isolation-warnings-with-sendable-x-escaping-escape-hatch/84998)). The SE-0505 APIs were removed from 6.3 before release ([swiftlang/swift#87138](https://app.semanticdiff.com/gh/swiftlang/swift/pull/87138/overview)), so don't adopt them. Swift 6.4 has more concurrency ergonomics ([Kodeco: What's New in Swift 6.4](https://www.kodeco.com/53754585-what-s-new-in-swift-6-4)). The core model below hasn't changed since 6.2.
+- New rule (repo finding): when a task feeds an `AsyncStream`/`AsyncThrowingStream`, set `continuation.onTermination` to cancel that task. Otherwise a consumer that stops iterating leaves the producer running. Fixed in `neris` `ToolUseLoop`.
+- Added the agent-facing rules to `AGENTS.md` under "Swift concurrency rules".
+
+### 2026-11-08
 
 First review — no earlier version of this document existed. Baseline set against Swift 6.2 (shipped with Xcode 26).
 
@@ -65,3 +82,7 @@ First review — no earlier version of this document existed. Baseline set again
 |---|---|---|
 | `dev-skills/public/swift-package-manifest/SKILL.md`, `references/pattern-details.md` | Swift 6 manifests should use `@preconcurrency import PackageDescription` | Not needed: manifest top-level code is main-actor isolated and `swift package init` (tools 6.x) emits a plain `import PackageDescription`. `@preconcurrency` is only for unaudited dependencies. |
 | `neris/packages/swift-neris/Tests/Core/SessionLoop/findings.md` | Using `Mutex` requires `@unchecked Sendable` on the owning class | `Mutex` is `Sendable`, so state inside a `let` `Mutex` doesn't force `@unchecked`. For managing a `Task?` lifecycle, an actor is usually the clearer design. |
+
+## Repo docs reviewed 2026-11-15
+
+No incorrect current guidance found. `migrate-to-skills/guides/*` recommend `XCTestExpectation`, but they are legacy XCTest/Rx guides and that advice is right for XCTest. The `@unchecked Sendable` snippets in `neris`/`nexum` plans are historical plans, not guidance.

@@ -1,7 +1,14 @@
 # Log
 
+## 2026-11-21
+
+- LAB-1754: Stop in a finished call's panel no longer stops the call recording now. A far-side line said while the previous call's watch was still closing now takes its speaker's name once the new watch sees them.
+- LAB-1736: Call notes call you by name, not "Me": the name Zoom last showed for you, else your Mac account's full name. Notes keep the name they were made with; the transcript still marks your lines as yours.
+- LAB-1721: The panel keeps showing a finished call until the next recording opens, and that call's late names and confirmations still reach it. A call's names are confirmed after the next call has started, and quitting while a call waits for its speakers no longer starts speaker work.
+
 ## 2026-11-20
 
+- LAB-1731: Default and Daily template files you never edited now follow the shipped text, so prompt fixes reach notes; edited files are left alone.
 - LAB-1719: A call whose start finds call audio unavailable is no longer lost: Audelin tries again every five seconds while the call is on and starts recording as soon as call audio is heard. Every failed call-audio check is logged with its reason.
 
 ## 2026-11-19

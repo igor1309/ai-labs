@@ -107,7 +107,7 @@ public enum SummariesEvent<Template: SummariesTemplate>: Equatable, Sendable {
     /// The user asked for the call's notes, made from its stored transcript.
     case request(String)
     case generate(String, template: String)
-    case keepingRead(String, Bool)
+    case keepingRead(String, Bool, userName: String? = nil)
     case templateSelected(String, Template)
     case templateFailed(String, String)
     case readFailed(String)
@@ -264,7 +264,7 @@ public struct SummariesReducer<Template: SummariesTemplate>: Sendable {
         case let .submit(value): (value.call, .reading)
         case let .readFailed(id): (id, .reading)
         case let .prepared(id, _, _): (id, .preparing)
-        case let .keepingRead(id, _): (id, .choosing)
+        case let .keepingRead(id, _, _): (id, .choosing)
         case let .templateSelected(id, _), let .templateFailed(id, _): (id, .selecting)
         default: nil
         }
@@ -357,9 +357,10 @@ public struct SummariesReducer<Template: SummariesTemplate>: Sendable {
             next.calls[id]?.submission = nil
             next.calls[id]?.stage = eligible ? .choosing : .unavailable
             if eligible { effect = .readKeeping(job) }
-        case let .keepingRead(id, keeping) where state.calls[id]?.stage == .choosing:
+        case let .keepingRead(id, keeping, userName) where state.calls[id]?.stage == .choosing:
             call = id
             next.calls[id]?.job?.keepPrevious = keeping
+            next.calls[id]?.job?.userName = userName
             next.calls[id]?.stage = .selecting
             if let job = next.calls[id]?.job { effect = .selectTemplate(job, state.calls[id]?.requestedTemplate ?? "Default") }
         case let .templateSelected(id, template) where state.calls[id]?.stage == .selecting:

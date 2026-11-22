@@ -1,3 +1,5 @@
 # Their time is the var() resolution seam in tests/stylesheet.ts (jsdom resolves no var(), so each surface's style is resolved whole), not the test; speeding it up means rewriting that seam for the whole suite.
 tests/theme.test.tsx > a board of silhouettes keeps face-down cards, open cards and silhouettes apart from what is behind them in the dark theme
 tests/theme.test.tsx > a board of silhouettes keeps face-down cards, open cards and silhouettes apart from what is behind them in the light theme
+# Most of its time is the file's first accessible-name lookup (gameDoor's getByRole warming up, ~110 ms) and first catalogue render, which whichever test runs first pays; the rest is the two whole-app re-layouts the test is about (measured 2026-11-17).
+tests/catalogueTurn.test.tsx > the picture's close interrupted by a turn continues the skipped native close from its drawn box through two turns, loaded: true

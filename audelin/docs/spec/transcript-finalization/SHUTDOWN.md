@@ -5,7 +5,7 @@ machine's shutdown and input-ended scenarios.
 
 ## Decided
 
-- On shutdown no model work starts; cleaning is model work only and stops at once, while diarizing and committing finish their file writes, since both replace the file.
+- On shutdown no model work starts. A call waiting for speaker evidence skips diarizing and cleaning. Running cleanup stops at once, while diarizing and committing finish their file writes, since both replace the file.
 - Settled requires shutdown, the end of transcript input and every opened call's final transcript published.
 - Input ended means no more transcript openings, writes or closes will arrive; it is separate from shutdown. A call may open after shutdown while input is still open, and, if its latest write was saved, is committed as last saved with its stages skipped when it closes, without model work.
 
@@ -65,4 +65,11 @@ Feature: Make each recorded transcript final at shutdown
     When a call opens, saves text and closes
     Then I can see it committed as last saved, its stages skipped, without model work
     And I can see the machine not yet settled until input ends and the final transcript is published
+
+  Scenario: Shutdown skips diarizing while the call waits for speaker evidence
+    Given a saved call whose transcript has closed and whose speaker evidence is still arriving
+    When shutdown arrives
+    Then I can see it committed as written, both stages told as skipped
+    When its speaker evidence closes
+    Then I can see no diarizing starts
 ```

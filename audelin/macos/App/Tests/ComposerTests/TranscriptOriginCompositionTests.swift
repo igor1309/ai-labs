@@ -179,7 +179,10 @@ struct TranscriptOriginCompositionTests {
     let finals: Values<FinalTranscript<Job.Entry>>
     let replacements: Values<FinishingOutcomes>
 
-    func close() { model.send(.closed(call: "call", names: .init())) }
+    func close() {
+        model.send(.closed(call: "call", names: .init()))
+        model.send(.evidenceClosed(call: "call", .init()))
+    }
     func published() async { for await state in model.states() where state.calls["call"]?.published == true { return } }
     func read() throws -> TranscriptFormat.Saved { TranscriptFormat.read(try String(contentsOf: url, encoding: .utf8)) }
 

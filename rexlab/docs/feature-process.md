@@ -8,6 +8,25 @@ description: "How a rexlab feature goes from issue to production, with the visua
 Read this in full before working a rexlab issue. `AGENTS.md` has the
 details of each step; this is the order, the gate, and what has gone wrong.
 
+## Before creating an issue
+
+No creature issue exists until its creature or plan is chosen. Weekly
+autopilots post coloring suggestions and catalogue batch proposals every
+Saturday at 04:00 UTC; use them as the starting point.
+
+- **Coloring creature.** Suggest candidates, each with a reason, on
+  LAB-822 and wait until Igor picks one there. Only then create a
+  sub-issue under LAB-822 from the coloring template
+  ([New coloring creature](#issue-template)).
+- **Catalogue batch.** Follow the LAB-379 pattern.
+  1. First a proposal issue: which creatures and why, where sizes and
+     masses come from (`docs/sources.md`), which games each joins or
+     skips, and any model or text changes. It stops until Igor accepts;
+     the accepted plan goes into the description with its date.
+  2. Then sub-issues in this order, one release each: model and texts →
+     facts → pictures → into the games
+     ([Catalogue batch](#catalogue-batch)).
+
 ## Checklist
 
 1. **Spec.** Gherkin under `docs/features/`, EN and RU wording for every
@@ -69,6 +88,7 @@ cards, icons, scenes) and any layout change per screen size.
   reference the parent without a closing keyword.
 - A sub-issue closes only after merge, release and production check
   (LAB-822, rule set 2026-11-01).
+- Issues created without a selection or accepted plan (LAB-1762, LAB-1763).
 
 ## New coloring creature
 
@@ -106,4 +126,33 @@ then `in_review` and stop. No merge or release until Igor approves in a comment.
 ## Done when
 PR merged, released, and verified on https://rexlab.enoa.ai; the comment names
 PR, version and what was checked. Process: `rexlab/docs/feature-process.md`.
+```
+
+## Catalogue batch
+
+A batch adds several creatures to the catalogue. Proposal first, then one
+sub-issue per step, each released before the next starts.
+
+### Issue template (proposal)
+
+```markdown
+## Goal
+Propose catalogue batch <N>: <creatures>.
+
+## Proposal
+- Creatures and why each one.
+- Sources for sizes and masses (`rexlab/docs/sources.md`).
+- Games each creature joins or skips, and why.
+- Model or text changes needed.
+
+## Gate
+Stop until Igor accepts in a comment. Put the accepted plan into this
+description with its date, then create sub-issues in order, one release each:
+1. Model and texts.
+2. Facts.
+3. Pictures (visual approval gate applies).
+4. Into the games.
+
+## Done when
+Plan accepted and the four sub-issues exist. Process: `rexlab/docs/feature-process.md`.
 ```

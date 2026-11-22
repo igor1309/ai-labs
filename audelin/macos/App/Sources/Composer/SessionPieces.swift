@@ -44,8 +44,8 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
     var sides: [SessionSide: Side]
     var transcriptFile: (any TranscriptWriter)?
     var writing: WritingReader?
-    private var readingOutput: LatestText<CallState>?
-    private var readingSpeakers: AsyncStream<[Int: Int]>.Continuation?
+    private let readingOutput = SessionPieces.readingFeed()
+    private let readingSpeakers = AsyncStream<[Int: Int]>.makeStream()
     private var readingObservation: Task<Void, Never>?
 
     /// A listening state replaces the panel's text; a state of another status adds to it.
@@ -53,22 +53,17 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
         LatestText { $0.status == .listening }
     }
 
-    // Register before Session begins so its first text state cannot be missed.
-    func readingText() -> (text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]>) {
-
-        let output = SessionPieces.readingFeed()
-        readingOutput = output
-        let speakers = AsyncStream<[Int: Int]>.makeStream()
-        readingSpeakers = speakers.continuation
-        return (output.stream, speakers.stream)
+    // Session can finish these feeds even while the panel is attaching to them.
+    nonisolated var readingText: (text: AsyncStream<CallState>, speakers: AsyncStream<[Int: Int]>) {
+        (readingOutput.stream, readingSpeakers.stream)
     }
 
     /// Ends the events this session's pieces send it, so its forwarding finishes.
     func release() { news.continuation.finish() }
 
     func endReading() {
-        readingOutput?.finish()
-        readingSpeakers?.finish()
+        readingOutput.finish()
+        readingSpeakers.continuation.finish()
     }
 
     /// A long call's transcript is saved at most this often, and at once when its text stops.
@@ -142,8 +137,9 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
             duration: { [microphone = sides[.microphone]!.audio, call = sides[.call]!.audio] in
                 max(microphone.capturedThrough, call.capturedThrough)
             }, cleaning: boundary.bleedCleaning, hearing: boundary.bleedHearing, sink: boundary.log
-        ), speakers: { [self] rows in await self.readingSpeakers?.yield(rows) }, finishReading: { [self] in
+        ), speakers: { [readingSpeakers] rows in readingSpeakers.continuation.yield(rows) }, finishReading: { [self] in
             await self.endReading()
+            await self.names.finalizationEnded()
         })
         transcriptOutput.yield(.opened(call: made.url.path))
     }
@@ -188,11 +184,9 @@ actor SessionPieces: SessionModels, SessionFolder, SessionProcesses, SessionCall
             }
         )
         self.writing = writing
-        if let output = readingOutput {
-            readingObservation = Task {
-                for await state in writing.updates.removingRepeats() { output.yield(state) }
-                output.finish()
-            }
+        readingObservation = Task { [readingOutput] in
+            for await state in writing.updates.removingRepeats() { readingOutput.yield(state) }
+            readingOutput.finish()
         }
         await writing.start(enabled: enabled)
     }

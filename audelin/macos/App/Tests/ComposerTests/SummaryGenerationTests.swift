@@ -23,6 +23,21 @@ import Testing
         #expect(calls[2].prompt.contains("A: Анна"))
         #expect(calls[3].prompt.contains("A: Анна"))
     }
+    @Test(arguments: [nil, "Игорь"]) func bothRequestsNameOnlyTheUsersLines(userName: String?) async throws {
+        let user = userName ?? "Me"
+        let answer = #"{"speakers":[{"label":"A","name":"Анна","time":"0","quote":"Меня зовут Анна."},{"label":"\#(user)","name":"Игорь","time":"2","quote":"Меня зовут Игорь."}]}"#
+        let transport = AttemptHTTP(outputs: [answer, russianNotes])
+        let generation = SummaryGeneration(runtime: runtime(transport), sink: SilentLog())
+        var job = fixtureJob(); job.fallback = nil; job.userName = userName
+        job.entries = [.init(label: "A", time: "0", text: "Меня зовут Анна."), .init(label: "Me", time: "2", text: "Меня зовут Игорь.")]
+        let identities = try await generation.identify(job)
+        #expect(identities.map(\.label) == ["A", "Me"])
+        _ = try await generation.notes(job, identities: identities, template: defaultJobTemplate())
+        let prompts = await transport.calls.map(\.prompt)
+        let lines = "[0] A: Меня зовут Анна.\n[2] \(userName ?? "Me"): Меня зовут Игорь."
+        #expect(prompts.count == 2 && prompts.allSatisfy { $0.hasSuffix("TRANSCRIPT DATA:\n" + lines) })
+        #expect(prompts[1].contains("recorded this call") == (userName != nil))
+    }
     @Test func theSummariesPortFallsBackAsTheJobAsks() async throws {
         let transport = AttemptHTTP(outputs: ["malformed", speakers, russianNotes])
         let generation: any SummariesGeneration<NotesGeneration.Template> = SummaryGeneration(runtime: runtime(transport), sink: SilentLog())

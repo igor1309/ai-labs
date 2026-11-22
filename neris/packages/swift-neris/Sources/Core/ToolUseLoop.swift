@@ -48,6 +48,9 @@ public actor ToolUseLoop {
             let producer = Task {
                 try await self.run(input, continuation: continuation)
             }
+            // A consumer that stops iterating cancels the in-flight turn
+            // instead of leaving it running unobserved.
+            continuation.onTermination = { _ in producer.cancel() }
             // Stream completion also means the producer has unwound its actor
             // state and released its captured collaborators.
             Task.detached {

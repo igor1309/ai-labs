@@ -24,7 +24,7 @@ struct TranscriptFinalizationCompositionTests {
         defer { deliveringClose.end(); acceptClose.end() }
         let text = CallState(status: .finished, entries: [], finalCount: 0)
         let names = CallNamesState(roster: ["Vera"], rowNames: [3: "Vera"])
-        let delivery = subscribeTranscriptFinalization(output.stream) { event in
+        let delivery = subscribeTranscriptFinalization(output.stream, resources: await FinalizationResources()) { event in
             if case .closed(call: "second", names: _) = event {
                 deliveringClose.send()
                 await acceptClose.next()
@@ -294,7 +294,7 @@ private func finalizationMenu(
     let preferences = PreferencesStore(fileURL: root.appendingPathComponent("preferences.json"))
     try preferences.write(Preferences(automaticRecording: false, liveText: liveText, callsFolder: root))
     let processes = CoreAudioProcesses(binding: BoundaryProcesses(base: boundary.processes), clock: BoundaryCallClock(time: boundary.time))
-    let panel = AudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: boundary.log,
+    let panel = makeAudelinPanel(now: clock.time.monotonicNow, ticks: clock.ticks, sink: boundary.log,
         intervals: testIntervals, browser: { nil }, sleep: clock.sleep, zoomName: unknownZoomName)
     let storage = callsStorage(folder: root, timeZone: .gmt, trash: { _ in })
     return await AudelinMenu(storage: preferences, folderClaim: RecordingFolderClaim(storage: storage),

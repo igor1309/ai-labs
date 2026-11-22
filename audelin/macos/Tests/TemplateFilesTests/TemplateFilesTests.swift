@@ -219,3 +219,31 @@ private struct UnusedDisk: Disk {
     func read(_ file: URL) throws -> String { throw Failure("Unexpected read") }
     func write(_ text: String, to file: URL) throws { throw Failure("Unexpected write") }
 }
+
+@Suite struct ShippedTemplateUpdateTests {
+    @Test func anUneditedEarlierShippedFileIsBroughtUpToDate() throws {
+        try withFolder { root in
+            let file = root.appendingPathComponent("Default.md")
+            var earlier = Files.builtInDefault
+            earlier.instructions = earlierShippedDefault
+            try Files.encode(earlier).write(to: file, atomically: true, encoding: .utf8)
+            let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
+            #expect(try sut.resolve("Default") == Files.builtInDefault)
+            #expect(try Files.parse(String(contentsOf: file, encoding: .utf8)) == Files.builtInDefault)
+        }
+    }
+
+    @Test(arguments: [false, true]) func anEditedShippedFileIsKept(changesHeadings: Bool) throws {
+        try withFolder { root in
+            let file = root.appendingPathComponent("Default.md")
+            var edited = Files.builtInDefault
+            edited.instructions = changesHeadings ? earlierShippedDefault : earlierShippedDefault.replacingOccurrences(of: "faithful", with: "short")
+            if changesHeadings { edited.headings = [[Heading("Summary")]] }
+            let text = try Files.encode(edited)
+            try text.write(to: file, atomically: true, encoding: .utf8)
+            let sut = Files(folder: root, disk: FileDisk(), openFolder: { _ in })
+            #expect(try sut.resolve("Default") == edited)
+            #expect(try String(contentsOf: file, encoding: .utf8) == text)
+        }
+    }
+}

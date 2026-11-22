@@ -23,8 +23,9 @@ private struct MenuApplication {
     let stopDelivery: () async -> Void
     let end: @Sendable () async -> Void
     let storageMoving: (Bool) async -> Void
-    let panelStates: () async -> AsyncStream<PanelState>
-    let sendPanel: (PanelEvent) async -> Void
+    let panelStates: () -> AsyncStream<PanelState>
+    let panelPresentations: () -> AsyncStream<PanelPresentation>
+    let sendPanel: (PanelEvent, UInt64) async -> Void
 }
 
 @MainActor @Observable
@@ -38,7 +39,8 @@ public final class AudelinMenu {
         return value
     }
     public private(set) var quitting = false
-    public private(set) var panelState = PanelState(recording: .off, log: .empty)
+    private(set) var panelPresentation = PanelPresentation()
+    public var panelState: PanelState { panelPresentation.state }
     /// The panel's presence, composed once the menu can show the calls list.
     @ObservationIgnored private var presence: ObservableModel<PanelPresence, PanelPresence.Event, [PanelPresence.Effect]>!
     @ObservationIgnored private var presenceHandler: PanelPresenceEffectHandler?
@@ -53,7 +55,7 @@ public final class AudelinMenu {
     private let finalization: TranscriptFinalizationModel
     private var summaries: SummariesModel?
     private var presentSettings: () -> Void = {}
-    private let sendPanelEvent: (PanelEvent) async -> Void
+    private let sendPanelEvent: (PanelEvent, UInt64) async -> Void
     private var panelObservation: Task<Void, Never>?
     /// What stopped call watching, written in the menu's language when shown.
     private var failure: (phrase: MenuBarPhrase, reason: String)?
@@ -111,7 +113,7 @@ public final class AudelinMenu {
         summarySettings?.languageChanged()
         calls?.languageChanged(callsListText)
         summaries?.languageChanged(callsListText)
-        await panel.languageChanged(panelText)
+        panel.languageChanged(panelText)
     }
 
     init(
@@ -154,8 +156,9 @@ public final class AudelinMenu {
                 send: { await recording.inputs.send($0) },
                 stopDelivery: { await recording.stopDelivery() }, end: { await recording.inputs.end() },
                 storageMoving: { await recording.storageMoving($0) },
-                panelStates: { await recording.panel.states() },
-                sendPanel: { await recording.panel.send($0) }
+                panelStates: recording.panel.states,
+                panelPresentations: recording.panel.presentations,
+                sendPanel: { await recording.inputs.sendPanel($0, for: $1, panel: recording.panel) }
             )
         } catch {
             sink.write(.init(category: .menu, message: "startup failed", error: String(describing: error)))
@@ -170,7 +173,7 @@ public final class AudelinMenu {
         self.openFolder = openFolder
         self.openURL = openURL
         self.storageMoving = application?.storageMoving ?? { _ in }
-        self.sendPanelEvent = application?.sendPanel ?? { _ in }
+        self.sendPanelEvent = application?.sendPanel ?? { _, _ in }
         let termination = makeTermination(
             claimFolder: { [pendingRelaunch] in
                 let token = await relaunchClaim.take()
@@ -210,10 +213,10 @@ public final class AudelinMenu {
             }
         }
         if let application {
-            panelObservation = Task { [weak self, states = application.panelStates] in
-                for await state in await states() {
+            panelObservation = Task { [weak self, states = application.panelPresentations()] in
+                for await state in states {
                     guard let self else { return }
-                    self.panelState = state
+                    self.panelPresentation = state
                 }
             }
             observation = Task { [weak self, states = application.states] in
@@ -452,15 +455,23 @@ public final class AudelinMenu {
     }
 
     public func sendPanel(_ event: PanelEvent) async {
+        await sendPanel(event, for: panelPresentation.call)
+    }
 
+    func sendPanel(_ event: PanelEvent, for id: UInt64?) async {
         switch event {
         case .start: await perform(.start)
-        case .stop: await perform(.stop)
+        case .stop:
+            guard let id else { return await perform(.stop) }
+            guard !quitting else { return }
+            sink.write(.init(category: .menu, message: "action=stop call=\(id)"))
+            await send(.stopSession(id: id))
         case .openCallsFolder: await perform(.openCallsFolder)
         case let .openSettings(pane):
             let name = pane == .microphone ? "Privacy_Microphone" : "Privacy_ScreenCapture"
             openURL(URL(string: "x-apple.systempreferences:com.apple.preference.security?\(name)")!)
-        default: await sendPanelEvent(event)
+        default:
+            if let id { await sendPanelEvent(event, id) }
         }
     }
 

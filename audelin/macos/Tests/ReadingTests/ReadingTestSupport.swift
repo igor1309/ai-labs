@@ -1,5 +1,6 @@
 import Synchronization
 import Reading
+import Testing
 
 /// A listening state whose text, anchors and rendered cache hold `entries` shown as `rows`.
 ///
@@ -12,7 +13,7 @@ func makeListening(
 ) -> ReadingState {
 
     let lines = ReadingState.Lines(rows: .init(tail: rows))
-    var state = ReadingState(banners: banners, recording: .on(elapsed: "recording(20.0)"), log: .lines(lines),
+    var state = ReadingState(banners: banners, recording: .on(elapsed: "recording(20.0)"), captureBegan: true, log: .lines(lines),
                              problems: problems, status: .listening, nextDisplayID: entries.count,
                              lines: lines, rendered: .init(prepared: true))
     let ids = displayIDs ?? entries.map(\.id.localID)
@@ -51,48 +52,75 @@ func makeListening(
 
 
 
-/// Records each formatter call and returns a value that names the call.
+/// Records the consumer's calls and returns the test's layout result.
 final class RenderingSpy: Sendable {
-    enum Call: Equatable, Sendable {
-        case recording(Double), line(Double), span(String, String)
+    enum Call: Equatable, Sendable { case recording(Double), line(Double) }
+    struct LayoutCall: Equatable, Sendable {
+        var value: ReadingLayout
+        var change: ReadingLayout.Change
     }
     private let storage = Mutex<[Call]>([])
+    private let layouts = Mutex<[LayoutCall]>([])
+    private let result: (@Sendable (inout ReadingLayout) -> Void)?
     var calls: [Call] { storage.withLock { $0 } }
-    func recording(_ value: Double) -> String {
+    var layoutCalls: [LayoutCall] { layouts.withLock { $0 } }
 
+    init(result: (@Sendable (inout ReadingLayout) -> Void)? = nil) { self.result = result }
+
+    func recording(_ value: Double) -> String {
         storage.withLock { $0.append(.recording(value)) }
         return "recording(\(value))"
     }
     func line(_ value: Double) -> String {
-
         storage.withLock { $0.append(.line(value)) }
         return "line(\(value))"
     }
-    func span(_ start: String, _ end: String) -> String {
-
-        storage.withLock { $0.append(.span(start, end)) }
-        return "span[\(start)|\(end)]"
+    func layout(_ value: inout ReadingLayout, _ change: ReadingLayout.Change) {
+        layouts.withLock { $0.append(.init(value: value, change: change)) }
+        result?(&value)
     }
 }
 
 func makeReducer(_ spy: RenderingSpy) -> ReadingReducer {
-
-    .init(recordingTime: { spy.recording($0) }, lineTime: { spy.line($0) }, span: { spy.span($0, $1) })
+    .init(recordingTime: spy.recording, lineTime: spy.line, layout: spy.layout)
 }
 
-/// Each call with how many times it was made, for a reducer that renders a
-/// whole layout by walking a dictionary, whose order changes from run to run.
-func counted(_ calls: [RenderingSpy.Call]) -> [String: Int] {
-
-    calls.reduce(into: [:]) { $0[String(describing: $1), default: 0] += 1 }
+func assert(
+    _ state: ReadingState, _ update: ReadingUpdate, delivers effect: Never?, using reducer: ReadingReducer,
+    sourceLocation: SourceLocation = #_sourceLocation, _ change: (inout ReadingState) -> Void = { _ in }
+) {
+    var call = state
+    call.displayedCall = 1
+    assert(call, .update(1, update), delivers: effect, using: reducer, sourceLocation: sourceLocation, change)
 }
 
-/// The rendered cache after the reducer prepared it: each shown entry, in order, and where its row is.
-func prepared(
-    _ shown: (ReadingTextUpdate.Entry.ID, ReadingState.Entry, ReadingState.Rendered.Location)...
-) -> ReadingState.Rendered {
+func assert(
+    _ state: ReadingState, _ event: ReadingEvent, delivers effect: Never?, using reducer: ReadingReducer,
+    sourceLocation: SourceLocation = #_sourceLocation, _ change: (inout ReadingState) -> Void = { _ in }
+) {
+    var expected = state
+    change(&expected)
+    let result = reducer.reduce(state, event)
+    #expect(result.0 == expected, sourceLocation: sourceLocation)
+    #expect(result.0.rendered.prepared == expected.rendered.prepared, sourceLocation: sourceLocation)
+    #expect(result.0.rendered.ordered == expected.rendered.ordered, sourceLocation: sourceLocation)
+    #expect(result.0.rendered.entries == expected.rendered.entries, sourceLocation: sourceLocation)
+    #expect(result.0.rendered.locations == expected.rendered.locations, sourceLocation: sourceLocation)
+    #expect(result.0.lines.layout == expected.lines.layout, sourceLocation: sourceLocation)
+    #expect(result.0.anchors.sealed == expected.anchors.sealed, sourceLocation: sourceLocation)
+    #expect(result.0.text.sealed == expected.text.sealed, sourceLocation: sourceLocation)
+    #expect(result.0.rendered.entries.sealed == expected.rendered.entries.sealed, sourceLocation: sourceLocation)
+    #expect(result.0.rendered.locations.sealed == expected.rendered.locations.sealed, sourceLocation: sourceLocation)
+    #expect(result.0.rendered.inSealedRows == expected.rendered.inSealedRows, sourceLocation: sourceLocation)
+    #expect(result.0.lines.rows.sealed == expected.lines.rows.sealed, sourceLocation: sourceLocation)
+    #expect(logRevision(result.0.log) == logRevision(expected.log), sourceLocation: sourceLocation)
+    #expect(result.1 == effect, sourceLocation: sourceLocation)
+}
 
-    .init(prepared: true, ordered: shown.map(\.0),
-          entries: .init(uniqueKeysWithValues: shown.map { ($0.0, $0.1) }),
-          locations: .init(uniqueKeysWithValues: shown.map { ($0.0, $0.2) }))
+private func logRevision(_ log: ReadingState.Log) -> Int? {
+    switch log {
+    case let .lines(lines): lines.layout
+    case let .liveTextOff(kept): kept?.layout
+    case .empty, .preparing: nil
+    }
 }

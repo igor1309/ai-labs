@@ -10,12 +10,15 @@ func browserMessage(_ sequence: Int, _ event: String) -> String {
 
 final class FakeBrowserChannel: Sendable {
     private let connections = AsyncStream<BrowserConnection>.makeStream()
+    private let opened = Mutex(0)
     private let stops = Mutex(0)
 
+    var opens: Int { opened.withLock { $0 } }
     var stopped: Bool { stops.withLock { $0 } == 1 }
 
     func open() -> BrowserChannel {
-        BrowserChannel(connections: connections.stream, stop: { [self] in
+        opened.withLock { $0 += 1 }
+        return BrowserChannel(connections: connections.stream, stop: { [self] in
             stops.withLock { $0 += 1 }
             connections.continuation.finish()
         })
