@@ -20,7 +20,7 @@ Feature: Coloring gallery creature choices
   Scenario: Choose a recognizable Brachiosaurus
     When I enter the gallery at any age level
     Then exactly one Brachiosaurus choice has a matching vector preview and the uppercase localized name BRACHIOSAURUS or БРАХИОЗАВР
-    And Brachiosaurus uses brachiosaurus-hatchling-1 at Hatchling and brachiosaurus-explorer-1 at Explorer and Paleontologist
+    And Brachiosaurus uses brachiosaurus-hatchling-1 at Hatchling and brachiosaurus-explorer-2 at Explorer and Paleontologist
     And Stegosaurus, Triceratops, Ankylosaurus, T-Rex and Mosasaurus remain available with their age-matched previews
     And its friendly silhouette has a long neck reaching up, a small head, tall front legs and a sloping back to a long tail
     And choosing it starts an independent unpainted work without changing existing works

@@ -1,6 +1,6 @@
 import "@fontsource-variable/lexend";
 import "@fontsource-variable/manrope";
-export { brachiosaurusHatchlingProbes, brachiosaurusExplorerProbes } from "./brachiosaurusSceneProbes.ts";
+export { brachiosaurusHatchlingProbes, brachiosaurusExplorerProbes, brachiosaurusExplorer1Probes, brachiosaurusExplorerProtectedProbes } from "./brachiosaurusSceneProbes.ts";
 export { pteranodonHatchlingProbes, pteranodonExplorerProbes } from "./pteranodonSceneProbes.ts";
 export { spinosaurusHatchlingProbes, spinosaurusExplorerProbes } from "./spinosaurusSceneProbes.ts";
 export { parasaurolophusHatchlingProbes, parasaurolophusExplorerProbes } from "./parasaurolophusSceneProbes.ts";

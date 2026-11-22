@@ -77,7 +77,7 @@ Paleontologist uses the Explorer one.
   region stays a broad target; small marks are protected ink. T-Rex's is
   traced from generated line art (`art/coloring.md`), the way to redraw the
   rest.
-- Mosasaurus, Brachiosaurus, Pteranodon and Parasaurolophus still
+- Mosasaurus, Pteranodon and Parasaurolophus still
   have Explorer pictures of 22–27 regions in the cartoon style, below this
   standard until they are redrawn.
 Saved works always reopen with their own artwork, regardless of the current
