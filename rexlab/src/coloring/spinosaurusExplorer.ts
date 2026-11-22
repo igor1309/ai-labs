@@ -83,7 +83,8 @@ const details: readonly ProtectedDetail[] = [
   line("M164 284 L174 278 L184 282", 1.2)
 ];
 
-export const SPINOSAURUS_EXPLORER: Geometry = {
+// The third Explorer picture; saved journals resolve it.
+export const SPINOSAURUS_EXPLORER_3: Geometry = {
   artwork: Object.freeze({ version: "spinosaurus-explorer-3", regions: Object.freeze(regions.map(({ id }) => id)) }),
   regions, details
 };

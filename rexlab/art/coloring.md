@@ -31,6 +31,9 @@ What the prompt guards against:
 - **A broad animal.** The raster contract wants a 40 px solid square in each
   main body part (head, body, tail, legs) and 24 px in every other region,
   at the 920 × 620 canvas. A far leg drawn slim fails it.
+- **A deep, plain head.** Ask for a large, deep head with the mouth closed and
+  only the eye, a nostril and one mouth line inside it. Extra lines on a long
+  snout cut the head into slivers the tracer merges into the scenery.
 
 ## Tracing
 
@@ -58,3 +61,4 @@ tests. Tracing is deterministic: the same page and groups give the same ids.
 | Scene | Page | Regions |
 | --- | --- | --- |
 | `trex-explorer-4` | `coloring/trex-explorer-4.png` | 40 |
+| `spinosaurus-explorer-4` | `coloring/spinosaurus-explorer-4.png` | 35 |

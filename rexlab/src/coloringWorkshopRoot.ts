@@ -1,5 +1,5 @@
 import { SPINOSAURUS_HATCHLING } from "./coloring/spinosaurusScene.ts";
-import { SPINOSAURUS_EXPLORER } from "./coloring/spinosaurusExplorer.ts";
+import { SPINOSAURUS_EXPLORER } from "./coloring/spinosaurusExplorer4.ts";
 import { PARASAUROLOPHUS_HATCHLING, PARASAUROLOPHUS_EXPLORER } from "./coloring/parasaurolophusScene.ts";
 import { PTERANODON_HATCHLING, PTERANODON_EXPLORER } from "./coloring/pteranodonScene.ts";
 import { BRACHIOSAURUS_HATCHLING, BRACHIOSAURUS_EXPLORER } from "./coloring/brachiosaurusScene.ts";

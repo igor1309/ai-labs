@@ -2,6 +2,7 @@
 
 ## 2026-11-22
 
+- LAB-1785: Spinosaurus's Explorer picture is redrawn from traced line art (35 regions): an illustrated Spinosaurus on a riverbank under a seven-band sail, with a deep plain head, a back stripe, a banded tail and strong hind legs, beside a river with a fish, a palm and stones. Its outline and small details are one protected ink drawing above the paint. Works saved on older pictures reopen on them.
 - LAB-1777: T-Rex's Explorer picture is redrawn from traced line art (40 regions): an illustrated T-Rex walking past a volcano, with curved stripes on its back and tail, in a scene of hills, a lava stream, a pond, stones, a cycad and a leafy bush. Its outline and small details are one protected ink drawing above the paint. Works saved on older pictures reopen on them.
 - LAB-1772: T-Rex and Spinosaurus Explorer pictures are drawn again, the animals in their own shape rather than in blocks: the T-Rex (37 regions) with a real skull, clawed arms, raised ankles and curved stripes below a volcano; the Spinosaurus (39 regions) wading a river under an arched sail with a crested crocodile skull, snapping at a fish. Works saved on the earlier pictures reopen on them.
 - LAB-1772: T-Rex's Explorer picture is redrawn to the Explorer standard (37 regions): a T-Rex striding below a smoking volcano, with a level back, long tail, deep skull and tiny arms; its back and tail stripes, belly, hip, brow and jaw muscle are regions. Works saved on the old picture reopen on it.
