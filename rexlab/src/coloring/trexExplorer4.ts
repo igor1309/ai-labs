@@ -49,6 +49,6 @@ const details: readonly ProtectedDetail[] = [
 ];
 
 export const TREX_EXPLORER: Geometry = {
-  artwork: Object.freeze({ version: "trex-explorer-3", regions: Object.freeze(regions.map(({ id }) => id)) }),
+  artwork: Object.freeze({ version: "trex-explorer-4", regions: Object.freeze(regions.map(({ id }) => id)) }),
   regions, details
 };

@@ -50,7 +50,7 @@ Feature: Coloring gallery creature choices
   Scenario: Choose a recognizable Spinosaurus
     When I enter the gallery at any age level
     Then exactly one Spinosaurus choice has a matching vector preview and the uppercase localized name SPINOSAURUS or СПИНОЗАВР
-    And Spinosaurus uses spinosaurus-hatchling-1 at Hatchling and spinosaurus-explorer-2 at Explorer and Paleontologist
+    And Spinosaurus uses spinosaurus-hatchling-1 at Hatchling and spinosaurus-explorer-3 at Explorer and Paleontologist
     And Stegosaurus, Triceratops, Ankylosaurus, T-Rex, Mosasaurus, Brachiosaurus, Pteranodon and Parasaurolophus remain available with their age-matched previews
     And its friendly silhouette walks low on four legs with a tall back sail, a long crocodile snout and a long tail, unlike the upright T-Rex
     And choosing it starts an independent unpainted work without changing existing works

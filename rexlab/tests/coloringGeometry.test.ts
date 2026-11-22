@@ -1,7 +1,8 @@
 import { artworkFor } from "../src/coloring/artworks.ts";
 import { SPINOSAURUS_HATCHLING, SPINOSAURUS_EXPLORER_1 } from "../src/coloring/spinosaurusScene.ts";
 import { SPINOSAURUS_EXPLORER } from "../src/coloring/spinosaurusExplorer.ts";
-import { spinosaurusHatchlingProbes, spinosaurusExplorerProbes, spinosaurusExplorer1Probes } from "./spinosaurusSceneProbes.ts";
+import { SPINOSAURUS_EXPLORER_2 } from "../src/coloring/spinosaurusExplorer2.ts";
+import { spinosaurusHatchlingProbes, spinosaurusExplorerProbes, spinosaurusExplorer1Probes, spinosaurusExplorer2Probes } from "./spinosaurusSceneProbes.ts";
 import { coloringVersionsFor } from "../src/coloringWorkshopRoot.ts";
 import { PARASAUROLOPHUS_HATCHLING, PARASAUROLOPHUS_EXPLORER } from "../src/coloring/parasaurolophusScene.ts";
 import { parasaurolophusHatchlingProbes, parasaurolophusExplorerProbes } from "./parasaurolophusSceneProbes.ts";
@@ -12,9 +13,10 @@ import { brachiosaurusHatchlingProbes, brachiosaurusExplorerProbes } from "./bra
 import { MOSASAURUS_HATCHLING, MOSASAURUS_EXPLORER } from "../src/coloring/mosasaurusScene.ts";
 import { mosasaurusHatchlingProbes, mosasaurusExplorerProbes } from "./mosasaurusSceneProbes.ts";
 import { TREX_HATCHLING, TREX_EXPLORER_1 } from "../src/coloring/trexScene.ts";
-import { TREX_EXPLORER_2 } from "../src/coloring/trexExplorer.ts";
-import { TREX_EXPLORER } from "../src/coloring/trexExplorer3.ts";
-import { trexHatchlingProbes, trexExplorerProbes, trexExplorer1Probes, trexExplorer2Probes } from "./trexSceneProbes.ts";
+import { TREX_EXPLORER_3 } from "../src/coloring/trexExplorer.ts";
+import { TREX_EXPLORER } from "../src/coloring/trexExplorer4.ts";
+import { TREX_EXPLORER_2 } from "../src/coloring/trexExplorer2.ts";
+import { trexHatchlingProbes, trexExplorerProbes, trexExplorer1Probes, trexExplorer2Probes, trexExplorer3Probes } from "./trexSceneProbes.ts";
 import { ANKYLOSAURUS_HATCHLING, ANKYLOSAURUS_EXPLORER } from "../src/coloring/ankylosaurusScene.ts";
 import { ankylosaurusHatchlingProbes, ankylosaurusExplorerProbes } from "./ankylosaurusSceneProbes.ts";
 import { ANKYLOSAURUS } from "../src/coloring/ankylosaurus.ts";
@@ -59,7 +61,8 @@ describe("T-Rex workshop scenes", () => {
     [TREX_HATCHLING, "trex-hatchling-1", trexHatchlingProbes],
     [TREX_EXPLORER_1, "trex-explorer-1", trexExplorer1Probes],
     [TREX_EXPLORER_2, "trex-explorer-2", trexExplorer2Probes],
-    [TREX_EXPLORER, "trex-explorer-3", trexExplorerProbes]
+    [TREX_EXPLORER_3, "trex-explorer-3", trexExplorer3Probes],
+    [TREX_EXPLORER, "trex-explorer-4", trexExplorerProbes]
   ] as const)("registers enclosed regions with matching parents (scene %#)", (geometry, version, probes) => {
     expect(geometry.artwork.version).toBe(version);
     expect(artworkFor(version)).toEqual({ geometry, names: { en: "T-REX", ru: "ТИРАННОЗАВР" } });
@@ -86,6 +89,9 @@ describe("T-Rex workshop scenes", () => {
     expect(geometry.regions.filter(({ parent }) => parent).map(({ id, parent }) => [id, parent])).toEqual(
       geometry === TREX_HATCHLING || geometry === TREX_EXPLORER ? [] : geometry === TREX_EXPLORER_1 ? [
         ["tail-mark", "tail"], ["belly", "body"], ["back-mark", "body"], ["thigh-mark", "leg-near"], ["rock-face", "rock"]
+      ] : geometry === TREX_EXPLORER_3 ? [
+        ["lava", "volcano"], ["rock-face", "rock"], ["tail-stripe-1", "tail"], ["tail-stripe-2", "tail"], ["tail-stripe-3", "tail"],
+        ["back-stripe-1", "body"], ["back-stripe-2", "body"], ["back-stripe-3", "body"], ["back-stripe-4", "body"], ["belly", "body"]
       ] : [
         ["lava", "volcano"], ["rock-face", "rock"], ["tail-stripe-1", "tail"], ["tail-stripe-2", "tail"], ["tail-stripe-3", "tail"],
         ["back-stripe-1", "body"], ["back-stripe-2", "body"], ["back-stripe-3", "body"], ["belly", "body"], ["hip-patch", "thigh"],
@@ -98,6 +104,7 @@ describe("T-Rex workshop scenes", () => {
     ["Hatchling", TREX_HATCHLING, trexHatchlingProbes],
     ["first Explorer", TREX_EXPLORER_1, trexExplorer1Probes],
     ["second Explorer", TREX_EXPLORER_2, trexExplorer2Probes],
+    ["third Explorer", TREX_EXPLORER_3, trexExplorer3Probes],
     ["Explorer", TREX_EXPLORER, trexExplorerProbes]
   ] as const)("keeps every %s animal and landscape target independently fillable", async (_, geometry, probes) => {
     for (const [, , id] of probes) {
@@ -185,7 +192,8 @@ describe("Spinosaurus workshop scenes", () => {
   it.each([
     [SPINOSAURUS_HATCHLING, "spinosaurus-hatchling-1", spinosaurusHatchlingProbes],
     [SPINOSAURUS_EXPLORER_1, "spinosaurus-explorer-1", spinosaurusExplorer1Probes],
-    [SPINOSAURUS_EXPLORER, "spinosaurus-explorer-2", spinosaurusExplorerProbes]
+    [SPINOSAURUS_EXPLORER_2, "spinosaurus-explorer-2", spinosaurusExplorer2Probes],
+    [SPINOSAURUS_EXPLORER, "spinosaurus-explorer-3", spinosaurusExplorerProbes]
   ] as const)("registers enclosed regions with matching parents (scene %#)", (geometry, version, probes) => {
     expect(artworkFor(version)).toEqual({ geometry, names: { en: "SPINOSAURUS", ru: "СПИНОЗАВР" } });
     expect(geometry.artwork.regions).toEqual(probes.map(([, , id]) => id));
@@ -196,6 +204,8 @@ describe("Spinosaurus workshop scenes", () => {
     expect(geometry.regions.filter(({ parent }) => parent).map(({ id, parent }) => [id, parent])).toEqual(
       geometry === SPINOSAURUS_HATCHLING ? [["belly", "body"]]
         : geometry === SPINOSAURUS_EXPLORER_1 ? [["sail-stripe-1", "sail"], ["sail-stripe-2", "sail"], ["sail-stripe-3", "sail"], ["tail-tip", "body"], ["belly", "body"]]
+        : geometry === SPINOSAURUS_EXPLORER ? [["tail-stripe-1", "tail"], ["tail-stripe-2", "tail"], ["tail-stripe-3", "tail"], ["sail-rim", "sail"], ["sail-band-1", "sail"], ["sail-band-2", "sail"],
+          ["flank-stripe-1", "body"], ["flank-stripe-2", "body"], ["flank-stripe-3", "body"], ["belly", "body"]]
         : [["tail-band-1", "tail"], ["tail-band-2", "tail"], ["tail-band-3", "tail"], ["sail-edge", "sail"], ["sail-band-1", "sail"], ["sail-band-2", "sail"], ["sail-band-3", "sail"],
           ["flank-stripe-1", "body"], ["flank-stripe-2", "body"], ["flank-stripe-3", "body"], ["belly", "body"], ["snout", "head"]]
     );
@@ -204,6 +214,7 @@ describe("Spinosaurus workshop scenes", () => {
   it.each([
     ["Hatchling", SPINOSAURUS_HATCHLING, spinosaurusHatchlingProbes],
     ["first Explorer", SPINOSAURUS_EXPLORER_1, spinosaurusExplorer1Probes],
+    ["second Explorer", SPINOSAURUS_EXPLORER_2, spinosaurusExplorer2Probes],
     ["Explorer", SPINOSAURUS_EXPLORER, spinosaurusExplorerProbes]
   ] as const)("keeps every %s animal and scenery target independently fillable", async (_, geometry, probes) => {
     for (const [, , id] of probes) {
@@ -589,6 +600,6 @@ describe("Explorer coloring standard", () => {
     const counts = coloringVersionsFor(level).filter(version => !awaitingRedraw.includes(version))
       .map(version => [version, artworkFor(version).geometry.regions.length] as const);
     expect(counts.filter(([, count]) => count < 35)).toEqual([]);
-    expect(counts.map(([version]) => version)).toEqual(expect.arrayContaining(["spinosaurus-explorer-2", "trex-explorer-3"]));
+    expect(counts.map(([version]) => version)).toEqual(expect.arrayContaining(["spinosaurus-explorer-3", "trex-explorer-4"]));
   });
 });

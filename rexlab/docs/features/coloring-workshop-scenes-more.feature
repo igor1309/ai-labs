@@ -64,12 +64,16 @@ Feature: Coloring workshop Pteranodon, Parasaurolophus and Spinosaurus scenes
 
   Scenario: Spinosaurus wading a river for older levels
     Given I start a new Spinosaurus work at Explorer or Paleontologist
-    Then the workshop renders the spinosaurus-explorer-2 vector scene of 40 regions
-    And a Spinosaurus in its own proportions wades a river with a fish leaping at its jaws: a long low body, short hind legs, a finned paddle tail, a tall sail and a narrow snout with a small realistic eye
-    And its sail edge and three sail bands, three flank stripes, belly, three tail bands, tail fin, snout and lower jaw are independent regions
-    And sky, sun, two clouds, hills, cypress, river, two lily pads, ground, rock, fern and two reeds surround it
+    Then the workshop renders the spinosaurus-explorer-3 vector scene of 39 regions
+    And a Spinosaurus in its own shape wades a river, legs in the water, snapping at a leaping fish: a long low body, a tall arched sail, a finned paddle tail and a long crested crocodile skull with a small eye
+    And its sail rim and two sail bands, three flank stripes, belly, three tail stripes, tail fin, thigh, clawed arms and lower jaw are independent regions
+    And sky, sun, two clouds, hills, a tree fern, river, two lily pads, ground, rock, fern and two reeds surround it
     And teeth, claws, scales, sail spines, ripples and leaf veins remain protected linework, never tiny targets
     And the entire scene fits supported iPad and iPhone viewports without clipping
+
+  Scenario: Earlier Spinosaurus pictures keep saved works
+    Given a saved Spinosaurus work made on spinosaurus-explorer-2
+    Then the workshop renders the spinosaurus-explorer-2 vector scene it was made on
 
   Scenario: The first Spinosaurus riverbank keeps saved works
     Given a saved Spinosaurus work made on spinosaurus-explorer-1

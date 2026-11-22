@@ -856,7 +856,7 @@ const { chromium } = require("playwright");
     const beforeTrex = await listed();
     const trexWorks = [];
     for (const level of ["hatchling", "explorer"]) {
-      const version = level === "hatchling" ? "trex-hatchling-1" : "trex-explorer-3";
+      const version = level === "hatchling" ? "trex-hatchling-1" : "trex-explorer-4";
       await page.setViewportSize({ width: 1180, height: 820 }); await mount({ level });
       const choice = page.getByRole("button", { name: "T-REX", exact: true });
       assert.equal(await choice.count(), 1);
@@ -928,7 +928,7 @@ const { chromium } = require("playwright");
       assert.equal(await currentPreview.evaluate((c, version) => {
         const painter = window.gallery.painterFor(version), expected = painter.canvas(c.width, c.height);
         painter.render(expected, []); return c.toDataURL() === expected.toDataURL();
-      }, level === "hatchling" ? "trex-explorer-3" : "trex-hatchling-1"), true, "returning gallery offers the current age variant");
+      }, level === "hatchling" ? "trex-explorer-4" : "trex-hatchling-1"), true, "returning gallery offers the current age variant");
       assert.match(await page.locator(`[data-work-id="${work.id}"] img`).getAttribute("alt"), /^ТИРАННОЗАВР/);
       await page.locator(`[data-work-id="${work.id}"] button`).press("Enter"); await page.locator('canvas[aria-label="ТИРАННОЗАВР"]').waitFor();
       await press("ГОТОВО"); await page.locator(".coloring-result").waitFor();

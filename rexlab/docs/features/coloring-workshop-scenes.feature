@@ -9,7 +9,7 @@ Feature: Coloring workshop T-Rex, Mosasaurus and Brachiosaurus scenes
 
   Scenario: T-Rex walking past a volcano for older levels
     Given I start a new T-Rex work at Explorer or Paleontologist
-    Then the workshop renders the trex-explorer-3 traced line-art scene of 40 regions
+    Then the workshop renders the trex-explorer-4 traced line-art scene of 40 regions
     And a T-Rex in its own proportions walks with a level back, a long tail, a deep skull and tiny arms
     And its head, lower jaw, throat, belly, both legs and the curved stripes on its back and tail are regions of their own
     And a sky with sun and clouds, hills, a volcano with a lava stream, a pond, a meadow, stones, a cycad and a leafy bush offer broad scenery regions
@@ -30,6 +30,7 @@ Feature: Coloring workshop T-Rex, Mosasaurus and Brachiosaurus scenes
       | trex-explorer-1  |
       | trex-explorer-2  |
       | trex-explorer-3  |
+      | trex-explorer-4  |
 
   Scenario: Simple Mosasaurus for Hatchling
     Given I start a new Mosasaurus work at Hatchling
