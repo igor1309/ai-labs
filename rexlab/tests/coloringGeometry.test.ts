@@ -1,4 +1,6 @@
 import { artworkFor } from "../src/coloring/artworks.ts";
+import { SPINOSAURUS_HATCHLING, SPINOSAURUS_EXPLORER } from "../src/coloring/spinosaurusScene.ts";
+import { spinosaurusHatchlingProbes, spinosaurusExplorerProbes } from "./spinosaurusSceneProbes.ts";
 import { PARASAUROLOPHUS_HATCHLING, PARASAUROLOPHUS_EXPLORER } from "../src/coloring/parasaurolophusScene.ts";
 import { parasaurolophusHatchlingProbes, parasaurolophusExplorerProbes } from "./parasaurolophusSceneProbes.ts";
 import { PTERANODON_HATCHLING, PTERANODON_EXPLORER } from "../src/coloring/pteranodonScene.ts";
@@ -161,6 +163,38 @@ describe("Parasaurolophus workshop scenes", () => {
     }
     expect(PARASAUROLOPHUS_EXPLORER.regions.length).toBeGreaterThan(PARASAUROLOPHUS_HATCHLING.regions.length * 1.8);
     expect(PARASAUROLOPHUS_HATCHLING.artwork.regions).not.toContain("sky");
+  });
+});
+
+describe("Spinosaurus workshop scenes", () => {
+  it.each([
+    [SPINOSAURUS_HATCHLING, "spinosaurus-hatchling-1", spinosaurusHatchlingProbes],
+    [SPINOSAURUS_EXPLORER, "spinosaurus-explorer-1", spinosaurusExplorerProbes]
+  ] as const)("registers enclosed regions with matching parents (scene %#)", (geometry, version, probes) => {
+    expect(artworkFor(version)).toEqual({ geometry, names: { en: "SPINOSAURUS", ru: "СПИНОЗАВР" } });
+    expect(geometry.artwork.regions).toEqual(probes.map(([, , id]) => id));
+    for (const region of geometry.regions) {
+      expect(region.outline).toBeGreaterThanOrEqual(1.7);
+      expect("path" in region && region.path.endsWith(" Z")).toBe(true);
+    }
+    expect(geometry.regions.filter(({ parent }) => parent).map(({ id, parent }) => [id, parent])).toEqual(
+      geometry === SPINOSAURUS_HATCHLING ? [["belly", "body"]] : [["sail-stripe-1", "sail"], ["sail-stripe-2", "sail"], ["sail-stripe-3", "sail"], ["tail-tip", "body"], ["belly", "body"]]
+    );
+  });
+
+  it.each([
+    ["Hatchling", SPINOSAURUS_HATCHLING, spinosaurusHatchlingProbes],
+    ["Explorer", SPINOSAURUS_EXPLORER, spinosaurusExplorerProbes]
+  ] as const)("keeps every %s animal and scenery target independently fillable", async (_, geometry, probes) => {
+    for (const [, , id] of probes) {
+      const painted = await illustration(geometry, id);
+      for (const [px, py, other] of probes) {
+        const offset = (py * WIDTH + px) * 4;
+        expect([...painted.subarray(offset, offset + 4)], `${id} at ${other}`).toEqual(id === other ? [239, 83, 80, 255] : [255, 240, 207, 255]);
+      }
+    }
+    expect(SPINOSAURUS_EXPLORER.regions.length).toBeGreaterThan(SPINOSAURUS_HATCHLING.regions.length * 1.8);
+    expect(SPINOSAURUS_HATCHLING.artwork.regions).not.toContain("sky");
   });
 });
 

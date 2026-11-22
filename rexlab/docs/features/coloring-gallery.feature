@@ -110,7 +110,7 @@ Feature: Coloring gallery
     And its friendly silhouette has a long neck reaching up, a small head, tall front legs and a sloping back to a long tail
     And choosing it starts an independent unpainted work without changing existing works
 
-  Scenario: Eight creature choices keep one row
+  Scenario: Nine creature choices keep one row
     When I enter the gallery at any size
     Then the creature choices sit in one row, each showing its preview, a plus in the top leading corner and only the creature name on one line
     When I enter the gallery on a phone, upright or on its side, or on an upright iPad
@@ -130,4 +130,12 @@ Feature: Coloring gallery
     And Parasaurolophus uses parasaurolophus-hatchling-1 at Hatchling and parasaurolophus-explorer-1 at Explorer and Paleontologist
     And Stegosaurus, Triceratops, Ankylosaurus, T-Rex, Mosasaurus, Brachiosaurus and Pteranodon remain available with their age-matched previews
     And its friendly silhouette has a long tube crest sweeping back, a duck bill and a flowing tail
+    And choosing it starts an independent unpainted work without changing existing works
+
+  Scenario: Choose a recognizable Spinosaurus
+    When I enter the gallery at any age level
+    Then exactly one Spinosaurus choice has a matching vector preview and the uppercase localized name SPINOSAURUS or СПИНОЗАВР
+    And Spinosaurus uses spinosaurus-hatchling-1 at Hatchling and spinosaurus-explorer-1 at Explorer and Paleontologist
+    And Stegosaurus, Triceratops, Ankylosaurus, T-Rex, Mosasaurus, Brachiosaurus, Pteranodon and Parasaurolophus remain available with their age-matched previews
+    And its friendly silhouette walks low on four legs with a tall back sail, a long crocodile snout and a long tail, unlike the upright T-Rex
     And choosing it starts an independent unpainted work without changing existing works
