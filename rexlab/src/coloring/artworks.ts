@@ -15,7 +15,8 @@ import { BRACHIOSAURUS_EXPLORER } from "./brachiosaurusExplorer2.ts";
 import { PTERANODON_HATCHLING, PTERANODON_EXPLORER } from "./pteranodonScene.ts";
 import { PARASAUROLOPHUS_HATCHLING, PARASAUROLOPHUS_EXPLORER } from "./parasaurolophusScene.ts";
 import { SPINOSAURUS_HATCHLING, SPINOSAURUS_EXPLORER_1 } from "./spinosaurusScene.ts";
-import { SPINOSAURUS_EXPLORER } from "./spinosaurusExplorer.ts";
+import { SPINOSAURUS_EXPLORER_3 } from "./spinosaurusExplorer.ts";
+import { SPINOSAURUS_EXPLORER } from "./spinosaurusExplorer4.ts";
 import { SPINOSAURUS_EXPLORER_2 } from "./spinosaurusExplorer2.ts";
 
 export const ARTWORKS = [
@@ -47,6 +48,7 @@ export const ARTWORKS = [
   { geometry: PARASAUROLOPHUS_EXPLORER, names: { en: "PARASAUROLOPHUS", ru: "ПАРАЗАУРОЛОФ" } },
   { geometry: SPINOSAURUS_HATCHLING, names: { en: "SPINOSAURUS", ru: "СПИНОЗАВР" } },
   { geometry: SPINOSAURUS_EXPLORER, names: { en: "SPINOSAURUS", ru: "СПИНОЗАВР" } },
+  { geometry: SPINOSAURUS_EXPLORER_3, names: { en: "SPINOSAURUS", ru: "СПИНОЗАВР" } },
   { geometry: SPINOSAURUS_EXPLORER_2, names: { en: "SPINOSAURUS", ru: "СПИНОЗАВР" } },
   // Saved journals still resolve this version; new selections use the Explorer scene above.
   { geometry: SPINOSAURUS_EXPLORER_1, names: { en: "SPINOSAURUS", ru: "СПИНОЗАВР" } }

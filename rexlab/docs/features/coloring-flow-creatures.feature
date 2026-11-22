@@ -76,5 +76,5 @@ Feature: Coloring creature age variants and saved drawings
     Examples:
       | level          | geometry                |
       | Hatchling      | spinosaurus-hatchling-1 |
-      | Explorer       | spinosaurus-explorer-3  |
-      | Paleontologist | spinosaurus-explorer-3  |
+      | Explorer       | spinosaurus-explorer-4  |
+      | Paleontologist | spinosaurus-explorer-4  |

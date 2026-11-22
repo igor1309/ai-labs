@@ -2,6 +2,7 @@
 
 ## 2026-11-22
 
+- LAB-1785: Spinosaurus's Explorer picture is redrawn from traced line art (35 regions): an illustrated Spinosaurus on a riverbank under a seven-band sail, with a deep plain head, a back stripe, a banded tail and strong hind legs, beside a river with a fish, a palm and stones. Its outline and small details are one protected ink drawing above the paint. Works saved on older pictures reopen on them.
 - LAB-1774: Brachiosaurus's Explorer picture is redrawn from traced line art (38 regions): a Brachiosaurus with a long upright neck and tall shoulders beside a lake, its neck banded, back patched and tail banded, among hills, a monkey-puzzle tree, bushes and stones. Works saved on the old picture reopen on it.
 - LAB-1773: Mosasaurus's Explorer picture is redrawn from traced line art (36 regions): a Mosasaurus in its own proportions with long toothy jaws, four broad paddles, banded back and tail and a crescent tail fin, swimming over a seabed with rocks, an ammonite, kelp and two fish. Works saved on the old picture reopen on it; Hatchling is unchanged.
 - LAB-1777: T-Rex's Explorer picture is redrawn from traced line art (40 regions): an illustrated T-Rex walking past a volcano, with curved stripes on its back and tail, in a scene of hills, a lava stream, a pond, stones, a cycad and a leafy bush. Its outline and small details are one protected ink drawing above the paint. Works saved on older pictures reopen on them.

@@ -62,18 +62,18 @@ Feature: Coloring workshop Pteranodon, Parasaurolophus and Spinosaurus scenes
     And simple ground with one rock leaves the Spinosaurus clear and prominent
     And the entire scene fits supported iPad and iPhone viewports without clipping
 
-  Scenario: Spinosaurus wading a river for older levels
+  Scenario: Spinosaurus on a riverbank for older levels
     Given I start a new Spinosaurus work at Explorer or Paleontologist
-    Then the workshop renders the spinosaurus-explorer-3 vector scene of 39 regions
-    And a Spinosaurus in its own shape wades a river, legs in the water, snapping at a leaping fish: a long low body, a tall arched sail, a finned paddle tail and a long crested crocodile skull with a small eye
-    And its sail rim and two sail bands, three flank stripes, belly, three tail stripes, tail fin, thigh, clawed arms and lower jaw are independent regions
-    And sky, sun, two clouds, hills, a tree fern, river, two lily pads, ground, rock, fern and two reeds surround it
-    And teeth, claws, scales, sail spines, ripples and leaf veins remain protected linework, never tiny targets
+    Then the workshop renders the spinosaurus-explorer-4 traced line-art scene of 35 regions
+    And a Spinosaurus in its own proportions walks a riverbank: a long crocodile snout, a deep head, a tall rounded sail, a long banded tail and strong hind legs
+    And its head, body, belly, both hind legs, a back stripe, four tail bands and seven sail bands are regions of their own
+    And sky, sun, two clouds, hills, a riverbank, a river with a fish, a palm with two leaf clusters and three stones offer broad scenery regions
+    And its outline, eye, nostril, claws and its small arms are one protected ink drawing above every fill
     And the entire scene fits supported iPad and iPhone viewports without clipping
 
   Scenario: Earlier Spinosaurus pictures keep saved works
-    Given a saved Spinosaurus work made on spinosaurus-explorer-2
-    Then the workshop renders the spinosaurus-explorer-2 vector scene it was made on
+    Given a saved Spinosaurus work made on spinosaurus-explorer-2 or spinosaurus-explorer-3
+    Then the workshop renders the vector scene it was made on
 
   Scenario: The first Spinosaurus riverbank keeps saved works
     Given a saved Spinosaurus work made on spinosaurus-explorer-1
