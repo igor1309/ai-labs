@@ -74,14 +74,14 @@ Feature: Coloring workshop T-Rex, Mosasaurus and Brachiosaurus scenes
     And the entire scene fits supported iPad and iPhone viewports without clipping
     And the canvas has the localized uppercase accessible name BRACHIOSAURUS or БРАХИОЗАВР
 
-  Scenario: Rich Brachiosaurus forest scene
+  Scenario: Brachiosaurus beside a lake for older levels
     Given I start a new Brachiosaurus work at Explorer or Paleontologist
-    Then the workshop renders the original brachiosaurus-explorer-1 vector scene
-    And the same recognizable dinosaur stands among two tall trees and ferns
-    And its belly, back and tail markings add independent coloring regions beyond the Hatchling version
-    And sun, cloud, hills, tree crowns and trunks, a rock and fern leaves offer additional broad independent coloring regions
-    And skin spots, the head crest, bark, fern veins, sun rays, toes and the smile remain protected rather than tiny fill targets
-    And the entire scene fits supported iPad and iPhone viewports without clipping
+    Then the workshop renders the brachiosaurus-explorer-2 traced line-art scene of 38 regions
+    And a Brachiosaurus in its own proportions stands with a long upright neck, tall shoulders, front legs longer than its hind legs and a tail held out
+    And its head, four neck bands, two back patches, flank, belly, four legs, three tail bands and tail tip are regions of their own
+    And a sky with sun and three clouds, hills, a lake, a meadow, a monkey-puzzle trunk, two bushes, the ground and three stones offer broad scenery regions
+    And its outline, small eye, mouth, toes, the tree crown and the cycad by the lake are one protected ink drawing above every fill
+    And the entire scene fits supported iPad landscape viewports without clipping
 
   Scenario Outline: Independent Brachiosaurus fills preserve the drawing
     Given I open a Brachiosaurus work using <artwork>
@@ -94,3 +94,4 @@ Feature: Coloring workshop T-Rex, Mosasaurus and Brachiosaurus scenes
       | artwork                   |
       | brachiosaurus-hatchling-1 |
       | brachiosaurus-explorer-1  |
+      | brachiosaurus-explorer-2  |

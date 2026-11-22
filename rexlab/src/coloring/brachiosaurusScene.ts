@@ -101,4 +101,4 @@ function scene(rich: boolean): Geometry {
 }
 
 export const BRACHIOSAURUS_HATCHLING = scene(false);
-export const BRACHIOSAURUS_EXPLORER = scene(true);
+export const BRACHIOSAURUS_EXPLORER_1 = scene(true);
