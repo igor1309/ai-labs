@@ -37,7 +37,7 @@ run("catalogue fit", cases, async (page, window) => {
       nameSize: parseFloat(getComputedStyle(name).fontSize), chips: [...card.querySelectorAll(".catalogue-chip, .diet-tag")].map(rect)
     };
   }));
-  assert.equal(cards.length, 52, "every dinosaur's card");
+  assert.equal(cards.length, 62, "every dinosaur's card");
   const firstRow = cards.filter(({ box }) => Math.abs(box.top - cards[0].box.top) < 1);
   if (window.size === "wide") assert.equal(firstRow.length, 4, "four cards to a row");
   for (const card of firstRow) inside({ ...card.box, top: listBox.top, bottom: listBox.top }, { ...listBox, left: Math.max(listBox.left, safe.left), right: Math.min(listBox.right, safe.right) }, `${card.label} across the list`);

@@ -140,11 +140,11 @@ describe("a dinosaur's page in a tall-narrow window", () => {
     }
   });
 
-  it.each(["en", "ru"] as const)("keeps the same lines on all 52 pages in %s at 375 by 667", async (language) => {
+  it.each(["en", "ru"] as const)("keeps the same lines on all 62 pages in %s at 375 by 667", async (language) => {
     // fireEvent drives the arrows through every creature without
     // user-event's pointer machinery.
     await openPage([375, 667], { language, id: SHIPPED_CATALOGUE[0]!.id });
-    expect(SHIPPED_CATALOGUE).toHaveLength(52);
+    expect(SHIPPED_CATALOGUE).toHaveLength(62);
     for (const creature of SHIPPED_CATALOGUE) {
       expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(creature.name[language].toLocaleUpperCase(language));
       expect(pageLines()).toEqual({ description: 6, note: 6 });

@@ -2,6 +2,7 @@
 
 ## 2026-11-22
 
+- LAB-1769: Batch 2's ten creatures join the games: the hidden mark is off, so all ten are in the catalogue, COMPARE, SORT, FIND THE PAIR and DIG (spots placed by eye, wing or flipper their telling kinds, cells from their body pictures), and the four dinosaurs visit CARE; SKELETONS has no art for them and skips them. DIG breaks SINOSAUROPTERYX before PTERYX on a phone. CARE's visitor name on a narrow phone is sized by the longest name, so PACHYCEPHALOSAURUS and HETERODONTOSAURUS are no longer cut at 320 wide (the intermittent careWalk and careVisitLayout failures).
 - LAB-1768: Batch 2 has body artwork for all ten creatures in the catalogue picture-book style; the batch remains hidden until its games stage.
 
 - LAB-1766: On CARE's FRIENDS, a long name such as PACHYCEPHALOSAURUS shrinks to fit its card on a wide desktop: the name no longer grows its grid cell past the card, so its fitting sees the overflow. The care walk failed whenever that visitor came.

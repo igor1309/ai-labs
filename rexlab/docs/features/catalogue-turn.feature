@@ -28,7 +28,7 @@ Feature: The dinosaur catalogue moves to its other layout as the window turns
     Then "HOME", the chips and the list each glide from their old place and size to their new one, together
     And the cards slide to their new places in the list, three to a row, over 240 ms easing out
     And no word or picture is squashed or stretched, no card blanks, shimmers or rises in
-    And "MEAT" is still chosen, with the 26 meat-eaters' cards
+    And "MEAT" is still chosen, with the 33 meat-eaters' cards
 
   Scenario: Reduced motion only fades
     Given the device asks for reduced motion, and a window of 1180 by 820 CSS pixels on the list of every dinosaur

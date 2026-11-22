@@ -521,11 +521,11 @@ describe("catalogue turn styles", () => {
 });
 
 describe("catalogue's shared turn", () => {
-  it("keeps HOME still while chips, list and all 26 MEAT cards glide", async () => {
+  it("keeps HOME still while chips, list and all 33 MEAT cards glide", async () => {
     const app = openCatalogue();
     await app.user.click(gameDoor("ANCIENT REPTILES"));
     await app.user.click(screen.getByRole("button", { name: "MEAT" }));
-    expect(app.grid().querySelectorAll("[data-turn-part^='catalogue-card-']")).toHaveLength(26);
+    expect(app.grid().querySelectorAll("[data-turn-part^='catalogue-card-']")).toHaveLength(33);
     const chips = document.querySelector<HTMLElement>(".food-chips");
     expect(chips?.dataset.arrangement).toBeUndefined();
     const meat = SHIPPED_CATALOGUE.filter(({ diet }) => diet === "meat").map(({ id }) => id);
@@ -575,8 +575,8 @@ describe("catalogue's shared turn", () => {
     expect(app.animations.filter(own).every(({ options }) => options.duration === GLIDE && options.easing === EASE_OUT)).toBe(true);
     expect(app.animations.filter(own).flatMap(({ keyframes }) => keyframes.flatMap((frame) => Object.keys(frame))).filter((property) => property !== "translate" && property !== "clipPath")).toEqual([]);
     expect(app.animations.filter(({ name }) => name.startsWith("frame of ")).length).toBeGreaterThan(0);
-    expect(app.animations.filter(({ name }) => name.startsWith("catalogue-card-")).map(({ name }) => name)).toHaveLength(26);
-    expect(within(app.grid()).getAllByRole("button")).toHaveLength(26);
+    expect(app.animations.filter(({ name }) => name.startsWith("catalogue-card-")).map(({ name }) => name)).toHaveLength(33);
+    expect(within(app.grid()).getAllByRole("button")).toHaveLength(33);
     expect(screen.getByRole("button", { name: "MEAT" }).getAttribute("aria-pressed")).toBe("true");
     app.settle();
     expect(document.documentElement.hasAttribute("data-turning")).toBe(false);
@@ -665,7 +665,7 @@ describe("catalogue's shared turn", () => {
     ["60 pixels of Gallimimus hidden", 3, 60, "gallimimus", "gallimimus"],
     ["200 pixels of row before Gallimimus hidden", 2, 200, "gallimimus", "gallimimus"],
     ["row of Parasaurolophus at its top", 2, 0, "parasaurolophus", "spinosaurus"],
-    ["end", 99999, 0, "ophthalmosaurus", "ophthalmosaurus"]
+    ["end", 99999, 0, "pterodaustro", "pterodaustro"]
   ] as const)("keeps the %s row there and back", async (_, scroll, hidden, uprightId, backId) => {
     const app = openCatalogue();
     await app.user.click(gameDoor("ANCIENT REPTILES"));
@@ -721,7 +721,7 @@ describe("catalogue's shared turn", () => {
     const app = openCatalogue();
     await app.user.click(gameDoor("ANCIENT REPTILES"));
     await app.user.click(card("baryonyx"));
-    expect([screen.getByRole("heading", { level: 1 }).textContent, screen.getByLabelText("NUMBER").textContent]).toEqual(["BARYONYX", "29 / 52"]);
+    expect([screen.getByRole("heading", { level: 1 }).textContent, screen.getByLabelText("NUMBER").textContent]).toEqual(["BARYONYX", "29 / 62"]);
     await app.user.click(gameDoor("ANCIENT REPTILES"));
     const list = app.grid();
     listMetrics(list);

@@ -66,10 +66,10 @@ Feature: Sort dinosaurs: age levels
 
   Scenario: A third basket holds only what the sources say
     Given the dinosaur list the app ships with
-    Then BOTH holds exactly Gallimimus, Oviraptor and Troodon, and no two-basket diet board deals them
-    And TWO OR FOUR holds exactly Iguanodon, Plateosaurus, Parasaurolophus, Edmontosaurus, Maiasaura and Corythosaurus
+    Then BOTH holds exactly Gallimimus, Oviraptor, Troodon and Tupandactylus, and no two-basket diet board deals them
+    And TWO OR FOUR holds exactly Iguanodon, Plateosaurus, Parasaurolophus, Edmontosaurus, Maiasaura, Corythosaurus and Ouranosaurus
     And NOT KNOWN YET holds exactly Tyrannosaurus, Spinosaurus, Compsognathus, Gallimimus, Dilophosaurus, Giganotosaurus, Coelophysis, Baryonyx and Ceratosaurus
-    And a Paleontologist feathers board's NO FEATHERS holds only Allosaurus and Carnotaurus, and it deals no plant-eater drawn without feathers
+    And a Paleontologist feathers board's NO FEATHERS holds only Allosaurus, Carnotaurus and Majungasaurus, and it deals no plant-eater drawn without feathers
     And the legs of Spinosaurus and Psittacosaurus and the feathers of Psittacosaurus and Heterodontosaurus are on no board
 
   Scenario Outline: The result scores the level's cards

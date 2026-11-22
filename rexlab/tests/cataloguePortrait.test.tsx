@@ -119,7 +119,7 @@ const columns = (language: Language = "en") => Number(grid(language).style.getPr
 
 describe("the list of every dinosaur upright", () => {
   it.each(UPRIGHT)(
-    "in a %i by %i window shows no picture asking to turn, HOME beside the food symbols, and the 52 cards %i to a row",
+    "in a %i by %i window shows no picture asking to turn, HOME beside the food symbols, and the 62 cards %i to a row",
     async (width, height, count) => {
       await openList(width, height);
 
@@ -233,18 +233,18 @@ describe("the cards rising in upright", () => {
 });
 
 describe("the list upright, used", () => {
-  it("shows only the 26 meat-eaters, three to a row, for MEAT, and all 52 again for ALL", async () => {
+  it("shows only the 33 meat-eaters, three to a row, for MEAT, and all 62 again for ALL", async () => {
     const { user } = await openList(820, 1180);
 
     await user.click(screen.getByRole("button", { name: "MEAT" }));
 
-    expect(cards()).toHaveLength(26);
+    expect(cards()).toHaveLength(33);
     expect(cards().map((card) => card.getAttribute("aria-label"))).toEqual(SHIPPED_CATALOGUE.filter(({ diet }) => diet === "meat").map(({ name }) => name.en));
     expect(columns()).toBe(3);
 
     await user.click(screen.getByRole("button", { name: "ALL" }));
 
-    expect(cards()).toHaveLength(52);
+    expect(cards()).toHaveLength(62);
   });
 
   it("opens a card's page, which the picture asking to turn fades in over", async () => {

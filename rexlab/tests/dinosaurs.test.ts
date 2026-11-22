@@ -400,7 +400,11 @@ describe("the shipped dinosaur list", () => {
     ["plateosaurus", 1.4],
     ["maiasaura", 2.1],
     ["corythosaurus", 2.4],
-    ["chasmosaurus", 2.2]
+    ["chasmosaurus", 2.2],
+    ["sinosauropteryx", 0.5],
+    ["ouranosaurus", 1.5],
+    ["euoplocephalus", 0.96],
+    ["majungasaurus", 1.9]
   ] as const;
 
   it.each(HIP_HEIGHTS)("keeps the %s's hip height at %s m", (id, height) => {
@@ -450,9 +454,9 @@ describe("the sorting traits in the shipped sources", () => {
   const reptileTraits = SHIPPED_SORTABLES.filter(({ id }) => reptiles.has(id)).map(({ id, legs, horns, feathers }) => [id, legs, horns, feathers]);
   it("names exactly the omnivores, dinosaurs that walked either way, and unsettled feathers", () => {
     expect(ids(({ diet }) => diet === "both")).toEqual(["gallimimus", "oviraptor", "troodon"]);
-    expect(ids(({ legs }) => legs === "either")).toEqual(["corythosaurus", "edmontosaurus", "iguanodon", "maiasaura", "parasaurolophus", "plateosaurus"]);
+    expect(ids(({ legs }) => legs === "either")).toEqual(["corythosaurus", "edmontosaurus", "iguanodon", "maiasaura", "ouranosaurus", "parasaurolophus", "plateosaurus"]);
     expect(ids(({ feathers }) => feathers === "unknown")).toEqual(["baryonyx", "ceratosaurus", "coelophysis", "compsognathus", "dilophosaurus", "gallimimus", "giganotosaurus", "spinosaurus", "tyrannosaurus"]);
-    expect(ids(({ feathers, diet }) => feathers === false && diet !== "plants")).toEqual(["allosaurus", "carnotaurus"]);
+    expect(ids(({ feathers, diet }) => feathers === false && diet !== "plants")).toEqual(["allosaurus", "carnotaurus", "majungasaurus"]);
   });
   it("keeps ambiguous posture and bristles off the corresponding boards", () => {
     expect(ids(({ legs }) => legs === null)).toEqual(["psittacosaurus", "spinosaurus"]);
@@ -466,23 +470,28 @@ describe("the sorting traits in the shipped sources", () => {
     const fliers = ["quetzalcoatlus", "pteranodon", "rhamphorhynchus", "dimorphodon", "pterodactylus"];
     const swimmers = ["mosasaurus", "elasmosaurus", "kronosaurus", "plesiosaurus", "ophthalmosaurus"];
 
-    expect(reptileTraits).toEqual([...fliers.map((id) => [id, null, false, "unknown"]), ...swimmers.map((id) => [id, null, false, null])]);
+    const newSwimmers = ["shonisaurus", "liopleurodon", "tylosaurus", "nothosaurus"];
+    const newFliers = ["tupandactylus", "pterodaustro"];
+
+    expect(reptileTraits).toEqual([...fliers, ...swimmers, ...newSwimmers, ...newFliers].map((id) => [id, null, false, swimmers.includes(id) || newSwimmers.includes(id) ? null : "unknown"]));
   });
 });
 
-// A creature of a batch still being staged is in the data with its names
-// and texts, hidden from every screen and game until the batch's last stage.
-describe("the hidden creatures of a staged batch", () => {
-  const hidden = allRecords.filter((record) => "hidden" in record && record.hidden === true);
+// Batch 2's ten creatures, staged hidden (LAB-1766) and shown in every
+// screen and game once its last stage took the mark off (LAB-1769).
+describe("batch 2's creatures", () => {
+  const BATCH = [
+    "sinosauropteryx", "ouranosaurus", "euoplocephalus", "majungasaurus",
+    "shonisaurus", "liopleurodon", "tylosaurus", "nothosaurus",
+    "tupandactylus", "pterodaustro"
+  ];
+  const hidden = allRecords.filter(({ id }) => BATCH.includes(id));
 
-  it("hides batch 2's ten creatures from every screen and game (LAB-1766)", () => {
-    expect(hidden.map(({ id }) => id)).toEqual([
-      "sinosauropteryx", "ouranosaurus", "euoplocephalus", "majungasaurus",
-      "shonisaurus", "liopleurodon", "tylosaurus", "nothosaurus",
-      "tupandactylus", "pterodaustro"
-    ]);
-    for (const { id } of hidden) expect(records.map((record) => record.id)).not.toContain(id);
-    expect(records).toHaveLength(allRecords.length - hidden.length);
+  it("hides no creature, so the batch shows in every screen and game (LAB-1769)", () => {
+    expect(allRecords.filter((record) => "hidden" in record)).toEqual([]);
+    expect(hidden.map(({ id }) => id)).toEqual(BATCH);
+    for (const id of BATCH) expect(records.map((record) => record.id)).toContain(id);
+    expect(records).toHaveLength(allRecords.length);
   });
 
   it("names each in English and Russian, with a known group and look-alike, and reads as the shown ones do", () => {

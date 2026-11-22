@@ -144,8 +144,8 @@ function lineCount(text: string, width: number, fontSize: number, table: Record<
 }
 
 describe("portrait dinosaur words fit the kept bands", () => {
-  it.each(WIDTHS)("fits all 52 English and Russian descriptions at %i pixels", (width) => {
-    expect(catalogue).toHaveLength(52);
+  it.each(WIDTHS)("fits all 62 English and Russian descriptions at %i pixels", (width) => {
+    expect(catalogue).toHaveLength(62);
     for (const dinosaur of catalogue) {
       for (const language of ["en", "ru"] as const) {
         expect(lineCount(dinosaur.description[language], width, 28, DESCRIPTION_EMS), `${dinosaur.id} ${language}`).toBeLessThanOrEqual(keptLines(width).description);
@@ -207,7 +207,7 @@ const LABEL_EMS: Record<string, number> = {
 const NARROW_WIDTHS = Array.from({ length: 280 }, (_, step) => dinosaurWordsWidth(320 + step, 0, 0, 0, NARROW_PAGE.sidePadding));
 
 describe("narrow dinosaur words fit their kept bands", () => {
-  it("fits all 52 English and Russian descriptions in 24-pixel type, and both notes, at every narrow width", () => {
+  it("fits all 62 English and Russian descriptions in 24-pixel type, and both notes, at every narrow width", () => {
     expect([NARROW_WIDTHS[0], NARROW_WIDTHS.at(-1)]).toEqual([280, 559]);
     for (const width of NARROW_WIDTHS) {
       const kept = keptLines(width, true);
@@ -256,7 +256,7 @@ const SHORT_WIDTHS = [...new Set([
 ])].sort((a, b) => a - b);
 
 describe("dinosaur words beside the stage on a phone on its side", () => {
-  it("fits every word of all 52 English and Russian descriptions in 17-pixel type at every width", () => {
+  it("fits every word of all 62 English and Russian descriptions in 17-pixel type at every width", () => {
     for (const width of SHORT_WIDTHS) {
       for (const dinosaur of catalogue) {
         for (const language of ["en", "ru"] as const) lineCount(dinosaur.description[language], width, 17, DESCRIPTION_EMS);

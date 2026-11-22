@@ -102,9 +102,9 @@ describe("the catalogue's food chips", () => {
     expect(chipRow().previousElementSibling).toBe(screen.getByRole("button", { name: "HOME" }));
     expect(chips().map((each) => [each.getAttribute("aria-label"), symbolsOf(each), words(each)])).toEqual([
       ["ALL", ["funnel"], ""],
-      ["MEAT", ["beef"], "MEAT26"],
-      ["PLANTS", ["leaf"], "PLANTS23"],
-      ["BOTH", ["beef", "leaf"], "BOTH3"]
+      ["MEAT", ["beef"], "MEAT33"],
+      ["PLANTS", ["leaf"], "PLANTS25"],
+      ["BOTH", ["beef", "leaf"], "BOTH4"]
     ]);
     expect(chosen()).toEqual(["ALL"]);
     for (const each of chips()) {
@@ -134,13 +134,13 @@ describe("the catalogue's food chips", () => {
 
     expect(chosen()).toEqual(["MEAT"]);
     expect(cardNames()).toEqual(MEAT.map(({ name }) => name.en));
-    expect(within(grid()).getAllByRole("img", { name: "MEAT" })).toHaveLength(26);
+    expect(within(grid()).getAllByRole("img", { name: "MEAT" })).toHaveLength(33);
   });
 
   it("show every dinosaur again for ALL", async () => {
     const user = openApp();
     await choose(user, "PLANTS");
-    expect(cardNames()).toHaveLength(23);
+    expect(cardNames()).toHaveLength(25);
 
     await user.click(chip("ALL"));
 
@@ -155,7 +155,7 @@ describe("the catalogue's food chips", () => {
     await user.click(chip("BOTH"));
 
     expect(grid()).toBe(shown);
-    expect(cardNames()).toEqual(["Gallimimus", "Oviraptor", "Troodon"]);
+    expect(cardNames()).toEqual(["Gallimimus", "Oviraptor", "Troodon", "Tupandactylus"]);
   });
 
   it("show no count of the found and no stamps over the artwork", async () => {
@@ -169,14 +169,14 @@ describe("the catalogue's food chips", () => {
     const user = openApp();
     await choose(user, "MEAT");
     await user.click(within(grid()).getByRole("button", { name: "Tyrannosaurus" }));
-    expect([pageName(), position()]).toEqual(["TYRANNOSAURUS", "1 / 26"]);
+    expect([pageName(), position()]).toEqual(["TYRANNOSAURUS", "1 / 33"]);
 
     await user.click(screen.getByRole("button", { name: "PREVIOUS" }));
-    expect([pageName(), position()]).toEqual([MEAT.at(-1)?.name.en.toUpperCase(), "26 / 26"]);
+    expect([pageName(), position()]).toEqual([MEAT.at(-1)?.name.en.toUpperCase(), "33 / 33"]);
 
     await user.click(screen.getByRole("button", { name: "NEXT" }));
     await user.click(screen.getByRole("button", { name: "NEXT" }));
-    expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "2 / 26"]);
+    expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "2 / 33"]);
   });
 
   it("stay chosen back from a page, its card in view", async () => {
@@ -188,7 +188,7 @@ describe("the catalogue's food chips", () => {
     await user.click(gameDoor("ANCIENT REPTILES"));
 
     expect(chosen()).toEqual(["PLANTS"]);
-    expect(cardNames()).toHaveLength(23);
+    expect(cardNames()).toHaveLength(25);
     expect(vi.mocked(HTMLElement.prototype.scrollIntoView).mock.contexts).toEqual([within(grid()).getByRole("button", { name: last })]);
   });
 
@@ -200,7 +200,7 @@ describe("the catalogue's food chips", () => {
     await openCatalogue(user);
 
     expect(chosen()).toEqual(["ALL"]);
-    expect(cardNames()).toHaveLength(52);
+    expect(cardNames()).toHaveLength(62);
   });
 
   it("rise the cards of the food chosen in as a new list, the chosen look moving by the tokens", async () => {

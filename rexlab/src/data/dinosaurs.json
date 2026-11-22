@@ -1296,7 +1296,6 @@
       "ru": "Синозавроптерикс"
     },
     "group": "dinosaur",
-    "hidden": true,
     "attributes": {
       "heightMeters": 0.5,
       "lengthMeters": 1.1,
@@ -1322,7 +1321,6 @@
       "ru": "Уранозавр"
     },
     "group": "dinosaur",
-    "hidden": true,
     "attributes": {
       "heightMeters": 1.5,
       "lengthMeters": 7,
@@ -1348,7 +1346,6 @@
       "ru": "Эуоплоцефал"
     },
     "group": "dinosaur",
-    "hidden": true,
     "attributes": {
       "heightMeters": 0.96,
       "lengthMeters": 7,
@@ -1374,7 +1371,6 @@
       "ru": "Майюнгазавр"
     },
     "group": "dinosaur",
-    "hidden": true,
     "attributes": {
       "heightMeters": 1.9,
       "lengthMeters": 6,
@@ -1400,7 +1396,6 @@
       "ru": "Шонизавр"
     },
     "group": "sea-reptile",
-    "hidden": true,
     "attributes": {
       "massKg": 50000,
       "lengthMeters": 15
@@ -1425,7 +1420,6 @@
       "ru": "Лиоплевродон"
     },
     "group": "sea-reptile",
-    "hidden": true,
     "attributes": {
       "massKg": 2700,
       "lengthMeters": 6.4
@@ -1450,7 +1444,6 @@
       "ru": "Тилозавр"
     },
     "group": "sea-reptile",
-    "hidden": true,
     "attributes": {
       "massKg": 10000,
       "lengthMeters": 12
@@ -1475,7 +1468,6 @@
       "ru": "Нотозавр"
     },
     "group": "sea-reptile",
-    "hidden": true,
     "attributes": {
       "massKg": 260,
       "lengthMeters": 4
@@ -1500,7 +1492,6 @@
       "ru": "Тупандактиль"
     },
     "group": "flying-reptile",
-    "hidden": true,
     "attributes": {
       "massKg": 11,
       "wingspanMeters": 4
@@ -1525,7 +1516,6 @@
       "ru": "Птеродаустро"
     },
     "group": "flying-reptile",
-    "hidden": true,
     "attributes": {
       "massKg": 2.7,
       "wingspanMeters": 2.5

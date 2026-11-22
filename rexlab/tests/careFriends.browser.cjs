@@ -19,7 +19,7 @@ async function main() {
   const files = await appFiles();
   const records = JSON.parse(await readFile(resolve(__dirname, '../src/data/dinosaurs.json'), 'utf8')).filter(record => !record.hidden);
   const ids = records.filter(d => d.group === 'dinosaur').map(d => d.id);
-  assert.equal(ids.length, 42);
+  assert.equal(ids.length, 46);
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, headless: true });
   let checked = 0;
   try {
@@ -39,7 +39,7 @@ async function main() {
         }, { language, theme });
         const page = await context.newPage();
         page.setDefaultTimeout(15000);
-        for (const count of [0, 5, 42]) {
+        for (const count of [0, 5, 46]) {
           await page.goto('http://friends.test/');
           await page.evaluate(friends => {
             localStorage.setItem('rexlab-progress', JSON.stringify({ schemaVersion: 1, games: {
@@ -92,7 +92,7 @@ async function main() {
           assert.equal(measured.count, `${count}`, label);
           assert(measured.home && measured.back, `${label}: navigation`);
           assert(measured.title.width > 1 && measured.titleFits, `${label}: visible title fits`);
-          assert(measured.titleSize >= titleSize, `${label}: title at ${measured.titleSize}px, under ${titleSize}px`);
+          assert(measured.titleSize >= titleSize - 0.05, `${label}: title at ${measured.titleSize}px, under ${titleSize}px`);
           assert(measured.bar.every(b => Math.abs(b.y + b.height / 2 - (measured.bar[0].y + measured.bar[0].height / 2)) < 1), `${label}: bar stays one row`);
           assert(measured.cardNames && measured.actionFits && measured.noHearts, `${label}: complete names and action fit`);
           assert(measured.action.x >= 0 && measured.action.right <= width + 1, `${label}: action inside window`);

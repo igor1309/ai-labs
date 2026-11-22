@@ -115,7 +115,7 @@ describe("the catalogue's tile on the home page", () => {
     expect(symbolsOf(tile)).toEqual(["book-open"]);
     expect(tile.querySelector("img")?.getAttribute("src")).toBe(fakeBodyPicture("stegosaurus"));
     expect(tile.querySelector(".catalogue-tile-count")).toBeNull();
-    expect(SHIPPED_CATALOGUE).toHaveLength(52);
+    expect(SHIPPED_CATALOGUE).toHaveLength(62);
     expect(tile.parentElement?.firstElementChild).toBe(tile);
     expect(tile.nextElementSibling).toBe(homeTile("FIND THE PAIR"));
   });
@@ -214,7 +214,7 @@ describe("a dinosaur's page", () => {
     ]);
     const back = gameDoor("ANCIENT REPTILES");
     expect([words(back), symbolOf(back)]).toEqual(["ANCIENT REPTILES", "book-open"]);
-    expect(position()).toBe("1 / 52");
+    expect(position()).toBe("1 / 62");
   });
 
   // About ten dinosaurs to a test, each walked by the arrow from its first
@@ -225,7 +225,8 @@ describe("a dinosaur's page", () => {
     [12, 22],
     [23, 32],
     [33, 42],
-    [43, 52]
+    [43, 52],
+    [53, 62]
   ])("shows each dinosaur's own description and food, and its place in the list, from the %ith to the %ith", async (first, last) => {
     const user = openApp();
     await openPage(user, SHIPPED_CATALOGUE[first - 1]?.id ?? "");
@@ -234,10 +235,10 @@ describe("a dinosaur's page", () => {
       expect(pageName()).toBe(dinosaur.name.en.toUpperCase());
       expect(document.querySelector(".dinosaur-description")?.textContent).toBe(dinosaur.description.en);
       expect(words(document.querySelector<HTMLElement>(".dinosaur-about .diet-tag") ?? document.body)).toBe(TEXTS.en.diets[dinosaur.diet]);
-      expect(position()).toBe(`${SHIPPED_CATALOGUE.indexOf(dinosaur) + 1} / 52`);
+      expect(position()).toBe(`${SHIPPED_CATALOGUE.indexOf(dinosaur) + 1} / 62`);
       await user.click(screen.getByRole("button", { name: "NEXT" }));
     }
-    expect(position()).toBe(`${(last % 52) + 1} / 52`);
+    expect(position()).toBe(`${(last % 62) + 1} / 62`);
   });
 
   it("has arrows to the previous and next dinosaur, each a tap target of at least 44 by 44", async () => {
@@ -255,15 +256,15 @@ describe("a dinosaur's page", () => {
   it("goes round the whole list: next from the last is the first, and previous from the first the last", async () => {
     const user = openApp();
     await openPage(user, LAST.id);
-    expect(position()).toBe("52 / 52");
+    expect(position()).toBe("62 / 62");
 
     await user.click(screen.getByRole("button", { name: "NEXT" }));
 
-    expect([pageName(), position()]).toEqual(["TYRANNOSAURUS", "1 / 52"]);
+    expect([pageName(), position()]).toEqual(["TYRANNOSAURUS", "1 / 62"]);
 
     await user.click(screen.getByRole("button", { name: "PREVIOUS" }));
 
-    expect([pageName(), position()]).toEqual([LAST.name.en.toUpperCase(), "52 / 52"]);
+    expect([pageName(), position()]).toEqual([LAST.name.en.toUpperCase(), "62 / 62"]);
   });
 
   // The picture on Velociraptor's page: its look and its source.
@@ -279,7 +280,7 @@ describe("a dinosaur's page", () => {
 
     await user.click(cardOf("velociraptor"));
 
-    expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "3 / 52"]);
+    expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "3 / 62"]);
     expect(pagePicture()).toEqual(["loading", null]);
     act(() => pictures.finish(fakeBodyPicture("velociraptor")));
     expect(pagePicture()).toEqual(["appearing", fakeBodyPicture("velociraptor")]);
@@ -320,7 +321,7 @@ describe("a dinosaur's page", () => {
       second.click();
     });
 
-    expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "3 / 52"]);
+    expect([pageName(), position()]).toEqual(["VELOCIRAPTOR", "3 / 62"]);
   });
 
   it("goes back to the list with its card scrolled into view, the cards then standing still", async () => {
@@ -332,7 +333,7 @@ describe("a dinosaur's page", () => {
 
     await user.click(gameDoor("ANCIENT REPTILES"));
 
-    expect(cards()).toHaveLength(52);
+    expect(cards()).toHaveLength(62);
     expect(grid().dataset.rise).toBeUndefined();
     const scrolled = vi.mocked(HTMLElement.prototype.scrollIntoView).mock.contexts;
     expect(scrolled).toEqual([cardOf(LAST.id)]);

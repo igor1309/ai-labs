@@ -572,7 +572,7 @@ export function DigBoardScreen({
 // The longest name a phone's card holds on one line at 12 pixels.
 export const ONE_LINE_LETTERS = 14;
 // The roots a long name breaks before, the dinosaur's "lizard" first.
-const ROOTS = ["SAURUS", "ЗАВР", "LOPHUS", "RHYNCHUS"];
+const ROOTS = ["SAURUS", "ЗАВР", "LOPHUS", "RHYNCHUS", "PTERYX"];
 
 // A long name broken in two before its root, the first line ending in a
 // hyphen; a name that fits, or has no root to break before, is one line.

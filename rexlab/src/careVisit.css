@@ -194,7 +194,7 @@ html[data-size] .visit .visitor-name {
 
 html[data-size="wide"] .visit .visitor-name { top: 8px; }
 html[data-size="tall"] .visit .visitor-name { font-size: 32px; }
-html[data-size="tall-narrow"] .visit .visitor-name { font-size: min(24px, (100vw - 40px) / 9); }
+html[data-size="tall-narrow"] .visit .visitor-name { font-size: min(24px, (100vw - 40px) / 13.5); }
 html[data-size="wide-short"] .visit .visitor-name { font-size: 20px; }
 
 /* The visitor stands on the sand's edge, its bubble rises from beside
