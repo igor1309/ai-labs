@@ -262,6 +262,36 @@ final class AgentLoopTests: TestContext {
         ])
     }
 
+    @Test(.timeLimit(.minutes(1)))
+    func test_process_shouldCancelInFlightRespond_onConsumerCancellation() async throws {
+
+        let (started, startedContinuation) = AsyncStream.makeStream(of: Void.self)
+        let (cancelled, cancelledContinuation) = AsyncStream.makeStream(of: Void.self)
+        let sut = SUT(
+            respond: { _ in
+                startedContinuation.yield()
+                do {
+                    try await Task.sleep(for: .seconds(3_600))
+                } catch {
+                    cancelledContinuation.yield()
+                    throw error
+                }
+                return .text("")
+            },
+            execute: { _ in "" }
+        )
+        let stream = await sut.process(makeSomeString())
+        let consumer = Task { for try await _ in stream {} }
+
+        var startedIterator = started.makeAsyncIterator()
+        await startedIterator.next()
+        consumer.cancel()
+
+        var cancelledIterator = cancelled.makeAsyncIterator()
+        await cancelledIterator.next()
+        _ = try? await consumer.value
+    }
+
     // MARK: - Helpers
 
     private typealias SUT = ToolUseLoop

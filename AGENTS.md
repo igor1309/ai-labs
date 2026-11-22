@@ -247,6 +247,37 @@ modules are machines; an app composes them.
   Main-actor tests run one at a time, and each one's time limit starts with
   the suite, so needless ones push the rest past their limits.
 
+## Swift concurrency rules
+
+Background and sources: `research/swift-structured-concurrency.md`.
+
+- Do start structured: `async let` and task groups before `Task {}`.
+  `Task {}` belongs at a sync→async boundary; keep its handle when its
+  lifetime matters and cancel it when the owner goes away.
+- Do cancel the producer when an `AsyncStream`/`AsyncThrowingStream`
+  consumer stops: set `continuation.onTermination` to cancel the task
+  that feeds it.
+- Do check cancellation in loops and before expensive work; bridge
+  callback APIs with `withTaskCancellationHandler`.
+- Do re-check actor state after every `await` inside an actor (reentrancy).
+- Do keep UI types `@MainActor`; move heavy work off it with a
+  `@concurrent` function (Swift 6.2) rather than `Task.detached`.
+- Do protect shared mutable state with an actor, or `Mutex` in a `let`
+  property; never hold a lock across `await`.
+- Do run cleanup that must survive cancellation inside
+  `withTaskCancellationShield`, and use async `defer` (Swift 6.4), not a
+  fire-and-forget `Task {}` or `Task.detached`.
+- Do use `Mutex` (a `let` property) instead of `NSLock` +
+  `@unchecked Sendable`, test helpers included.
+- Don't use `Task.detached`, `@unchecked Sendable`, `nonisolated(unsafe)`
+  or `MainActor.assumeIsolated` without a comment saying why it is safe.
+- Don't block a task on a `DispatchSemaphore`, group wait or lock held by
+  another task.
+- Tests: Swift Testing async tests; `confirmation` for events, async
+  streams or fakes' reports to wait on, never `Task.sleep` or timeouts as
+  the synchronisation; `.timeLimit` only to catch hangs; cover the
+  cancellation path of code that owns tasks.
+
 ## Writing docs and comments
 
 - Public copy (profile, showcase READMEs, landing pages, posts) is about the
