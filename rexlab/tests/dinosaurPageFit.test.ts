@@ -113,14 +113,27 @@ const emWidth = (text: string, table: Record<string, number>) => [...text].reduc
   return sum + advance;
 }, 0);
 
+// Each text's words and their widths in ems, measured once per table:
+// the fit tests lay the same descriptions out at hundreds of widths.
+const measuredWords = new Map<Record<string, number>, Map<string, { word: string; ems: number }[]>>();
+function wordsOf(text: string, table: Record<string, number>) {
+  let texts = measuredWords.get(table);
+  if (!texts) measuredWords.set(table, texts = new Map());
+  let words = texts.get(text);
+  if (!words) texts.set(text, words = text.trim().split(/\s+/).map((word) => ({ word, ems: emWidth(word, table) })));
+  return words;
+}
+
 function lineCount(text: string, width: number, fontSize: number, table: Record<string, number>) {
   let lines = 1;
   let current = 0;
   const space = emWidth(" ", table) * fontSize;
-  for (const word of text.trim().split(/\s+/)) {
-    const wordWidth = emWidth(word, table) * fontSize;
+  for (const { word, ems } of wordsOf(text, table)) {
+    const wordWidth = ems * fontSize;
     // A word wider than its row cannot be hidden by counting it as one line.
-    expect(wordWidth, word).toBeLessThanOrEqual(width);
+    // Asserted only when it fails: the same check and message, without
+    // building an expectation for each of thousands of fitting words.
+    if (!(wordWidth <= width)) expect(wordWidth, word).toBeLessThanOrEqual(width);
     const next = current === 0 ? wordWidth : current + space + wordWidth;
     if (current > 0 && next > width) {
       lines++;
