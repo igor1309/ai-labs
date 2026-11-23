@@ -83,9 +83,9 @@ run a main-actor test's duration includes its wait for the main actor.
 
 ## Self-hosted runner
 
-- **Signing on the runner** uses the owner's Apple Development certificate, so macOS
+- **Signing on the runner** signs with an Apple Development certificate, so macOS
   keeps the microphone and audio-capture grants across builds. The runner's launch
-  agent (`~/Library/LaunchAgents/actions.runner.igor1309-ai-labs.MacBook-Pro.plist`)
+  agent (`~/Library/LaunchAgents/actions.runner.<repo>.<host>.plist`)
   must not set `SessionCreate`: with it, jobs run in a security session that cannot
   reach the login keychain and `codesign` fails with `errSecInternalComponent`.
   Reinstalling the runner with `svc.sh install` adds it back; remove it with
