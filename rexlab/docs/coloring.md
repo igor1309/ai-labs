@@ -40,7 +40,7 @@ Run `node tests/coloringPainter.browser.cjs` for real raster checks, including
 every T-Rex fill, protected ink and eye highlights, clipped brush paint and
 minimum visible areas and solid interior patches. It saves unpainted and
 painted screenshots of both scenes at four tablet landscape sizes in
-`TREX_SCREENSHOTS` (default `/tmp/lab-889/browser`). On hosts that cannot
+`TREX_SCREENSHOTS` (default `/tmp/rexlab-trex/browser`). On hosts that cannot
 launch Chromium child processes, set `CHROMIUM_SINGLE_PROCESS=1` to use its
 single-process renderer.
 
