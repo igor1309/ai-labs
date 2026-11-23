@@ -140,7 +140,7 @@ it("keeps result actions available after StrictMode effect reconnection", async 
 it("selects the Triceratops renderer and name across painting, result, edit and new work", async () => {
   const f = fixture(); await act(async () => {});
   await f.click("TRICERATOPS");
-  expect(f.active().getSnapshot().work).toMatchObject({ id: "new-1", geometry: "triceratops-production-1", actions: [] });
+  expect(f.active().getSnapshot().work).toMatchObject({ id: "new-1", geometry: "triceratops-production-2", actions: [] });
   expect(screen.getByLabelText("TRICERATOPS")).toBeTruthy();
   expect(f.tricPainter.render).toHaveBeenLastCalledWith(f.container.querySelector("canvas"), []);
   expect(f.painter.render).not.toHaveBeenCalled();
@@ -152,7 +152,7 @@ it("selects the Triceratops renderer and name across painting, result, edit and 
   expect(screen.getByLabelText("TRICERATOPS")).toBeTruthy();
   expect(f.active().getSnapshot().work.actions).toEqual([f.dot]);
   await f.click("NEW WORK");
-  expect(f.active().getSnapshot().work).toMatchObject({ id: "new-2", geometry: "triceratops-production-1", actions: [], completed: false });
+  expect(f.active().getSnapshot().work).toMatchObject({ id: "new-2", geometry: "triceratops-production-2", actions: [], completed: false });
   expect(f.props.countStart).toHaveBeenCalledTimes(2);
   await f.click("GALLERY");
   await act(async () => fireEvent.click(f.container.querySelector('[data-work-id="red"] button')!));

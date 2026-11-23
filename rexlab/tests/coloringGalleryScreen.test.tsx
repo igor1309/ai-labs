@@ -141,7 +141,7 @@ it.each(["en", "ru"] as Language[])("offers matching original creature previews 
   expect(stegosaurus.textContent).toContain(language === "en" ? "STEGOSAURUS" : "СТЕГОЗАВР");
   expect(f.artworks[0]!.preview.render).toHaveBeenLastCalledWith(stegosaurus.querySelector("canvas"));
   await act(async () => fireEvent.click(button));
-  expect(f.source.newWork).toHaveBeenCalledExactlyOnceWith("fresh", expect.any(Function), "triceratops-production-1");
+  expect(f.source.newWork).toHaveBeenCalledExactlyOnceWith("fresh", expect.any(Function), "triceratops-production-2");
   expect(f.countStart).toHaveBeenCalledTimes(1);
 });
 
@@ -179,7 +179,7 @@ it.each(["en", "ru"] as Language[])("matches Stegosaurus previews, localized lab
     await session.load();
     const artworks = ARTWORKS.map(({ geometry, names }) => ({ ...galleryArtworkFixtures()[0]!, version: geometry.artwork.version, names }));
     const view = render(<ColoringGalleryScreen artworks={artworks} offeredVersions={coloringVersionsFor(level)} session={session} language={language} home={vi.fn()} />);
-    const version = level === "hatchling" ? "stegosaurus-production-1" : "stegosaurus-explorer-1";
+    const version = level === "hatchling" ? "stegosaurus-production-1" : "stegosaurus-explorer-2";
     const selected = artworks.find(artwork => artwork.version === version)!;
     const button = screen.getByRole("button", { name: language === "en" ? "NEW WORK" : "НОВЫЙ РИСУНОК" });
     expect(button.textContent).toContain(language === "en" ? "STEGOSAURUS" : "СТЕГОЗАВР");

@@ -48,7 +48,7 @@ export const brachiosaurusProtectedProbes: readonly (readonly [number, number])[
 ];
 
 // One interior point per region of the traced Explorer scene.
-export const brachiosaurusExplorerProbes: readonly (readonly [number, number, string])[] = [
+export const brachiosaurusExplorer2Probes: readonly (readonly [number, number, string])[] = [
   [315, 200, "sky"], [800, 296, "sky-right"], [203, 89, "sun"], [165, 176, "cloud-1"], [390, 89, "cloud-2"],
   [536, 158, "cloud-3"], [330, 317, "hill-left"], [701, 352, "hill-middle"], [817, 340, "hill-right"], [769, 370, "tree-trunk"],
   [112, 408, "lake"], [285, 499, "meadow"], [741, 440, "bush-right"], [132, 515, "bush-left"], [607, 566, "ground"],
@@ -60,6 +60,23 @@ export const brachiosaurusExplorerProbes: readonly (readonly [number, number, st
 ];
 
 // Eye and toe ink in the traced Explorer scene.
-export const brachiosaurusExplorerProtectedProbes: readonly (readonly [number, number])[] = [
+export const brachiosaurusExplorer2ProtectedProbes: readonly (readonly [number, number])[] = [
   [713, 70], [574, 515]
+];
+
+// The traced Explorer scene that covers the whole canvas.
+export const brachiosaurusExplorerProbes: readonly (readonly [number, number, string])[] = [
+  [302, 191, "sky"], [829, 295, "sky-right"], [181, 70, "sun"], [140, 165, "cloud-1"], [385, 70, "cloud-2"],
+  [542, 146, "cloud-3"], [319, 318, "hill-left"], [722, 355, "hill-middle"], [846, 342, "hill-right"], [795, 375, "tree-trunk"],
+  [83, 417, "lake"], [270, 515, "meadow"], [766, 451, "bush-right"], [103, 533, "bush-left"], [613, 587, "ground"],
+  [374, 518, "ground-under-hind"], [488, 512, "ground-under-belly"], [600, 510, "ground-under-front"], [418, 502, "leg-far-hind"], [631, 457, "leg-far-front"],
+  [152, 470, "tail-tip"], [207, 465, "tail-band-3"], [255, 453, "tail-band-2"], [304, 438, "tail-band-1"], [490, 392, "flank"],
+  [420, 445, "belly"], [449, 328, "back-patch-1"], [518, 294, "back-patch-2"], [629, 284, "neck-band-1"], [639, 242, "neck-band-2"],
+  [647, 196, "neck-band-3"], [654, 152, "neck-band-4"], [702, 70, "head"], [364, 407, "leg-near-hind"], [579, 343, "leg-near-front"],
+  [464, 590, "stone-middle"], [214, 590, "stone-left"], [726, 594, "stone-right"]
+];
+
+// The same ink points as the previous traced scene, moved with the picture.
+export const brachiosaurusExplorerProtectedProbes: readonly (readonly [number, number])[] = [
+  [756, 32], [597, 558]
 ];

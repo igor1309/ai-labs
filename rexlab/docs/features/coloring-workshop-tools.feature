@@ -89,7 +89,7 @@ Feature: Coloring workshop tools, undo and early creatures
 
   Scenario: Simple T-Rex for Hatchling
     Given I start a new T-Rex work at Hatchling
-    Then the workshop renders the original trex-hatchling-1 vector scene
+    Then the workshop renders trex-hatchling-2, the original trex-hatchling-1 vector scene enlarged to fill the paper
     And a friendly large-headed T-Rex has two little two-finger arms, two powerful hind legs and a long curved tail
     And the head, body, tail and hind legs offer broad independent coloring regions
     And its eyes, smile, fingers and toes remain protected decorative details

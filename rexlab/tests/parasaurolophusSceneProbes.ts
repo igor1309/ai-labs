@@ -20,7 +20,7 @@ export const parasaurolophusProtectedProbes: readonly (readonly [number, number]
 ];
 
 // The traced Explorer scene: one interior point per region, in paint order.
-export const parasaurolophusExplorerProbes: readonly (readonly [number, number, string])[] = [
+export const parasaurolophusExplorer2Probes: readonly (readonly [number, number, string])[] = [
   [133, 83, "sky"], [609, 104, "sun"], [416, 87, "cloud"], [554, 229, "hill-far"], [159, 288, "hill-left"],
   [617, 279, "hill-right"], [796, 246, "hill-behind-tree"], [830, 278, "hill-far-right"], [747, 319, "meadow"], [196, 343, "far-bank"],
   [180, 419, "river-left"], [586, 415, "river-right"], [125, 386, "lily-pad-left"], [660, 423, "lily-pad-right"], [165, 462, "bank-left"],
@@ -33,6 +33,24 @@ export const parasaurolophusExplorerProbes: readonly (readonly [number, number, 
 ];
 
 // Eye and nostril ink in the traced Explorer scene.
-export const parasaurolophusExplorerProtectedProbes: readonly (readonly [number, number])[] = [
+export const parasaurolophusExplorer2ProtectedProbes: readonly (readonly [number, number])[] = [
   [168, 200], [102, 239]
+];
+
+// The traced Explorer scene that covers the whole canvas.
+export const parasaurolophusExplorerProbes: readonly (readonly [number, number, string])[] = [
+  [107, 66, "sky"], [621, 88, "sun"], [412, 69, "cloud"], [562, 222, "hill-far"], [134, 286, "hill-left"],
+  [631, 276, "hill-right"], [824, 241, "hill-behind-tree"], [858, 276, "hill-far-right"], [771, 320, "meadow"], [174, 346, "far-bank"],
+  [157, 428, "river-left"], [596, 424, "river-right"], [97, 393, "lily-pad-left"], [677, 432, "lily-pad-right"], [140, 475, "bank-left"],
+  [850, 429, "bank-right"], [658, 523, "ground"], [466, 460, "ground-between-legs"], [781, 266, "tree-trunk"], [770, 197, "tree-crown-low"],
+  [781, 142, "tree-crown-middle"], [788, 82, "tree-crown-top"], [90, 543, "bush-left"], [822, 535, "bush-right"], [418, 576, "stone-big"],
+  [615, 581, "stone-right"], [220, 425, "arm-far"], [417, 460, "leg-far-hind"], [382, 389, "body"], [359, 247, "back-stripe-1"],
+  [483, 267, "back-stripe-2"], [532, 291, "back-stripe-3"], [582, 326, "tail-band-1"], [637, 358, "tail-band-2"], [696, 368, "tail-band-3"],
+  [752, 370, "tail-band-4"], [298, 361, "neck"], [239, 355, "throat"], [258, 102, "crest"], [193, 200, "head"],
+  [480, 352, "leg-near-hind"], [318, 425, "arm-near"], [59, 203, "sky-left"], [277, 590, "stone-left"]
+];
+
+// The same ink points as the previous traced scene, moved with the picture.
+export const parasaurolophusExplorerProtectedProbes: readonly (readonly [number, number])[] = [
+  [119, 182], [53, 232]
 ];

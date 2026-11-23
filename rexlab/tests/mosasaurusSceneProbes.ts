@@ -46,7 +46,7 @@ export const mosasaurusProtectedProbes: readonly (readonly [number, number])[] =
 ];
 
 // The traced Explorer scene: one interior point per region, in paint order.
-export const mosasaurusExplorerProbes: readonly (readonly [number, number, string])[] = [
+export const mosasaurusExplorer2Probes: readonly (readonly [number, number, string])[] = [
   [798, 49, "sky"], [782, 144, "water"], [166, 105, "water-left"], [297, 101, "light-ray-left"], [541, 133, "water-top"],
   [646, 142, "light-ray-right"], [698, 571, "seabed"], [240, 541, "rock-left"], [593, 544, "rock-right"], [378, 546, "ammonite-1"],
   [370, 491, "ammonite-2"], [418, 458, "ammonite-3"], [463, 475, "ammonite-4"], [470, 516, "ammonite-5"], [231, 385, "fish-left"],
@@ -58,6 +58,23 @@ export const mosasaurusExplorerProbes: readonly (readonly [number, number, strin
 ];
 
 // Eye, teeth and a fish eye ink in the traced Explorer scene.
-export const mosasaurusExplorerProtectedProbes: readonly (readonly [number, number])[] = [
+export const mosasaurusExplorer2ProtectedProbes: readonly (readonly [number, number])[] = [
   [216, 152], [114, 185], [196, 366]
+];
+
+// The traced Explorer scene that covers the whole canvas.
+export const mosasaurusExplorerProbes: readonly (readonly [number, number, string])[] = [
+  [74, 30, "sky"], [807, 129, "water"], [141, 88, "water-left"], [284, 84, "light-ray-left"], [549, 118, "water-top"],
+  [663, 128, "light-ray-right"], [725, 298, "seabed"], [221, 562, "rock-left"], [605, 565, "rock-right"], [371, 567, "ammonite-1"],
+  [362, 507, "ammonite-2"], [415, 472, "ammonite-3"], [464, 490, "ammonite-4"], [471, 534, "ammonite-5"], [212, 392, "fish-left"],
+  [629, 425, "fish-right"], [101, 459, "kelp-left-1"], [169, 488, "kelp-left-2"], [725, 506, "kelp-right-1"], [792, 463, "kelp-right-2"],
+  [830, 516, "kelp-right-3"], [189, 283, "flipper-far-front"], [542, 322, "flipper-far-back"], [798, 242, "tail-tip"], [832, 314, "tail-fin"],
+  [302, 174, "back-band-1"], [374, 197, "back-band-2"], [453, 232, "back-band-3"], [527, 230, "back-band-4"], [593, 223, "back-band-5"],
+  [653, 218, "tail-band-1"], [707, 212, "tail-band-2"], [450, 295, "belly"], [263, 230, "head"], [396, 325, "flipper-near-front"],
+  [615, 310, "flipper-near-back"], [81, 515, "kelp-left-3"], [854, 559, "seabed-right"], [727, 593, "rock-middle"]
+];
+
+// The same ink points as the previous traced scene, moved with the picture.
+export const mosasaurusExplorerProtectedProbes: readonly (readonly [number, number])[] = [
+  [174, 125], [63, 164], [146, 384]
 ];

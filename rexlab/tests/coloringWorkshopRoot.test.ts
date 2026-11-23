@@ -39,9 +39,9 @@ it("wires every gallery preview to its cached artwork painter with empty actions
 });
 
 it.each([
-  ["hatchling", "stegosaurus-production-1", "triceratops-production-1"],
-  ["explorer", "stegosaurus-explorer-1", "triceratops-explorer-1"],
-  ["paleontologist", "stegosaurus-explorer-1", "triceratops-explorer-1"]
+  ["hatchling", "stegosaurus-production-1", "triceratops-production-2"],
+  ["explorer", "stegosaurus-explorer-2", "triceratops-explorer-2"],
+  ["paleontologist", "stegosaurus-explorer-2", "triceratops-explorer-2"]
 ] as const)("offers age-appropriate creatures and excludes the archived Ankylosaurus for %s", (level, stegosaurus, triceratops) => {
-  expect(coloringVersionsFor(level)).toEqual([stegosaurus, triceratops, level === "hatchling" ? "ankylosaurus-hatchling-2" : "ankylosaurus-explorer-1", level === "hatchling" ? "trex-hatchling-1" : "trex-explorer-4", level === "hatchling" ? "mosasaurus-hatchling-1" : "mosasaurus-explorer-2", level === "hatchling" ? "brachiosaurus-hatchling-1" : "brachiosaurus-explorer-2", level === "hatchling" ? "pteranodon-hatchling-1" : "pteranodon-explorer-2", level === "hatchling" ? "parasaurolophus-hatchling-1" : "parasaurolophus-explorer-2", level === "hatchling" ? "spinosaurus-hatchling-1" : "spinosaurus-explorer-4"]);
+  expect(coloringVersionsFor(level)).toEqual([stegosaurus, triceratops, level === "hatchling" ? "ankylosaurus-hatchling-3" : "ankylosaurus-explorer-2", level === "hatchling" ? "trex-hatchling-2" : "trex-explorer-5", level === "hatchling" ? "mosasaurus-hatchling-2" : "mosasaurus-explorer-3", level === "hatchling" ? "brachiosaurus-hatchling-2" : "brachiosaurus-explorer-3", level === "hatchling" ? "pteranodon-hatchling-2" : "pteranodon-explorer-3", level === "hatchling" ? "parasaurolophus-hatchling-2" : "parasaurolophus-explorer-3", level === "hatchling" ? "spinosaurus-hatchling-2" : "spinosaurus-explorer-5"]);
 });

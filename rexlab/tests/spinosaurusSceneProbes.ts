@@ -52,7 +52,7 @@ export const spinosaurusExplorer3ProtectedProbes: readonly (readonly [number, nu
 ];
 
 // Interior probes of the traced Explorer scene, in region order.
-export const spinosaurusExplorerProbes: readonly (readonly [number, number, string])[] = [
+export const spinosaurusExplorer4Probes: readonly (readonly [number, number, string])[] = [
   [605, 68, "sky"], [158, 82, "sun"], [327, 72, "cloud-1"], [750, 80, "cloud-2"], [647, 191, "hill-far"],
   [129, 199, "hill-left"], [789, 227, "hill-right"], [480, 427, "hill-between-legs"], [585, 350, "hill-behind-leg"], [327, 479, "bank"],
   [370, 561, "river"], [233, 551, "fish"], [147, 464, "palm"], [178, 324, "palm-leaves-1"], [216, 383, "palm-leaves-2"],
@@ -63,6 +63,23 @@ export const spinosaurusExplorerProbes: readonly (readonly [number, number, stri
 ];
 
 // Eye and fish-eye ink in the traced Explorer scene.
-export const spinosaurusExplorerProtectedProbes: readonly (readonly [number, number])[] = [
+export const spinosaurusExplorer4ProtectedProbes: readonly (readonly [number, number])[] = [
   [256, 204], [137, 539]
+];
+
+// The traced Explorer scene that covers the whole canvas.
+export const spinosaurusExplorerProbes: readonly (readonly [number, number, string])[] = [
+  [617, 49, "sky"], [134, 64, "sun"], [316, 52, "cloud-1"], [774, 62, "cloud-2"], [663, 182, "hill-far"],
+  [102, 191, "hill-left"], [814, 221, "hill-right"], [482, 438, "hill-between-legs"], [596, 354, "hill-behind-leg"], [317, 494, "bank"],
+  [361, 580, "river"], [214, 572, "fish"], [121, 477, "palm"], [155, 326, "palm-leaves-1"], [196, 389, "palm-leaves-2"],
+  [682, 504, "stone-left"], [804, 483, "stone-big"], [743, 522, "stone-small"], [395, 153, "sail-band-1"], [432, 111, "sail-band-2"],
+  [485, 79, "sail-band-3"], [534, 85, "sail-band-4"], [571, 122, "sail-band-5"], [600, 169, "sail-band-6"], [623, 226, "sail-band-7"],
+  [433, 449, "leg-far-hind"], [420, 286, "body"], [387, 233, "back-stripe"], [452, 349, "belly"], [703, 303, "tail-band-1"],
+  [682, 338, "tail-band-2"], [755, 330, "tail-band-3"], [799, 330, "tail-tip"], [532, 336, "leg-near-hind"], [262, 233, "head"],
+  [367, 199, "sail-front"], [466, 392, "belly-stripe"], [730, 421, "ground-right"]
+];
+
+// The same ink points as the previous traced scene, moved with the picture.
+export const spinosaurusExplorerProtectedProbes: readonly (readonly [number, number])[] = [
+  [233, 185], [83, 578]
 ];

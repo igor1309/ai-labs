@@ -75,7 +75,7 @@ export const trexExplorer3ProtectedProbes: readonly (readonly [number, number])[
 ];
 
 // Interior probes of the traced Explorer scene, in region order.
-export const trexExplorerProbes: readonly (readonly [number, number, string])[] = [
+export const trexExplorer4Probes: readonly (readonly [number, number, string])[] = [
   [419, 74, "sky"], [524, 86, "sun"], [202, 76, "cloud-1"], [749, 70, "cloud-2"], [91, 188, "hill-left"],
   [351, 156, "hill-far"], [437, 188, "hill-near"], [828, 189, "hill-right"], [621, 182, "volcano"], [697, 211, "lava"],
   [789, 216, "volcano-slope"], [220, 325, "plain"], [111, 387, "pond"], [308, 462, "meadow"], [451, 462, "ground"],
@@ -87,6 +87,24 @@ export const trexExplorerProbes: readonly (readonly [number, number, string])[] 
 ];
 
 // Eye, far-foot outline and teeth ink in the traced Explorer scene.
-export const trexExplorerProtectedProbes: readonly (readonly [number, number])[] = [
+export const trexExplorer4ProtectedProbes: readonly (readonly [number, number])[] = [
   [219, 190], [293, 497], [110, 262]
+];
+
+// The traced Explorer scene that covers the whole canvas.
+export const trexExplorerProbes: readonly (readonly [number, number, string])[] = [
+  [416, 55, "sky"], [530, 67, "sun"], [180, 57, "cloud-1"], [773, 51, "cloud-2"], [63, 176, "hill-left"],
+  [342, 143, "hill-far"], [435, 179, "hill-near"], [856, 178, "hill-right"], [634, 172, "volcano"], [717, 203, "lava"],
+  [817, 209, "volcano-slope"], [199, 327, "plain"], [85, 394, "pond"], [295, 476, "meadow"], [450, 475, "ground"],
+  [80, 566, "ground-left"], [289, 587, "stone-left"], [461, 572, "stone-big"], [665, 584, "stone-right"], [158, 466, "cycad"],
+  [733, 490, "bush-leaf-1"], [738, 436, "bush-leaf-2"], [825, 437, "bush-leaf-3"], [822, 493, "bush-leaf-4"], [337, 428, "leg-far"],
+  [390, 380, "belly"], [267, 290, "throat"], [287, 181, "back-stripe-1"], [355, 265, "back-stripe-2"], [409, 262, "back-stripe-3"],
+  [464, 246, "back-stripe-4"], [518, 261, "back-stripe-5"], [572, 279, "back-stripe-6"], [625, 319, "tail-stripe-1"], [678, 328, "tail-stripe-2"],
+  [733, 330, "tail-stripe-3"], [785, 323, "tail-stripe-4"], [518, 351, "leg-near"], [146, 209, "head"], [229, 250, "lower-jaw"],
+  [307, 260, "neck"], [737, 265, "plain-right"]
+];
+
+// The same ink points as the previous traced scene, moved with the picture.
+export const trexExplorerProtectedProbes: readonly (readonly [number, number])[] = [
+  [183, 170], [264, 527], [47, 235]
 ];

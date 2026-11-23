@@ -1,27 +1,33 @@
 import { artworkFor } from "../src/coloring/artworks.ts";
 import { SPINOSAURUS_HATCHLING, SPINOSAURUS_EXPLORER_1 } from "../src/coloring/spinosaurusScene.ts";
 import { SPINOSAURUS_EXPLORER_3 } from "../src/coloring/spinosaurusExplorer.ts";
-import { SPINOSAURUS_EXPLORER } from "../src/coloring/spinosaurusExplorer4.ts";
+import { SPINOSAURUS_EXPLORER_4 } from "../src/coloring/spinosaurusExplorer4.ts";
+import { SPINOSAURUS_EXPLORER } from "../src/coloring/spinosaurusExplorer5.ts";
 import { SPINOSAURUS_EXPLORER_2 } from "../src/coloring/spinosaurusExplorer2.ts";
-import { spinosaurusHatchlingProbes, spinosaurusExplorerProbes, spinosaurusExplorer1Probes, spinosaurusExplorer2Probes, spinosaurusExplorer3Probes } from "./spinosaurusSceneProbes.ts";
+import { spinosaurusHatchlingProbes, spinosaurusExplorerProbes, spinosaurusExplorer4Probes, spinosaurusExplorer1Probes, spinosaurusExplorer2Probes, spinosaurusExplorer3Probes } from "./spinosaurusSceneProbes.ts";
 import { coloringVersionsFor } from "../src/coloringWorkshopRoot.ts";
 import { PARASAUROLOPHUS_HATCHLING, PARASAUROLOPHUS_EXPLORER_1 } from "../src/coloring/parasaurolophusScene.ts";
-import { PARASAUROLOPHUS_EXPLORER } from "../src/coloring/parasaurolophusExplorer2.ts";
-import { parasaurolophusHatchlingProbes, parasaurolophusExplorerProbes, parasaurolophusExplorer1Probes } from "./parasaurolophusSceneProbes.ts";
+import { PARASAUROLOPHUS_EXPLORER_2 } from "../src/coloring/parasaurolophusExplorer2.ts";
+import { PARASAUROLOPHUS_EXPLORER } from "../src/coloring/parasaurolophusExplorer3.ts";
+import { parasaurolophusHatchlingProbes, parasaurolophusExplorerProbes, parasaurolophusExplorer2Probes, parasaurolophusExplorer1Probes } from "./parasaurolophusSceneProbes.ts";
 import { PTERANODON_HATCHLING, PTERANODON_EXPLORER_1 } from "../src/coloring/pteranodonScene.ts";
-import { PTERANODON_EXPLORER } from "../src/coloring/pteranodonExplorer2.ts";
-import { pteranodonHatchlingProbes, pteranodonExplorerProbes, pteranodonExplorer1Probes } from "./pteranodonSceneProbes.ts";
+import { PTERANODON_EXPLORER_2 } from "../src/coloring/pteranodonExplorer2.ts";
+import { PTERANODON_EXPLORER } from "../src/coloring/pteranodonExplorer3.ts";
+import { pteranodonHatchlingProbes, pteranodonExplorerProbes, pteranodonExplorer1Probes, pteranodonExplorer2Probes } from "./pteranodonSceneProbes.ts";
 import { BRACHIOSAURUS_HATCHLING, BRACHIOSAURUS_EXPLORER_1 } from "../src/coloring/brachiosaurusScene.ts";
-import { BRACHIOSAURUS_EXPLORER } from "../src/coloring/brachiosaurusExplorer2.ts";
-import { brachiosaurusHatchlingProbes, brachiosaurusExplorerProbes, brachiosaurusExplorer1Probes } from "./brachiosaurusSceneProbes.ts";
+import { BRACHIOSAURUS_EXPLORER_2 } from "../src/coloring/brachiosaurusExplorer2.ts";
+import { BRACHIOSAURUS_EXPLORER } from "../src/coloring/brachiosaurusExplorer3.ts";
+import { brachiosaurusHatchlingProbes, brachiosaurusExplorerProbes, brachiosaurusExplorer2Probes, brachiosaurusExplorer1Probes } from "./brachiosaurusSceneProbes.ts";
 import { MOSASAURUS_HATCHLING, MOSASAURUS_EXPLORER_1 } from "../src/coloring/mosasaurusScene.ts";
-import { MOSASAURUS_EXPLORER } from "../src/coloring/mosasaurusExplorer2.ts";
-import { mosasaurusHatchlingProbes, mosasaurusExplorerProbes, mosasaurusExplorer1Probes } from "./mosasaurusSceneProbes.ts";
+import { MOSASAURUS_EXPLORER_2 } from "../src/coloring/mosasaurusExplorer2.ts";
+import { MOSASAURUS_EXPLORER } from "../src/coloring/mosasaurusExplorer3.ts";
+import { mosasaurusHatchlingProbes, mosasaurusExplorerProbes, mosasaurusExplorer2Probes, mosasaurusExplorer1Probes } from "./mosasaurusSceneProbes.ts";
 import { TREX_HATCHLING, TREX_EXPLORER_1 } from "../src/coloring/trexScene.ts";
 import { TREX_EXPLORER_3 } from "../src/coloring/trexExplorer.ts";
-import { TREX_EXPLORER } from "../src/coloring/trexExplorer4.ts";
+import { TREX_EXPLORER_4 } from "../src/coloring/trexExplorer4.ts";
+import { TREX_EXPLORER } from "../src/coloring/trexExplorer5.ts";
 import { TREX_EXPLORER_2 } from "../src/coloring/trexExplorer2.ts";
-import { trexHatchlingProbes, trexExplorerProbes, trexExplorer1Probes, trexExplorer2Probes, trexExplorer3Probes } from "./trexSceneProbes.ts";
+import { trexHatchlingProbes, trexExplorerProbes, trexExplorer4Probes, trexExplorer1Probes, trexExplorer2Probes, trexExplorer3Probes } from "./trexSceneProbes.ts";
 import { ANKYLOSAURUS_HATCHLING, ANKYLOSAURUS_EXPLORER } from "../src/coloring/ankylosaurusScene.ts";
 import { ankylosaurusHatchlingProbes, ankylosaurusExplorerProbes } from "./ankylosaurusSceneProbes.ts";
 import { ANKYLOSAURUS } from "../src/coloring/ankylosaurus.ts";
@@ -67,7 +73,8 @@ describe("T-Rex workshop scenes", () => {
     [TREX_EXPLORER_1, "trex-explorer-1", trexExplorer1Probes],
     [TREX_EXPLORER_2, "trex-explorer-2", trexExplorer2Probes],
     [TREX_EXPLORER_3, "trex-explorer-3", trexExplorer3Probes],
-    [TREX_EXPLORER, "trex-explorer-4", trexExplorerProbes]
+    [TREX_EXPLORER_4, "trex-explorer-4", trexExplorer4Probes],
+    [TREX_EXPLORER, "trex-explorer-5", trexExplorerProbes]
   ] as const)("registers enclosed regions with matching parents (scene %#)", (geometry, version, probes) => {
     expect(geometry.artwork.version).toBe(version);
     expect(artworkFor(version)).toEqual({ geometry, names: { en: "T-REX", ru: "ТИРАННОЗАВР" } });
@@ -75,7 +82,7 @@ describe("T-Rex workshop scenes", () => {
     expect(new Set(geometry.artwork.regions).size).toBe(geometry.regions.length);
     // The traced scene draws every line as one protected ink layer; its tiny arms are ink inside
     // the neighbouring stripe and throat, since they are narrower than a fingertip target.
-    const traced = geometry === TREX_EXPLORER;
+    const traced = geometry === TREX_EXPLORER_4 || geometry === TREX_EXPLORER || geometry === MOSASAURUS_EXPLORER || geometry === PARASAUROLOPHUS_EXPLORER || geometry === SPINOSAURUS_EXPLORER || geometry === BRACHIOSAURUS_EXPLORER;
     expect(geometry.regions.filter(({ id }) => id.startsWith("arm-")).map(({ id }) => id)).toEqual(traced ? [] : ["arm-far", "arm-near"]);
     expect(geometry.regions.filter(({ id }) => id.startsWith("leg-")).map(({ id }) => id)).toEqual(["leg-far", "leg-near"]);
     for (const region of geometry.regions) {
@@ -92,7 +99,7 @@ describe("T-Rex workshop scenes", () => {
       }
     }
     expect(geometry.regions.filter(({ parent }) => parent).map(({ id, parent }) => [id, parent])).toEqual(
-      geometry === TREX_HATCHLING || geometry === TREX_EXPLORER ? [] : geometry === TREX_EXPLORER_1 ? [
+      geometry === TREX_HATCHLING || geometry === TREX_EXPLORER_4 || geometry === TREX_EXPLORER ? [] : geometry === TREX_EXPLORER_1 ? [
         ["tail-mark", "tail"], ["belly", "body"], ["back-mark", "body"], ["thigh-mark", "leg-near"], ["rock-face", "rock"]
       ] : geometry === TREX_EXPLORER_3 ? [
         ["lava", "volcano"], ["rock-face", "rock"], ["tail-stripe-1", "tail"], ["tail-stripe-2", "tail"], ["tail-stripe-3", "tail"],
@@ -110,7 +117,7 @@ describe("T-Rex workshop scenes", () => {
     ["first Explorer", TREX_EXPLORER_1, trexExplorer1Probes],
     ["second Explorer", TREX_EXPLORER_2, trexExplorer2Probes],
     ["third Explorer", TREX_EXPLORER_3, trexExplorer3Probes],
-    ["Explorer", TREX_EXPLORER, trexExplorerProbes]
+    ["Explorer", TREX_EXPLORER_4, trexExplorer4Probes]
   ] as const)("keeps every %s animal and landscape target independently fillable", async (_, geometry, probes) => {
     for (const [, , id] of probes) {
       const painted = await illustration(geometry, id);
@@ -119,7 +126,7 @@ describe("T-Rex workshop scenes", () => {
         expect([...painted.subarray(offset, offset + 4)], `${id} at ${other}`).toEqual(id === other ? [239, 83, 80, 255] : [255, 240, 207, 255]);
       }
     }
-    expect(TREX_EXPLORER.regions.length).toBeGreaterThan(TREX_HATCHLING.regions.length * 2);
+    expect(TREX_EXPLORER_4.regions.length).toBeGreaterThan(TREX_HATCHLING.regions.length * 2);
     expect(TREX_HATCHLING.artwork.regions).not.toContain("belly");
   });
 });
@@ -128,7 +135,8 @@ describe("Mosasaurus workshop scenes", () => {
   it.each([
     [MOSASAURUS_HATCHLING, "mosasaurus-hatchling-1", mosasaurusHatchlingProbes],
     [MOSASAURUS_EXPLORER_1, "mosasaurus-explorer-1", mosasaurusExplorer1Probes],
-    [MOSASAURUS_EXPLORER, "mosasaurus-explorer-2", mosasaurusExplorerProbes]
+    [MOSASAURUS_EXPLORER_2, "mosasaurus-explorer-2", mosasaurusExplorer2Probes],
+    [MOSASAURUS_EXPLORER, "mosasaurus-explorer-3", mosasaurusExplorerProbes]
   ] as const)("registers enclosed regions with matching parents (scene %#)", (geometry, version, probes) => {
     expect(geometry.artwork.version).toBe(version);
     expect(artworkFor(version)).toEqual({ geometry, names: { en: "MOSASAURUS", ru: "МОЗАЗАВР" } });
@@ -137,7 +145,7 @@ describe("Mosasaurus workshop scenes", () => {
     expect(geometry.regions.filter(({ id }) => id.startsWith("flipper-")).map(({ id }) => id).sort()).toEqual(
       ["flipper-far-back", "flipper-far-front", "flipper-near-back", "flipper-near-front"]);
     // The traced scene draws every line as one protected ink layer above regions that tile the picture.
-    const traced = geometry === MOSASAURUS_EXPLORER;
+    const traced = geometry === MOSASAURUS_EXPLORER_2 || geometry === TREX_EXPLORER || geometry === MOSASAURUS_EXPLORER || geometry === PARASAUROLOPHUS_EXPLORER || geometry === SPINOSAURUS_EXPLORER || geometry === BRACHIOSAURUS_EXPLORER;
     for (const region of geometry.regions) {
       expect(region.outline).toBe(traced ? 0 : Math.max(region.outline, 1.7));
       expect("path" in region && region.path.endsWith(" Z")).toBe(true);
@@ -152,7 +160,7 @@ describe("Mosasaurus workshop scenes", () => {
   it.each([
     ["Hatchling", MOSASAURUS_HATCHLING, mosasaurusHatchlingProbes],
     ["first Explorer", MOSASAURUS_EXPLORER_1, mosasaurusExplorer1Probes],
-    ["Explorer", MOSASAURUS_EXPLORER, mosasaurusExplorerProbes]
+    ["Explorer", MOSASAURUS_EXPLORER_2, mosasaurusExplorer2Probes]
   ] as const)("keeps every %s animal and sea target independently fillable", async (_, geometry, probes) => {
     for (const [, , id] of probes) {
       const painted = await illustration(geometry, id);
@@ -161,8 +169,8 @@ describe("Mosasaurus workshop scenes", () => {
         expect([...painted.subarray(offset, offset + 4)], `${id} at ${other}`).toEqual(id === other ? [239, 83, 80, 255] : [255, 240, 207, 255]);
       }
     }
-    expect(MOSASAURUS_EXPLORER.regions.length).toBeGreaterThan(MOSASAURUS_HATCHLING.regions.length * 2);
-    expect(MOSASAURUS_EXPLORER.artwork.regions).toEqual(expect.arrayContaining(["head", "tail-fin", "belly", "back-band-1", "tail-band-1", "tail-band-2"]));
+    expect(MOSASAURUS_EXPLORER_2.regions.length).toBeGreaterThan(MOSASAURUS_HATCHLING.regions.length * 2);
+    expect(MOSASAURUS_EXPLORER_2.artwork.regions).toEqual(expect.arrayContaining(["head", "tail-fin", "belly", "back-band-1", "tail-band-1", "tail-band-2"]));
     expect(MOSASAURUS_HATCHLING.artwork.regions).not.toContain("water");
   });
 });
@@ -171,14 +179,15 @@ describe("Parasaurolophus workshop scenes", () => {
   it.each([
     [PARASAUROLOPHUS_HATCHLING, "parasaurolophus-hatchling-1", parasaurolophusHatchlingProbes],
     [PARASAUROLOPHUS_EXPLORER_1, "parasaurolophus-explorer-1", parasaurolophusExplorer1Probes],
-    [PARASAUROLOPHUS_EXPLORER, "parasaurolophus-explorer-2", parasaurolophusExplorerProbes]
+    [PARASAUROLOPHUS_EXPLORER_2, "parasaurolophus-explorer-2", parasaurolophusExplorer2Probes],
+    [PARASAUROLOPHUS_EXPLORER, "parasaurolophus-explorer-3", parasaurolophusExplorerProbes]
   ] as const)("registers enclosed regions with matching parents (scene %#)", (geometry, version, probes) => {
     expect(geometry.artwork.version).toBe(version);
     expect(artworkFor(version)).toEqual({ geometry, names: { en: "PARASAUROLOPHUS", ru: "ПАРАЗАУРОЛОФ" } });
     expect(geometry.artwork.regions).toEqual(probes.map(([, , id]) => id));
     expect(new Set(geometry.artwork.regions).size).toBe(geometry.regions.length);
     // The traced scene draws every line as one protected ink layer above regions that tile the picture.
-    const traced = geometry === PARASAUROLOPHUS_EXPLORER;
+    const traced = geometry === PARASAUROLOPHUS_EXPLORER_2 || geometry === TREX_EXPLORER || geometry === MOSASAURUS_EXPLORER || geometry === PARASAUROLOPHUS_EXPLORER || geometry === SPINOSAURUS_EXPLORER || geometry === BRACHIOSAURUS_EXPLORER;
     for (const region of geometry.regions) {
       expect(region.outline).toBe(traced ? 0 : Math.max(region.outline, 1.7));
       expect("path" in region && region.path.endsWith(" Z")).toBe(true);
@@ -191,7 +200,7 @@ describe("Parasaurolophus workshop scenes", () => {
   it.each([
     ["Hatchling", PARASAUROLOPHUS_HATCHLING, parasaurolophusHatchlingProbes],
     ["first Explorer", PARASAUROLOPHUS_EXPLORER_1, parasaurolophusExplorer1Probes],
-    ["Explorer", PARASAUROLOPHUS_EXPLORER, parasaurolophusExplorerProbes]
+    ["Explorer", PARASAUROLOPHUS_EXPLORER_2, parasaurolophusExplorer2Probes]
   ] as const)("keeps every %s animal and scenery target independently fillable", async (_, geometry, probes) => {
     for (const [, , id] of probes) {
       const painted = await illustration(geometry, id);
@@ -200,8 +209,8 @@ describe("Parasaurolophus workshop scenes", () => {
         expect([...painted.subarray(offset, offset + 4)], `${id} at ${other}`).toEqual(id === other ? [239, 83, 80, 255] : [255, 240, 207, 255]);
       }
     }
-    expect(PARASAUROLOPHUS_EXPLORER.regions.length).toBeGreaterThan(PARASAUROLOPHUS_HATCHLING.regions.length * 3);
-    expect(PARASAUROLOPHUS_EXPLORER.artwork.regions).toEqual(expect.arrayContaining(["crest", "head", "neck", "back-stripe-1", "tail-band-1", "arm-far", "leg-far-hind"]));
+    expect(PARASAUROLOPHUS_EXPLORER_2.regions.length).toBeGreaterThan(PARASAUROLOPHUS_HATCHLING.regions.length * 3);
+    expect(PARASAUROLOPHUS_EXPLORER_2.artwork.regions).toEqual(expect.arrayContaining(["crest", "head", "neck", "back-stripe-1", "tail-band-1", "arm-far", "leg-far-hind"]));
     expect(PARASAUROLOPHUS_HATCHLING.artwork.regions).not.toContain("sky");
   });
 });
@@ -212,12 +221,13 @@ describe("Spinosaurus workshop scenes", () => {
     [SPINOSAURUS_EXPLORER_1, "spinosaurus-explorer-1", spinosaurusExplorer1Probes],
     [SPINOSAURUS_EXPLORER_2, "spinosaurus-explorer-2", spinosaurusExplorer2Probes],
     [SPINOSAURUS_EXPLORER_3, "spinosaurus-explorer-3", spinosaurusExplorer3Probes],
-    [SPINOSAURUS_EXPLORER, "spinosaurus-explorer-4", spinosaurusExplorerProbes]
+    [SPINOSAURUS_EXPLORER_4, "spinosaurus-explorer-4", spinosaurusExplorer4Probes],
+    [SPINOSAURUS_EXPLORER, "spinosaurus-explorer-5", spinosaurusExplorerProbes]
   ] as const)("registers enclosed regions with matching parents (scene %#)", (geometry, version, probes) => {
     expect(artworkFor(version)).toEqual({ geometry, names: { en: "SPINOSAURUS", ru: "СПИНОЗАВР" } });
     expect(geometry.artwork.regions).toEqual(probes.map(([, , id]) => id));
     // The traced scene draws every line as one protected ink layer above regions that tile the picture.
-    const traced = geometry === SPINOSAURUS_EXPLORER;
+    const traced = geometry === SPINOSAURUS_EXPLORER_4 || geometry === TREX_EXPLORER || geometry === MOSASAURUS_EXPLORER || geometry === PARASAUROLOPHUS_EXPLORER || geometry === SPINOSAURUS_EXPLORER || geometry === BRACHIOSAURUS_EXPLORER;
     for (const region of geometry.regions) {
       expect(region.outline).toBe(traced ? 0 : Math.max(region.outline, 1.7));
       expect("path" in region && region.path.endsWith(" Z")).toBe(true);
@@ -238,7 +248,7 @@ describe("Spinosaurus workshop scenes", () => {
     ["first Explorer", SPINOSAURUS_EXPLORER_1, spinosaurusExplorer1Probes],
     ["second Explorer", SPINOSAURUS_EXPLORER_2, spinosaurusExplorer2Probes],
     ["third Explorer", SPINOSAURUS_EXPLORER_3, spinosaurusExplorer3Probes],
-    ["Explorer", SPINOSAURUS_EXPLORER, spinosaurusExplorerProbes]
+    ["Explorer", SPINOSAURUS_EXPLORER_4, spinosaurusExplorer4Probes]
   ] as const)("keeps every %s animal and scenery target independently fillable", async (_, geometry, probes) => {
     for (const [, , id] of probes) {
       const painted = await illustration(geometry, id);
@@ -247,7 +257,7 @@ describe("Spinosaurus workshop scenes", () => {
         expect([...painted.subarray(offset, offset + 4)], `${id} at ${other}`).toEqual(id === other ? [239, 83, 80, 255] : [255, 240, 207, 255]);
       }
     }
-    expect(SPINOSAURUS_EXPLORER.regions.length).toBeGreaterThan(SPINOSAURUS_HATCHLING.regions.length * 1.8);
+    expect(SPINOSAURUS_EXPLORER_4.regions.length).toBeGreaterThan(SPINOSAURUS_HATCHLING.regions.length * 1.8);
     expect(SPINOSAURUS_HATCHLING.artwork.regions).not.toContain("sky");
   });
 });
@@ -256,10 +266,11 @@ describe("Pteranodon workshop scenes", () => {
   it.each([
     [PTERANODON_HATCHLING, "pteranodon-hatchling-1", pteranodonHatchlingProbes],
     [PTERANODON_EXPLORER_1, "pteranodon-explorer-1", pteranodonExplorer1Probes],
-    [PTERANODON_EXPLORER, "pteranodon-explorer-2", pteranodonExplorerProbes]
+    [PTERANODON_EXPLORER_2, "pteranodon-explorer-2", pteranodonExplorer2Probes],
+    [PTERANODON_EXPLORER, "pteranodon-explorer-3", pteranodonExplorerProbes]
   ] as const)("registers enclosed regions with matching parents (scene %#)", (geometry, version, probes) => {
     // The traced scene draws every line as one protected ink layer above regions that tile the picture.
-    const traced = geometry === PTERANODON_EXPLORER;
+    const traced = geometry === PTERANODON_EXPLORER_2 || geometry === PTERANODON_EXPLORER;
     expect(artworkFor(version)).toEqual({ geometry, names: { en: "PTERANODON", ru: "ПТЕРАНОДОН" } });
     expect(geometry.artwork.regions).toEqual(probes.map(([, , id]) => id));
     for (const region of geometry.regions) {
@@ -274,7 +285,7 @@ describe("Pteranodon workshop scenes", () => {
   it.each([
     ["Hatchling", PTERANODON_HATCHLING, pteranodonHatchlingProbes],
     ["first Explorer", PTERANODON_EXPLORER_1, pteranodonExplorer1Probes],
-    ["Explorer", PTERANODON_EXPLORER, pteranodonExplorerProbes]
+    ["Explorer", PTERANODON_EXPLORER_2, pteranodonExplorer2Probes]
   ] as const)("keeps every %s animal and scenery target independently fillable", async (_, geometry, probes) => {
     for (const [, , id] of probes) {
       const painted = await illustration(geometry, id);
@@ -293,10 +304,11 @@ describe("Brachiosaurus workshop scenes", () => {
   it.each([
     [BRACHIOSAURUS_HATCHLING, "brachiosaurus-hatchling-1", brachiosaurusHatchlingProbes],
     [BRACHIOSAURUS_EXPLORER_1, "brachiosaurus-explorer-1", brachiosaurusExplorer1Probes],
-    [BRACHIOSAURUS_EXPLORER, "brachiosaurus-explorer-2", brachiosaurusExplorerProbes]
+    [BRACHIOSAURUS_EXPLORER_2, "brachiosaurus-explorer-2", brachiosaurusExplorer2Probes],
+    [BRACHIOSAURUS_EXPLORER, "brachiosaurus-explorer-3", brachiosaurusExplorerProbes]
   ] as const)("registers enclosed regions with matching parents (scene %#)", (geometry, version, probes) => {
     // The traced scene draws every line as one protected ink layer above regions that tile the picture.
-    const traced = geometry === BRACHIOSAURUS_EXPLORER;
+    const traced = geometry === BRACHIOSAURUS_EXPLORER_2 || geometry === TREX_EXPLORER || geometry === MOSASAURUS_EXPLORER || geometry === PARASAUROLOPHUS_EXPLORER || geometry === SPINOSAURUS_EXPLORER || geometry === BRACHIOSAURUS_EXPLORER;
     expect(geometry.artwork.version).toBe(version);
     expect(artworkFor(version)).toEqual({ geometry, names: { en: "BRACHIOSAURUS", ru: "БРАХИОЗАВР" } });
     expect(geometry.artwork.regions).toEqual(probes.map(([, , id]) => id));
@@ -314,7 +326,7 @@ describe("Brachiosaurus workshop scenes", () => {
   it.each([
     ["Hatchling", BRACHIOSAURUS_HATCHLING, brachiosaurusHatchlingProbes],
     ["first Explorer", BRACHIOSAURUS_EXPLORER_1, brachiosaurusExplorer1Probes],
-    ["Explorer", BRACHIOSAURUS_EXPLORER, brachiosaurusExplorerProbes]
+    ["Explorer", BRACHIOSAURUS_EXPLORER_2, brachiosaurusExplorer2Probes]
   ] as const)("keeps every %s animal and scenery target independently fillable", async (_, geometry, probes) => {
     for (const [, , id] of probes) {
       const painted = await illustration(geometry, id);
@@ -323,9 +335,9 @@ describe("Brachiosaurus workshop scenes", () => {
         expect([...painted.subarray(offset, offset + 4)], `${id} at ${other}`).toEqual(id === other ? [239, 83, 80, 255] : [255, 240, 207, 255]);
       }
     }
-    expect(BRACHIOSAURUS_EXPLORER.regions.length).toBeGreaterThan(BRACHIOSAURUS_HATCHLING.regions.length * 1.8);
+    expect(BRACHIOSAURUS_EXPLORER_2.regions.length).toBeGreaterThan(BRACHIOSAURUS_HATCHLING.regions.length * 1.8);
     expect(BRACHIOSAURUS_HATCHLING.artwork.regions).not.toContain("tree-trunk");
-    expect(BRACHIOSAURUS_EXPLORER.artwork.regions).toEqual(expect.arrayContaining(["head", "neck-band-1", "neck-band-4", "back-patch-1", "tail-band-1", "tail-tip", "belly", "flank"]));
+    expect(BRACHIOSAURUS_EXPLORER_2.artwork.regions).toEqual(expect.arrayContaining(["head", "neck-band-1", "neck-band-4", "back-patch-1", "tail-band-1", "tail-tip", "belly", "flank"]));
   });
 });
 
@@ -630,6 +642,6 @@ describe("Explorer coloring standard", () => {
     const counts = coloringVersionsFor(level)
       .map(version => [version, artworkFor(version).geometry.regions.length] as const);
     expect(counts.filter(([, count]) => count < 35)).toEqual([]);
-    expect(counts.map(([version]) => version)).toEqual(expect.arrayContaining(["spinosaurus-explorer-4", "trex-explorer-4", "brachiosaurus-explorer-2", "mosasaurus-explorer-2", "parasaurolophus-explorer-2", "pteranodon-explorer-2"]));
+    expect(counts.map(([version]) => version)).toEqual(expect.arrayContaining(["spinosaurus-explorer-5", "trex-explorer-5", "brachiosaurus-explorer-3", "mosasaurus-explorer-3", "parasaurolophus-explorer-3", "pteranodon-explorer-3"]));
   });
 });

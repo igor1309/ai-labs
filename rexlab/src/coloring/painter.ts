@@ -1,5 +1,5 @@
 import { BASE_COLOR, type Action, type PaintInspection, type Point } from "./index.ts";
-import { STEGOSAURUS, HEIGHT, VECTOR_SCALE, WIDTH, type Geometry, type VectorShape } from "./geometry.ts";
+import { STEGOSAURUS, HEIGHT, VECTOR_SCALE, WIDTH, type Geometry, type VectorShape, type View } from "./geometry.ts";
 
 const INK = "#091e40";
 type Stroke = Extract<Action, { kind: "stroke" }>;
@@ -27,9 +27,9 @@ function lastFillIn(actions: readonly Action[], id: string): number {
   return -1;
 }
 
-function vector(shape: VectorShape): Path2D {
+function vector(shape: VectorShape, view: View): Path2D {
   let local: Path2D;
-  const matrix = new DOMMatrix().scale(VECTOR_SCALE).translate(shape.x, shape.y);
+  const matrix = new DOMMatrix().translate(view.x * VECTOR_SCALE, view.y * VECTOR_SCALE).scale(VECTOR_SCALE * view.scale).translate(shape.x, shape.y);
   if ("path" in shape) {
     local = new Path2D(shape.path);
   } else {
@@ -73,8 +73,10 @@ function addStroke(path: Path2D, action: Stroke, primitives: Set<string>, from =
 }
 
 export function createPainter(makeCanvas: () => HTMLCanvasElement, geometry: Geometry = STEGOSAURUS) {
-  const regions = geometry.regions.map(region => ({ ...region, shape: vector(region) }));
-  const details = geometry.details.map(detail => ({ ...detail, shape: vector(detail) }));
+  const view = geometry.view ?? { scale: 1, x: 0, y: 0 };
+  const line = VECTOR_SCALE * view.scale;
+  const regions = geometry.regions.map(region => ({ ...region, shape: vector(region, view) }));
+  const details = geometry.details.map(detail => ({ ...detail, shape: vector(detail, view) }));
   const byId = new Map(regions.map(region => [region.id, region]));
   function ancestors(region: typeof regions[number]): Path2D[] {
     if (!region.parent) return [];
@@ -83,6 +85,17 @@ export function createPainter(makeCanvas: () => HTMLCanvasElement, geometry: Geo
     return [...ancestors(parent), parent.shape];
   }
   const paths = regions.map(region => ({ ...region, clips: ancestors(region) }));
+  // An open area (a scene's sky or ground running off the edge) shows the paper
+  // until it is filled, so a scene sits on the paper as a lone animal does.
+  const OPEN = -2;
+  const layerKey = (actions: readonly Action[], i: number) => {
+    const fill = lastFillIn(actions, paths[i]!.id);
+    return fill < 0 && paths[i]!.open ? OPEN : fill;
+  };
+  const baseColor = (actions: readonly Action[], key: number) => {
+    const fill = actions[key];
+    return key === OPEN ? "transparent" : fill?.kind === "fill" ? fill.color : BASE_COLOR;
+  };
   function canvas(width = WIDTH, height = HEIGHT) {
     const result = makeCanvas(); result.width = width; result.height = height;
     return result;
@@ -102,7 +115,8 @@ export function createPainter(makeCanvas: () => HTMLCanvasElement, geometry: Geo
   };
   const previews = new WeakMap<HTMLCanvasElement, Preview>();
 
-  function composite(target: HTMLCanvasElement, regionLayer: (index: number) => HTMLCanvasElement) {
+  function composite(target: HTMLCanvasElement, regionLayer: (index: number) => HTMLCanvasElement,
+    showsPaper: (index: number) => boolean) {
     if (target.width <= 0 || target.height <= 0) throw new Error("Paint surface must have a size");
     const ctx = context(target);
     ctx.save(); ctx.resetTransform();
@@ -115,16 +129,22 @@ export function createPainter(makeCanvas: () => HTMLCanvasElement, geometry: Geo
       ctx.save();
       region.clips.forEach(path => ctx.clip(path));
       ctx.save(); ctx.clip(region.shape);
+      // An unfilled open area shows the paper; erase the antialiased rim an
+      // earlier fill left inside it, as an opaque base would cover it.
+      if (showsPaper(i)) {
+        ctx.globalCompositeOperation = "destination-out"; ctx.fill(region.shape);
+        ctx.globalCompositeOperation = "source-over";
+      }
       ctx.drawImage(source, 0, 0, WIDTH, HEIGHT); ctx.restore();
       if (region.outline) {
-        ctx.strokeStyle = INK; ctx.lineWidth = region.outline * VECTOR_SCALE; ctx.stroke(region.shape);
+        ctx.strokeStyle = INK; ctx.lineWidth = region.outline * line; ctx.stroke(region.shape);
       }
       ctx.restore();
     }
     for (const detail of details) {
       if (detail.fill) { ctx.fillStyle = detail.fill; ctx.fill(detail.shape); }
       if (detail.stroke) {
-        ctx.strokeStyle = detail.stroke; ctx.lineWidth = detail.strokeWidth! * VECTOR_SCALE; ctx.stroke(detail.shape);
+        ctx.strokeStyle = detail.stroke; ctx.lineWidth = detail.strokeWidth! * line; ctx.stroke(detail.shape);
       }
     }
     ctx.restore();
@@ -132,8 +152,8 @@ export function createPainter(makeCanvas: () => HTMLCanvasElement, geometry: Geo
 
   function paintGroups(target: HTMLCanvasElement, color: string, groups: readonly Group[]) {
     const ctx = context(target);
-    ctx.resetTransform(); ctx.fillStyle = color;
-    ctx.fillRect(0, 0, target.width, target.height);
+    ctx.resetTransform(); ctx.clearRect(0, 0, target.width, target.height);
+    ctx.fillStyle = color; ctx.fillRect(0, 0, target.width, target.height);
     ctx.save(); ctx.scale(target.width / WIDTH, target.height / HEIGHT);
     for (const group of groups) { ctx.fillStyle = group.color; ctx.fill(group.shape); }
     ctx.restore();
@@ -149,34 +169,32 @@ export function createPainter(makeCanvas: () => HTMLCanvasElement, geometry: Geo
     const batches = new Map<number, Group[]>();
     let paintedFrom: number | undefined;
     composite(target, i => {
-      const lastFill = lastFillIn(actions, paths[i]!.id);
+      const lastFill = layerKey(actions, i);
       if (paintedFrom !== lastFill) {
         let groups = batches.get(lastFill);
-        if (!groups) { groups = groupsAfter(actions, lastFill); batches.set(lastFill, groups); }
-        const fill = actions[lastFill];
-        paintGroups(layer, fill?.kind === "fill" ? fill.color : BASE_COLOR, groups);
+        if (!groups) { groups = groupsAfter(actions, Math.max(lastFill, -1)); batches.set(lastFill, groups); }
+        paintGroups(layer, baseColor(actions, lastFill), groups);
         paintedFrom = lastFill;
       }
       return layer;
-    });
+    }, i => layerKey(actions, i) === OPEN);
   }
 
   function preview(target: HTMLCanvasElement, committed: readonly Action[], active: Stroke) {
     let cached = previews.get(target);
     if (!cached || cached.committed !== committed || cached.active !== active || cached.count > active.points.length ||
         cached.width !== target.width || cached.height !== target.height) {
-      const fills = paths.map(region => lastFillIn(committed, region.id));
+      const fills = paths.map((_, i) => layerKey(committed, i));
       const layers = new Map<number, PreviewLayer>();
       for (const lastFill of new Set(fills)) {
-        const groups = groupsAfter(committed, lastFill);
+        const groups = groupsAfter(committed, Math.max(lastFill, -1));
         const tail = groups.at(-1);
         // The live contact must share its union with the preceding same-color
         // batch; overlaying two rasters would darken their antialiased edges.
         const group = tail?.color === active.color ? groups.pop()! :
           { color: active.color, shape: new Path2D(), primitives: new Set<string>() };
         const base = canvas(target.width, target.height), surface = canvas(target.width, target.height);
-        const fill = committed[lastFill];
-        paintGroups(base, fill?.kind === "fill" ? fill.color : BASE_COLOR, groups);
+        paintGroups(base, baseColor(committed, lastFill), groups);
         layers.set(lastFill, { base, surface, group });
       }
       cached = { committed, active, count: 0, width: target.width, height: target.height, layers, fills };
@@ -197,7 +215,7 @@ export function createPainter(makeCanvas: () => HTMLCanvasElement, geometry: Geo
       ctx.restore();
     }
     cached.count = active.points.length;
-    composite(target, i => cached.layers.get(cached.fills[i]!)!.surface);
+    composite(target, i => cached.layers.get(cached.fills[i]!)!.surface, i => cached.fills[i] === OPEN);
   }
   const pixels = (target: HTMLCanvasElement) => context(target).getImageData(0, 0, target.width, target.height).data;
   const inspection: PaintInspection = {
@@ -219,7 +237,7 @@ export function createPainter(makeCanvas: () => HTMLCanvasElement, geometry: Geo
       for (const detail of details) {
         if (detail.fill && ctx.isPointInPath(detail.shape, point.x, point.y)) return undefined;
         if (detail.stroke) {
-          ctx.lineWidth = detail.strokeWidth! * VECTOR_SCALE + 1;
+          ctx.lineWidth = detail.strokeWidth! * line + 1;
           if (ctx.isPointInStroke(detail.shape, point.x, point.y)) return undefined;
         }
       }
@@ -228,7 +246,7 @@ export function createPainter(makeCanvas: () => HTMLCanvasElement, geometry: Geo
       for (let i = paths.length - 1; i >= 0; i--) {
         const region = paths[i]!;
         if (!region.clips.every(path => ctx.isPointInPath(path, point.x, point.y))) continue;
-        ctx.lineWidth = region.outline * VECTOR_SCALE + 1;
+        ctx.lineWidth = region.outline * line + 1;
         if (region.outline && ctx.isPointInStroke(region.shape, point.x, point.y)) return undefined;
         if (ctx.isPointInPath(region.shape, point.x, point.y)) return region.id;
       }

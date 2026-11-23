@@ -40,10 +40,10 @@ html[data-size="wide-short"] .coloring-bedrock { display: none; }
 .coloring-undo { grid-column: 1 / -1; justify-self: center; }
 
 .coloring-body { position: relative; min-height: 0; min-width: 0; display: flex; align-items: center; }
-/* The paper is a frame drawn around the picture, so it always hugs the drawing at the largest size the space allows. */
-.coloring-paper { --cw-paper-pad: var(--ds-space-m); --cw-paper-radius: var(--ds-radius-28); box-sizing: border-box; position: relative; flex: 1; align-self: stretch; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+/* The picture is the paper: it fills the largest 3:2 space and its rounded corners are the paper's, with no band round it. */
+.coloring-paper { --cw-paper-radius: var(--ds-radius-28); box-sizing: border-box; position: relative; flex: 1; align-self: stretch; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .coloring-canvas-space { flex: 1; width: 100%; min-height: 0; display: flex; align-items: center; justify-content: center; container-type: size; }
-.coloring-canvas-space canvas { display: block; width: min(100cqw - 2 * var(--cw-paper-pad), calc((100cqh - 2 * var(--cw-paper-pad)) * 920 / 620)); height: min(100cqh - 2 * var(--cw-paper-pad), calc((100cqw - 2 * var(--cw-paper-pad)) * 620 / 920)); background: var(--ds-paper); outline: var(--cw-paper-pad) solid var(--ds-paper); border-radius: calc(var(--cw-paper-radius) - var(--cw-paper-pad)); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.coloring-canvas-space canvas { display: block; width: min(100cqw, 100cqh * 920 / 620); height: min(100cqh, 100cqw * 620 / 920); background: var(--ds-paper); border-radius: var(--cw-paper-radius); touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .coloring-save { position: absolute; z-index: 1; top: var(--ds-space-m); right: var(--ds-space-m); max-width: calc(100% - 2 * var(--ds-space-m)); box-sizing: border-box; flex-wrap: wrap; display: flex; align-items: center; justify-content: center; gap: var(--ds-space-6); margin: 0; padding: var(--ds-space-7) var(--ds-space-14); border: 2px solid var(--ds-outline); border-radius: var(--ds-radius-pill); background: var(--ds-label); color: var(--ds-ink-soft); font-size: var(--ds-size-13); font-weight: 800; }
 /* A failed save holds Retry, so it takes its own room: the canvas gives way and is never covered. */
 .coloring-save-error { border-color: var(--ds-action); color: var(--ds-ink); position: static; flex: none; order: -1; align-self: flex-end; margin-bottom: var(--ds-space-xs); }
@@ -124,7 +124,7 @@ html[data-size="wide-short"] .coloring-rail { display: contents; }
 html[data-size="wide-short"] .coloring-navigation { grid-row: 1; display: flex; gap: var(--ds-btn-gap); }
 html[data-size="wide-short"] .coloring-done { margin-left: auto; }
 html[data-size="wide-short"] .coloring-body { grid-row: 2; }
-html[data-size="wide-short"] .coloring-paper { --cw-paper-pad: var(--ds-space-xs); --cw-paper-radius: var(--ds-radius-speech); }
+html[data-size="wide-short"] .coloring-paper { --cw-paper-radius: var(--ds-radius-speech); }
 html[data-size="wide-short"] .coloring-tools { grid-row: 3; display: flex; justify-content: space-between; padding: 0; border: 0; }
 html[data-size="wide-short"] .coloring-undo { grid-column: auto; }
 html[data-size="wide-short"] .coloring-workshop :is(.coloring-navigation, .coloring-tools) button { flex-direction: row; gap: var(--ds-space-s); padding-right: var(--ds-space-l); background: var(--ds-label); }
