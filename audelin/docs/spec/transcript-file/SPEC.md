@@ -6,8 +6,8 @@ user S-7 and S-17 (`../SPEC.md`). An adapter over a file; it knows no Markdown.
 
 ## Decided
 
-- **Split from the transcript format** (LAB-1140): S-1 to S-3, S-5 and
-  S-11 rendered text and are retired; S-5's no-text meaning is format S-4.
+- **It owns durability, not content:** rendering text is the transcript
+  format's, including what no text means.
 - **Compose binds it to its consumers' ports:** Session's for opening and
   closing, transcript writing's for writing (rules 1 and 4).
 - **A whole replacement is all or nothing:** written beside, flushed and
