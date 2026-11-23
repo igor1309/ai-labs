@@ -178,7 +178,8 @@ const { chromium } = require("playwright");
               ...box(b), name: b.getAttribute("aria-label"), text: b.innerText,
               background: getComputedStyle(b).backgroundColor, dock: !!b.closest(".coloring-tools")
             })),
-            background: getComputedStyle(paper).backgroundColor,
+            background: getComputedStyle(document.querySelector("canvas")).backgroundColor,
+            frame: parseFloat(getComputedStyle(document.querySelector("canvas")).outlineWidth),
             paper: (() => { const probe = document.body.appendChild(document.createElement("i")); probe.style.background = "var(--ds-paper)"; const colour = getComputedStyle(probe).backgroundColor; probe.remove(); return colour; })()
           };
         });
@@ -192,6 +193,15 @@ const { chromium } = require("playwright");
         assert(layout.canvas.w > 80 && layout.canvas.h > 50, context);
         assert(Math.abs(layout.canvas.w / layout.canvas.h - 920 / 620) < .01, context);
         assert.equal(layout.background, layout.paper, context);
+        // The paper hugs the picture: just past its frame, above, below and beside it, there is no more paper.
+        const shown = await page.evaluate(({ x, y, w, h, gap }) => [[x + w / 2, y - gap], [x + w / 2, y + h + gap], [x - gap, y + h / 2], [x + w + gap, y + h / 2]]
+          .filter(([px, py]) => px >= 0 && py >= 0 && px < innerWidth && py < innerHeight)
+          .map(([px, py]) => {
+            let el = document.elementFromPoint(px, py);
+            while (el && getComputedStyle(el).backgroundColor === "rgba(0, 0, 0, 0)") el = el.parentElement;
+            return [Math.round(px), Math.round(py), el ? getComputedStyle(el).backgroundColor : "none"];
+          }), { ...layout.canvas, gap: layout.frame + 4 });
+        for (const [px, py, colour] of shown) assert.notEqual(colour, layout.paper, `empty paper at ${px},${py} ${context}`);
         const sizeClass = await page.evaluate(() => document.documentElement.dataset.size);
         // An upright iPad keeps the palette open under the paper, so it has no COLOR button.
         const openPalette = sizeClass === "tall";
@@ -217,6 +227,7 @@ const { chromium } = require("playwright");
         const trigger = page.getByRole("button", { name: colorName, exact: true });
         const originalCanvas = await canvas.elementHandle();
         const originalBox = await canvas.boundingBox();
+        if (screenshotDir && language === "en" && theme === "light") await page.screenshot({ path: join(screenshotDir, `workshop-${viewport.width}x${viewport.height}.png`) });
         if (screenshotDir && viewport.width === 1133 && viewport.height === 744 && language === "en") {
           await page.screenshot({ path: join(screenshotDir, `ipad-mini-landscape-${theme}.png`) });
         }
