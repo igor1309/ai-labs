@@ -12,7 +12,7 @@ decorator at the root over one capture and its track. Hearing the side live is l
   It owns its interfaces for the capture and the track's writing.
 - **Writing never holds the capture back:** pieces wait in memory for a
   slow track, without a bound, so live audio over the capture is never
-  slowed (call text, Decided; LAB-551). Dropping audio would shift all
+  slowed (call text, Decided). Dropping audio would shift all
   later audio (track file, Decided), and the captures already buffer
   without a bound.
 - **A failure is told when it happens, as the track's or the capture's,**
