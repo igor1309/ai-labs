@@ -4,12 +4,12 @@ Observer: compose, rendering call text live and a replaced or merged transcript 
 
 ## Decided
 
-- **Split from the transcript file** (LAB-1140): it changes with content, the file with durability.
+- **It owns content, not durability:** it changes with what the transcript says; the transcript file changes with how it is kept.
 - **Markdown the user reads, one part per segment in call text's order,** each marked
   mine or theirs with its start in call time, as Amanu keeps `transcript.md`. Text filled
   in after live text was switched on is marked so (design, Added late). Pending renders as settled.
 - **Their side's parts name the diarized speaker by a stable generic ID, never a
-  name,** so final text never changes when names do (LAB-1123). The current
+  name,** so final text never changes when names do. The current
   names follow the parts, readable and in one versioned machine-readable block,
   rendered whole each time; while there are names, no final length is told.
 - **No text, or only wordless final parts, renders as saying no text was heard.**
