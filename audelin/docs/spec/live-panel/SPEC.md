@@ -4,6 +4,17 @@ Observer: the user reading the floating call panel.
 
 ## Decided
 
+- **Panel presence:** a recording beginning shows the panel; its end hides
+  it after three seconds. A new recording cancels that hide, and a hide
+  asked for an earlier recording never hides a later one. Closing hides it
+  for the current recording; the menu offers «Показать панель» only while
+  recording with the panel hidden. Reopening the app or asking for the
+  panel shows it.
+- **The panel window** is non-activating, above normal and full-screen
+  windows on every Space. It starts as a 360×560-point column at the main
+  screen's visible right edge and keeps its moved or resized frame across
+  launches.
+
 - Existing user scenario identities and wording move intact into this presentation responsibility so the root remains an overview below 100 lines; there is no change in behavior.
 - Recording-problem copy, colours and gap-row presentation remain in the Glass Ledger design brief; existing tests continue to prove them.
 
