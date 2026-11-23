@@ -84,9 +84,10 @@ call that was made.
 
 A feature passes the three gates in the root `AGENTS.md` (Building a
 feature) before it is built: the user spec (`spec/SPEC.md` and the UI
-components' specs), the architecture in `ARCHITECTURE.md`, then the
-`SPEC.md` and `QA.md` of every component the architecture adds or
-changes. Every other change to behaviour starts with the affected
+components' specs), the architecture (which components it adds or
+changes, under the rules of `ARCHITECTURE.md`), then the `SPEC.md` and
+`QA.md` of each of them. The design of a component, and its reasons, go
+in its `SPEC.md`; `ARCHITECTURE.md` changes only for a new rule or kind. Every other change to behaviour starts with the affected
 components' `SPEC.md` and `QA.md`, a fix to a component already built
 included. Implement directly,
 test-first. Run one Agister code review per substantive commit; trivial
