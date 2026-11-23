@@ -33,11 +33,6 @@ with progress and cancellation beside readable notes during regeneration.
 Build: `cd audelin/macos && sh scripts/bundle.sh`. Install and automatic updates: see below.
 Components: `macos/`; composer, app, rehearsal and their integration tests: `macos/App/`.
 Build and test each package from its directory with `swift build --build-tests` and `swift test`.
-Reading exposes its complete state, including rendered lines, the stored `log`,
-rendering indexes and per-reduction work counts. Public initializers retain the supplied
-values; reduction keeps `log` coherent with the lines and status. Construct a
-`ReadingReducer(recordingTime:lineTime:layout:)` with formatting and layout closures;
-the app's `readingReducer()` supplies the production composition.
 
 Run: `open .build/Audelin.app` from `audelin/macos`.
 Logs: `log stream --predicate 'subsystem == "dev.igor1309.audelin"'`.
@@ -50,14 +45,9 @@ Recurring real-model baselines and weekly artifact review: [profiling runbook](d
 Optimized load tests: from each of `audelin/macos` and `audelin/macos/App`, run `swift build --build-tests -Xswiftc -O`,
 then, in the same directory, run `../scripts/swift-test-bounded.sh 120 -Xswiftc -O --filter LoadTests` or `../../scripts/swift-test-bounded.sh 120 -Xswiftc -O --filter LoadTests`, respectively.
 
-| Path | What it holds |
-|---|---|
-| [docs/log.md](docs/log.md) | What changed for the product, newest first |
-| [docs/spec-process.md](docs/spec-process.md) | How behaviour is specified: one SPEC.md and QA.md per component, at most 100 lines, tracked in Multica |
-| [docs/audelin-naming-brief.md](docs/audelin-naming-brief.md) | The name: Audelin, CLI `audelin`, data in `~/.audelin` |
-| [docs/design/README.md](docs/design/README.md) | Glass Ledger design: tokens, components, Screens 1–8 in `visual-language.pen` |
-| [docs/research/](docs/research/) | Research, the Parakeet spike and naming rounds |
-| [docs/research/recurring-profiling.md](docs/research/recurring-profiling.md) | Nightly real-model collection, validated baselines and weekly artifact review |
+Architecture rules: [ARCHITECTURE.md](ARCHITECTURE.md). Behaviour: the specs under
+`docs/spec/`, written as [docs/spec-process.md](docs/spec-process.md) says. Changes:
+[docs/log.md](docs/log.md).
 
 CLI `audelin`, data folder `~/.audelin`, calls in `~/Recordings/Audelin`.
 
@@ -67,9 +57,8 @@ with its file and line, to `slow-tests-report.json` and `.md` in the current
 directory. The weekly `audelin-slow-tests` workflow runs it on macOS and
 hands the ranking to the slow-test hunter autopilot. Tests listed in
 `scripts/slow-tests.skip` (one test id per line, `#` for the reason) are
-marked as skipped there. It runs `swift test --no-parallel`: in a parallel run a
-main-actor test's duration includes its wait in the main-actor queue, which ranked
-dozens of cheap tests together at about 19.6 s.
+marked as skipped there. It runs `swift test --no-parallel`, since in a parallel
+run a main-actor test's duration includes its wait for the main actor.
 
 ## Live calls-window scenario
 
