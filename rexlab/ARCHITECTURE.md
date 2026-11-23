@@ -1,119 +1,52 @@
 # RexLab architecture
 
-RexLab is a static web app: React, TypeScript and Vite, built to files and
-served by Cloudflare Pages at https://rexlab.enoa.ai. There is no server,
-database or account; every rule runs in the browser and progress stays on
-the device.
+The rules RexLab's code follows. Re-read them before designing or building.
 
-## Hosting and releases
+What this file holds, and what it does not:
 
-- Cloudflare Pages project `rexlab`, free tier, on the `enoa.ai` domain.
-- Every pull request that touches RexLab's code runs `rexlab-core.yml`:
-  typecheck, tests, build and the browser checks as a matrix. Docs-only
-  changes run nothing. Merging deploys nothing.
-- A `rexlab_v<version>` tag on trunk runs `release-unit.yml`, which checks
-  the tag against `release-units.toml` and calls `rexlab-deploy.yml`. It
-  builds `dist`, runs `wrangler pages deploy`, and passes only when the
-  site's page and service worker both serve the tag's version. The steps
-  are in `AGENTS.md` § Shipping a release.
-- A service worker (`src/offline/`) keeps the files a release lists in a
-  cache named for its version. The page comes from the network, falling
-  back to the cache when the network fails or is slow; a new release takes
-  over once every page of the old one has closed.
+- **It holds rules:** where the app runs, how modules depend on each other,
+  where the browser is reached, and how progress is kept.
+- **It holds no feature design.** What a game does, its rounds, levels,
+  rewards and stored fields are its Gherkin specs under `docs/features/`,
+  the oracle for its behaviour, with the reasoning in its `docs/*.md` note.
+  A feature changes this file only when it needs a new rule.
+- **It names no code** beyond the entry points the rules are about. Types,
+  files and wiring live in the code.
 
-## Modules
+## Rules
 
-`src/` holds one directory per game's rules, each reached only through its
-`index.ts`: `quiz` (compare), `sorting`, `pairs` (find the pair),
-`skeletons`, `dig`, `care`, `labyrinth`, `picturePuzzle`, `whoseJaw` and
-`coloring`. A game's rules are plain functions with no React or storage.
-Most import nothing but the languages (`src/language/`); picture puzzle and
-Whose Jaw also take the age levels, and coloring's painter draws on canvas.
-
-A game module (`*Game.tsx`) turns rules into screen views, screen actions
-back into events, and owns transitions, counted starts and persistence.
-Screens, texts and themes import no rules of the quiz, sorting, pairs,
-skeleton, dig or care games; coloring's screens use its exported types.
-`App.tsx` routes between Home, the catalogue, dinosaur pages and the games.
-
-- **Quiz.** A round is 10 questions, each two distinct dinosaurs compared
-  on height, mass or (above Hatchling) length; the larger value is at
-  least 1.5 times the smaller, and no two questions use the same pair.
-- **Labyrinth.** Its pure model owns generation, movement, hint history and
-  rewards, with the best-score rule passed in; screens get cell and reward
-  views and never import the model. Boards and positions are never saved.
-
-`src/root.ts` is the composition root. It supplies the browser to the app:
-`localStorage`, IndexedDB, the random source, the clock, timers, picture
-loading and decoding, the window's size class and orientation, and the
-theme and motion queries. A few adapters reach the browser themselves
-(audio, the service worker). Every game scores by the one best-score rule
-in `src/bestScore.ts`. `tests/architecture.test.ts` reads the import graph
-and fails when a boundary it names breaks.
-
-## Content
-
-Dinosaur records live in versioned JSON in `src/data/` (`dinosaurs.json`,
-`skeletons.json`, `dig.json`, `jaws.json`), with pictures under
-`src/assets/`, loaded through Vite so each URL carries a content hash; the
-icons in `public/` keep fixed URLs. Every fact follows `docs/sources.md`:
-height is hip height in metres, length nose to tail, mass live body mass
-in kilograms. Picture style is in `art/style.md`.
-
-## Progress and settings
-
-Progress is best effort: clearing the browser loses it, and that is
-accepted.
-
-- `rexlab-progress` in `localStorage` holds one versioned record
-  (`schemaVersion`) with an entry per game under `games` and the Home
-  state (`home-featured`, `home-first-visit`). Saving one entry leaves
-  the others as they are. The fields of each, including per-level bests,
-  are in `src/localProgress.ts`.
-- An unreadable record, or one with an unknown `schemaVersion`, counts as
-  no progress and is replaced by the next successful save. An unusable
-  optional choice is dropped without losing readable rewards.
-- When storage cannot be read, the quiz shows a round's score with no best
-  and no celebration; labyrinth keeps rewards in memory for the session.
-  Storage that can be read but not written celebrates against what was
-  read and saves nothing.
-- The best score is the highest ever, never the last round's. A best is
-  `null` until a round is finished; a first round above 0 is a first best,
-  a higher one a new best, and a first round of 0 is not celebrated. Only
-  a finished round counts as played.
-- Settings have keys of their own: `rexlab-language`, `rexlab-theme`,
-  `rexlab-age-level` and `rexlab-whose-jaw-muted`.
-- Coloring works, with their paint and undo history, live in the IndexedDB
-  database `rexlab-coloring` (`docs/coloring.md`).
-
-## Screens and input
-
-- Each screen is laid out by the window's size class for iPad, iPhone and
-  Mac (`docs/features/window-shape.feature`). A screen with no portrait
-  layout asks to be turned sideways, or for a wider window.
-- A double tap counts as one tap, and text and pictures never select or
-  call out (`docs/tap-safety.md`).
-- Every change on screen animates with the shared motion tokens; reduced
-  motion uses short fades or none.
-- Question pictures are all one size, so size never gives an answer away,
-  and feedback pairs colour with ✓ or ✗.
-
-## Testing
-
-- Behaviour is specified in Gherkin under `docs/features/`, and tests under
-  `tests/` prove the scenarios. `@next` marks planned behaviour, though some
-  coloring files still carry it after shipping (`docs/games.md`).
-- Game rules are tested directly in Node (`*.test.ts`). Screens and flows
-  render in jsdom with the app's stylesheet (`*.test.tsx`); where fit
-  matters, widths are measured in ems of the font against each window size
-  (`docs/features/window-fit.feature`).
-- Tests replace what the root supplies: a memory storage, a seeded random
-  source, a fixed clock, and timers and pictures that fire when the test
-  says. `root.test.ts` checks the root's wiring against browser fakes.
-- Layout, touch and raster checks run in Chromium (`*.browser.cjs`;
-  `AGENTS.md` § Browser checks). `scripts/test.sh` runs the core steps:
-  clean install, typecheck, tests and build.
+1. **Static and local.** RexLab is built to static files and served by
+   Cloudflare Pages. There is no server, database or account; every rule
+   runs in the browser, and progress stays on the device. A release ships
+   only from a tag (`AGENTS.md` § Shipping a release), and a service worker
+   lets an installed release run without a network.
+2. **A game's rules are pure.** Each game's rules are plain functions in a
+   directory of their own under `src/`, reached only through its
+   `index.ts`. They use no React and no storage, and import nothing beyond
+   the languages and the age levels.
+3. **A game module connects rules to screens.** It turns rules into screen
+   views and screen actions into events, and owns transitions, counted
+   starts and persistence. Screens, texts and themes import no game's rules.
+4. **The composition root supplies the browser.** `src/root.ts` gives the
+   app storage, the random source, the clock, timers, pictures, the window's
+   size class and the theme and motion queries. Only an adapter it wires
+   may reach the browser itself.
+5. **One best-score rule.** Every game scores by `src/bestScore.ts`: the
+   best is the highest ever, never the last round's.
+6. **Progress is best effort.** Progress lives in one versioned
+   browser-local record, one entry per game; saving one entry leaves the
+   others as they are. An unreadable record or unknown version counts as no
+   progress. A game that cannot read or save still plays; it never shows a
+   best or celebration it cannot back. Losing browser data is accepted.
+7. **Facts follow their sources.** Every dinosaur fact follows
+   `docs/sources.md`; content is versioned JSON under `src/data/`.
+8. **Tests replace what the root supplies.** Tests pass a memory storage, a
+   seeded random source, a fixed clock, and timers and pictures that fire
+   when the test says, so nothing waits on time or chance.
+   `tests/architecture.test.ts` reads the import graph and fails when a
+   boundary it names breaks.
 
 ## Open
 
-- Horn count has no definition or fairness threshold yet.
+- The import test covers each game's boundaries by name; a new game needs
+  its own lines there.
