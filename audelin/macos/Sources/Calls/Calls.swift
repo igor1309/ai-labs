@@ -199,6 +199,23 @@ public struct Calls: Sendable {
         return Text(transcript: transcript(data.map { String(decoding: $0, as: UTF8.self) } ?? ""), identity: identity)
     }
 
+    /// A call's transcript identity and whether it keeps a previous transcript, without
+    /// parsing the transcript or listing the other calls.
+    public struct TranscriptFacts: Equatable, Sendable {
+        /// SHA-256 of the saved bytes, in lowercase hex; nil when the file is absent.
+        public let identity: String?
+        public let hasPrevious: Bool
+        public init(identity: String?, hasPrevious: Bool) { self.identity = identity; self.hasPrevious = hasPrevious }
+    }
+
+    public func transcriptFacts(id: String) throws -> TranscriptFacts {
+        operation.lock(); defer { operation.unlock() }
+        let folder = try location(id: id)
+        let data = try disk.read(folder.appendingPathComponent("transcript.md"))
+        let identity = data.map { SHA256.hash(data: $0).map { String(format: "%02x", $0) }.joined() }
+        return .init(identity: identity, hasPrevious: try exists(folder.appendingPathComponent(Self.previousTranscript)))
+    }
+
     /// A call's saved `transcript.md` as written, for a merge to read back.
     public func savedTranscript(id: String) throws -> Data {
         operation.lock(); defer { operation.unlock() }
