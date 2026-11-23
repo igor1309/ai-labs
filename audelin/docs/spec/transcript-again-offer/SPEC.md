@@ -3,7 +3,6 @@
 Observer: the user, looking at a call's row menu in the calls window.
 The run itself is `../transcript-again/SPEC.md`; restoring the previous
 transcript, `../previous-transcript/SPEC.md`.
-Oracle: the owner's rulings on LAB-1694.
 
 ## Decided
 
