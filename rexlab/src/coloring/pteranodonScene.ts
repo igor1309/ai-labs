@@ -74,4 +74,4 @@ function scene(rich: boolean): Geometry {
 }
 
 export const PTERANODON_HATCHLING = scene(false);
-export const PTERANODON_EXPLORER = scene(true);
+export const PTERANODON_EXPLORER_1 = scene(true);

@@ -75,11 +75,11 @@ Paleontologist uses the Explorer one.
   armour, a sail and its bands, a frill, a wing membrane, stripes or bands on
   the flank and tail), in a scene with sky, landscape and plants. Every
   region stays a broad target; small marks are protected ink. T-Rex's,
-  Mosasaurus's and Brachiosaurus's are traced from generated line art (`art/coloring.md`), the way to redraw the
+  Mosasaurus's, Brachiosaurus's and Pteranodon's are traced from generated line art (`art/coloring.md`), the way to redraw the
   rest.
-- Pteranodon and Parasaurolophus still
-  have Explorer pictures of 22–27 regions in the cartoon style, below this
-  standard until they are redrawn.
+- Parasaurolophus still
+  has an Explorer picture of 22–27 regions in the cartoon style, below this
+  standard until it is redrawn.
 Saved works always reopen with their own artwork, regardless of the current
 level. Tools and rewards are shared; coloring offers no level switch or
 promotion. Each separate nonempty completed work earns one star once; its best is the saved completed collection count

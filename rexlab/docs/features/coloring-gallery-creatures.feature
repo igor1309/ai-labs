@@ -34,7 +34,7 @@ Feature: Coloring gallery creature choices
   Scenario: Choose a recognizable Pteranodon
     When I enter the gallery at any age level
     Then exactly one Pteranodon choice has a matching vector preview and the uppercase localized name PTERANODON or ПТЕРАНОДОН
-    And Pteranodon uses pteranodon-hatchling-1 at Hatchling and pteranodon-explorer-1 at Explorer and Paleontologist
+    And Pteranodon uses pteranodon-hatchling-1 at Hatchling and pteranodon-explorer-2 at Explorer and Paleontologist
     And Stegosaurus, Triceratops, Ankylosaurus, T-Rex, Mosasaurus and Brachiosaurus remain available with their age-matched previews
     And its friendly silhouette has wide spread wings, a long beak and a swept-back crest
     And choosing it starts an independent unpainted work without changing existing works

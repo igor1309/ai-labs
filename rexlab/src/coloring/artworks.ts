@@ -12,7 +12,8 @@ import { TREX_EXPLORER } from "./trexExplorer4.ts";
 import { TREX_EXPLORER_2 } from "./trexExplorer2.ts";
 import { BRACHIOSAURUS_HATCHLING, BRACHIOSAURUS_EXPLORER_1 } from "./brachiosaurusScene.ts";
 import { BRACHIOSAURUS_EXPLORER } from "./brachiosaurusExplorer2.ts";
-import { PTERANODON_HATCHLING, PTERANODON_EXPLORER } from "./pteranodonScene.ts";
+import { PTERANODON_HATCHLING, PTERANODON_EXPLORER_1 } from "./pteranodonScene.ts";
+import { PTERANODON_EXPLORER } from "./pteranodonExplorer2.ts";
 import { PARASAUROLOPHUS_HATCHLING, PARASAUROLOPHUS_EXPLORER } from "./parasaurolophusScene.ts";
 import { SPINOSAURUS_HATCHLING, SPINOSAURUS_EXPLORER_1 } from "./spinosaurusScene.ts";
 import { SPINOSAURUS_EXPLORER } from "./spinosaurusExplorer.ts";
@@ -43,6 +44,8 @@ export const ARTWORKS = [
   { geometry: BRACHIOSAURUS_EXPLORER_1, names: { en: "BRACHIOSAURUS", ru: "БРАХИОЗАВР" } },
   { geometry: PTERANODON_HATCHLING, names: { en: "PTERANODON", ru: "ПТЕРАНОДОН" } },
   { geometry: PTERANODON_EXPLORER, names: { en: "PTERANODON", ru: "ПТЕРАНОДОН" } },
+  // Saved journals still resolve this version; new selections use the traced scene above.
+  { geometry: PTERANODON_EXPLORER_1, names: { en: "PTERANODON", ru: "ПТЕРАНОДОН" } },
   { geometry: PARASAUROLOPHUS_HATCHLING, names: { en: "PARASAUROLOPHUS", ru: "ПАРАЗАУРОЛОФ" } },
   { geometry: PARASAUROLOPHUS_EXPLORER, names: { en: "PARASAUROLOPHUS", ru: "ПАРАЗАУРОЛОФ" } },
   { geometry: SPINOSAURUS_HATCHLING, names: { en: "SPINOSAURUS", ru: "СПИНОЗАВР" } },
