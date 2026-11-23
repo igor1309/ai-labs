@@ -142,7 +142,7 @@
 ## State machines
 
 Not every module defines a state machine: an adapter binds an outside API
-and a UI module draws a screen. The project's architecture says which
+and a UI module draws a screen. The project's `ARCHITECTURE.md` says which
 modules are machines; an app composes them.
 
 - A state machine is a holder, as an actor is: it holds observable state
@@ -306,11 +306,10 @@ result is reviewed by the owner before the next begins.
    every wait and failure they can see. Nothing about components.
 2. **Architecture.** The architect designs from the user spec: the
    `architecture` skill, or agister's `architect` process run on a brief
-   that names the spec and the architecture document. Its output names
-   the components the feature adds or changes, each with its one
-   responsibility. The architecture document holds only rules and
-   component kinds; it changes only for a new rule or kind, never to
-   describe a feature's design, which goes in the component specs.
+   that names the spec and the project's `ARCHITECTURE.md`. Its output
+   names the components the feature adds or changes, each with its one
+   responsibility, and changes `ARCHITECTURE.md` only for a new rule or
+   component kind (§ Architecture files).
 3. **Component specs.** One spec for each component the architecture adds
    or changes, written for that component's client.
 
@@ -318,6 +317,22 @@ The three land together in one PR, which opens the gate for design and
 implementation. A feature's parent issue gets one sub-issue per gate and
 one for the build. A fix that changes no user-visible behaviour starts at
 the component spec.
+
+## Architecture files
+
+- There is no repository-wide architecture document; these instructions
+  hold the rules every project shares. Each project with code has its own
+  `<project>/ARCHITECTURE.md`.
+- A project's `ARCHITECTURE.md` holds rules only: how its components
+  depend on each other, where the outside world is reached, who owns which
+  types, what composition may do, and its kinds of component. It opens by
+  saying so.
+- It holds no feature design and repeats no code: what a component does,
+  its ports, its state and the reasons for them are in the component's
+  spec, the oracle for its behaviour. A spec cites the rules by number,
+  never an architecture section as its oracle.
+- Each change keeps it to rules: move feature design, decision history and
+  code detail found there into the owning spec or out.
 
 ## Implementing with Codex
 
@@ -388,7 +403,8 @@ place below is checked by a test or read by a tool; miss one and CI or the
 daily dashboard flags it.
 
 - Give it a `README.md` (what it is, its status, how to run it) and a
-  `docs/log.md` (see Logs). Add an `AGENTS.md` when it has rules of its own.
+  `docs/log.md` (see Logs). A project with code gets an `ARCHITECTURE.md`
+  (see Architecture files). Add an `AGENTS.md` when it has rules of its own.
 - Add a row to `## Components` in the root `README.md` (or `## Structure`
   for a docs-only area). These two tables are the project registry the
   dashboard-sync agent reads (`dashboard-sync-agent/README.md`).
