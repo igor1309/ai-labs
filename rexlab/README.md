@@ -11,7 +11,7 @@ light and dark themes.
 - [Games and approaches](docs/games.md): current activities, levels, rewards,
   replay and planned work, with links to detailed rules and designs.
 - Behaviour: `docs/features/` (Gherkin).
-- Architecture: `docs/mvp-infrastructure.md`.
+- [Architecture](ARCHITECTURE.md): hosting, modules, content, progress and testing.
 - Dinosaur pictures: `art/style.md`.
 - [Home skeleton hero](docs/home-skeleton-hero.md): its appearance, rules,
   assets and workflow for visual changes.

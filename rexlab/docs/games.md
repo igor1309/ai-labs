@@ -197,7 +197,7 @@ Skeleton excavation and odd-bone-out are not planned.
   `@next` generally marks planned behavior; check source integration and
   delivery records when tags lag, as noted for coloring above.
 - [Visual designs](../design/rexlab.pen) hold screen frames and storyboards.
-- [Architecture](mvp-infrastructure.md), [tap safety](tap-safety.md) and
+- [Architecture](../ARCHITECTURE.md), [tap safety](tap-safety.md) and
   [art style](../art/style.md) explain implementation and asset conventions.
 - [Change log](log.md) records deliveries. Issues preserve proposals,
   approvals, rejected alternatives and implementation tasks.
