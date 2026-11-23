@@ -2,6 +2,7 @@
 
 ## 2026-11-23
 
+- LAB-1786: Every coloring picture now fills its paper with no frame. The traced Explorer scenes of T-Rex, Mosasaurus, Brachiosaurus, Parasaurolophus and Spinosaurus are retraced whole, with no frame line and nothing of the creature cut off; their sky, land and water show the paper colour until filled. The other pictures are enlarged until they touch the paper edges. Works saved on the earlier pictures reopen on them.
 - LAB-1786: The coloring paper now hugs the picture on every screen: the drawing takes the largest 3:2 size the space allows, with no empty paper above, below or beside it.
 - LAB-1776: Parasaurolophus's Explorer picture is redrawn from traced line art (43 regions): a Parasaurolophus walking on four legs by a swamp river, its long crest, head, neck, back stripes and tail bands each a region of their own, among hills, a conifer, bushes, lily pads and stones; saved works keep the earlier picture.
 

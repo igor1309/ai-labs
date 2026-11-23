@@ -114,7 +114,7 @@ it.each(["hatchling", "explorer", "paleontologist"] as AgeLevel[])("offers the %
   expect(f.container.querySelectorAll(".gallery-new")).toHaveLength(9);
   expect(screen.getAllByRole("button", { name: "TRICERATOPS" })).toHaveLength(1);
   await f.click("TRICERATOPS");
-  expect(f.active().getSnapshot().work.geometry).toBe(level === "hatchling" ? "triceratops-production-1" : "triceratops-explorer-1");
+  expect(f.active().getSnapshot().work.geometry).toBe(level === "hatchling" ? "triceratops-production-2" : "triceratops-explorer-2");
   expect(screen.getByLabelText("TRICERATOPS").tagName).toBe("CANVAS");
   expect(f.saveAge).not.toHaveBeenCalled();
 });
@@ -122,7 +122,7 @@ it.each(["hatchling", "explorer", "paleontologist"] as AgeLevel[])("offers the %
 it.each(["hatchling", "explorer", "paleontologist"] as AgeLevel[])("starts the %s Stegosaurus from its matching gallery preview", async level => {
   const f = fixture({ level }); await act(async () => {});
   await f.click("COLOR A DINOSAUR");
-  const version = level === "hatchling" ? "stegosaurus-production-1" : "stegosaurus-explorer-1";
+  const version = level === "hatchling" ? "stegosaurus-production-1" : "stegosaurus-explorer-2";
   const button = screen.getByRole("button", { name: "NEW WORK" });
   const artwork = f.artworks.find(entry => entry.version === version)!;
   expect(button.textContent).toContain("STEGOSAURUS");
@@ -144,7 +144,7 @@ it.each([
   await f.click(language === "en" ? "COLOR A DINOSAUR" : "РАСКРАСЬ ДИНОЗАВРА");
   expect(screen.getByRole("button", { name }).textContent).toContain(name);
   await f.click(name);
-  const version = level === "hatchling" ? "ankylosaurus-hatchling-2" : "ankylosaurus-explorer-1";
+  const version = level === "hatchling" ? "ankylosaurus-hatchling-3" : "ankylosaurus-explorer-2";
   expect(f.active().getSnapshot().work.geometry).toBe(version);
   expect(screen.getByLabelText(name).tagName).toBe("CANVAS");
   expect(f.source.newWork).toHaveBeenCalledExactlyOnceWith("work-1", expect.any(Function), version);
@@ -158,7 +158,7 @@ it.each([
 ] as const)("starts exactly one localized T-Rex at %s in %s with the matching preview", async (level, language) => {
   const f = fixture({ level, language }); await act(async () => {});
   const name = language === "en" ? "T-REX" : "ТИРАННОЗАВР";
-  const version = level === "hatchling" ? "trex-hatchling-1" : "trex-explorer-4";
+  const version = level === "hatchling" ? "trex-hatchling-2" : "trex-explorer-5";
   await f.click(language === "en" ? "COLOR A DINOSAUR" : "РАСКРАСЬ ДИНОЗАВРА");
   expect(f.container.querySelectorAll(".gallery-new")).toHaveLength(9);
   const button = screen.getByRole("button", { name });
@@ -179,7 +179,7 @@ it.each([
 ] as const)("starts exactly one localized Mosasaurus at %s in %s with the matching preview", async (level, language) => {
   const f = fixture({ level, language }); await act(async () => {});
   const name = language === "en" ? "MOSASAURUS" : "МОЗАЗАВР";
-  const version = level === "hatchling" ? "mosasaurus-hatchling-1" : "mosasaurus-explorer-2";
+  const version = level === "hatchling" ? "mosasaurus-hatchling-2" : "mosasaurus-explorer-3";
   await f.click(language === "en" ? "COLOR A DINOSAUR" : "РАСКРАСЬ ДИНОЗАВРА");
   expect(f.container.querySelectorAll(".gallery-new")).toHaveLength(9);
   const button = screen.getByRole("button", { name });
@@ -197,7 +197,7 @@ it.each([
 ] as const)("starts exactly one localized Brachiosaurus at %s in %s with the matching preview", async (level, language) => {
   const f = fixture({ level, language }); await act(async () => {});
   const name = language === "en" ? "BRACHIOSAURUS" : "БРАХИОЗАВР";
-  const version = level === "hatchling" ? "brachiosaurus-hatchling-1" : "brachiosaurus-explorer-2";
+  const version = level === "hatchling" ? "brachiosaurus-hatchling-2" : "brachiosaurus-explorer-3";
   await f.click(language === "en" ? "COLOR A DINOSAUR" : "РАСКРАСЬ ДИНОЗАВРА");
   expect(f.container.querySelectorAll(".gallery-new")).toHaveLength(9);
   const button = screen.getByRole("button", { name });
@@ -214,7 +214,7 @@ it.each([
 ] as const)("starts exactly one localized Pteranodon at %s in %s with the matching preview", async (level, language) => {
   const f = fixture({ level, language }); await act(async () => {});
   const name = language === "en" ? "PTERANODON" : "ПТЕРАНОДОН";
-  const version = level === "hatchling" ? "pteranodon-hatchling-1" : "pteranodon-explorer-1";
+  const version = level === "hatchling" ? "pteranodon-hatchling-2" : "pteranodon-explorer-2";
   await f.click(language === "en" ? "COLOR A DINOSAUR" : "РАСКРАСЬ ДИНОЗАВРА");
   expect(f.container.querySelectorAll(".gallery-new")).toHaveLength(9);
   const button = screen.getByRole("button", { name });
@@ -231,7 +231,7 @@ it.each([
 ] as const)("starts exactly one localized Parasaurolophus at %s in %s with the matching preview", async (level, language) => {
   const f = fixture({ level, language }); await act(async () => {});
   const name = language === "en" ? "PARASAUROLOPHUS" : "ПАРАЗАУРОЛОФ";
-  const version = level === "hatchling" ? "parasaurolophus-hatchling-1" : "parasaurolophus-explorer-2";
+  const version = level === "hatchling" ? "parasaurolophus-hatchling-2" : "parasaurolophus-explorer-3";
   await f.click(language === "en" ? "COLOR A DINOSAUR" : "РАСКРАСЬ ДИНОЗАВРА");
   expect(f.container.querySelectorAll(".gallery-new")).toHaveLength(9);
   const button = screen.getByRole("button", { name });
@@ -248,7 +248,7 @@ it.each([
 ] as const)("starts exactly one localized Spinosaurus at %s in %s with the matching preview", async (level, language) => {
   const f = fixture({ level, language }); await act(async () => {});
   const name = language === "en" ? "SPINOSAURUS" : "СПИНОЗАВР";
-  const version = level === "hatchling" ? "spinosaurus-hatchling-1" : "spinosaurus-explorer-4";
+  const version = level === "hatchling" ? "spinosaurus-hatchling-2" : "spinosaurus-explorer-5";
   await f.click(language === "en" ? "COLOR A DINOSAUR" : "РАСКРАСЬ ДИНОЗАВРА");
   expect(f.container.querySelectorAll(".gallery-new")).toHaveLength(9);
   const button = screen.getByRole("button", { name });

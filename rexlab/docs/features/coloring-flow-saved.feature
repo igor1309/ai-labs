@@ -54,7 +54,7 @@ Feature: Coloring screens, damaged storage and saved geometry
     Given an existing saved work uses geometry stegosaurus-production-1
     When I reopen coloring after Triceratops becomes available
     Then the work retains its original Stegosaurus geometry, paint, undo history and earned star
-    And new gallery Triceratops works use triceratops-production-1 at Hatchling or triceratops-explorer-1 at Explorer and Paleontologist in the same collection
+    And new gallery Triceratops works use triceratops-production-2 at Hatchling or triceratops-explorer-2 at Explorer and Paleontologist in the same collection
     When I save and reopen works of either creature
     Then each geometry version selects its own renderer and region validation
     And unknown geometry versions stay unavailable instead of being interpreted as another creature
@@ -86,6 +86,6 @@ Feature: Coloring screens, damaged storage and saved geometry
 
     Examples:
       | level          | geometry                |
-      | Hatchling      | trex-hatchling-1         |
-      | Explorer       | trex-explorer-4          |
-      | Paleontologist | trex-explorer-4          |
+      | Hatchling      | trex-hatchling-2         |
+      | Explorer       | trex-explorer-5          |
+      | Paleontologist | trex-explorer-5          |

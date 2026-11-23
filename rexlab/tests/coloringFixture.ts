@@ -30,6 +30,6 @@ export function coloringFixture(artwork: Artwork = { version: "test-stegosaurus-
 export function galleryArtworkFixtures() {
   return [
     { version: "stegosaurus-production-1", names: { en: "STEGOSAURUS", ru: "СТЕГОЗАВР" }, preview: { width: 276, height: 186, render: vi.fn<(target: HTMLCanvasElement) => void>() } },
-    { version: "triceratops-production-1", names: { en: "TRICERATOPS", ru: "ТРИЦЕРАТОПС" }, preview: { width: 276, height: 186, render: vi.fn<(target: HTMLCanvasElement) => void>() } }
+    { version: "triceratops-production-2", names: { en: "TRICERATOPS", ru: "ТРИЦЕРАТОПС" }, preview: { width: 276, height: 186, render: vi.fn<(target: HTMLCanvasElement) => void>() } }
   ] satisfies GalleryArtwork[];
 }

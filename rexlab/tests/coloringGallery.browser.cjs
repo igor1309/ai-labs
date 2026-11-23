@@ -293,20 +293,20 @@ const { chromium } = require("playwright");
     await press("TRICERATOPS");
     await page.locator('canvas[aria-label="TRICERATOPS"]').waitFor();
     const probes = [
-      [140, 340, "tail"], [330, 520, "rear-far"], [586, 520, "front-far"],
-      [280, 360, "body"], [440, 400, "belly"], [308, 304, "spot-1"], [402, 294, "spot-2"],
-      [280, 522, "rear-near"], [540, 520, "front-near"], [600, 280, "frill"],
-      [720, 400, "head"], [730, 250, "horn-far"], [790, 290, "horn-near"], [858, 354, "horn-nose"]
+      [84, 298, "tail"], [298, 501, "rear-far"], [587, 501, "front-far"],
+      [242, 321, "body"], [422, 366, "belly"], [274, 258, "spot-1"], [379, 246, "spot-2"],
+      [242, 503, "rear-near"], [535, 501, "front-near"], [603, 231, "frill"],
+      [738, 366, "head"], [749, 197, "horn-far"], [817, 242, "horn-near"], [893, 314, "horn-nose"]
     ];
     const contract = await page.evaluate(probes => {
-      const painter = window.gallery.painterFor("triceratops-production-1"), canvas = painter.canvas();
+      const painter = window.gallery.painterFor("triceratops-production-2"), canvas = painter.canvas();
       const pixel = (x, y) => [...canvas.getContext("2d").getImageData(x, y, 1, 1).data];
       const cases = probes.map(([x, y, region]) => {
         painter.render(canvas, [{ kind: "fill", region, color: "#ef5350" }]);
-        return { region, hit: painter.regionAt({ x, y }), pixels: probes.map(([x, y]) => pixel(x, y)), eye: pixel(746, 370) };
+        return { region, hit: painter.regionAt({ x, y }), pixels: probes.map(([x, y]) => pixel(x, y)), eye: pixel(767, 332) };
       });
-      painter.render(canvas, [{ kind: "stroke", color: "#ab67cb", size: 40, points: [{ x: 600, y: 280 }] }]);
-      return { cases, brush: pixel(600, 280), outside: pixel(0, 0), borderHit: painter.regionAt({ x: 70, y: 278 }) ?? null };
+      painter.render(canvas, [{ kind: "stroke", color: "#ab67cb", size: 40, points: [{ x: 603, y: 231 }] }]);
+      return { cases, brush: pixel(603, 231), outside: pixel(0, 0), borderHit: painter.regionAt({ x: 4, y: 4 }) ?? null };
     }, probes);
     for (const [index, test] of contract.cases.entries()) {
       assert.equal(test.hit, test.region, `tap owns ${test.region}`);
@@ -319,11 +319,11 @@ const { chromium } = require("playwright");
       const box = await page.locator("canvas").boundingBox();
       await page.mouse.click(box.x + x * box.width / 920, box.y + y * box.height / 620);
     };
-    await press("FILL"); await tap(600, 280); await saved();
-    assert.deepEqual(await surfacePixel(600, 280), [239, 83, 80, 255]);
-    assert.deepEqual(await surfacePixel(280, 360), [255, 240, 207, 255]);
-    await press("COLOR"); await press("BLUE"); await tap(280, 360); await saved();
-    const tric = (await listed()).works.find(r => r.document.geometry === "triceratops-production-1").document;
+    await press("FILL"); await tap(603, 231); await saved();
+    assert.deepEqual(await surfacePixel(603, 231), [239, 83, 80, 255]);
+    assert.deepEqual(await surfacePixel(242, 321), [255, 240, 207, 255]);
+    await press("COLOR"); await press("BLUE"); await tap(242, 321); await saved();
+    const tric = (await listed()).works.find(r => r.document.geometry === "triceratops-production-2").document;
     assert.deepEqual(tric.actions, [{ kind: "fill", color: "#ef5350", region: "frill" }, { kind: "fill", color: "#42a5f5", region: "body" }]);
     await back();
     assert.equal(await page.locator(`[data-work-id="${tric.id}"] img`).getAttribute("alt"), "TRICERATOPS · 1");
@@ -335,16 +335,16 @@ const { chromium } = require("playwright");
         return [...ctx.getImageData(Math.floor(x * canvas.width / 920), Math.floor(y * canvas.height / 620), 1, 1).data];
       }, { x, y });
     };
-    assert.deepEqual(await thumbnailPixel(tric.id, 600, 280), [239, 83, 80, 255]);
-    assert.deepEqual(await thumbnailPixel(tric.id, 280, 360), [66, 165, 245, 255]);
+    assert.deepEqual(await thumbnailPixel(tric.id, 603, 231), [239, 83, 80, 255]);
+    assert.deepEqual(await thumbnailPixel(tric.id, 242, 321), [66, 165, 245, 255]);
     await page.reload(); await mount({}); await press("CONTINUE");
     await page.locator('canvas[aria-label="TRICERATOPS"]').waitFor();
-    assert.deepEqual(await surfacePixel(600, 280), [239, 83, 80, 255]);
-    assert.deepEqual(await surfacePixel(280, 360), [66, 165, 245, 255]);
+    assert.deepEqual(await surfacePixel(603, 231), [239, 83, 80, 255]);
+    assert.deepEqual(await surfacePixel(242, 321), [66, 165, 245, 255]);
     await press("UNDO"); await saved();
-    assert.deepEqual(await surfacePixel(280, 360), [255, 240, 207, 255]);
-    assert.deepEqual(await surfacePixel(600, 280), [239, 83, 80, 255]);
-    await press("FILL"); await press("COLOR"); await press("BASE"); await tap(600, 280); await saved();
+    assert.deepEqual(await surfacePixel(242, 321), [255, 240, 207, 255]);
+    assert.deepEqual(await surfacePixel(603, 231), [239, 83, 80, 255]);
+    await press("FILL"); await press("COLOR"); await press("BASE"); await tap(603, 231); await saved();
     assert.equal(await page.getByRole("button", { name: "DONE", exact: true }).isDisabled(), true);
     await press("UNDO"); await saved();
     await press("DONE"); await page.getByRole("heading", { name: "YOUR TRICERATOPS!", exact: true }).waitFor();
@@ -385,19 +385,19 @@ const { chromium } = require("playwright");
     assert.equal(await page.getByRole("button", { name: "TRICERATOPS", exact: true }).count(), 1);
     await page.locator(`[data-work-id="${tric.id}"] button`).press("Enter");
     await page.locator('canvas[aria-label="TRICERATOPS"]').waitFor();
-    assert.deepEqual(await surfacePixel(600, 280), [239, 83, 80, 255]);
+    assert.deepEqual(await surfacePixel(603, 231), [239, 83, 80, 255]);
     await back(); await press("TRICERATOPS");
     await page.locator('canvas[aria-label="TRICERATOPS"]').waitFor();
     const richContract = await page.evaluate(() => {
-      const painter = window.gallery.painterFor("triceratops-explorer-1"), canvas = painter.canvas();
-      const probes = window.gallery.explorerProbes;
+      const painter = window.gallery.painterFor("triceratops-explorer-2"), canvas = painter.canvas();
+      const probes = window.gallery.explorerProbes.map(([x, y, region]) => [Math.round(x * 1.0529 - 24), Math.round(y * 1.0529 - 20), region]);
       const pixel = (x, y) => [...canvas.getContext("2d").getImageData(x, y, 1, 1).data];
       const cases = probes.map(([x, y, region]) => {
         painter.render(canvas, [{ kind: "fill", region, color: "#ef5350" }]);
-        return { region, hit: painter.regionAt({ x, y }), pixels: probes.map(([x, y]) => pixel(x, y)), eye: pixel(728, 364) };
+        return { region, hit: painter.regionAt({ x, y }), pixels: probes.map(([x, y]) => pixel(x, y)), eye: pixel(742, 364) };
       });
-      painter.render(canvas, [{ kind: "stroke", color: "#ab67cb", size: 40, points: [{ x: 424, y: 370 }] }]);
-      return { cases, brush: pixel(424, 370), outside: pixel(0, 0) };
+      painter.render(canvas, [{ kind: "stroke", color: "#ab67cb", size: 40, points: [{ x: 422, y: 370 }] }]);
+      return { cases, brush: pixel(422, 370), outside: pixel(0, 0) };
     });
     for (const [index, test] of richContract.cases.entries()) {
       assert.equal(test.hit, test.region, `Explorer tap owns ${test.region}`);
@@ -406,22 +406,22 @@ const { chromium } = require("playwright");
     }
     assert.deepEqual(richContract.brush, [171, 103, 203, 255]);
     assert.deepEqual(richContract.outside, [0, 0, 0, 0]);
-    await press("FILL"); await tap(602, 206); await saved();
-    await press("COLOR"); await press("BLUE"); await tap(424, 370); await saved();
-    const rich = (await listed()).works.find(r => r.document.geometry === "triceratops-explorer-1").document;
+    await press("FILL"); await tap(610, 197); await saved();
+    await press("COLOR"); await press("BLUE"); await tap(422, 370); await saved();
+    const rich = (await listed()).works.find(r => r.document.geometry === "triceratops-explorer-2").document;
     assert.deepEqual(rich.actions, [{ kind: "fill", color: "#ef5350", region: "frill-panel-crown" }, { kind: "fill", color: "#42a5f5", region: "flank" }]);
     await back();
-    assert.deepEqual(await thumbnailPixel(rich.id, 602, 206), [239, 83, 80, 255]);
-    assert.deepEqual(await thumbnailPixel(rich.id, 424, 370), [66, 165, 245, 255]);
+    assert.deepEqual(await thumbnailPixel(rich.id, 610, 197), [239, 83, 80, 255]);
+    assert.deepEqual(await thumbnailPixel(rich.id, 422, 370), [66, 165, 245, 255]);
     await page.reload(); await mount({ level: "hatchling", language: "ru" });
     assert.equal(await page.locator(".gallery-new").count(), 9);
     assert.equal(await page.locator(`[data-work-id="${rich.id}"] img`).getAttribute("alt"), "ТРИЦЕРАТОПС · 1");
     await page.locator(`[data-work-id="${rich.id}"] button`).press("Enter");
     await page.locator('canvas[aria-label="ТРИЦЕРАТОПС"]').waitFor();
-    assert.deepEqual(await surfacePixel(424, 370), [66, 165, 245, 255]);
+    assert.deepEqual(await surfacePixel(422, 370), [66, 165, 245, 255]);
     await press("ОТМЕНИТЬ"); await page.waitForFunction(() => document.querySelector(".coloring-save")?.textContent === "СОХРАНЕНО");
-    assert.deepEqual(await surfacePixel(424, 370), [255, 240, 207, 255]);
-    assert.deepEqual(await surfacePixel(602, 206), [239, 83, 80, 255]);
+    assert.deepEqual(await surfacePixel(422, 370), [255, 240, 207, 255]);
+    assert.deepEqual(await surfacePixel(610, 197), [239, 83, 80, 255]);
     await press("ГОТОВО"); await page.getByRole("heading", { name: "ТВОЙ ТРИЦЕРАТОПС!", exact: true }).waitFor();
     assert.equal((await listed()).completedCount, 3);
     await press("ДОМОЙ"); await press("ENTER COLORING");
@@ -527,7 +527,7 @@ const { chromium } = require("playwright");
     await page.setViewportSize({ width: 1024, height: 768 });
     const stegoWorks = [];
     for (const level of ["hatchling", "explorer", "paleontologist"]) {
-      const version = level === "hatchling" ? "stegosaurus-production-1" : "stegosaurus-explorer-1";
+      const version = level === "hatchling" ? "stegosaurus-production-1" : "stegosaurus-explorer-2";
       const [x, y, region] = level === "hatchling" ? [420, 330, "body"] : [440, 396, "flank"];
       const [otherX, otherY, otherRegion] = level === "hatchling" ? [326, 135, "plate-2"] : [460, 178, "plate-panel-4"];
       await mount({ level });
@@ -631,7 +631,7 @@ const { chromium } = require("playwright");
     await mount({});
     const ankyPreview = page.getByRole("button", { name: "ANKYLOSAURUS", exact: true }).locator("canvas");
     assert.equal(await ankyPreview.evaluate(c => {
-      const painter = window.gallery.painterFor("ankylosaurus-hatchling-2"), expected = painter.canvas(c.width, c.height);
+      const painter = window.gallery.painterFor("ankylosaurus-hatchling-3"), expected = painter.canvas(c.width, c.height);
       painter.render(expected, []); return c.toDataURL() === expected.toDataURL();
     }), true);
     const ankyContract = await page.evaluate(() => {
@@ -740,9 +740,10 @@ const { chromium } = require("playwright");
     console.log("PASS Ankylosaurus: every region isolated, protected ink/eyes, brush, preview/thumbnail, save/reload/undo/base, same-art new work, cross-age reopen/reward, 24 RU/EN/theme/age iPad layouts; archived artwork retained");
     const newAnkylosaurusWorks = [];
     for (const level of ["hatchling", "explorer"]) {
-      const version = level === "hatchling" ? "ankylosaurus-hatchling-2" : "ankylosaurus-explorer-1";
-      const probes = await page.evaluate(level => level === "hatchling" ? window.gallery.ankylosaurusHatchlingProbes : window.gallery.ankylosaurusExplorerProbes, level);
-      const contract = await page.evaluate(({ version, probes }) => {
+      const version = level === "hatchling" ? "ankylosaurus-hatchling-3" : "ankylosaurus-explorer-2";
+      const fit = ([x, y], dy = level === "hatchling" ? -30.34 : -28) => [Math.round(x * 1.0553 - (level === "hatchling" ? 34.94 : 35)), Math.round(y * 1.0553 + dy)];
+      const probes = ( await page.evaluate(level => level === "hatchling" ? window.gallery.ankylosaurusHatchlingProbes : window.gallery.ankylosaurusExplorerProbes, level)).map(([x, y, region]) => [...fit([x, y]), region]);
+      const contract = await page.evaluate(({ version, probes, eye, highlight }) => {
         const painter = window.gallery.painterFor(version), canvas = painter.canvas();
         const pixel = (x, y) => [...canvas.getContext("2d").getImageData(x, y, 1, 1).data];
         painter.render(canvas, []); const blank = painter.pixels(canvas);
@@ -767,8 +768,8 @@ const { chromium } = require("playwright");
         function assertPixel(i) {
           if ([0, 1, 2, 3].some(c => Math.abs(covered[i + c] - blank[i + c]) > 1)) throw new Error(`${version}: lost ink at ${i / 4}`);
         }
-        return { cases, protectedInk, brush, eye: pixel(737, 400), highlight: pixel(732, 392), eyeHit: painter.regionAt({ x: 737, y: 400 }) ?? null };
-      }, { version, probes });
+        return { cases, protectedInk, brush, eye: pixel(...eye), highlight: pixel(...highlight), eyeHit: painter.regionAt({ x: eye[0], y: eye[1] }) ?? null };
+      }, { version, probes, eye: fit([737, 400]), highlight: fit([732, 392]) });
       for (const [i, test] of contract.cases.entries()) {
         assert.equal(test.hit, test.region, `${version}: tap owns ${test.region}`);
         for (const [j, pixel] of test.pixels.entries()) assert.deepEqual(pixel, i === j ? [239, 83, 80, 255] : [255, 240, 207, 255], `${version}: ${test.region} fills independently of ${contract.cases[j].region}`);
@@ -823,7 +824,7 @@ const { chromium } = require("playwright");
         for (const language of ["en", "ru"]) for (const theme of ["light", "dark"]) {
           await mount({ level, language, theme });
           const name = language === "en" ? "ANKYLOSAURUS" : "АНКИЛОЗАВР";
-          const version = level === "hatchling" ? "ankylosaurus-hatchling-2" : "ankylosaurus-explorer-1";
+          const version = level === "hatchling" ? "ankylosaurus-hatchling-3" : "ankylosaurus-explorer-2";
           assert.equal(await page.locator(".gallery-new").count(), 9);
           assert.equal(await page.getByRole("button", { name, exact: true }).count(), 1);
           await press(name); await page.locator(".coloring-workshop canvas").waitFor();
@@ -856,7 +857,7 @@ const { chromium } = require("playwright");
     const beforeTrex = await listed();
     const trexWorks = [];
     for (const level of ["hatchling", "explorer"]) {
-      const version = level === "hatchling" ? "trex-hatchling-1" : "trex-explorer-4";
+      const version = level === "hatchling" ? "trex-hatchling-2" : "trex-explorer-5";
       await page.setViewportSize({ width: 1180, height: 820 }); await mount({ level });
       const choice = page.getByRole("button", { name: "T-REX", exact: true });
       assert.equal(await choice.count(), 1);
@@ -871,13 +872,13 @@ const { chromium } = require("playwright");
         painter.render(expected, []); return c.toDataURL() === expected.toDataURL();
       }, version), true, "new T-Rex is unpainted");
       assert.equal((await page.evaluate(() => window.gallery.counts())).starts, starts + 1);
-      const head = level === "hatchling" ? [704, 179] : [171, 216];
-      const brushFrom = level === "hatchling" ? [570, 174] : [130, 190];
-      const protectedPixels = () => page.locator("canvas").evaluate((c, level) => (level === "hatchling" ? window.gallery.trexProtectedProbes : window.gallery.trexExplorerProtectedProbes).map(([x, y]) =>
+      const head = level === "hatchling" ? [720, 121] : [146, 209];
+      const brushFrom = level === "hatchling" ? [575, 116] : [126, 200];
+      const protectedPixels = () => page.locator("canvas").evaluate((c, level) => (level === "hatchling" ? window.gallery.trexProtectedProbes.map(([x, y]) => [Math.round(x * 1.0815 - 41), Math.round(y * 1.0815 - 72)]) : window.gallery.trexExplorerProtectedProbes).map(([x, y]) =>
         [...c.getContext("2d").getImageData(x, y, 1, 1).data]), level);
       const ink = await protectedPixels();
       await press("FILL"); await press("COLOR"); await press("GREEN"); await tap(...head); await saved();
-      const body = level === "hatchling" ? [456, 366] : [396, 374];
+      const body = level === "hatchling" ? [452, 324] : [390, 380];
       await press("COLOR"); await press("BLUE"); await tap(...body); await saved();
       const fills = [{ kind: "fill", color: "#9ccc65", region: "head" }, { kind: "fill", color: "#42a5f5", region: level === "hatchling" ? "body" : "belly" }];
       const work = (await listed()).works.find(r => r.document.geometry === version).document;
@@ -928,7 +929,7 @@ const { chromium } = require("playwright");
       assert.equal(await currentPreview.evaluate((c, version) => {
         const painter = window.gallery.painterFor(version), expected = painter.canvas(c.width, c.height);
         painter.render(expected, []); return c.toDataURL() === expected.toDataURL();
-      }, level === "hatchling" ? "trex-explorer-4" : "trex-hatchling-1"), true, "returning gallery offers the current age variant");
+      }, level === "hatchling" ? "trex-explorer-5" : "trex-hatchling-2"), true, "returning gallery offers the current age variant");
       assert.match(await page.locator(`[data-work-id="${work.id}"] img`).getAttribute("alt"), /^ТИРАННОЗАВР/);
       await page.locator(`[data-work-id="${work.id}"] button`).press("Enter"); await page.locator('canvas[aria-label="ТИРАННОЗАВР"]').waitFor();
       await press("ГОТОВО"); await page.locator(".coloring-result").waitFor();

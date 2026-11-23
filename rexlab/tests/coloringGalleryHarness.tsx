@@ -1,12 +1,12 @@
 import "@fontsource-variable/lexend";
 import "@fontsource-variable/manrope";
-export { brachiosaurusHatchlingProbes, brachiosaurusExplorerProbes, brachiosaurusExplorer1Probes, brachiosaurusExplorerProtectedProbes } from "./brachiosaurusSceneProbes.ts";
+export { brachiosaurusHatchlingProbes, brachiosaurusExplorerProbes, brachiosaurusExplorerProtectedProbes, brachiosaurusExplorer2Probes, brachiosaurusExplorer1Probes, brachiosaurusExplorer2ProtectedProbes } from "./brachiosaurusSceneProbes.ts";
 export { pteranodonHatchlingProbes, pteranodonExplorerProbes } from "./pteranodonSceneProbes.ts";
-export { spinosaurusHatchlingProbes, spinosaurusExplorerProbes, spinosaurusExplorer3Probes, spinosaurusExplorer3ProtectedProbes } from "./spinosaurusSceneProbes.ts";
-export { parasaurolophusHatchlingProbes, parasaurolophusExplorerProbes, parasaurolophusExplorer1Probes, parasaurolophusProtectedProbes, parasaurolophusExplorerProtectedProbes } from "./parasaurolophusSceneProbes.ts";
+export { spinosaurusHatchlingProbes, spinosaurusExplorerProbes, spinosaurusExplorerProtectedProbes, spinosaurusExplorer4Probes, spinosaurusExplorer3Probes, spinosaurusExplorer3ProtectedProbes } from "./spinosaurusSceneProbes.ts";
+export { parasaurolophusHatchlingProbes, parasaurolophusExplorerProbes, parasaurolophusExplorerProtectedProbes, parasaurolophusExplorer2Probes, parasaurolophusExplorer1Probes, parasaurolophusProtectedProbes, parasaurolophusExplorer2ProtectedProbes } from "./parasaurolophusSceneProbes.ts";
 import type { Theme } from "../src/theme.ts";
-export { mosasaurusHatchlingProbes, mosasaurusExplorerProbes, mosasaurusExplorer1Probes, mosasaurusProtectedProbes, mosasaurusExplorerProtectedProbes } from "./mosasaurusSceneProbes.ts";
-export { trexHatchlingProbes, trexExplorerProbes, trexProtectedProbes, trexExplorerProtectedProbes, trexExplorer2Probes, trexExplorer3Probes, trexExplorer3ProtectedProbes }  from "./trexSceneProbes.ts";
+export { mosasaurusHatchlingProbes, mosasaurusExplorerProbes, mosasaurusExplorerProtectedProbes, mosasaurusExplorer2Probes, mosasaurusExplorer1Probes, mosasaurusProtectedProbes, mosasaurusExplorer2ProtectedProbes } from "./mosasaurusSceneProbes.ts";
+export { trexHatchlingProbes, trexExplorerProbes, trexExplorerProtectedProbes, trexExplorer4Probes, trexProtectedProbes, trexExplorer4ProtectedProbes, trexExplorer2Probes, trexExplorer3Probes, trexExplorer3ProtectedProbes }  from "./trexSceneProbes.ts";
 export { ankylosaurusHatchlingProbes, ankylosaurusExplorerProbes } from "./ankylosaurusSceneProbes.ts";
 export { ankylosaurusProbes } from "./ankylosaurusProbes.ts";
 export { explorerProbes } from "./triceratopsExplorerProbes.ts";

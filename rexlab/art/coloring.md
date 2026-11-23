@@ -25,7 +25,8 @@ reference animal. Fill in the creature, its telling features and its scenery:
 What the prompt guards against:
 
 - **A frame and lines that reach it.** A horizon that stops short of the edge
-  joins sky and ground into one region.
+  joins sky and ground into one region. The trace removes the page's frame
+  and closes the areas along the picture's edge.
 - **Broad leaves.** A thin frond or blade can never be a tap target, since a
   tap on ink paints nothing; it would end up as part of the ground.
 - **A broad animal.** The raster contract wants a 40 px solid square in each
@@ -44,6 +45,12 @@ python3 scripts/coloring-trace.py art/coloring/<scene>.png traced.json art/color
 python3 scripts/coloring-emit.py traced.json art/coloring/<scene>.names.json <CONST> <version> src/coloring/<file>.ts
 ```
 
+The trace drops the page's own frame and fits the whole picture inside the
+3:2 canvas, centred, cutting nothing. It closes the areas at the picture's
+edge without drawing a line there, and marks each area that reaches the edge
+open; the emit step also marks the sky, land and water areas open. An open
+area shows the paper colour until it is filled, so the scene has no frame.
+
 The trace prints its region count. Render `traced.json` with a colour per
 region and its ids, then write two design-time files beside the page:
 
@@ -56,6 +63,15 @@ region and its ids, then write two design-time files beside the page:
 `coloring-emit.py` prints one interior probe per region for the scene's
 tests. Tracing is deterministic: the same page and groups give the same ids.
 
+## Pictures that leave space round them
+
+A picture drawn smaller than the canvas, such as a lone animal on a strip of
+ground, gets an enlarged version in `src/coloring/fitted.ts`. It is the same
+geometry under a view that scales it until it touches the canvas edges in its
+tighter direction and centres it in the other. Measure the drawn bounds of
+the original at 920 × 620, then set `scale` to fit them with a 2 px margin
+and `x`, `y` (logical px) to centre them.
+
 ## Files
 
 | Scene | Page | Regions |
@@ -65,3 +81,8 @@ tests. Tracing is deterministic: the same page and groups give the same ids.
 | `brachiosaurus-explorer-2` | `coloring/brachiosaurus-explorer-2.png` | 38 |
 | `mosasaurus-explorer-2` | `coloring/mosasaurus-explorer-2.png` | 36 |
 | `parasaurolophus-explorer-2` | `coloring/parasaurolophus-explorer-2.png` | 43 |
+| `trex-explorer-5` | `coloring/trex-explorer-5.png` | 42 |
+| `spinosaurus-explorer-5` | `coloring/spinosaurus-explorer-5.png` | 37 |
+| `brachiosaurus-explorer-3` | `coloring/brachiosaurus-explorer-3.png` | 39 |
+| `mosasaurus-explorer-3` | `coloring/mosasaurus-explorer-3.png` | 37 |
+| `parasaurolophus-explorer-3` | `coloring/parasaurolophus-explorer-3.png` | 43 |

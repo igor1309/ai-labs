@@ -94,6 +94,7 @@ jobs:
           - catalogueFit
           - coloringProbe
           - coloringPainter
+          - coloringCanvasFill
           - coloringWorkshop
           - coloringDrawing
           - coloringGallery

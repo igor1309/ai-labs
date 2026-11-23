@@ -294,7 +294,7 @@ const { chromium } = require("playwright");
           }
           await p.getByRole("button", { name: language === "en" ? "FILL" : "ЗАЛИВКА", exact: true }).press("Enter");
           const box = await p.locator("canvas").boundingBox();
-          const [x, y, region, geometry] = creature === "trex" ? (level === "hatchling" ? [704, 179, "head", "trex-hatchling-1"] : [171, 216, "head", "trex-explorer-4"]) : creature === "stegosaurus" ? (level === "hatchling" ? [420, 330, "body", "stegosaurus-production-1"] : [440, 396, "flank", "stegosaurus-explorer-1"]) : creature === "ankylosaurus" ? (level === "hatchling" ? [467, 407, "scute-10", "ankylosaurus-hatchling-2"] : [534, 331, "scute-10", "ankylosaurus-explorer-1"]) : level === "hatchling" ? [280, 360, "body", "triceratops-production-1"] : [424, 370, "flank", "triceratops-explorer-1"];
+          const [x, y, region, geometry] = creature === "trex" ? (level === "hatchling" ? [720, 121, "head", "trex-hatchling-2"] : [146, 209, "head", "trex-explorer-5"]) : creature === "stegosaurus" ? (level === "hatchling" ? [420, 330, "body", "stegosaurus-production-1"] : [439, 391, "flank", "stegosaurus-explorer-2"]) : creature === "ankylosaurus" ? (level === "hatchling" ? [458, 399, "scute-10", "ankylosaurus-hatchling-3"] : [529, 322, "scute-10", "ankylosaurus-explorer-2"]) : level === "hatchling" ? [242, 321, "body", "triceratops-production-2"] : [422, 370, "flank", "triceratops-explorer-2"];
           await p.mouse.click(box.x + box.width * x / 920, box.y + box.height * y / 620);
           await p.waitForFunction(() => /^(SAVED|СОХРАНЕНО)$/.test(document.querySelector(".coloring-save")?.textContent));
           const documents = await p.evaluate(async () => {

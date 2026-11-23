@@ -1,24 +1,15 @@
-import { SPINOSAURUS_HATCHLING } from "./coloring/spinosaurusScene.ts";
-import { SPINOSAURUS_EXPLORER } from "./coloring/spinosaurusExplorer4.ts";
-import { PARASAUROLOPHUS_HATCHLING } from "./coloring/parasaurolophusScene.ts";
-import { PARASAUROLOPHUS_EXPLORER } from "./coloring/parasaurolophusExplorer2.ts";
-import { PTERANODON_HATCHLING, PTERANODON_EXPLORER } from "./coloring/pteranodonScene.ts";
-import { BRACHIOSAURUS_HATCHLING } from "./coloring/brachiosaurusScene.ts";
-import { BRACHIOSAURUS_EXPLORER } from "./coloring/brachiosaurusExplorer2.ts";
-import { MOSASAURUS_HATCHLING } from "./coloring/mosasaurusScene.ts";
-import { MOSASAURUS_EXPLORER } from "./coloring/mosasaurusExplorer2.ts";
-import { TREX_HATCHLING } from "./coloring/trexScene.ts";
-import { TREX_EXPLORER } from "./coloring/trexExplorer4.ts";
-import { ANKYLOSAURUS_HATCHLING, ANKYLOSAURUS_EXPLORER } from "./coloring/ankylosaurusScene.ts";
+import { SPINOSAURUS_EXPLORER } from "./coloring/spinosaurusExplorer5.ts";
+import { PARASAUROLOPHUS_EXPLORER } from "./coloring/parasaurolophusExplorer3.ts";
+import { BRACHIOSAURUS_EXPLORER } from "./coloring/brachiosaurusExplorer3.ts";
+import { MOSASAURUS_EXPLORER } from "./coloring/mosasaurusExplorer3.ts";
+import { TREX_EXPLORER } from "./coloring/trexExplorer5.ts";
 import type { AgeLevel } from "./ageLevel.ts";
-import { TRICERATOPS } from "./coloring/triceratops.ts";
-import { TRICERATOPS_EXPLORER } from "./coloring/triceratopsExplorer.ts";
-import { STEGOSAURUS_EXPLORER } from "./coloring/stegosaurusExplorer.ts";
 import type { GalleryArtwork } from "./ColoringGalleryScreen.tsx";
 import { coloringModel, type Work } from "./coloring/index.ts";
 import { ARTWORK } from "./coloring/geometry.ts";
 import { ARTWORKS, artworkFor } from "./coloring/artworks.ts";
 import { createPainter } from "./coloring/painter.ts";
+import { TRICERATOPS_FITTED, STEGOSAURUS_EXPLORER_FITTED, TRICERATOPS_EXPLORER_FITTED, ANKYLOSAURUS_HATCHLING_FITTED, ANKYLOSAURUS_EXPLORER_FITTED, TREX_HATCHLING_FITTED, MOSASAURUS_HATCHLING_FITTED, BRACHIOSAURUS_HATCHLING_FITTED, PTERANODON_HATCHLING_FITTED, PTERANODON_EXPLORER_FITTED, PARASAUROLOPHUS_HATCHLING_FITTED, SPINOSAURUS_HATCHLING_FITTED } from "./coloring/fitted.ts";
 import { indexedColoringWorks } from "./indexedColoringWorks.ts";
 import { coloringWorkshop, type WorkshopNavigation } from "./coloringWorkshop.ts";
 
@@ -80,14 +71,14 @@ export function coloringWorkshopRoot(factory: Pick<IDBFactory, "open">, document
 
 export function coloringVersionsFor(level: AgeLevel): readonly string[] {
   return [
-    level === "hatchling" ? ARTWORK.version : STEGOSAURUS_EXPLORER.artwork.version,
-    (level === "hatchling" ? TRICERATOPS : TRICERATOPS_EXPLORER).artwork.version,
-    (level === "hatchling" ? ANKYLOSAURUS_HATCHLING : ANKYLOSAURUS_EXPLORER).artwork.version,
-    (level === "hatchling" ? TREX_HATCHLING : TREX_EXPLORER).artwork.version,
-    (level === "hatchling" ? MOSASAURUS_HATCHLING : MOSASAURUS_EXPLORER).artwork.version,
-    (level === "hatchling" ? BRACHIOSAURUS_HATCHLING : BRACHIOSAURUS_EXPLORER).artwork.version,
-    (level === "hatchling" ? PTERANODON_HATCHLING : PTERANODON_EXPLORER).artwork.version,
-    (level === "hatchling" ? PARASAUROLOPHUS_HATCHLING : PARASAUROLOPHUS_EXPLORER).artwork.version,
-    (level === "hatchling" ? SPINOSAURUS_HATCHLING : SPINOSAURUS_EXPLORER).artwork.version
+    level === "hatchling" ? ARTWORK.version : STEGOSAURUS_EXPLORER_FITTED.artwork.version,
+    (level === "hatchling" ? TRICERATOPS_FITTED : TRICERATOPS_EXPLORER_FITTED).artwork.version,
+    (level === "hatchling" ? ANKYLOSAURUS_HATCHLING_FITTED : ANKYLOSAURUS_EXPLORER_FITTED).artwork.version,
+    (level === "hatchling" ? TREX_HATCHLING_FITTED : TREX_EXPLORER).artwork.version,
+    (level === "hatchling" ? MOSASAURUS_HATCHLING_FITTED : MOSASAURUS_EXPLORER).artwork.version,
+    (level === "hatchling" ? BRACHIOSAURUS_HATCHLING_FITTED : BRACHIOSAURUS_EXPLORER).artwork.version,
+    (level === "hatchling" ? PTERANODON_HATCHLING_FITTED : PTERANODON_EXPLORER_FITTED).artwork.version,
+    (level === "hatchling" ? PARASAUROLOPHUS_HATCHLING_FITTED : PARASAUROLOPHUS_EXPLORER).artwork.version,
+    (level === "hatchling" ? SPINOSAURUS_HATCHLING_FITTED : SPINOSAURUS_EXPLORER).artwork.version
   ];
 }

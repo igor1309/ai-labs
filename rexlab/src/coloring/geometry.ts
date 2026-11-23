@@ -4,9 +4,11 @@ export const VECTOR_SCALE = 2;
 export type VectorShape = Readonly<{ x: number; y: number } & (
   { path: string } | { width: number; height: number; rotation: number }
 )>;
-export type PaintRegion = VectorShape & Readonly<{ id: string; parent?: string; outline: number }>;
+export type PaintRegion = VectorShape & Readonly<{ id: string; parent?: string; outline: number; open?: boolean }>;
 export type ProtectedDetail = VectorShape & Readonly<{ fill?: string; stroke?: string; strokeWidth?: number }>;
-export type Geometry = Readonly<{ artwork: Artwork; regions: readonly PaintRegion[]; details: readonly ProtectedDetail[] }>;
+// Where the drawing sits on the canvas: logical point p is drawn at p * scale + (x, y).
+export type View = Readonly<{ scale: number; x: number; y: number }>;
+export type Geometry = Readonly<{ artwork: Artwork; regions: readonly PaintRegion[]; details: readonly ProtectedDetail[]; view?: View }>;
 
 // Curves preserve the design illustration's proportions. Overlaid regions are
 // clipped to their parent; their visible parts own fill independently of it.
