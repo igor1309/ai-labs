@@ -5,7 +5,7 @@ interface: it gives numbered tones and fails, stops, fails to stop or
 refuses to start on cue. The listener and the reader are the row's own,
 each able to hold. A row reads back the tones each one received, their
 times, and when, never just that a call was made. The real call of the
-user spec (LAB-408) proves the whole path.
+user spec proves the whole path.
 
 ## S-1 Audio is heard while its reading is held
 
