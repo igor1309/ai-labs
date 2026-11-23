@@ -19,8 +19,8 @@ pictures follow `docs/tap-safety.md`.
 ## Product principles
 
 - Gamification is essential, not decoration. Every game rewards the child
-  with a score and best-score celebrations, and achievements as they are
-  built (LAB-266). Treat a missing or weak reward as a defect.
+  with a score and best-score celebrations, and achievements.
+  Treat a missing or weak reward as a defect.
 - Children of 5–7 are just learning to read. Write all text for children in
   capitals, in every language, and dinosaur names large. Keep the interface
   visually clear and easy to operate, and carry meaning with symbols and
@@ -37,8 +37,7 @@ pictures follow `docs/tap-safety.md`.
   Hatchling, Explorer and Paleontologist; removing a mode a 4-year-old can
   play needs an explicit decision on the issue.
 - A game's progress shows only in its own screens and on its home tile
-  and featured card, never on the catalogue or the dinosaur pages
-  (LAB-347).
+  and featured card, never on the catalogue or the dinosaur pages.
 
 ## Specs
 
@@ -127,6 +126,33 @@ the gate again only when the fixes change the design.
 ## Commands
 
 Run from `rexlab/`: `npm ci`, `npm run typecheck`, `npm test`, `npm run build`.
+
+### Browser checks
+
+`npm run test:browser`, from `rexlab/` after `npx playwright install chromium`
+once, runs the Whose Jaw landscape board check (30 reduced-motion
+configurations and one normal-motion outward walk) and the Whose Jaw and
+Pairs dig-site checks. The checks start and close their own Vite server and
+browser, and print a unique temporary directory for screenshots. Set
+`CHROME_PATH` to use a local Chrome executable, or `BOARD_URL` to check an
+already running server instead. CI installs Chromium with its OS
+dependencies and runs each browser check in a separate matrix job.
+
+Run `node tests/nativeTouch.browser.cjs` for shared input protection, touch
+scrolling, labyrinth taps and coloring drawing/navigation in Chromium with
+iPhone/iPad portrait and landscape emulation. The check routes a production
+build in memory and closes its own browser. It cannot verify native Safari
+selection handles or callouts; those require physical devices. On iPhone and
+iPad Safari in both orientations, repeat double taps and long presses on
+text, pictures, canvas and controls; verify no selection or callout, then
+scroll, pinch zoom, draw again, undo, navigate away and return.
+
+`npm run slow-tests` runs the whole suite three times and writes every test,
+ranked by its median duration with its file and line, to
+`slow-tests-report.json` and `.md` in the current directory. The weekly
+`rexlab-slow-tests` workflow runs it and hands the ranking to the slow-test
+hunter autopilot. Tests listed in `scripts/slow-tests.skip` (one id per line,
+`#` for the reason) are marked as skipped there.
 
 ## Trying it locally
 
