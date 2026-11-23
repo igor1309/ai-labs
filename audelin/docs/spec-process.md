@@ -41,11 +41,6 @@ before writing on (owner, 2026-10-22).
 - **Oracle:** for the user spec, [the design](design/README.md) and the
   owner's rulings; for a component, also the user spec and its client's
   spec. Every scenario traces to it.
-- **[mvp.md](mvp.md) is no oracle.** It is the product vision, true when
-  it was written: never grounds for a scenario, a detail or a technical
-  choice, and never cited in `## Decided`. A wish in it counts only once
-  the owner rules it again or a spec takes it on its own grounds; so do
-  the rulings recorded only in it (owner, 2026-10-23).
 - **Gaps and technical choices are the agent's, not the owner's.** Where
   the oracle is silent or ambiguous — a threshold, a limit, a title, a
   choice between two readings, how a thing is built — the agent researches

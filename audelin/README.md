@@ -56,7 +56,6 @@ then, in the same directory, run `../scripts/swift-test-bounded.sh 120 -Xswiftc 
 | [docs/spec-process.md](docs/spec-process.md) | How behaviour is specified: one SPEC.md and QA.md per component, at most 100 lines, tracked in Multica |
 | [docs/audelin-naming-brief.md](docs/audelin-naming-brief.md) | The name: Audelin, CLI `audelin`, data in `~/.audelin` |
 | [docs/design/README.md](docs/design/README.md) | Glass Ledger design: tokens, components, Screens 1–8 in `visual-language.pen` |
-| [docs/mvp.md](docs/mvp.md) | The product vision as first written: not grounds for any spec or technical choice |
 | [docs/research/](docs/research/) | Research, the Parakeet spike and naming rounds |
 | [docs/research/recurring-profiling.md](docs/research/recurring-profiling.md) | Nightly real-model collection, validated baselines and weekly artifact review |
 

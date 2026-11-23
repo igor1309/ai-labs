@@ -12,7 +12,6 @@ under the working name wisper.
 | [needs.md](needs.md) | What the owner needs, and the constraints |
 | [apps.md](apps.md) | Dictation and meeting apps surveyed, with how each fits |
 | [tests.md](tests.md) | Hands-on test results from 2026-10-21 |
-| [../mvp.md](../mvp.md) | The product vision as first written: not grounds for any spec or technical choice |
 | [adr-001-v1-architecture.md](../adr-001-v1-architecture.md) | v1 architecture: one modular app, record first, ports and adapters |
 | [yogurt.md](yogurt.md) | Audelin compared with Yogurt, an open-source local meeting-notes app, and what to take from it |
 | [system-audio.md](system-audio.md) | How open-source Mac recorders capture the call's audio (process tap vs ScreenCaptureKit), and what Audelin takes |
@@ -47,7 +46,7 @@ The panel is resizable; the window-sizes frame proposes how it adapts. The
 explanation card stays in the panel (owner, 2026-10-21); the no-footnote
 frame shows the panel before any term is selected.
 
-Screens 1–8 in the same file draw the rest of the app from [mvp.md](../mvp.md)
+Screens 1–8 in the same file draw the rest of the app
 in Glass Ledger: setup, launch blocker, live panel states, calls list, the
 call after it ends, settings, menu bar item and errors. Values neither spec
 nor owner set are marked as proposals in each frame. The gallery's "Screen
@@ -56,8 +55,7 @@ references" section holds the sites surveyed for them (inventory-59).
 The design system is locked (2026-10-21): the file's variables hold Glass
 Ledger's colours with a light and a dark value (theme axis `mode`), two
 fonts, and consolidated type, radius and spacing scales. Each screen has one
-current frame, built from the components, which draws the owner's answers of
-2026-10-21 recorded in mvp.md; specs trace to the design, not to mvp.md.
+current frame, built from the components, which specs trace to.
 Earlier versions and the four proposals
 are in git history.
 [design/README.md](../design/README.md) lists the tokens, components and screens.
