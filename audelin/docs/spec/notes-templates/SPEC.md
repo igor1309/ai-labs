@@ -4,7 +4,6 @@ Observer: the user, reading one call in the calls window. How the window
 draws notes is `../summary-preview/SPEC.md`; making, cancelling and failing
 a call's first notes are `../call-notes/SPEC.md`; this spec owns making
 them again. Notes are disposable; the transcript is their source.
-Oracle: the owner's rulings on LAB-1615.
 
 ## Decided
 
