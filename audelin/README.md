@@ -2,89 +2,29 @@
 
 Landing page: index.html
 
-A native macOS companion for the owner's calls (Zoom, Telemost,
-Meet) in Russian with English professional terms. It records both sides as
-two tracks, shows a smooth, selectable live transcript in a floating panel,
-and, from v2, explains a selected term in Russian through bb.
+A native macOS companion for the owner's calls (Zoom, Telemost, Meet) in
+Russian with English professional terms. It records both sides as two
+tracks, shows a smooth, selectable live transcript in a floating panel, and
+can make notes of a call.
 
-Status: the menu bar app records detected calls, shows the live transcript and
-opens native Settings. Recording and recognition stay local. Optional call notes
-are off by default; Settings discloses both configured destinations and their
-subscription/API/local-compute costs. Models, CLI path, API base URL and credential
-variable names are editable. Credential values are resolved only for requests and
-are never stored or displayed. A Finder-launched app may lack shell variables;
-validation reports that without sending a transcript or making a paid request.
-
-Eligible final transcripts create durable jobs without holding the next call.
-The calls window lists calls beside the selected call's notes, Mail-style; it
-shows waiting, preparation, success/warning and failure/interruption status. In a
-narrow window the list stands alone and Return or Space opens the call in its own
-window. Notes are saved as `summary.md` beside the original transcript and audio. Pending
-jobs resume with their saved configuration; interrupted running requests are never
-automatically replayed. Claude CLI requires supported isolation controls, preserves
-subscription authentication and remains subject to managed organization policy.
-Provider availability, quota and factual faithfulness are not guaranteed by
-configuration checks or structural validation.
-
-The notes menu lists available templates and saves whether to keep previous notes.
-The detail shows each version’s template and lets you switch between Previous and Current,
-with progress and cancellation beside readable notes during regeneration.
-
-Build: `cd audelin/macos && sh scripts/bundle.sh`. Install and automatic updates: see below.
-Components: `macos/`; composer, app, rehearsal and their integration tests: `macos/App/`.
-Build and test each package from its directory with `swift build --build-tests` and `swift test`.
-
-Run: `open .build/Audelin.app` from `audelin/macos`.
-Logs: `log stream --predicate 'subsystem == "dev.igor1309.audelin"'`.
-Profile: from `audelin/macos`, `scripts/profile-rehearsal.sh capture --capture-after 120 --capture-for 30 --minutes 20 --speed 1`
-records only that wall-clock window and summarizes CPU, hangs and signpost intervals in `macos/profiles/`.
-Endurance: `scripts/profile-rehearsal.sh endurance --minutes 180 --speed 1` runs without Instruments and keeps only the rehearsal report.
-Recognisers are fakes: lag is pipeline backlog, and speeds above 1× measure saturation.
-Recurring real-model baselines and weekly artifact review: [profiling runbook](docs/research/recurring-profiling.md).
-
-Optimized load tests: from each of `audelin/macos` and `audelin/macos/App`, run `swift build --build-tests -Xswiftc -O`,
-then, in the same directory, run `../scripts/swift-test-bounded.sh 120 -Xswiftc -O --filter LoadTests` or `../../scripts/swift-test-bounded.sh 120 -Xswiftc -O --filter LoadTests`, respectively.
-
-Architecture rules: [ARCHITECTURE.md](ARCHITECTURE.md). Behaviour: the specs under
-`docs/spec/`, written as [docs/spec-process.md](docs/spec-process.md) says. Changes:
-[docs/log.md](docs/log.md).
+Status: the menu bar app records detected calls, shows the live transcript,
+keeps a calls window of past calls with their notes, and opens native
+Settings. Recording and recognition stay local. Call notes are optional and
+off by default; Settings shows where a transcript would be sent and what it
+costs. Credentials are read only for a request and never stored or shown.
 
 CLI `audelin`, data folder `~/.audelin`, calls in `~/Recordings/Audelin`.
 
-`python3 -I audelin/scripts/slow-tests.py` runs the tests of all three
-packages three times, serially, and writes every test, ranked by its median duration
-with its file and line, to `slow-tests-report.json` and `.md` in the current
-directory. The weekly `audelin-slow-tests` workflow runs it on macOS and
-hands the ranking to the slow-test hunter autopilot. Tests listed in
-`scripts/slow-tests.skip` (one test id per line, `#` for the reason) are
-marked as skipped there. It runs `swift test --no-parallel`, since in a parallel
-run a main-actor test's duration includes its wait for the main actor.
+- Architecture rules: [ARCHITECTURE.md](ARCHITECTURE.md).
+- Behaviour: the specs under `docs/spec/`, written as
+  [docs/spec-process.md](docs/spec-process.md) says.
+- Building, testing and profiling: [AGENTS.md](AGENTS.md).
+- Changes: [docs/log.md](docs/log.md).
 
-## Live calls-window scenario
+## Build and run
 
-In a logged-in macOS session, run `sh scripts/live-calls-summary.sh` from
-`audelin/macos`. The terminal or runner hosting it needs Accessibility and Screen
-Recording access, so it runs locally or on the self-hosted runner, not on hosted CI.
-
-The script builds `CallsRehearsal`, an executable that shows the app's calls window
-with no audio devices, and launches it twice on a temporary folder:
-`--calls <folder>` holds one call with a transcript and no notes, and
-`--state <folder>` holds its preferences and the fake summary service's control
-files, and `--trash <folder>` takes what the app would move to the Trash, so a
-run never reaches the user's Trash. The fake writes `control/started-N`, waits for `control/finish-N`, then
-returns fixed notes; a cancelled request writes `control/cancelled-N` and returns none.
-
-The script drives the row, Сделать and Отменить by accessibility identifier, waits
-on accessibility and file notifications, checks the notes file and that a cancel
-leaves no `summary.md` or `.summary-job.json`, saves screenshots of the making,
-completed and cancelled states (and of any failed wait), and quits each run. The
-folder it prints under `$TMPDIR` keeps the fixtures and screenshots.
-
-`sh scripts/live-calls-rename.sh` runs the same way for renaming a call in the list
-(Return, click, right-click, arrow, Escape), and runs nightly on the self-hosted Mac.
-`sh scripts/live-calls-merge.sh` runs the same way for merging calls, on calls
-seeded through the app's own writers. What each live test proves, its fixtures
-and its output are in `macos/scripts/live/README.md`.
+From `audelin/macos`: `sh scripts/bundle.sh`, then `open .build/Audelin.app`.
+Logs: `log stream --predicate 'subsystem == "dev.igor1309.audelin"'`.
 
 ## Browser extension
 
@@ -92,13 +32,6 @@ and its output are in `macos/scripts/live/README.md`.
 Telemost calls, for Chrome and Yandex Browser. Its [README](extension/README.md)
 gives the install steps; Audelin registers the extension's native helper at
 each launch.
-
-`sh macos/scripts/live-browser-names.sh` rehearses a one-minute call twice,
-once with recorded Telemost extension events replayed through the app's socket
-(`AudelinRehearsal --browser-events FILE`) and once without. It reads the panel
-rows through Accessibility and checks that the two remote speakers are named on
-their rows and in `transcript.md` only with the events. Screenshots go to the
-folder it prints under `$TMPDIR`. It runs nightly on the self-hosted Mac.
 
 ## Install and updates
 
@@ -116,13 +49,6 @@ folder it prints under `$TMPDIR`. It runs nightly on the self-hosted Mac.
   delete, or a summary being written. A quit Audelin stays quit. To install trunk by hand, dispatch `Audelin Install` from GitHub Actions.
   A failed install is reported in the CI Telegram chat and leaves the installed copy
   as it was.
-- **Signing on the runner** uses the owner's Apple Development certificate, so macOS
-  keeps the microphone and audio-capture grants across builds. The runner's launch
-  agent (`~/Library/LaunchAgents/actions.runner.igor1309-ai-labs.MacBook-Pro.plist`)
-  must not set `SessionCreate`: with it, jobs run in a security session that cannot
-  reach the login keychain and `codesign` fails with `errSecInternalComponent`.
-  Reinstalling the runner with `svc.sh install` adds it back; remove it with
-  `/usr/libexec/PlistBuddy -c "Delete :SessionCreate" <plist>` and reload the agent.
 - **Public releases:** the `Audelin Release` workflow runs on the same runner every
   Monday at 04:00 UTC and on manual dispatch. `scripts/release.sh` builds the app
   signed with the Developer ID Application certificate, notarizes and staples it,
