@@ -44,7 +44,7 @@ What this file holds, and what it does not:
    tests.
 5. **Decisions over time are state machines.** A component that keeps state
    across events and others observe on the way is a machine: a pure reducer
-   and an effect handler (`docs/app-shape.md`). One that runs once in a
+   and an effect handler (§ Machines). One that runs once in a
    fixed order, keeps nothing between runs and is observed by no one is a
    plain component. One line of work is one machine: its state holds every
    stage, and its stages are collaborators behind its effect handler, never
@@ -61,6 +61,61 @@ What this file holds, and what it does not:
    its readers; the root chains the operators and conforms the content to
    each requirement. A change to what the content holds reaches only its
    producer and the readers that use it.
+
+## Machines
+
+The app's own decisions (what to record, what the panel shows, what
+happens to calls and settings) are state machines made of separate parts,
+without Combine. Components that already have a responsibility of their
+own (live text, call text, the recognizers, the process and capture
+components) keep it and their own ports; the machines use them as
+collaborators.
+
+| Part | What it is | How it is tested |
+|---|---|---|
+| Reducer | A pure function: `(State, Event) -> (State, Effect?)` | Tables of event in, state and effect out |
+| Effect handler | A dispatcher: reads the effect and hands it to the one collaborator it was given for it, then turns the result into an event. It has no logic and keeps nothing | Fakes behind its collaborators |
+| Model | The generic loop: takes events one at a time, reduces, publishes the state, hands the effect to the handler, and feeds the handler's events back in | Once, generically |
+| Compose | Builds one machine from its reducer, handler and model, and subscribes other machines' outputs to its events | Wiring tests only where no component test shows it |
+
+A reducer never does I/O. A handler never decides: when a choice depends on
+state, the reducer makes it and names it in the effect, with the identity
+of what it acts on (a recording, a folder, a claim), so the handler needs
+no memory. A sequence is the reducer's too: each step is one effect, and
+its result comes back as the event that leads to the next step. What is
+started, running or stopping is in the state, never in a handler, adapter
+or wrapper.
+
+### One line of work, one machine
+
+A line of work that runs as one sequence is one machine whose state holds
+every stage; its stages are collaborators, not machines of their own.
+Machines with responsibilities of their own are connected, not stacked:
+the root subscribes one machine's output to another's events, and the
+receiver takes only the value it needs. No machine starts, cancels, waits
+on or reads another. Where two would need to, they are one machine.
+
+None of these exists in the app:
+
+- an effect, doer or adapter that sends events to another machine;
+- a registry of models, one per item: a machine holds its items by key;
+- a reducer that reads another machine through a closure;
+- a wait or join that only syncs two machines;
+- a wrapper that remembers what it started.
+
+### Event sources merge in a mapping
+
+A machine with several sources gets them through a merge: a thin, pure
+mapping that takes each source's stream and delivers one stream of the
+machine's own events. It translates the sources' types into the machine's
+(rule 3) and is tested as a mapping. Compose applies it.
+No source knows the machine, and no machine knows a source.
+
+### Views draw state
+
+The panel, the menu bar item, the settings screen, setup and the launch
+blocker and the error screens draw a machine's state and send its user
+events. They decide nothing.
 
 ## Components
 
