@@ -40,7 +40,7 @@ The coloring workshop is an exported screen for the coloring flow. Construct
 onNavigate, geometryVersion)` with a fresh identity or `open(id, onNavigate)` for a saved work.
 Omitting the geometry version creates a Stegosaurus; the root's `artworks` offers
 Stegosaurus, Triceratops, Ankylosaurus and T-Rex with localized names and matching preview geometry.
-The T-Rex workshop versions are `trex-hatchling-1` and `trex-explorer-1`:
+The current T-Rex workshop versions are `trex-hatchling-1` and `trex-explorer-4`:
 the first has broad animal regions, ground and a three-leaf plant; the second
 adds belly and body markings, a cycad, sun, cloud, hills, ridge and rock.
 The gallery offers exactly one T-Rex: simple at Hatchling, rich at Explorer
