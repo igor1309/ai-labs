@@ -60,12 +60,9 @@ interfaces, and the root composes concrete pieces behind them.
 - A reducer never does I/O. A choice that depends on state is the
   reducer's, named in the effect; a sequence is one effect per step, each
   result coming back as the next step's event.
-- Each side's transaction is a chain of machines that only the root knows.
-  At a hand-over the root builds the next machine from what the last handed
-  over. The machine that started the transaction waits in a handed-over
-  state and hears its end; a machine in the middle is ended once it hands
-  over. The root's mapping is fixed; a choice between outcomes is a
-  reducer's.
+- Machines that hand work on are known to each other only through the
+  root, which builds the next from what the last handed over. The root's
+  mapping is fixed; a choice between outcomes is a reducer's.
 - A machine's events from several sources (screen, radio, clock, its own
   effects) meet in a thin, pure mapping in the root; no source knows the
   machine.
