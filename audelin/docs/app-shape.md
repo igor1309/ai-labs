@@ -117,8 +117,7 @@ composition.
 
 ### Call names
 
-Owns the names of each call's far-side rows (`ARCHITECTURE.md`, Call
-names). One machine holds every call by key: a call is kept after its
+Owns the names of each call's far-side rows. One machine holds every call by key: a call is kept after its
 recording ends, until its final transcript is published, because its
 after-call pass may run while another recording has begun.
 
