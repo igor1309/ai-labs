@@ -6,9 +6,8 @@ description: "How Audelin is specified: one SPEC.md and QA.md per component, at 
 
 # Spec process
 
-How Audelin's behaviour is specified before it is built. It replaced the
-single v1 spec (`spec-001-v1.md`, deleted 2026-10-22), which grew past
-1,100 lines because it was written for no observer and mixed contracts,
+How Audelin's behaviour is specified before it is built: small specs, each
+written for one observer, rather than one spec that mixes contracts,
 mechanics, invented values and test lists.
 
 ## Spec folders
@@ -22,7 +21,7 @@ a `SPEC.md` and a `QA.md`, and nothing else.
 
 **A spec over 100 lines is a design defect,** not a writing one: the
 component does too much. Stop, and split the component in the architecture
-before writing on (owner, 2026-10-22).
+before writing on.
 
 ## SPEC.md
 
@@ -48,29 +47,26 @@ before writing on (owner, 2026-10-22).
   proposal, decides and writes the scenario.
   Each such decision is one line in `## Decided`, above the scenarios, with
   its grounds, so the owner can overturn it. A gap is never handed to the
-  owner as an open question (owner, 2026-10-22).
+  owner as an open question.
 - **The shape comes from [ARCHITECTURE.md](../ARCHITECTURE.md),** not from
   another app. Before drafting, check the component against its rules: it
   owns the interfaces it depends on and names no other component, only an
   adapter touches the outside world, only the root wires, and retries and
-  logging are decorators at the root (owner, 2026-10-22: "amanu is not an
-  oracle, my approach is").
+  logging are decorators at the root; another app is never the oracle.
 - **Prior art is evidence, read before a decision.** Read how the open-source
   apps in `docs/research/` do it, from their source, for facts about the
   platform and its failures: what an API does, what broke and why. Cite
   them in the line. They never decide a component's structure or wiring,
-  and a departure from them needs evidence, not a preference (owner,
-  2026-10-22: "do grounding first").
+  and a departure from them needs evidence, not a preference.
 - **Every `## Decided` line is challenged by Codex** before the spec is
   committed, including lines added to a spec already done. At most three
   rounds: a third round that still finds a major defect means the spec
   was built wrong, so stop and take it to the owner instead of running a
-  fourth (owner, 2026-11-10).
+  fourth.
 - **A number cites the run that measured it** (`docs/research/tests.md`),
   or it is a decision with its own grounds.
 - **Every wait and failure the user can see is a scenario:** loading,
-  catching up, a missing track. Model loading was found only in a live
-  trial (2026-10-22).
+  catching up, a missing track.
 
 ## QA.md
 
@@ -116,7 +112,7 @@ unconditionally and creates a PR per step.
 
 A test orders concurrent work only by handshakes on events: a gate, a
 received snapshot, an awaited call. A `TaskExecutor` preference does not
-reach a plain `Task { }`, so it fixes no order (LAB-684, 2026-10-28).
+reach a plain `Task { }`, so it fixes no order.
 
 Divide the approved plan into small steps, each ending in one locally green
 commit. Push each commit and wait for its review findings to be resolved and
@@ -126,7 +122,7 @@ A run left unattended goes through `scripts/agister-retry.sh`: it runs again
 only after a rate limit, stops on any other end, and prints a line per try
 for a watcher. Capacity is agister's to wait out, in the run's session. A run that completes without committing is
 read, not run again: the build's own sandbox may fail what the test step
-passes (2026-10-23).
+passes.
 
 A hands-on trial states before it runs what it can and cannot show.
 A requested running-app verification is complete only after exercising the
@@ -136,7 +132,7 @@ live verification separately.
 
 Code is built test-first: each test is run red before the code exists,
 failing on its assertion rather than a compile error (the API is stubbed
-first), and the red run is shown with the green one (owner, 2026-10-22).
+first), and the red run is shown with the green one.
 
 An adapter is tested against the real thing it wraps, in temp places only,
 never the user's own folders: a Trash test uses a disk image's Trash. When
@@ -145,10 +141,9 @@ sleep), the adapter is a thin binding over the system API plus the
 translation it owns, and the translation is tested through a fake of the
 binding. Apple's frameworks are never the thing under test, and no row needs
 hardware the owner does not have; the binding is proven by the user spec on
-a real call (owner, 2026-10-22). A Core
+a real call. A Core
 is tested with fakes of its ports and a fake clock. No test proves that
-something did not happen by sleeping; it asserts the state that says so
-(owner, 2026-10-22).
+something did not happen by sleeping; it asserts the state that says so.
 
 ## Order and review
 
@@ -171,13 +166,13 @@ commit so subsequent pushes receive CI. Close the parent after the PR merges.
 
 In Multica, project Audelin:
 
-- **LAB-400** is the parent of the spec tree. It is done when every spec
-  child is done.
+- **The spec tree has one parent issue,** done when every spec child is
+  done.
 - **One child issue per spec**, covering its `SPEC.md` and `QA.md`. It names
-  the observer and the spec it follows ("after LAB-…").
+  the observer and the spec it follows.
 - **Decisions** the agent took for a spec are listed in its issue's closing
   comment. The owner overturns one by commenting; the spec changes and the
   issue reopens.
-- **Build issues** (LAB-401 to LAB-407) stay as feature slices. Each names
-  the specs whose scenarios it implements, and is done when those scenarios
-  pass their `QA.md` rows. LAB-408 runs the user spec on a real call.
+- **Build issues** are feature slices. Each names the specs whose scenarios
+  it implements, and is done when those scenarios pass their `QA.md` rows.
+  The last one runs the user spec on a real call.
