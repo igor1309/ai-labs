@@ -8,7 +8,7 @@ which interaction it sends. Oracle: the design brief
 ## Decided
 
 - **The menu button trails «Копировать», which leads** (design brief).
-- **A plain menu, not a split button** (owner on LAB-1615).
+- **A plain menu, not a split button**.
 - **Previous / Current is a segmented switch shown only with both,** so a
   single version has no extra control (design brief).
 

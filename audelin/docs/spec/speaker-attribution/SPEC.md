@@ -1,13 +1,13 @@
 # Speaker attribution
 
 Observer: compose, which hands it a closed transcript's far-side segments and
-the call track's turns, and reads each back with its remote speaker (LAB-1131).
-A transcript-pipeline operator (`../../../ARCHITECTURE.md`): it reads times only.
+the call track's turns, and reads each back with its remote speaker.
+A transcript-pipeline operator (ARCHITECTURE rule 7): it reads times only.
 
 ## Decided
 
 - **Speakers under 5 % of all turn time are dropped first, unless all are**
-  (LAB-1130, `../../research/diarization.md`: Nemotron's extras hold little speech).
+  (`../../research/diarization.md`: Nemotron's extras hold little speech).
 - **A word goes to the speaker whose turns, summed, overlap it most:** a
   segment can span a change of speaker. On a tie, here or below, the speaker
   whose deciding turn (earliest overlapping, or nearest) starts first wins,

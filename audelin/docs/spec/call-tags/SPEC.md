@@ -8,7 +8,7 @@ design brief's Search. Oracle: the design brief `../../design/call-tags.md`.
 
 - **Tags live in the call's folder, as plain text,** so they move and
   survive renames with the call and can be edited outside the app. No
-  parser is added for a list of words (LAB-1617).
+  parser is added for a list of words.
 - **Only the user tags a call.** Suggesting tags from the notes is left
   for later (owner, 2026-11-15).
 - **Filtering is the search field's and one chip strip's, not a new

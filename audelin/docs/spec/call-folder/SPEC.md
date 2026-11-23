@@ -9,7 +9,7 @@ over the file system.
 ## Decided
 
 - **This is making a call's folder only.** Renaming, deleting, moving and
-  listing calls are Recordings' (`app-shape.md`), whose spec takes them
+  listing calls are Recordings', whose spec takes them
   with its own client; whether the calls folder is there and has room is
   the conditions' (Recording). One client now, so one responsibility.
 - **Making the folder gives Session the folder, and Session opens its

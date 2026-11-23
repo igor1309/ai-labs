@@ -3,8 +3,7 @@
 Observer: SummaryJobs, which commits an attempt, and CallDetail, which reads
 a call's notes, each through ports it owns. Job records and first-notes
 publication are `../summary-files/SPEC.md`. Oracle:
-`../notes-templates/SPEC.md` S-5 to S-7, S-9, S-10, S-14 and
-`../../ARCHITECTURE.md` § Published notes and the keep choice.
+`../notes-templates/SPEC.md` S-5 to S-7, S-9, S-10, S-14.
 
 ## Decided
 

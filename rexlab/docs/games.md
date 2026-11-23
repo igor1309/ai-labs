@@ -1,8 +1,8 @@
 # RexLab games
 
 Start here to understand what each activity offers and where its rules live.
-This inventory describes the current repository as of 2026-10-31, not a
-verification of the deployed site or physical-device acceptance.
+It describes what the repository builds, not a check of the deployed site
+or of physical devices.
 
 ## Shared approach
 
@@ -61,22 +61,21 @@ Rules: [play](features/sort-dinosaurs-play.feature),
 Fit cut skeleton pieces, then reveal the living dinosaur and a fact.
 Hatchling has 4 upright pieces on a full outline; Explorer has 6–8 pieces
 with staged help; Paleontologist has 10–12 pieces, a partial outline,
-distractor bones. Pieces stay upright; rotation was removed. Five skeletons
+distractor bones. Pieces stay upright. Five skeletons
 fill museum stands; each earns one collection star, with higher-level badges
-for finishing without the last help step. Mystery guessing adds something to
-do after collecting them.
+for finishing without the last help step. Once a skeleton has its star, mystery guessing
+adds something to do.
 
 Plan and rationale: [skeleton levels](skeleton-levels.md).
 Rules: [start](features/skeleton-assembly-start.feature),
 [museum](features/skeleton-assembly-museum.feature),
 [mystery](features/skeleton-assembly-mystery.feature).
-Origin: LAB-270; level plan: LAB-310.
 
 ### Dig
 
 Brush sand away with a finger to discover a creature. Hatchling freely
 uncovers it, with the last sand blowing away at 95%. At Explorer and
-Paleontologist, choices appear at 75% uncovered: identify the creature from
+Paleontologist, choices fade in from 10% uncovered and can be picked at 75%: identify the creature from
 3 or 4 pictures. The board stays still while brushing. There is no timer or
 penalty; help keeps the round moving. A creature's first dig earns its star
 and increases DUG UP; repeat digs earn no new star. Occasional treasures fill the Field Guide; new finds
@@ -86,7 +85,6 @@ Plan and rationale: [dig levels](dig-levels.md).
 Rules: [brushing](features/dig-brush.feature),
 [question](features/dig-question.feature),
 [Field Guide](features/dig-field-guide.feature).
-Origin: LAB-335; revised mystery round: LAB-359 and LAB-364.
 
 ### Care
 
@@ -103,7 +101,6 @@ proposals, not three completed difficulty modes.
 Rules: [welcome](features/dinosaur-care-start.feature),
 [hearts](features/dinosaur-care-hearts.feature),
 [progress](features/dinosaur-care-progress.feature).
-Redesign discussion: LAB-281, LAB-349 and playtesting LAB-388.
 
 ### Sand writing
 
@@ -114,7 +111,7 @@ The groove itself is the feedback. Reopening starts fresh sand; the activity
 does not promise a saved drawing collection.
 
 Rules: [drawing](features/sand-writing.feature),
-[Home flow](features/sand-writing-flow.feature). Origin: LAB-469 / LAB-470.
+[Home flow](features/sand-writing-flow.feature).
 
 ### Labyrinth
 
@@ -125,7 +122,7 @@ a shared total. A round without hints counts toward a next-level offer.
 Replay generates new walls; unfinished boards are not restored after reload.
 
 Rules: [board](features/labyrinth-board.feature),
-[full flow](features/labyrinth-flow.feature). Origin: LAB-668.
+[full flow](features/labyrinth-flow.feature).
 
 ### Picture puzzle
 
@@ -138,7 +135,7 @@ Replay reshuffles without duplicating a collected dinosaur.
 
 Rules: [choice and levels](features/picture-puzzle-choice.feature),
 [result](features/picture-puzzle-result.feature),
-[full flow](features/picture-puzzle-flow.feature). Origin: LAB-669.
+[full flow](features/picture-puzzle-flow.feature).
 
 ### Whose Jaw?
 
@@ -152,13 +149,14 @@ chomps. Fresh rounds, best scores and the shelf support replay.
 
 Rules: [board and levels](features/whose-jaw-board.feature),
 [shelf](features/whose-jaw-shelf.feature),
-[full flow](features/whose-jaw-flow.feature). Delivery: LAB-705.
+[full flow](features/whose-jaw-flow.feature).
 
 ### Color a dinosaur
 
 Paint inside protected outlines with brushes and fills, undo edits, and keep
-independent editable works in a gallery. All age settings explicitly use
-Explorer; there is no level switch or promotion. Autosave retains editable
+independent editable works in a gallery. Hatchling uses each creature's
+Hatchling scene, Explorer and Paleontologist its Explorer scene; there is no
+level switch or promotion. Autosave retains editable
 history. Each separate nonempty completed work earns one star once; the
 collection count is the best, without judging artistic quality. Editing and
 new works provide replay.
@@ -167,7 +165,8 @@ Coloring is integrated into Home in the current source. Its feature files
 still carry `@next`, so those tags alone do not describe implementation
 status here. This index does not declare every specified acceptance scenario
 complete. The [technical probe](coloring-probe.md) describes an earlier,
-isolated experiment, not the complete Home-integrated game.
+isolated experiment, not the complete Home-integrated game; the
+[coloring workshop](coloring.md) note describes how the game is composed.
 
 Rules: [gallery](features/coloring-gallery.feature),
 [gallery creatures](features/coloring-gallery-creatures.feature),
@@ -179,7 +178,6 @@ Rules: [gallery](features/coloring-gallery.feature),
 [full flow](features/coloring-flow.feature),
 [saved works](features/coloring-flow-saved.feature),
 [creature age variants](features/coloring-flow-creatures.feature).
-Integration: LAB-804; creature selections and follow-up artwork: LAB-822.
 
 ## Catalogue and planned work
 
@@ -187,12 +185,11 @@ The [creature catalogue](features/catalogue.feature) and individual creature
 pages are reference activities, with food filters, pictures and facts rather
 than game scores.
 
-Reading with dinosaur names is planned in LAB-273: picture-cued first
+Reading with dinosaur names is planned: picture-cued first
 letters, missing letters and shuffled names across the three levels. It is
 not a current Home game. Care redesigns and further coloring creatures remain
 separate work items; an issue proposal is not evidence of a shipped mode.
-Skeleton excavation (LAB-283) and odd-bone-out (LAB-285) were closed
-alternatives, not planned modes.
+Skeleton excavation and odd-bone-out are not planned.
 
 ## Finding and maintaining the details
 
@@ -200,11 +197,10 @@ alternatives, not planned modes.
   `@next` generally marks planned behavior; check source integration and
   delivery records when tags lag, as noted for coloring above.
 - [Visual designs](../design/rexlab.pen) hold screen frames and storyboards.
-- [Architecture](mvp-infrastructure.md), [tap safety](tap-safety.md) and
+- [Architecture](../ARCHITECTURE.md), [tap safety](tap-safety.md) and
   [art style](../art/style.md) explain implementation and asset conventions.
 - [Change log](log.md) records deliveries. Issues preserve proposals,
-  approvals, rejected alternatives and implementation tasks. The LAB keys
-  above identify the relevant Multica discussions.
+  approvals, rejected alternatives and implementation tasks.
 
 When a game or mode changes, update its entry here and its detailed rules
 in the same change. Record accepted mechanics in the repo; keep discussion

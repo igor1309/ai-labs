@@ -2,7 +2,7 @@
 
 A pure adapter: every row renders numbered segments on both sides and reads the
 Markdown back as compose would hand it to the user, checking its parts, never just
-that a call was made. The real call of the user spec (LAB-408) proves the whole path.
+that a call was made. The real call of the user spec proves the whole path.
 
 ## S-1 Rendered text can be read
 

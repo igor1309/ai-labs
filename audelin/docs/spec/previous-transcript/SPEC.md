@@ -3,7 +3,7 @@
 Observer: the user, with a call whose transcript was made again
 (`../transcript-again/SPEC.md`). Making notes again, from the template
 menu, is `../notes-templates/SPEC.md`.
-Oracle: the owner's rulings on LAB-1694. S-2 and S-6 hold by composition:
+S-2 and S-6 hold by composition:
 no component submits notes on a transcript outcome; its QA drives them.
 
 ## Decided

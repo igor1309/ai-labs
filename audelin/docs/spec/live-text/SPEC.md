@@ -23,7 +23,7 @@ which never change, then pending words, which may. It knows nothing of the model
   replace it with a better one, and settling at a pause would keep the
   quick one (research run 7b: three of 76 words).
 - A segment keeps each word with its times, as the recogniser reported
-  it, instead of joined text (LAB-1139): the words and when they were said
+  it, instead of joined text: the words and when they were said
   are what the call said, and a reader may need them word by word, as
   bleed cleanup does to match words across the two tracks by time.
 - Segments are cut afresh from the words at each change: a cut between

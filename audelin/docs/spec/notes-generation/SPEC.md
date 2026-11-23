@@ -5,7 +5,7 @@ final transcript, accepted speaker evidence and a resolved template.
 Runtime execution is `../summary-runtime/SPEC.md`; fallback and logging are
 root decorators (`../summary-jobs/SPEC.md` Decided). Oracle:
 `../notes-templates/SPEC.md`, `../daily-notes/SPEC.md`,
-`../call-summaries/SPEC.md` and `../../ARCHITECTURE.md` § Generation.
+`../call-summaries/SPEC.md`.
 
 ## Decided
 

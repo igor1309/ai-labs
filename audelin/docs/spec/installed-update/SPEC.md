@@ -2,8 +2,7 @@
 
 Observer: the user of the running Audelin app.
 
-Oracle: the owner's installed-update requirements in LAB-1059 and approved
-Screen 7b, “Installed update”, with its accompanying brief. Presentation
+Oracle: Screen 7b, “Installed update”, with its accompanying brief. Presentation
 details remain in the design; this spec makes no platform or architecture decisions.
 
 ```gherkin

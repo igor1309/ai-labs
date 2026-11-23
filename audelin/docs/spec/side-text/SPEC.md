@@ -2,7 +2,7 @@
 
 Observer: call text, which runs one per side (call-text S-1 to S-11).
 
-Side text, a component of its own (LAB-554), reads one side's text
+Side text, a component of its own, reads one side's text
 through a recording, through interfaces of its own: fill in catches live
 text up, then it hears the live audio as it comes and ends with it. It
 knows no side, device, file or model.
@@ -21,7 +21,7 @@ knows no side, device, file or model.
 - Any failure, its own or fill in's, keeps the text so far and is told.
 - Generic over the segments it carries, which it reads only for identity,
   start and end, and renumbers through the segment itself; the composition
-  chooses what else a segment holds (LAB-1143).
+  chooses what else a segment holds.
 
 ```gherkin
 Feature: Reading one side's text through a recording

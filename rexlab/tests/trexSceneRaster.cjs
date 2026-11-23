@@ -4,7 +4,7 @@ const { mkdir } = require("node:fs/promises");
 const { resolve } = require("node:path");
 
 module.exports = async function trexScenes(page) {
-  const output = process.env.TREX_SCREENSHOTS || "/tmp/lab-889/browser";
+  const output = process.env.TREX_SCREENSHOTS || "/tmp/rexlab-trex/browser";
   await mkdir(output, { recursive: true });
   for (const version of ["trex-hatchling-1", "trex-explorer-1", "trex-explorer-2", "trex-explorer-3", "trex-explorer-4"]) {
     await page.evaluate(async version => {

@@ -76,7 +76,7 @@ const withSorting = (storage: MemoryStorage) => ({ ...emptySorting(), sortingPro
 
 const withSkeletons = (storage: MemoryStorage) => ({ ...emptySkeletons(), skeletonProgress: localSkeletonProgress(() => storage) });
 
-// A stored record in the section 5 format of docs/mvp-infrastructure.md:
+// A stored progress record, as the app writes it:
 // the quiz's Explorer best, the level a new install plays.
 const record = (bestScore: number | null) =>
   JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore, explorerBest: bestScore, paleontologistBest: null, roundsPlayed: 3 } } });

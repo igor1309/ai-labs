@@ -43,7 +43,7 @@ both; a failed merge writes no tags.
 
 With no `tags.txt` in any call, the strip's tags are empty.
 
-## Review rows (LAB-1617 architecture challenge)
+## Review rows
 
 - **Merge tag failure:** a TagsFile write failing in the merge's write
   step leaves no merged call, every part back in place with its own

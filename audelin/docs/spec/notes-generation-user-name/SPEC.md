@@ -3,8 +3,7 @@
 Observer: SummaryJobs, through its make-notes port, and the root, which
 builds the speaker-identification request from the same lines. The attempt
 is `../notes-generation/SPEC.md`; this spec adds the user's lines and name.
-Oracle: `../owner-name/SPEC.md` S-1 to S-3, S-7 and `../../ARCHITECTURE.md`
-§ The user's name in notes.
+Oracle: `../owner-name/SPEC.md` S-1 to S-3, S-7.
 
 ## Decided
 

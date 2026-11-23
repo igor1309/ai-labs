@@ -37,7 +37,7 @@ const group = () => screen.getByRole("group", { name: "ANIMALS" });
 const cardOf = (name: string) => within(group()).getByRole("button", { name });
 const progress = () => screen.getByLabelText("PROGRESS").textContent;
 
-// A stored record in the section 5 format of docs/mvp-infrastructure.md.
+// A stored progress record in its older shape, without the per-level bests.
 const record = (bestScore: number | null, roundsPlayed: number) =>
   JSON.stringify({ schemaVersion: 1, games: { "compare-dinosaurs": { bestScore, roundsPlayed } } });
 

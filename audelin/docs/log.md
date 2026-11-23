@@ -423,7 +423,7 @@
 - A two-pass recogniser shows a fast recogniser's draft and settles a
   better one's final words; with Nemotron drafting and Parakeet final, the
   settled text on the real call is Parakeet's, word for word (run 8).
-- Loading the models is now a requirement (S-15, S-16, mvp.md): they load
+- Loading the models is now a requirement (S-15, S-16): they load
   at launch, recording never waits, the panel says live text is getting
   ready, and live text catches up. The preview app's first load compiled
   them for about 30 s with nothing on screen (research run 9).

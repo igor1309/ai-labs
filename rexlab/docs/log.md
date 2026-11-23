@@ -318,7 +318,7 @@
 - The tap safety rule is written down in `docs/tap-safety.md`: a double tap does what one tap does, and never presses anything on the next screen (LAB-297).
 - MUSEUM on the home page opens the skeleton museum (LAB-290).
 - Heights are hip heights, worked out from peer-reviewed leg-bone measurements, and masses are live body mass (LAB-263); the rules and each dinosaur's working are in `docs/sources.md`.
-- The testing approach is written down in `docs/mvp-infrastructure.md`, section 8 (LAB-264).
+- The testing approach is written down (LAB-264).
 - Age levels Hatchling, Explorer and Paleontologist are defined in `docs/age-levels.md` (LAB-292).
 - The home page features one game a day in a large card, favouring the games started least; CARE reads ЗАБОТА in Russian (LAB-286).
 - Nine masses and one height now lie inside the trusted sources' range (LAB-288).

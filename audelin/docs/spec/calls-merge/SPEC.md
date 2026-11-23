@@ -1,8 +1,7 @@
 # Calls — merging calls
 
 Observer: compose, which answers Recordings' merge port by chaining Calls
-with Transcript format, Transcript join and Transcript file
-(`../../../ARCHITECTURE.md`, Merging calls); it keeps user merging calls
+with Transcript format, Transcript join and Transcript file; it keeps user merging calls
 (`../merge-calls/SPEC.md`). Merging is part of the Calls adapter, specified
 here so each spec stays within 100 lines; finding a call by id, the Trash
 and moves hold as in `../calls/SPEC.md`.

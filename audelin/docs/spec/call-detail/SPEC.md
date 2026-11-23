@@ -4,8 +4,7 @@ Observer: SummaryPreviewUI, which draws CallDetail's state and sends back
 the version chosen and cancel, and the composer, which routes the cancel
 intention to SummaryJobs and the menu's facts to NotesMenu. The menu is
 `../notes-menu/SPEC.md`. Oracle: `../notes-templates/SPEC.md` S-5, S-6,
-S-9, S-10, S-14, `../summary-preview/SPEC.md` and `../../ARCHITECTURE.md`
-§ Presentation and menu.
+S-9, S-10, S-14, `../summary-preview/SPEC.md`.
 
 ## Machine
 

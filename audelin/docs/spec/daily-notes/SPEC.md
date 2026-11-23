@@ -3,7 +3,7 @@
 Observer: the user, reading a call's notes made with the Daily template,
 usually the morning after, to see what to pick up. Choosing the template is
 `../notes-templates/SPEC.md`; faithfulness rules shared with all notes are
-`../call-summaries/SPEC.md`. Oracle: the owner's rulings on LAB-1615.
+`../call-summaries/SPEC.md`.
 
 ## Decided
 
