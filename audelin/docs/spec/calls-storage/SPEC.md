@@ -3,10 +3,21 @@
 Observer: the three holders that work on the calls folder and must not
 overlap: Recording (a recording), Recordings (a folder move) and Lifecycle
 (an update relaunch), each through a port of its own that compose answers
-with this claim. This spec covers the claim; the calls journal and its
-transactions are described in the architecture.
+with this claim. CallsStorage also owns the calls journal and its
+transactions.
 
 ## Decided
+
+- **The journal is CallsStorage's alone:** its format, the migration from
+  the older list of retained folders, its validation, and recovery of a
+  move a crash interrupted. SummaryFiles reaches a call's folder only
+  through its location and transaction port, and keeps no journal.
+- **Every operation runs one at a time,** a note's publication included,
+  so a note never lands in a folder that is moving. A delete, move or
+  commit is refused while a move is half finished. Whether a move or
+  folder commit is running is published, for SummaryJobs.
+- **Merging selected ended calls takes no claim,** since a new recording
+  never touches their folders.
 
 - **The claim excludes; it does not decide.** Whether a start, a move or a
   relaunch should happen, and what to do after a refusal, is the holder's.
