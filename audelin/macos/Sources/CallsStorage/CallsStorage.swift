@@ -259,6 +259,10 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
     public func text(id: String) async throws -> Calls.Text {
         try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).text(id: id) } }
     }
+    /// A call's transcript identity and previous-transcript flag, read without listing every call.
+    public func transcriptFacts(id: String) async throws -> Calls.TranscriptFacts {
+        try await perform { [self] in try folder(call: id) { try makeCalls($0.deletingLastPathComponent()).transcriptFacts(id: id) } }
+    }
     private func validate(_ destination: URL, state: State) throws {
         guard destination.isFileURL else { throw CocoaError(.fileWriteInvalidFileName) }
         let target = destination.resolvingSymlinksInPath().standardizedFileURL.path

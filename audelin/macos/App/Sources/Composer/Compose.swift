@@ -125,9 +125,8 @@ public func compose(
                                   present: presentCalls, summaryStatuses: { summaries.statuses }, summaryBadges: { summaries.badges },
                                   notes: { id in
                                       guard let pair = try await summaryFiles.versions(call: id) else { return nil }
-                                      let transcript = try await storage.text(id: id)
-                                      let previous = try await storage.list().first { $0.id == id }?.hasPreviousTranscript ?? false
-                                      return callNotesPair(pair, transcript: transcript, hasPrevious: previous, made: made)
+                                      let facts = try await storage.transcriptFacts(id: id)
+                                      return callNotesPair(pair, transcriptIdentity: facts.identity, hasPrevious: facts.hasPrevious, made: made)
                                   },
                                   makeSummary: { summaries.make(call: $0) },
                                   makeWithTemplate: { summaries.make(call: $0, template: $1) },
@@ -211,12 +210,12 @@ func notesCatalogue(_ catalogue: TemplateFiles.Catalogue) -> NotesMenuState.Cata
     }, folderReason: catalogue.folderReason)
 }
 
-func callNotesPair(_ pair: SummaryFiles.Versions, transcript: Calls.Text, hasPrevious: Bool,
+func callNotesPair(_ pair: SummaryFiles.Versions, transcriptIdentity: String?, hasPrevious: Bool,
                    made: (Date) -> String) -> CallNotesPair {
     func version(_ notes: SummaryFiles.Notes) -> CallNotes {
         .init(text: notes.text, made: made(notes.made), templateID: notes.template.id, templateName: notes.template.name,
               transcriptIdentity: notes.transcriptIdentity)
     }
     return CallNotesPair(previous: pair.previous.map(version), current: version(pair.current),
-                         currentTranscriptIdentity: transcript.identity, hasPreviousTranscript: hasPrevious)
+                         currentTranscriptIdentity: transcriptIdentity, hasPreviousTranscript: hasPrevious)
 }

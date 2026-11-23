@@ -48,6 +48,22 @@ struct CallsDetailWiringTests {
         }
     }
 
+    @Test func aRenameInTheRowShowsInTheDetailTitle() async throws {
+        try await withComposition { rig in
+            let calls = try #require(rig.menu.calls)
+            try call(a, notes: "# A notes", in: rig.root)
+            await rig.menu.perform(.showCalls)
+            await wait(calls) { $0.rows.map(\.hasNotes) == [true] }
+            await calls.send(.select(a))
+            await waitDetail(calls) { notesText($0) == "# A notes" }
+
+            await calls.send(.beginRename(a))
+            await calls.send(.editTitle("Renamed"))
+            await calls.send(.submitRename)
+            await waitDetail(calls) { $0?.title == "Renamed" && notesText($0) == "# A notes" }
+        }
+    }
+
     @Test func notesThatFinishLaterShowWhenTheWindowOpensAgain() async throws {
         try await withComposition { rig in
             let calls = try #require(rig.menu.calls)

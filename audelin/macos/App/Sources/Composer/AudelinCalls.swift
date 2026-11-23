@@ -205,6 +205,15 @@ public final class AudelinCalls {
                     }
                 }
             },
+            // A rename, or any other change to the selected call's title, date or duration,
+            // reaches the detail it shows.
+            Task { @MainActor [weak self] in
+                for await call in Observations({ self?.detailSelection() ?? nil }) {
+                    guard let self else { return }
+                    guard let call, let shown = detailModel.state.selected, shown.id == call.id, shown != call else { continue }
+                    connectDetailInputs()
+                }
+            },
             Task { @MainActor [weak self] in
                 for await keeping in keepingChanges {
                     guard let self else { return }

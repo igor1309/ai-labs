@@ -439,7 +439,7 @@ struct TranscriptAgainCompositionTests {
     @Test func eachNotesVersionAndTheCurrentTranscriptReachDetail() {
         let versions = SummaryFiles.Versions(previous: .init(text: "Previous", made: .distantPast, transcriptIdentity: "one"),
                                             current: .init(text: "Current", made: .distantPast, transcriptIdentity: "two"))
-        let pair = callNotesPair(versions, transcript: .init(transcript: [], identity: "three"), hasPrevious: true, made: { _ in "made" })
+        let pair = callNotesPair(versions, transcriptIdentity: "three", hasPrevious: true, made: { _ in "made" })
         #expect(pair.previous?.transcriptIdentity == "one")
         #expect(pair.current.transcriptIdentity == "two")
         #expect(pair.currentTranscriptIdentity == "three" && pair.hasPreviousTranscript)
