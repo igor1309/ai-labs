@@ -2,6 +2,7 @@
 
 ## 2026-11-23
 
+- LAB-1786: The coloring paper now hugs the picture on every screen: the drawing takes the largest 3:2 size the space allows, with no empty paper above, below or beside it.
 - LAB-1776: Parasaurolophus's Explorer picture is redrawn from traced line art (43 regions): a Parasaurolophus walking on four legs by a swamp river, its long crest, head, neck, back stripes and tail bands each a region of their own, among hills, a conifer, bushes, lily pads and stones; saved works keep the earlier picture.
 
 ## 2026-11-22
