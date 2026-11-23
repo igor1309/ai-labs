@@ -4,7 +4,7 @@ Observer: compose, which asks it after a call who spoke when on the call
 track, to attribute the far side's text to remote speakers. It wraps
 FluidAudio's two offline diarizers behind one binding; it reads the saved
 track, picks the model and numbers the speakers. The microphone track is
-never its input (LAB-1131).
+never its input.
 
 ## Decided
 
@@ -17,7 +17,7 @@ never its input (LAB-1131).
 - **A known speaker count above Nemotron's eight slots goes to VBx with that
   count,** since Nemotron cannot hold more. A known count of eight or fewer
   stays with Nemotron: its speaker error was lower than VBx's at two, four,
-  five and six speakers and level at three (LAB-1130); seven and eight were
+  five and six speakers and level at three; seven and eight were
   not measured, and its overall lead decides them.
 - **Turns are in seconds from the track's first sample,** the time base of
   the words recognised from that track.
