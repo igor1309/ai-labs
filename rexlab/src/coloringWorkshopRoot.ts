@@ -3,7 +3,7 @@ import { PARASAUROLOPHUS_EXPLORER } from "./coloring/parasaurolophusExplorer3.ts
 import { BRACHIOSAURUS_EXPLORER } from "./coloring/brachiosaurusExplorer3.ts";
 import { MOSASAURUS_EXPLORER } from "./coloring/mosasaurusExplorer3.ts";
 import { TREX_EXPLORER } from "./coloring/trexExplorer5.ts";
-import { PTERANODON_EXPLORER } from "./coloring/pteranodonExplorer2.ts";
+import { PTERANODON_EXPLORER } from "./coloring/pteranodonExplorer3.ts";
 import type { AgeLevel } from "./ageLevel.ts";
 import type { GalleryArtwork } from "./ColoringGalleryScreen.tsx";
 import { coloringModel, type Work } from "./coloring/index.ts";

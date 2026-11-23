@@ -6,7 +6,7 @@ const { resolve } = require("node:path");
 module.exports = async function pteranodonScenes(page) {
   const output = process.env.PTERANODON_SCREENSHOTS || "/tmp/lab-988/browser";
   await mkdir(output, { recursive: true });
-  for (const version of ["pteranodon-hatchling-1", "pteranodon-explorer-1", "pteranodon-explorer-2"]) {
+  for (const version of ["pteranodon-hatchling-1", "pteranodon-explorer-1", "pteranodon-explorer-2", "pteranodon-explorer-3"]) {
     await page.evaluate(async version => {
       const { artworkFor, createPainter, COLORS } = await import("/harness.js");
       document.body.replaceChildren();
@@ -35,15 +35,15 @@ module.exports = async function pteranodonScenes(page) {
     }
   }
   const failures = [];
-  for (const version of ["pteranodon-hatchling-1", "pteranodon-explorer-1", "pteranodon-explorer-2"]) {
+  for (const version of ["pteranodon-hatchling-1", "pteranodon-explorer-1", "pteranodon-explorer-2", "pteranodon-explorer-3"]) {
     try {
       console.log(await page.evaluate(async version => {
         const { artworkFor, createPainter, WIDTH, HEIGHT, VECTOR_SCALE, BASE_COLOR,
-          pteranodonHatchlingProbes, pteranodonExplorerProbes, pteranodonExplorer1Probes, pteranodonProtectedProbes,
-          pteranodonExplorerProtectedProbes } = await import("/harness.js");
+          pteranodonHatchlingProbes, pteranodonExplorerProbes, pteranodonExplorer1Probes, pteranodonExplorer2Probes, pteranodonProtectedProbes,
+          pteranodonExplorerProtectedProbes, pteranodonExplorer2ProtectedProbes } = await import("/harness.js");
         const geometry = artworkFor(version).geometry;
-        const probes = { "pteranodon-hatchling-1": pteranodonHatchlingProbes, "pteranodon-explorer-1": pteranodonExplorer1Probes }[version] ?? pteranodonExplorerProbes;
-        const protectedProbes = version === "pteranodon-explorer-2" ? pteranodonExplorerProtectedProbes : pteranodonProtectedProbes;
+        const probes = { "pteranodon-hatchling-1": pteranodonHatchlingProbes, "pteranodon-explorer-1": pteranodonExplorer1Probes, "pteranodon-explorer-2": pteranodonExplorer2Probes }[version] ?? pteranodonExplorerProbes;
+        const protectedProbes = { "pteranodon-explorer-2": pteranodonExplorer2ProtectedProbes, "pteranodon-explorer-3": pteranodonExplorerProtectedProbes }[version] ?? pteranodonProtectedProbes;
         const check = (value, message) => { if (!value) throw new Error(`${version}: ${message}`); };
         const painter = createPainter(() => document.createElement("canvas"), geometry), canvas = painter.canvas();
         const rgb = color => [...color.slice(1).match(/../g).map(byte => parseInt(byte, 16)), 255];
@@ -51,8 +51,13 @@ module.exports = async function pteranodonScenes(page) {
         const pixelEquals = (pixels, x, y, expected) => expected.every((v, i) => pixels[(y * WIDTH + x) * 4 + i] === v);
         painter.render(canvas, []);
         const blank = painter.pixels(canvas);
+        // An open area (sky, land, water) shows the paper until it is filled.
+        const open = new Set(geometry.regions.filter(region => region.open).map(region => region.id));
+        const unpainted = id => open.has(id) ? [0, 0, 0, 0] : base;
+        painter.render(canvas, geometry.artwork.regions.map(region => ({ kind: "fill", region, color: BASE_COLOR })));
+        const scene = painter.pixels(canvas);
         check(JSON.stringify(probes.map(([, , id]) => id)) === JSON.stringify(geometry.artwork.regions), "every region has an independent landmark");
-        const incorrect = probes.filter(([x, y, id]) => painter.regionAt({ x, y }) !== id || !pixelEquals(blank, x, y, base));
+        const incorrect = probes.filter(([x, y, id]) => painter.regionAt({ x, y }) !== id || !pixelEquals(blank, x, y, unpainted(id)));
         check(!incorrect.length, `interior landmarks: ${JSON.stringify(incorrect.map(([x, y, id]) => ({ id, x, y, hit: painter.regionAt({ x, y }) })))}`);
         const unprotected = protectedProbes.filter(([x, y]) => painter.regionAt({ x, y }) !== undefined);
         check(!unprotected.length, `protected landmarks: ${JSON.stringify(unprotected)}`);
@@ -76,13 +81,13 @@ module.exports = async function pteranodonScenes(page) {
           const ownership = painter.pixels(mask);
           painter.render(canvas, [{ kind: "fill", region: id, color: "#ef5350" }]);
           const painted = painter.pixels(canvas);
-          for (const [px, py, other] of probes) check(pixelEquals(painted, px, py, other === id ? red : base), `${id} fills independently of ${other}`);
+          for (const [px, py, other] of probes) check(pixelEquals(painted, px, py, other === id ? red : unpainted(other)), `${id} fills independently of ${other}`);
           let area = 0, minX = WIDTH, maxX = 0, minY = HEIGHT, maxY = 0, largestPatch = 0;
           const squares = new Uint16Array(WIDTH * HEIGHT);
           for (let offset = 0; offset < blank.length; offset += 4) {
             const differs = [0, 1, 2, 3].some(i => Math.abs(painted[offset + i] - blank[offset + i]) > 1);
             if (differs) check(ownership[offset] !== 0, `${id} cannot paint outside its visible mask at ${offset / 4}`);
-            if (ownership[offset] === 255 && ownership[offset + 3] === 255 && base.every((v, i) => blank[offset + i] === v)) {
+            if (ownership[offset] === 255 && ownership[offset + 3] === 255 && base.every((v, i) => scene[offset + i] === v)) {
               check(red.every((v, i) => Math.abs(painted[offset + i] - v) <= 1), `${id} fills every opaque base interior`);
               area++;
               const px = offset / 4 % WIDTH, py = Math.floor(offset / 4 / WIDTH);
@@ -107,10 +112,13 @@ module.exports = async function pteranodonScenes(page) {
           const ink = blank[offset] === 9 && blank[offset + 1] === 30 && blank[offset + 2] === 64 && blank[offset + 3] === 255;
           const highlight = blank[offset] === 255 && blank[offset + 1] === 255 && blank[offset + 2] === 255 && blank[offset + 3] === 255;
           if (ink || highlight) check([0, 1, 2, 3].every(i => Math.abs(blank[offset + i] - painted[offset + i]) <= 1), `ink and eye highlights survive at ${offset / 4}`);
-          if (blank[offset + 3] === 0) check(painted[offset + 3] === 0, "brush stays inside the scene");
+          if (scene[offset + 3] === 0) check(painted[offset + 3] === 0, "brush stays inside the scene");
         }
-        for (let x = 0; x < WIDTH; x++) check(blank[x * 4 + 3] === 0 && blank[((HEIGHT - 1) * WIDTH + x) * 4 + 3] === 0, "top/bottom margin");
-        for (let y = 0; y < HEIGHT; y++) check(blank[y * WIDTH * 4 + 3] === 0 && blank[(y * WIDTH + WIDTH - 1) * 4 + 3] === 0, "left/right margin");
+        // Older versions keep a transparent margin; the newest is fitted whole (the canvas fill test).
+        if (version !== "pteranodon-explorer-3") {
+          for (let x = 0; x < WIDTH; x++) check(blank[x * 4 + 3] === 0 && blank[((HEIGHT - 1) * WIDTH + x) * 4 + 3] === 0, "top/bottom margin");
+          for (let y = 0; y < HEIGHT; y++) check(blank[y * WIDTH * 4 + 3] === 0 && blank[(y * WIDTH + WIDTH - 1) * 4 + 3] === 0, "left/right margin");
+        }
         return `PASS ${version}: ${probes.length} independent complete fills, broad tap targets, protected ink/eyes, clipped brush and scene margins`;
       }, version));
     } catch (error) { failures.push(error.message); }

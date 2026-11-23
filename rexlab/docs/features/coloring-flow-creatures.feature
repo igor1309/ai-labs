@@ -46,8 +46,8 @@ Feature: Coloring creature age variants and saved drawings
     Examples:
       | level          | geometry               |
       | Hatchling      | pteranodon-hatchling-2 |
-      | Explorer       | pteranodon-explorer-2  |
-      | Paleontologist | pteranodon-explorer-2  |
+      | Explorer       | pteranodon-explorer-3  |
+      | Paleontologist | pteranodon-explorer-3  |
 
   Scenario Outline: Parasaurolophus age variants and saved drawings
     Given the global age setting is <level>

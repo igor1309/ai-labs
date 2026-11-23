@@ -19,8 +19,8 @@ Feature: Coloring workshop Pteranodon, Parasaurolophus and Spinosaurus scenes
 
   Scenario: Pteranodon gliding over the sea for older levels
     Given I start a new Pteranodon work at Explorer or Paleontologist
-    Then the workshop renders the pteranodon-explorer-2 traced line-art scene of 36 regions
-    And a Pteranodon in its own proportions glides close up with a long pointed beak, a long backswept crest, a small body and long membrane wings running past the frame
+    Then the workshop renders the pteranodon-explorer-3 traced line-art scene of 36 regions
+    And a Pteranodon in its own proportions glides close up with a long pointed beak, a long backswept crest, a small body and long membrane wings spread wide
     And its beak, head, neck, body, three crest bands, three panels on each wing and the near wing's arm are regions of their own
     And a sky with sun and three clouds, hills, two sea bands, a cliff of four faces and two stones offer broad scenery regions
     And its outline, eye, smile, nostril and toes are one protected ink drawing above every fill
@@ -37,6 +37,7 @@ Feature: Coloring workshop Pteranodon, Parasaurolophus and Spinosaurus scenes
       | pteranodon-hatchling-1 |
       | pteranodon-explorer-1  |
       | pteranodon-explorer-2  |
+      | pteranodon-explorer-3  |
 
   Scenario: Simple Parasaurolophus for Hatchling
     Given I start a new Parasaurolophus work at Hatchling

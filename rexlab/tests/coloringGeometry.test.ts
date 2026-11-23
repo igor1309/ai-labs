@@ -11,8 +11,9 @@ import { PARASAUROLOPHUS_EXPLORER_2 } from "../src/coloring/parasaurolophusExplo
 import { PARASAUROLOPHUS_EXPLORER } from "../src/coloring/parasaurolophusExplorer3.ts";
 import { parasaurolophusHatchlingProbes, parasaurolophusExplorerProbes, parasaurolophusExplorer2Probes, parasaurolophusExplorer1Probes } from "./parasaurolophusSceneProbes.ts";
 import { PTERANODON_HATCHLING, PTERANODON_EXPLORER_1 } from "../src/coloring/pteranodonScene.ts";
-import { PTERANODON_EXPLORER } from "../src/coloring/pteranodonExplorer2.ts";
-import { pteranodonHatchlingProbes, pteranodonExplorerProbes, pteranodonExplorer1Probes } from "./pteranodonSceneProbes.ts";
+import { PTERANODON_EXPLORER_2 } from "../src/coloring/pteranodonExplorer2.ts";
+import { PTERANODON_EXPLORER } from "../src/coloring/pteranodonExplorer3.ts";
+import { pteranodonHatchlingProbes, pteranodonExplorerProbes, pteranodonExplorer1Probes, pteranodonExplorer2Probes } from "./pteranodonSceneProbes.ts";
 import { BRACHIOSAURUS_HATCHLING, BRACHIOSAURUS_EXPLORER_1 } from "../src/coloring/brachiosaurusScene.ts";
 import { BRACHIOSAURUS_EXPLORER_2 } from "../src/coloring/brachiosaurusExplorer2.ts";
 import { BRACHIOSAURUS_EXPLORER } from "../src/coloring/brachiosaurusExplorer3.ts";
@@ -265,10 +266,11 @@ describe("Pteranodon workshop scenes", () => {
   it.each([
     [PTERANODON_HATCHLING, "pteranodon-hatchling-1", pteranodonHatchlingProbes],
     [PTERANODON_EXPLORER_1, "pteranodon-explorer-1", pteranodonExplorer1Probes],
-    [PTERANODON_EXPLORER, "pteranodon-explorer-2", pteranodonExplorerProbes]
+    [PTERANODON_EXPLORER_2, "pteranodon-explorer-2", pteranodonExplorer2Probes],
+    [PTERANODON_EXPLORER, "pteranodon-explorer-3", pteranodonExplorerProbes]
   ] as const)("registers enclosed regions with matching parents (scene %#)", (geometry, version, probes) => {
     // The traced scene draws every line as one protected ink layer above regions that tile the picture.
-    const traced = geometry === PTERANODON_EXPLORER;
+    const traced = geometry === PTERANODON_EXPLORER_2 || geometry === PTERANODON_EXPLORER;
     expect(artworkFor(version)).toEqual({ geometry, names: { en: "PTERANODON", ru: "ПТЕРАНОДОН" } });
     expect(geometry.artwork.regions).toEqual(probes.map(([, , id]) => id));
     for (const region of geometry.regions) {
@@ -283,7 +285,7 @@ describe("Pteranodon workshop scenes", () => {
   it.each([
     ["Hatchling", PTERANODON_HATCHLING, pteranodonHatchlingProbes],
     ["first Explorer", PTERANODON_EXPLORER_1, pteranodonExplorer1Probes],
-    ["Explorer", PTERANODON_EXPLORER, pteranodonExplorerProbes]
+    ["Explorer", PTERANODON_EXPLORER_2, pteranodonExplorer2Probes]
   ] as const)("keeps every %s animal and scenery target independently fillable", async (_, geometry, probes) => {
     for (const [, , id] of probes) {
       const painted = await illustration(geometry, id);
@@ -640,6 +642,6 @@ describe("Explorer coloring standard", () => {
     const counts = coloringVersionsFor(level)
       .map(version => [version, artworkFor(version).geometry.regions.length] as const);
     expect(counts.filter(([, count]) => count < 35)).toEqual([]);
-    expect(counts.map(([version]) => version)).toEqual(expect.arrayContaining(["spinosaurus-explorer-5", "trex-explorer-5", "brachiosaurus-explorer-3", "mosasaurus-explorer-3", "parasaurolophus-explorer-3", "pteranodon-explorer-2"]));
+    expect(counts.map(([version]) => version)).toEqual(expect.arrayContaining(["spinosaurus-explorer-5", "trex-explorer-5", "brachiosaurus-explorer-3", "mosasaurus-explorer-3", "parasaurolophus-explorer-3", "pteranodon-explorer-3"]));
   });
 });

@@ -87,3 +87,4 @@ and `x`, `y` (logical px) to centre them.
 | `mosasaurus-explorer-3` | `coloring/mosasaurus-explorer-3.png` | 39 |
 | `parasaurolophus-explorer-3` | `coloring/parasaurolophus-explorer-3.png` | 44 |
 | `pteranodon-explorer-2` | `coloring/pteranodon-explorer-2.png` | 36 |
+| `pteranodon-explorer-3` | `coloring/pteranodon-explorer-3.png` | 36 |

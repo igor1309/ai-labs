@@ -16,7 +16,8 @@ import { BRACHIOSAURUS_HATCHLING, BRACHIOSAURUS_EXPLORER_1 } from "./brachiosaur
 import { BRACHIOSAURUS_EXPLORER } from "./brachiosaurusExplorer3.ts";
 import { BRACHIOSAURUS_EXPLORER_2 } from "./brachiosaurusExplorer2.ts";
 import { PTERANODON_HATCHLING, PTERANODON_EXPLORER_1 } from "./pteranodonScene.ts";
-import { PTERANODON_EXPLORER } from "./pteranodonExplorer2.ts";
+import { PTERANODON_EXPLORER } from "./pteranodonExplorer3.ts";
+import { PTERANODON_EXPLORER_2 } from "./pteranodonExplorer2.ts";
 import { PARASAUROLOPHUS_HATCHLING, PARASAUROLOPHUS_EXPLORER_1 } from "./parasaurolophusScene.ts";
 import { PARASAUROLOPHUS_EXPLORER } from "./parasaurolophusExplorer3.ts";
 import { PARASAUROLOPHUS_EXPLORER_2 } from "./parasaurolophusExplorer2.ts";
@@ -51,7 +52,7 @@ export const ARTWORKS = [
   // Saved journals still resolve this version; new selections use the enlarged one above.
   { geometry: TREX_HATCHLING, names: { en: "T-REX", ru: "ТИРАННОЗАВР" } },
   { geometry: TREX_EXPLORER, names: { en: "T-REX", ru: "ТИРАННОЗАВР" } },
-  // Saved journals still resolve this version; new selections use the scene above, which covers the canvas.
+  // Saved journals still resolve this version; new selections use the scene above, which fits the paper whole.
   { geometry: TREX_EXPLORER_4, names: { en: "T-REX", ru: "ТИРАННОЗАВР" } },
   // Saved journals still resolve this version; new selections use the Explorer scene above.
   { geometry: TREX_EXPLORER_3, names: { en: "T-REX", ru: "ТИРАННОЗАВР" } },
@@ -61,7 +62,7 @@ export const ARTWORKS = [
   // Saved journals still resolve this version; new selections use the enlarged one above.
   { geometry: MOSASAURUS_HATCHLING, names: { en: "MOSASAURUS", ru: "МОЗАЗАВР" } },
   { geometry: MOSASAURUS_EXPLORER, names: { en: "MOSASAURUS", ru: "МОЗАЗАВР" } },
-  // Saved journals still resolve this version; new selections use the scene above, which covers the canvas.
+  // Saved journals still resolve this version; new selections use the scene above, which fits the paper whole.
   { geometry: MOSASAURUS_EXPLORER_2, names: { en: "MOSASAURUS", ru: "МОЗАЗАВР" } },
   // Saved journals still resolve this version; new selections use the traced scene above.
   { geometry: MOSASAURUS_EXPLORER_1, names: { en: "MOSASAURUS", ru: "МОЗАЗАВР" } },
@@ -69,7 +70,7 @@ export const ARTWORKS = [
   // Saved journals still resolve this version; new selections use the enlarged one above.
   { geometry: BRACHIOSAURUS_HATCHLING, names: { en: "BRACHIOSAURUS", ru: "БРАХИОЗАВР" } },
   { geometry: BRACHIOSAURUS_EXPLORER, names: { en: "BRACHIOSAURUS", ru: "БРАХИОЗАВР" } },
-  // Saved journals still resolve this version; new selections use the scene above, which covers the canvas.
+  // Saved journals still resolve this version; new selections use the scene above, which fits the paper whole.
   { geometry: BRACHIOSAURUS_EXPLORER_2, names: { en: "BRACHIOSAURUS", ru: "БРАХИОЗАВР" } },
   // Saved journals still resolve this version; new selections use the traced scene above.
   { geometry: BRACHIOSAURUS_EXPLORER_1, names: { en: "BRACHIOSAURUS", ru: "БРАХИОЗАВР" } },
@@ -77,13 +78,15 @@ export const ARTWORKS = [
   // Saved journals still resolve this version; new selections use the enlarged one above.
   { geometry: PTERANODON_HATCHLING, names: { en: "PTERANODON", ru: "ПТЕРАНОДОН" } },
   { geometry: PTERANODON_EXPLORER, names: { en: "PTERANODON", ru: "ПТЕРАНОДОН" } },
+  // Saved journals still resolve this version; new selections use the scene above, which fits the paper whole.
+  { geometry: PTERANODON_EXPLORER_2, names: { en: "PTERANODON", ru: "ПТЕРАНОДОН" } },
   // Saved journals still resolve this version; new selections use the traced scene above.
   { geometry: PTERANODON_EXPLORER_1, names: { en: "PTERANODON", ru: "ПТЕРАНОДОН" } },
   { geometry: PARASAUROLOPHUS_HATCHLING_FITTED, names: { en: "PARASAUROLOPHUS", ru: "ПАРАЗАУРОЛОФ" } },
   // Saved journals still resolve this version; new selections use the enlarged one above.
   { geometry: PARASAUROLOPHUS_HATCHLING, names: { en: "PARASAUROLOPHUS", ru: "ПАРАЗАУРОЛОФ" } },
   { geometry: PARASAUROLOPHUS_EXPLORER, names: { en: "PARASAUROLOPHUS", ru: "ПАРАЗАУРОЛОФ" } },
-  // Saved journals still resolve this version; new selections use the scene above, which covers the canvas.
+  // Saved journals still resolve this version; new selections use the scene above, which fits the paper whole.
   { geometry: PARASAUROLOPHUS_EXPLORER_2, names: { en: "PARASAUROLOPHUS", ru: "ПАРАЗАУРОЛОФ" } },
   // Saved journals still resolve this version; new selections use the traced scene above.
   { geometry: PARASAUROLOPHUS_EXPLORER_1, names: { en: "PARASAUROLOPHUS", ru: "ПАРАЗАУРОЛОФ" } },
@@ -91,7 +94,7 @@ export const ARTWORKS = [
   // Saved journals still resolve this version; new selections use the enlarged one above.
   { geometry: SPINOSAURUS_HATCHLING, names: { en: "SPINOSAURUS", ru: "СПИНОЗАВР" } },
   { geometry: SPINOSAURUS_EXPLORER, names: { en: "SPINOSAURUS", ru: "СПИНОЗАВР" } },
-  // Saved journals still resolve this version; new selections use the scene above, which covers the canvas.
+  // Saved journals still resolve this version; new selections use the scene above, which fits the paper whole.
   { geometry: SPINOSAURUS_EXPLORER_4, names: { en: "SPINOSAURUS", ru: "СПИНОЗАВР" } },
   { geometry: SPINOSAURUS_EXPLORER_3, names: { en: "SPINOSAURUS", ru: "СПИНОЗАВР" } },
   { geometry: SPINOSAURUS_EXPLORER_2, names: { en: "SPINOSAURUS", ru: "СПИНОЗАВР" } },
