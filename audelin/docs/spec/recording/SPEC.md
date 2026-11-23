@@ -2,7 +2,7 @@
 
 Observer: compose, which builds Recording on the machine loop, feeds it
 events through the merge mapping, and hands its state to the panel and the
-menu bar (`../../app-shape.md`). They show whether a call is recorded, why,
+menu bar. They show whether a call is recorded, why,
 and what held it back: user S-1, S-2, S-7, S-17 (`../SPEC.md`). Recording
 decides whether a recording runs and brings its pieces up and down. Its
 state holds the current recording's stage (claiming the calls folder,

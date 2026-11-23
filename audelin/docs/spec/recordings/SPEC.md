@@ -2,8 +2,7 @@
 
 Observer: compose, which builds Recordings on the machine loop and feeds
 it the calls list's and the settings screen's choices, and whether a
-recording runs; the calls list and the settings screen draw its state
-(`../../app-shape.md`). It keeps user S-10, S-18 and S-19 (`../SPEC.md`).
+recording runs; the calls list and the settings screen draw its state. It keeps user S-10, S-18 and S-19 (`../SPEC.md`).
 Recordings decides what happens to recorded calls and the calls folder;
 the calls adapter does it on disk.
 

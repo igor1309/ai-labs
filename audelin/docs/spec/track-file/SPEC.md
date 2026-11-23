@@ -1,7 +1,7 @@
 # Track file
 
 Observer: Session, which opens and closes the tracks (`../session/SPEC.md`),
-with the writing and reading compose connects (`../../app-shape.md`). They
+with the writing and reading compose connects. They
 keep the call's audio of user S-7, S-9 and S-17 and the catching up of S-15
 (`../SPEC.md`, `../call-text/SPEC.md`). An adapter over a file on disk.
 

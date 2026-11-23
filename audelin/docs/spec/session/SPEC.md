@@ -1,8 +1,7 @@
 # Session
 
 Observer: Recording, whose state holds the current recording's Session
-state and whose reducer calls the Session reducer for each of its events
-(`../../app-shape.md`). Session is a pure reducer and its value, not a
+state and whose reducer calls the Session reducer for each of its events. Session is a pure reducer and its value, not a
 machine: its effects are Recording's effects for that recording, run by
 the pieces compose builds for it. It lives in Recording's target as a file
 of Recording's reducer, not in a module of its own. Recording's state is what the panel

@@ -2,8 +2,7 @@
 
 Observer: the client compose gives one side to, which starts and stops it
 for Session (`../session/SPEC.md`) and is told when the side fails. A
-decorator at the root over one capture and its track
-(`../../app-shape.md`). Hearing the side live is live audio's
+decorator at the root over one capture and its track. Hearing the side live is live audio's
 (`../live-audio/SPEC.md`), over the capture it records.
 
 ## Decided
