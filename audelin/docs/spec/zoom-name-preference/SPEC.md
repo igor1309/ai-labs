@@ -2,8 +2,7 @@
 
 Observer: the Zoom observer, which reads the remembered name when a call
 starts and remembers each name Zoom shows for the user.
-Oracle: `../zoom-gallery-names/SPEC.md` and `../../ARCHITECTURE.md`
-§ Call names.
+Oracle: `../zoom-gallery-names/SPEC.md`.
 
 ## Decided
 

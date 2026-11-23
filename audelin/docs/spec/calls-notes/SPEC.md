@@ -1,8 +1,7 @@
 # Calls — calls without reading notes
 
 Observer: the composer, which lists calls and searches them alongside the
-notes SummaryFiles reads. The rest of Calls is `../calls/SPEC.md`, whose S-12 no longer reads notes. Oracle:
-`../../ARCHITECTURE.md` § Published notes and the keep choice.
+notes SummaryFiles reads. The rest of Calls is `../calls/SPEC.md`, whose S-12 no longer reads notes.
 
 ## Decided
 

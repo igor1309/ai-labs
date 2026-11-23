@@ -2,8 +2,7 @@
 
 Observer: the app, which builds the composer once and holds what it
 returns until quit. Recording and summary wiring are
-`../summary-composition/SPEC.md`. Oracle: `../notes-templates/SPEC.md` and
-`../../ARCHITECTURE.md` § Construction, ownership and connections.
+`../summary-composition/SPEC.md`. Oracle: `../notes-templates/SPEC.md`.
 
 ## Decided
 

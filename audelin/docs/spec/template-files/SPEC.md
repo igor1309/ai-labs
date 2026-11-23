@@ -3,8 +3,7 @@
 Observer: the client listing templates and resolving one for notes, through
 interfaces it owns (NotesMenu for the catalogue, SummaryJobs for
 resolution, both wired by the composer). Oracle: `../notes-templates/SPEC.md`
-S-1, S-11 to S-13, `../daily-notes/SPEC.md` and `../../ARCHITECTURE.md`
-§ Generation.
+S-1, S-11 to S-13, `../daily-notes/SPEC.md`.
 
 ## Decided
 

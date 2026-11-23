@@ -4,7 +4,7 @@ Observer: the composition root, which sends SummaryJobs a call's intentions
 from CallDetail and reads its progress and publication notifications. The
 first-notes line is `../summary-jobs/SPEC.md`; this spec adds templates,
 runs after success and the keep choice. Oracle: `../notes-templates/SPEC.md`
-S-2 to S-4, S-6, S-7, S-9 to S-11 and `../../ARCHITECTURE.md` § Generation.
+S-2 to S-4, S-6, S-7, S-9 to S-11.
 
 ## Machine
 

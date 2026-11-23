@@ -9,8 +9,8 @@ keep the call's audio of user S-7, S-9 and S-17 and the catching up of S-15
 
 - **Session opens and closes a track, recorded capture writes it, call
   text reads it,** each through an interface of its own that the root
-  answers with the track (ARCHITECTURE rules 1 and 4; LAB-549: writing
-  from the root put decisions in compose).
+  answers with the track (ARCHITECTURE rules 1 and 4: writing
+  from the root would put decisions in compose).
 - **One mono file per track, at one rate, 48 kHz:** each capture fails and
   goes on alone (Session); MacParakeet keeps each source as its own 48 kHz
   mono file (`spec/05-audio-pipeline.md`). A tap's rate follows the output

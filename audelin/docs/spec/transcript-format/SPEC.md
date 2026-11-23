@@ -1,7 +1,6 @@
 # Transcript format
 
-Observer: compose, rendering call text live and a replaced or merged transcript after it
-(`../../../ARCHITECTURE.md`), for user S-7, S-17 and `../transcript-origin/`. An adapter, the format's only writer and reader; it knows no disk.
+Observer: compose, rendering call text live and a replaced or merged transcript after it, for user S-7, S-17 and `../transcript-origin/`. An adapter, the format's only writer and reader; it knows no disk.
 
 ## Decided
 

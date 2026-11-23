@@ -2,8 +2,7 @@
 
 Observer: the app's calls window, which hosts the detail view the shell
 builds. Drawing is `../summary-preview-templates/SPEC.md`; deciding is
-`../notes-menu/SPEC.md` and `../call-detail/SPEC.md`. Oracle: `../../ARCHITECTURE.md`
-§ Construction, ownership and connections.
+`../notes-menu/SPEC.md` and `../call-detail/SPEC.md`.
 
 ## Decided
 

@@ -1,8 +1,7 @@
 # Transcript file
 
 Observer: compose, which opens and closes a transcript for Session and
-writes the format's rendering to it during and after a call
-(`../../../ARCHITECTURE.md`, Transcript pipeline, Bleed cleanup), keeping
+writes the format's rendering to it during and after a call, keeping
 user S-7 and S-17 (`../SPEC.md`). An adapter over a file; it knows no Markdown.
 
 ## Decided

@@ -2,7 +2,7 @@
 
 Observer: compose, which hands it a closed transcript's far-side segments and
 the call track's turns, and reads each back with its remote speaker (LAB-1131).
-A transcript-pipeline operator (`../../../ARCHITECTURE.md`): it reads times only.
+A transcript-pipeline operator (ARCHITECTURE rule 7): it reads times only.
 
 ## Decided
 
