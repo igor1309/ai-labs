@@ -10,10 +10,8 @@ it saves through and tells failures through.
 
 ## Decided
 
-- **Split from transcript writing** (LAB-1146): pacing changes with the
-  disk and the save interval, passing call text through with Session's
-  lifecycle; together their spec passed 100 lines. Transcript writing's
-  S-2, S-7, S-8, S-13 and S-14 are S-1 to S-5 here.
+- **Pacing is its own component:** it changes with the disk and the save
+  interval, while transcript writing changes with Session's lifecycle.
 - **The save in flight finishes, then only the latest value waiting is
   saved,** never an older one after a newer, since each save holds the
   whole value. Readers that need every value read them before it.
