@@ -3,7 +3,7 @@
 Observer: compose, which runs it on each recording's closed transcript and
 hands summary submission the transcript it leaves. After a call on speakers, far-side speech the microphone
 heard reads as the user's; cleanup keeps the user's side the user's
-(LAB-1129). It owns the interfaces it cleans, hears and replaces through, and
+. It owns the interfaces it cleans, hears and replaces through, and
 knows nothing of the model, the recogniser or the file behind them.
 
 ## Decided
