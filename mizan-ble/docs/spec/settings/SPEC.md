@@ -22,8 +22,7 @@ store interface of its own, answered by the preferences adapter.
   same till each time.
 - **The picker's ranges:** α 0.05 to 1; window 0.5 to 5 s and 1 to 20
   readings; floor −100 to −30 dBm; margin and drop gap 0 to 20 dB; fade 0.5
-  to 10 s; the hold 0 to 5 s. The defaults are starting guesses, replaced by
-  values measured between a real iPad and iPhone.
+  to 10 s; the hold 0 to 5 s.
 - **The picker's values and the hold have no screen in v0.0.1;** they
   change in the store, for a trial, and are read at each scan.
 
