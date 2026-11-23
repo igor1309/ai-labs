@@ -18,7 +18,7 @@ What this file holds, and what it does not:
 1. **Static and local.** RexLab is built to static files and served by
    Cloudflare Pages. There is no server, database or account; every rule
    runs in the browser, and progress stays on the device. A release ships
-   only from a tag (`AGENTS.md` § Shipping a release), and a service worker
+   only from a tag, and a service worker
    lets an installed release run without a network.
 2. **A game's rules are pure.** Each game's rules are plain functions in a
    directory of their own under `src/`, reached only through its
@@ -31,10 +31,11 @@ What this file holds, and what it does not:
    app storage, the random source, the clock, timers, pictures, the window's
    size class and the theme and motion queries. Only an adapter it wires
    may reach the browser itself.
-5. **One best-score rule.** Every game scores by `src/bestScore.ts`: the
+5. **One best-score rule.** Every game that keeps a score scores by `src/bestScore.ts`: the
    best is the highest ever, never the last round's.
-6. **Progress is best effort.** Progress lives in one versioned
-   browser-local record, one entry per game; saving one entry leaves the
+6. **Progress is best effort.** A game's progress lives in one versioned
+   browser-local record, one entry per game (a coloring's saved works are
+   kept apart, in IndexedDB); saving one entry leaves the
    others as they are. An unreadable record or unknown version counts as no
    progress. A game that cannot read or save still plays; it never shows a
    best or celebration it cannot back. Losing browser data is accepted.
