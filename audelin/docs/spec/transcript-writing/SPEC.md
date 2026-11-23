@@ -17,9 +17,8 @@ What it keeps, Session has in the transcript it closes next.
   so stopping never fails either and is never cut short.
 - **Updates are heard from before call text starts,** because it publishes
   while starting (session, Bring-up puts each destination before its source).
-- **Saving is paced by save pacing** (LAB-1146, `../save-pacing/SPEC.md`):
-  which text is written, how often and how a failure is told are its, and
-  S-2, S-7, S-8, S-13 and S-14 moved there and are retired here. The
+- **Saving is paced by save pacing** (`../save-pacing/SPEC.md`):
+  which text is written, how often and how a failure is told are its. The
   reading feed retains every snapshot, including listening omissions that
   retire entry identities.
 - **Stopping returns once call text has stopped and its last text is
