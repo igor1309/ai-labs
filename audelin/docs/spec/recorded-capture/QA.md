@@ -5,7 +5,7 @@ interfaces: a capture fake that gives numbered tones and fails, stops or
 refuses to start on cue, and a track fake that holds or fails a write on
 cue and records each write. A row reads back the tones the fake track
 holds, and when, never just that a call was made. Hearing the side live
-is live audio's QA. The real call of the user spec (LAB-408) proves the
+is live audio's QA. The real call of the user spec proves the
 whole path.
 
 ## S-1 Captured audio is kept
