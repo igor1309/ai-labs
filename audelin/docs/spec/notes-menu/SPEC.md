@@ -3,8 +3,8 @@
 Observer: SummaryPreviewUI, which draws NotesMenu's state and sends back
 the user's actions, and the composer, which gives it CallDetail's facts and
 routes its intentions to SummaryJobs. Oracle: `../notes-templates/SPEC.md`
-S-1 to S-4, S-8, S-12, S-13, the design brief `../../design/notes-templates.md`
-and `../../ARCHITECTURE.md` § Presentation and menu.
+S-1 to S-4, S-8, S-12, S-13 and the design brief
+`../../design/notes-templates.md`.
 
 ## Machine
 

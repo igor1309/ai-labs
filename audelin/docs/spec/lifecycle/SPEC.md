@@ -9,7 +9,13 @@ participant and drives none.
 ## Decided
 
 - **A quit is published as an intention,** and termination waits until
-  every participant that exists has settled (Shutdown in the architecture).
+  every participant that exists has settled. On the quit intention the
+  composer sends shutdown to each: Recording settles once its pieces are
+  down and its transcript output delivered; Recordings once no folder move
+  holds the calls folder; TranscriptFinalization once each call is
+  settled; SummaryJobs once its work ends. Each settled outcome reaches
+  Lifecycle, which reads no participant and drives none. After a startup
+  failure Recording does not exist, and the same path waits for the rest.
 - **A relaunch holds the calls-folder claim,** so no recording or folder
   move starts behind the decision to restart. Lifecycle takes the claim
   itself, keeps its token, and starts the new instance only once granted.

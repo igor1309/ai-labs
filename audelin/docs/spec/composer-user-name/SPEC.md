@@ -2,8 +2,7 @@
 
 Observer: the app, which builds the composer once and holds what it
 returns. Notes templates wiring is `../composer-templates/SPEC.md`. Oracle:
-`../owner-name/SPEC.md` S-4, S-5, S-7 and `../../ARCHITECTURE.md` § The
-user's name in notes.
+`../owner-name/SPEC.md` S-4, S-5, S-7.
 
 ## Decided
 

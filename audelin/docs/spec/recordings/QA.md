@@ -5,7 +5,7 @@ effect each event asks for, and effect handler cases that drive a spy of
 the calls adapter and a spy of the preferences store and check the result
 event delivered. Compose's wiring (the calls folder condition during a
 move, a fresh listing after a result) is tested in Compose with the real
-machine and spies. Real calls (LAB-746, LAB-747) prove the whole path.
+machine and spies. Real calls prove the whole path.
 
 ## S-1 Renaming a call
 

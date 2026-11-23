@@ -7,7 +7,7 @@ time zone `Asia/Tokyo`, while the process runs in `America/Los_Angeles`,
 so names are known and the given zone is proven used; every row runs with the process's
 default locale set to one with another calendar and digits
 (`ar_SA`), which must not change a name. The real call of the user spec
-(LAB-408) proves the whole path.
+ proves the whole path.
 
 ## S-1 A call gets its own folder
 

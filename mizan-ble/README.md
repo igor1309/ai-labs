@@ -16,7 +16,7 @@ explicit handshake (v0.1.0) and the foreground app (v0.2.0).
 
 | Path | What it holds |
 |---|---|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | How the app is built: grounding rules, components and modules, the GATT layout, settings |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | The rules the code follows |
 | [docs/spec/](docs/spec/) | What it does: the user's spec, and one `SPEC.md` and `QA.md` per component |
 | [AGENTS.md](AGENTS.md) | Rules for agents: the architecture, the spec process, building and the design |
 | [docs/poc.md](docs/poc.md) | The proof of concept: versions, the host and client flows, design notes, research leads |

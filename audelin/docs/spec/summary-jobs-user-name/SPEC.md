@@ -3,8 +3,7 @@
 Observer: the composition root, which answers SummaryJobs' generation
 preferences port and receives its identify and make requests. The line is
 `../summary-jobs/SPEC.md`; this spec adds one captured value. Oracle:
-`../owner-name/SPEC.md` S-6, S-7 and `../../ARCHITECTURE.md` § The user's
-name in notes.
+`../owner-name/SPEC.md` S-6, S-7.
 
 ## Decided
 

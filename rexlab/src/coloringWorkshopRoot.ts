@@ -3,13 +3,14 @@ import { PARASAUROLOPHUS_EXPLORER } from "./coloring/parasaurolophusExplorer3.ts
 import { BRACHIOSAURUS_EXPLORER } from "./coloring/brachiosaurusExplorer3.ts";
 import { MOSASAURUS_EXPLORER } from "./coloring/mosasaurusExplorer3.ts";
 import { TREX_EXPLORER } from "./coloring/trexExplorer5.ts";
+import { PTERANODON_EXPLORER } from "./coloring/pteranodonExplorer2.ts";
 import type { AgeLevel } from "./ageLevel.ts";
 import type { GalleryArtwork } from "./ColoringGalleryScreen.tsx";
 import { coloringModel, type Work } from "./coloring/index.ts";
 import { ARTWORK } from "./coloring/geometry.ts";
 import { ARTWORKS, artworkFor } from "./coloring/artworks.ts";
 import { createPainter } from "./coloring/painter.ts";
-import { TRICERATOPS_FITTED, STEGOSAURUS_EXPLORER_FITTED, TRICERATOPS_EXPLORER_FITTED, ANKYLOSAURUS_HATCHLING_FITTED, ANKYLOSAURUS_EXPLORER_FITTED, TREX_HATCHLING_FITTED, MOSASAURUS_HATCHLING_FITTED, BRACHIOSAURUS_HATCHLING_FITTED, PTERANODON_HATCHLING_FITTED, PTERANODON_EXPLORER_FITTED, PARASAUROLOPHUS_HATCHLING_FITTED, SPINOSAURUS_HATCHLING_FITTED } from "./coloring/fitted.ts";
+import { TRICERATOPS_FITTED, STEGOSAURUS_EXPLORER_FITTED, TRICERATOPS_EXPLORER_FITTED, ANKYLOSAURUS_HATCHLING_FITTED, ANKYLOSAURUS_EXPLORER_FITTED, TREX_HATCHLING_FITTED, MOSASAURUS_HATCHLING_FITTED, BRACHIOSAURUS_HATCHLING_FITTED, PTERANODON_HATCHLING_FITTED, PARASAUROLOPHUS_HATCHLING_FITTED, SPINOSAURUS_HATCHLING_FITTED } from "./coloring/fitted.ts";
 import { indexedColoringWorks } from "./indexedColoringWorks.ts";
 import { coloringWorkshop, type WorkshopNavigation } from "./coloringWorkshop.ts";
 
@@ -77,7 +78,7 @@ export function coloringVersionsFor(level: AgeLevel): readonly string[] {
     (level === "hatchling" ? TREX_HATCHLING_FITTED : TREX_EXPLORER).artwork.version,
     (level === "hatchling" ? MOSASAURUS_HATCHLING_FITTED : MOSASAURUS_EXPLORER).artwork.version,
     (level === "hatchling" ? BRACHIOSAURUS_HATCHLING_FITTED : BRACHIOSAURUS_EXPLORER).artwork.version,
-    (level === "hatchling" ? PTERANODON_HATCHLING_FITTED : PTERANODON_EXPLORER_FITTED).artwork.version,
+    (level === "hatchling" ? PTERANODON_HATCHLING_FITTED : PTERANODON_EXPLORER).artwork.version,
     (level === "hatchling" ? PARASAUROLOPHUS_HATCHLING_FITTED : PARASAUROLOPHUS_EXPLORER).artwork.version,
     (level === "hatchling" ? SPINOSAURUS_HATCHLING_FITTED : SPINOSAURUS_EXPLORER).artwork.version
   ];

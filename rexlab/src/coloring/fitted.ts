@@ -6,7 +6,7 @@ import { ANKYLOSAURUS_HATCHLING, ANKYLOSAURUS_EXPLORER } from "./ankylosaurusSce
 import { TREX_HATCHLING } from "./trexScene.ts";
 import { MOSASAURUS_HATCHLING } from "./mosasaurusScene.ts";
 import { BRACHIOSAURUS_HATCHLING } from "./brachiosaurusScene.ts";
-import { PTERANODON_HATCHLING, PTERANODON_EXPLORER } from "./pteranodonScene.ts";
+import { PTERANODON_HATCHLING } from "./pteranodonScene.ts";
 import { PARASAUROLOPHUS_HATCHLING } from "./parasaurolophusScene.ts";
 import { SPINOSAURUS_HATCHLING } from "./spinosaurusScene.ts";
 
@@ -26,7 +26,6 @@ export const TREX_HATCHLING_FITTED = fitted(TREX_HATCHLING, "trex-hatchling-2", 
 export const MOSASAURUS_HATCHLING_FITTED = fitted(MOSASAURUS_HATCHLING, "mosasaurus-hatchling-2", { scale: 1.0664, x: -18, y: -28.5 });
 export const BRACHIOSAURUS_HATCHLING_FITTED = fitted(BRACHIOSAURUS_HATCHLING, "brachiosaurus-hatchling-2", { scale: 1.0621, x: -16, y: -14 });
 export const PTERANODON_HATCHLING_FITTED = fitted(PTERANODON_HATCHLING, "pteranodon-hatchling-2", { scale: 1.0639, x: -14.5, y: -12.5 });
-export const PTERANODON_EXPLORER_FITTED = fitted(PTERANODON_EXPLORER, "pteranodon-explorer-2", { scale: 1.0339, x: -8, y: -5.5 });
 export const PARASAUROLOPHUS_HATCHLING_FITTED = fitted(PARASAUROLOPHUS_HATCHLING, "parasaurolophus-hatchling-2", { scale: 1.0764, x: -20.5, y: -18.5 });
 export const SPINOSAURUS_HATCHLING_FITTED = fitted(SPINOSAURUS_HATCHLING, "spinosaurus-hatchling-2", { scale: 1.0445, x: -12, y: -29 });
 
@@ -36,6 +35,6 @@ export const FITTED: readonly (readonly [Geometry, Geometry])[] = [
   [TRICERATOPS_EXPLORER_FITTED, TRICERATOPS_EXPLORER], [ANKYLOSAURUS_HATCHLING_FITTED, ANKYLOSAURUS_HATCHLING],
   [ANKYLOSAURUS_EXPLORER_FITTED, ANKYLOSAURUS_EXPLORER], [TREX_HATCHLING_FITTED, TREX_HATCHLING],
   [MOSASAURUS_HATCHLING_FITTED, MOSASAURUS_HATCHLING], [BRACHIOSAURUS_HATCHLING_FITTED, BRACHIOSAURUS_HATCHLING],
-  [PTERANODON_HATCHLING_FITTED, PTERANODON_HATCHLING], [PTERANODON_EXPLORER_FITTED, PTERANODON_EXPLORER],
+  [PTERANODON_HATCHLING_FITTED, PTERANODON_HATCHLING],
   [PARASAUROLOPHUS_HATCHLING_FITTED, PARASAUROLOPHUS_HATCHLING], [SPINOSAURUS_HATCHLING_FITTED, SPINOSAURUS_HATCHLING]
 ];

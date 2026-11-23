@@ -2,7 +2,7 @@
 
 Observer: compose, which builds Recording on the machine loop, feeds it
 events through the merge mapping, and hands its state to the panel and the
-menu bar (`../../app-shape.md`). They show whether a call is recorded, why,
+menu bar. They show whether a call is recorded, why,
 and what held it back: user S-1, S-2, S-7, S-17 (`../SPEC.md`). Recording
 decides whether a recording runs and brings its pieces up and down. Its
 state holds the current recording's stage (claiming the calls folder,
@@ -29,7 +29,7 @@ effect handler, and its result comes back as a Recording event.
   with room; room means at least 30 GB free on the calls folder's volume (owner, 2026-10-26). No start begins without them. Once recording,
   a lost access is a failing capture and the other side goes on (the
   Session, the design's mic lost); only a lost folder or room ends it, its
-  audio kept (disk full). Setup reads the conditions' merge (LAB-406).
+  audio kept (disk full). Setup reads the conditions' merge.
 - **The calls folder is claimed first and released last.** A start takes
   the calls-folder claim before it asks for call audio, and Recording keeps
   the token until the pieces are down and call audio is released; only then

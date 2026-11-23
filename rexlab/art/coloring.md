@@ -82,7 +82,8 @@ and `x`, `y` (logical px) to centre them.
 | `mosasaurus-explorer-2` | `coloring/mosasaurus-explorer-2.png` | 36 |
 | `parasaurolophus-explorer-2` | `coloring/parasaurolophus-explorer-2.png` | 43 |
 | `trex-explorer-5` | `coloring/trex-explorer-5.png` | 42 |
-| `spinosaurus-explorer-5` | `coloring/spinosaurus-explorer-5.png` | 37 |
-| `brachiosaurus-explorer-3` | `coloring/brachiosaurus-explorer-3.png` | 39 |
-| `mosasaurus-explorer-3` | `coloring/mosasaurus-explorer-3.png` | 37 |
-| `parasaurolophus-explorer-3` | `coloring/parasaurolophus-explorer-3.png` | 43 |
+| `spinosaurus-explorer-5` | `coloring/spinosaurus-explorer-5.png` | 38 |
+| `brachiosaurus-explorer-3` | `coloring/brachiosaurus-explorer-3.png` | 38 |
+| `mosasaurus-explorer-3` | `coloring/mosasaurus-explorer-3.png` | 39 |
+| `parasaurolophus-explorer-3` | `coloring/parasaurolophus-explorer-3.png` | 44 |
+| `pteranodon-explorer-2` | `coloring/pteranodon-explorer-2.png` | 36 |

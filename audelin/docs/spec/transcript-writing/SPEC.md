@@ -3,8 +3,7 @@
 Observer: Session, which starts, switches and stops call text through
 `SessionCallText` and must tell which piece failed (`../session/SPEC.md`).
 A decorator compose puts around call text (ARCHITECTURE rule 6): it keeps
-call text's text in the recording's transcript, as the data flow says
-(`../../app-shape.md`), so the call is kept to its last word (user S-7,
+call text's text in the recording's transcript, so the call is kept to its last word (user S-7,
 S-17 in `../SPEC.md`). It owns the interfaces it writes and tells through.
 What it keeps, Session has in the transcript it closes next.
 
@@ -18,9 +17,8 @@ What it keeps, Session has in the transcript it closes next.
   so stopping never fails either and is never cut short.
 - **Updates are heard from before call text starts,** because it publishes
   while starting (session, Bring-up puts each destination before its source).
-- **Saving is paced by save pacing** (LAB-1146, `../save-pacing/SPEC.md`):
-  which text is written, how often and how a failure is told are its, and
-  S-2, S-7, S-8, S-13 and S-14 moved there and are retired here. The
+- **Saving is paced by save pacing** (`../save-pacing/SPEC.md`):
+  which text is written, how often and how a failure is told are its. The
   reading feed retains every snapshot, including listening omissions that
   retire entry identities.
 - **Stopping returns once call text has stopped and its last text is

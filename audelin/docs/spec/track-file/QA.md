@@ -8,7 +8,7 @@ the samples or plays the file, never just checks that a call was made.
 its length, both outside the adapter. Where the file system will not fail
 on cue, a row runs through a fake of the file binding, as spec-process
 allows. The real call of the user spec
-(LAB-408) proves the whole path.
+ proves the whole path.
 
 ## S-1 Written audio can be read back
 

@@ -4,16 +4,14 @@ Observer: transcript writing, which hands it each text call text publishes
 and waits on it when call text stops (`../transcript-writing/SPEC.md`), so
 the transcript is saved often enough to keep the call and seldom enough
 not to cost it (user S-7 and S-17 in `../SPEC.md`). A pipeline operator
-the root chains (`../../../ARCHITECTURE.md`, Transcript pipeline): generic
+the root chains (ARCHITECTURE rule 7): generic
 over what it saves, it never looks inside a value. It owns the interfaces
 it saves through and tells failures through.
 
 ## Decided
 
-- **Split from transcript writing** (LAB-1146): pacing changes with the
-  disk and the save interval, passing call text through with Session's
-  lifecycle; together their spec passed 100 lines. Transcript writing's
-  S-2, S-7, S-8, S-13 and S-14 are S-1 to S-5 here.
+- **Pacing is its own component:** it changes with the disk and the save
+  interval, while transcript writing changes with Session's lifecycle.
 - **The save in flight finishes, then only the latest value waiting is
   saved,** never an older one after a newer, since each save holds the
   whole value. Readers that need every value read them before it.

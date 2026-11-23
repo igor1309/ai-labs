@@ -1,8 +1,8 @@
 # Dig levels
 
-The dig game (LAB-335): the child brushes sand off a covered picture with
+The dig game: the child brushes sand off a covered picture with
 a finger until a dinosaur shows. Its modes at each age level
-(`age-levels.md`), and the sub-issues that build them. The behaviour is
+(`age-levels.md`). The behaviour is
 specified in `features/dig-*.feature`; this note is the plan they
 follow. The frames are the "Dig" frames of `../design/rexlab.pen`, and
 its home with the DIG tile; their sand art is a mock-up of the brush,
@@ -18,7 +18,7 @@ The one interaction at every level.
   second tap at once in the same place clears nothing more.
   The hollow's edge crumbles, with a pale lip of loose grains on the
   sand around it and the sand's shadow inside, and under the sand lies
-  a bed of darker, damp sand, never the page (LAB-360).
+  a bed of darker, damp sand, never the page.
   Grains puff from the brush; under reduced motion the sand just clears.
 - **No fail state.** No timer, no penalty, no wrong place to brush, at any
   level. A wrong pick at the question only fades that picture.
@@ -37,11 +37,11 @@ The one interaction at every level.
   pixels across at Hatchling, 36 at Explorer and Paleontologist; the
   wide brush is twice that, 96 and 72. The child can choose either on
   every board; DIG opens with the brush, and the pick stays while DIG
-  is open (LAB-398).
+  is open.
 
 ## The levels
 
-DIG v2 (LAB-358): each round above Hatchling is a mystery. The board is
+Each round above Hatchling is a mystery. The board is
 all sand, with choices initially invisible beside it; the picture
 itself shows how far the dig has come. The frames are the "Dig ·
 Storyboard" row of `../design/rexlab.pen`.
@@ -60,9 +60,8 @@ Storyboard" row of `../design/rexlab.pen`.
   named from what the brush uncovered, and asked only once three
   quarters of it show, so the pick is a judgement rather than a guess.
   Paleontologist's fourth card makes it harder; nothing adds speed.
-- **No spoilers.** A playtest of v1 found its find cards a checklist:
-  the round ended once their spots were found, and its close-ups showed
-  the dinosaur before it was dug. The child expects to dig the whole
+- **No spoilers.** Find cards and close-ups make the round a checklist
+  that ends before the dinosaur is dug and shows it early. The child expects to dig the whole
   picture, so brushing goes on while the question shows, and only the
   pick ends the round.
 - **The board arrives and moves.** It drops from above and settles,
@@ -96,7 +95,8 @@ Storyboard" row of `../design/rexlab.pen`.
   an eye, feet, a tail and claws; horns, plates, crests, sails, frills
   and beaks are telling traits only some show, and `dig.json` lists
   each dinosaur's. Each dinosaur has three to five spots, in
-  `src/data/dig.json`. Help thins them in a random order drawn at the
+  `src/data/dig.json`. A test checks that every spot lies on the
+  dinosaur's cells. Help thins them in a random order drawn at the
   round's start.
 - **The look-alikes.** The question's other cards are the dinosaur's
   closest look-alikes: of the telling traits and spot kinds either of
@@ -142,7 +142,7 @@ Storyboard" row of `../design/rexlab.pen`.
 
 - **A full collection.** Once all 42 are dug up the card keeps its 🏆
   and a round's reward is its reveal; at Explorer and Paleontologist
-  the 🦴 badges still collect. Accepted by the owner (2026-10-19): no further
+  the 🦴 badges still collect. No further
   collection until a playtest shows children dig on past 42, as 42
   rounds is already a long goal at 5–7.
 
@@ -171,38 +171,21 @@ Storyboard" row of `../design/rexlab.pen`.
 - **Kept.** Counts per kind, in DIG's stored progress, one collection
   across all levels. They show nowhere outside DIG.
 
-## Sub-issues
-
-| Sub-issue | Builds |
-| --- | --- |
-| LAB-340 Design (this note, the frames) | |
-| LAB-341 The brush and Hatchling | the sand in cells, with each dinosaur's cells in `dig.json`, brushing and taps, the gust, the reveal, stars and "DUG UP", the home tile, the level switch with every level playing Hatchling |
-| LAB-342 Dig spots (art data) | 3–5 spots and the telling traits for every dinosaur in `dig.json`, with a test that each spot lies on the dinosaur's cells |
-| LAB-343 Explorer | find cards, found details, the help, the offer from Hatchling |
-| LAB-344 Paleontologist | clues in order, the choice of 3, the badge, the offer from Explorer |
-| LAB-358 DIG v2, a mystery round | |
-| LAB-359 The mystery round | all sand, the question at 75% with look-alikes, help at every level, Hatchling's gust at 95%; v1's find and clue cards go |
-| LAB-360 The brush | a brush that crumbles the sand |
-| LAB-361 Motion | the motion and the reveal |
-| LAB-362 Treasures | treasures in the sand and the FIELD GUIDE |
-
-## Accepted by the owner
+## Decisions
 
 - The game's name: "DIG", "РАСКОПКИ".
 - Hatchling's gust at 95% of the dinosaur, so a 4-year-old digs it
-  whole but never hunts the last grains (LAB-359).
+  whole but never hunts the last grains.
 - A mystery round at Explorer and Paleontologist: initially invisible cards, the
   question at 75%, 3 choices at Explorer and 4 at Paleontologist, a
-  wrong pick fading and staying out (LAB-358).
-- On 2026-10-22 the owner chose choices fading linearly from 25% to 75%
-  dug, accepting that candidates become visible before the question;
-  interaction still begins at 75% (LAB-468).
-- The straight fade read as a pop: a grey picture shows plainly even
-  faint. So the choices start at 10% and ease in, the square of the way
-  to 75% (LAB-483, 2026-10-22).
+  wrong pick fading and staying out.
+- The choices fade in before the question, so candidates show early;
+  they can be picked only from 75%. The fade starts at 10% and eases in,
+  the square of the way to 75%: a straight fade reads as a pop, since a
+  grey picture shows plainly even faint.
 - The dinosaur is named from body pictures, not its skeleton: every
   dinosaur has a body picture, and only five have a skeleton.
 - Stars for each dinosaur dug up, not for each round, so the collection
   is the long goal.
 - Treasures in about one round in three, at every level, kept in a
-  FIELD GUIDE page beside DUG UP (LAB-362).
+  FIELD GUIDE page beside DUG UP.

@@ -8,7 +8,7 @@ are known and the given zone is proven used. Track lengths come from
 short `.caf` files written in the test. Steps that can fail (copy, size
 check, rename, delete) are reached through closures the adapter is given,
 so each failure is made on purpose, not by filling a disk. The real calls
-of the user spec (LAB-746, LAB-747) prove the whole path.
+of the user spec prove the whole path.
 
 ## S-1 Calls are listed newest first
 

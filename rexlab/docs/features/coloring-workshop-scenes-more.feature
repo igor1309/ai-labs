@@ -17,13 +17,14 @@ Feature: Coloring workshop Pteranodon, Parasaurolophus and Spinosaurus scenes
     And the entire scene fits supported iPad and iPhone viewports without clipping
     And the canvas has the localized uppercase accessible name PTERANODON or ПТЕРАНОДОН
 
-  Scenario: Rich Pteranodon sea cliff scene
+  Scenario: Pteranodon gliding over the sea for older levels
     Given I start a new Pteranodon work at Explorer or Paleontologist
-    Then the workshop renders pteranodon-explorer-2, the original pteranodon-explorer-1 vector scene enlarged to fill the paper
-    And the same recognizable Pteranodon soars through a sky with a sun and two clouds above the sea between two cliffs
-    And its wing arms, belly, crest tip and lower jaw add independent coloring regions beyond the Hatchling drawing
-    And wing fingers, skin spots, waves, rock cracks, sun rays and a far-off flier remain protected linework
-    And the entire scene fits supported iPad and iPhone viewports without clipping
+    Then the workshop renders the pteranodon-explorer-2 traced line-art scene of 36 regions
+    And a Pteranodon in its own proportions glides close up with a long pointed beak, a long backswept crest, a small body and long membrane wings running past the frame
+    And its beak, head, neck, body, three crest bands, three panels on each wing and the near wing's arm are regions of their own
+    And a sky with sun and three clouds, hills, two sea bands, a cliff of four faces and two stones offer broad scenery regions
+    And its outline, eye, smile, nostril and toes are one protected ink drawing above every fill
+    And the entire scene fits supported iPad landscape viewports without clipping
 
   Scenario Outline: Independent Pteranodon fills preserve the drawing
     Given I open a Pteranodon work using <artwork>
@@ -35,6 +36,7 @@ Feature: Coloring workshop Pteranodon, Parasaurolophus and Spinosaurus scenes
       | artwork                |
       | pteranodon-hatchling-1 |
       | pteranodon-explorer-1  |
+      | pteranodon-explorer-2  |
 
   Scenario: Simple Parasaurolophus for Hatchling
     Given I start a new Parasaurolophus work at Hatchling

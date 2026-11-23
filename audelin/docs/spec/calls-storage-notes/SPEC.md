@@ -3,8 +3,7 @@
 Observer: SummaryFiles, which publishes notes inside a storage transaction,
 and the composer, which tells SummaryJobs when one runs. The rest is
 `../calls/SPEC.md` and `../recordings/SPEC.md`; merged notes follow
-`../summary-composition/SPEC.md` S-15. Oracle:
-`../../ARCHITECTURE.md` § Published notes and the keep choice.
+`../summary-composition/SPEC.md` S-15.
 
 ## Decided
 

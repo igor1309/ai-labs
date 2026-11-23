@@ -3,7 +3,6 @@
 Observer: the user, who wants a kept call's transcript made again by this
 Audelin. Its origin is `../transcript-origin/SPEC.md`; the transcript
 replaced, and its notes, `../previous-transcript/SPEC.md`.
-Oracle: the owner's rulings on LAB-1694.
 
 ## Decided
 

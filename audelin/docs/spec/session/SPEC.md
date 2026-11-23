@@ -1,8 +1,7 @@
 # Session
 
 Observer: Recording, whose state holds the current recording's Session
-state and whose reducer calls the Session reducer for each of its events
-(`../../app-shape.md`). Session is a pure reducer and its value, not a
+state and whose reducer calls the Session reducer for each of its events. Session is a pure reducer and its value, not a
 machine: its effects are Recording's effects for that recording, run by
 the pieces compose builds for it. It lives in Recording's target as a file
 of Recording's reducer, not in a module of its own. Recording's state is what the panel
@@ -21,7 +20,7 @@ S-16, S-7, S-17 in `../SPEC.md`).
   piece failing to close is named; bring-down goes on, what was kept
   stays, and the Session still ends, so the next call is never stranded.
 - **A failure that leaves no track** (the folder, or both sides) makes it
-  say it cannot record, and why; Recording ends it (LAB-510). Any other
+  say it cannot record, and why; Recording ends it. Any other
   failing piece, or a side whose access is lost (compose feeds each side's
   access), is named, its output kept, and the rest goes on (S-9).
 - **No processes chosen hears every app but Audelin,** so their side is

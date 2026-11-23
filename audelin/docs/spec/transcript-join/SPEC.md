@@ -1,8 +1,7 @@
 # Transcript join
 
 Observer: compose, which joins the transcripts of calls being merged and
-hands the result to Transcript format to render (`../../../ARCHITECTURE.md`,
-Merging calls), so the user can read them as one call (user merging calls,
+hands the result to Transcript format to render, so the user can read them as one call (user merging calls,
 `../merge-calls/SPEC.md`). A plain component and a transcript pipeline
 operator: generic over the rows it carries, it reads only their times and
 their speaker keys.

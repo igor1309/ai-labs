@@ -2,8 +2,7 @@
 
 Observer: NotesMenu, which shows and edits the choice, and SummaryJobs,
 which reads it when a run is prepared, each through a port it owns.
-Oracle: `../notes-templates/SPEC.md` S-6 to S-8 and `../../ARCHITECTURE.md`
-§ Published notes and the keep choice.
+Oracle: `../notes-templates/SPEC.md` S-6 to S-8.
 
 ## Decided
 

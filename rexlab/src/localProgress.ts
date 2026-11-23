@@ -437,8 +437,8 @@ function readFeatured({ starts, featured }: Entry, games: readonly string[]): St
   return { starts: Object.fromEntries(counts), featured: { day: featured.day, game: featured.game } };
 }
 
-// One game's progress kept in browser storage, in the versioned record of
-// docs/mvp-infrastructure.md section 5, which holds every game's. The
+// One game's progress kept in browser storage, as its entry under `games`
+// in the one versioned record that holds every game's. The
 // storage is reached through a function because a browser that blocks
 // storage throws on reaching `localStorage` itself, not only on reading
 // it. `read` gives the game's progress from its entry, or undefined when

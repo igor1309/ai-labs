@@ -2,8 +2,7 @@
 
 Observer: the Zoom observer, which polls a reading of Zoom's windows and
 reports each change of the far-side speaker to CallNames.
-Oracle: `../zoom-gallery-names/SPEC.md` and `../../ARCHITECTURE.md`
-§ Call names.
+Oracle: `../zoom-gallery-names/SPEC.md`.
 
 ## Decided
 

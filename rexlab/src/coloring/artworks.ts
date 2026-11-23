@@ -15,7 +15,8 @@ import { TREX_EXPLORER_2 } from "./trexExplorer2.ts";
 import { BRACHIOSAURUS_HATCHLING, BRACHIOSAURUS_EXPLORER_1 } from "./brachiosaurusScene.ts";
 import { BRACHIOSAURUS_EXPLORER } from "./brachiosaurusExplorer3.ts";
 import { BRACHIOSAURUS_EXPLORER_2 } from "./brachiosaurusExplorer2.ts";
-import { PTERANODON_HATCHLING, PTERANODON_EXPLORER } from "./pteranodonScene.ts";
+import { PTERANODON_HATCHLING, PTERANODON_EXPLORER_1 } from "./pteranodonScene.ts";
+import { PTERANODON_EXPLORER } from "./pteranodonExplorer2.ts";
 import { PARASAUROLOPHUS_HATCHLING, PARASAUROLOPHUS_EXPLORER_1 } from "./parasaurolophusScene.ts";
 import { PARASAUROLOPHUS_EXPLORER } from "./parasaurolophusExplorer3.ts";
 import { PARASAUROLOPHUS_EXPLORER_2 } from "./parasaurolophusExplorer2.ts";
@@ -25,7 +26,7 @@ import { SPINOSAURUS_EXPLORER } from "./spinosaurusExplorer5.ts";
 import { SPINOSAURUS_EXPLORER_4 } from "./spinosaurusExplorer4.ts";
 import { SPINOSAURUS_EXPLORER_2 } from "./spinosaurusExplorer2.ts";
 
-import { TRICERATOPS_FITTED, STEGOSAURUS_EXPLORER_FITTED, TRICERATOPS_EXPLORER_FITTED, ANKYLOSAURUS_HATCHLING_FITTED, ANKYLOSAURUS_EXPLORER_FITTED, TREX_HATCHLING_FITTED, MOSASAURUS_HATCHLING_FITTED, BRACHIOSAURUS_HATCHLING_FITTED, PTERANODON_HATCHLING_FITTED, PTERANODON_EXPLORER_FITTED, PARASAUROLOPHUS_HATCHLING_FITTED, SPINOSAURUS_HATCHLING_FITTED } from "./fitted.ts";
+import { TRICERATOPS_FITTED, STEGOSAURUS_EXPLORER_FITTED, TRICERATOPS_EXPLORER_FITTED, ANKYLOSAURUS_HATCHLING_FITTED, ANKYLOSAURUS_EXPLORER_FITTED, TREX_HATCHLING_FITTED, MOSASAURUS_HATCHLING_FITTED, BRACHIOSAURUS_HATCHLING_FITTED, PTERANODON_HATCHLING_FITTED, PARASAUROLOPHUS_HATCHLING_FITTED, SPINOSAURUS_HATCHLING_FITTED } from "./fitted.ts";
 
 export const ARTWORKS = [
   { geometry: STEGOSAURUS, names: { en: "STEGOSAURUS", ru: "СТЕГОЗАВР" } },
@@ -75,9 +76,9 @@ export const ARTWORKS = [
   { geometry: PTERANODON_HATCHLING_FITTED, names: { en: "PTERANODON", ru: "ПТЕРАНОДОН" } },
   // Saved journals still resolve this version; new selections use the enlarged one above.
   { geometry: PTERANODON_HATCHLING, names: { en: "PTERANODON", ru: "ПТЕРАНОДОН" } },
-  { geometry: PTERANODON_EXPLORER_FITTED, names: { en: "PTERANODON", ru: "ПТЕРАНОДОН" } },
-  // Saved journals still resolve this version; new selections use the enlarged one above.
   { geometry: PTERANODON_EXPLORER, names: { en: "PTERANODON", ru: "ПТЕРАНОДОН" } },
+  // Saved journals still resolve this version; new selections use the traced scene above.
+  { geometry: PTERANODON_EXPLORER_1, names: { en: "PTERANODON", ru: "ПТЕРАНОДОН" } },
   { geometry: PARASAUROLOPHUS_HATCHLING_FITTED, names: { en: "PARASAUROLOPHUS", ru: "ПАРАЗАУРОЛОФ" } },
   // Saved journals still resolve this version; new selections use the enlarged one above.
   { geometry: PARASAUROLOPHUS_HATCHLING, names: { en: "PARASAUROLOPHUS", ru: "ПАРАЗАУРОЛОФ" } },

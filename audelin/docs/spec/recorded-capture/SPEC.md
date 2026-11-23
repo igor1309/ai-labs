@@ -2,8 +2,7 @@
 
 Observer: the client compose gives one side to, which starts and stops it
 for Session (`../session/SPEC.md`) and is told when the side fails. A
-decorator at the root over one capture and its track
-(`../../app-shape.md`). Hearing the side live is live audio's
+decorator at the root over one capture and its track. Hearing the side live is live audio's
 (`../live-audio/SPEC.md`), over the capture it records.
 
 ## Decided
@@ -13,7 +12,7 @@ decorator at the root over one capture and its track
   It owns its interfaces for the capture and the track's writing.
 - **Writing never holds the capture back:** pieces wait in memory for a
   slow track, without a bound, so live audio over the capture is never
-  slowed (call text, Decided; LAB-551). Dropping audio would shift all
+  slowed (call text, Decided). Dropping audio would shift all
   later audio (track file, Decided), and the captures already buffer
   without a bound.
 - **A failure is told when it happens, as the track's or the capture's,**

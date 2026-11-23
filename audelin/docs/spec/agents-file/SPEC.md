@@ -3,14 +3,13 @@
 Observer: the user, who wants an AI agent asked about their calls to know
 how the recordings root is laid out, and finds the offer in Settings →
 General (`../../design/general-settings.md`, "AGENTS.md for AI agents").
-The file's text is `../../agents-md.md`. Oracle: the design brief and the
-owner's rulings on LAB-1647.
+The file's text is `../../agents-md.md`. Oracle: the design brief.
 
 ## Decided
 
 - **The file is written only when the user asks,** with the row's button;
-  Audelin never writes, rewrites or updates it on its own (owner, LAB-1647).
-- **The text is fixed English,** whatever the UI language (owner, LAB-1647):
+  Audelin never writes, rewrites or updates it on its own (owner).
+- **The text is fixed English,** whatever the UI language (owner):
   an agent reads it, not the user.
 - **An `AGENTS.md` already there is never overwritten,** whoever wrote it,
   even if its text differs: it may be the user's own. Presence is all the
