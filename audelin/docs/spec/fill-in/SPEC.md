@@ -12,7 +12,7 @@ reached, through interfaces of its own. It knows no device, file or model.
 
 - A component of its own: getting ready and catching up have their own
   holds, failures and abandonment, and in side text they did not fit
-  (LAB-554, 2026-10-25).
+  (2026-10-25).
 - The written track is read only for what live text did not hear: the
   start of a call heard while the models load, and a call switched on
   mid-call (call text's Decided, moved here).
@@ -20,7 +20,7 @@ reached, through interfaces of its own. It knows no device, file or model.
   to the audio's end when the audio has ended, so nothing is heard twice
   or missed (live-audio S-9).
 - Generic over the segments it carries, which it reads only for identity,
-  start and end; the composition chooses what else a segment holds (LAB-1142).
+  start and end; the composition chooses what else a segment holds.
 - Text it fills in after a switch on is marked as written later.
 - Abandoning ends it at once with the text so far, without waiting for a
   load or a read in flight.
