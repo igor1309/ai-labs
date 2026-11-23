@@ -1,14 +1,13 @@
 # AGENTS (mizan-ble)
 
-Issues are in the Multica workspace `ai-labs` (parent of v0.0.1: LAB-625).
+Issues are in the Multica workspace `ai-labs`.
 
 ## Architecture
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) is the shape of the code: its
-  grounding rules, components, modules, data flow, GATT layout and
-  settings. Re-read the grounding before designing, specifying or building.
-- A new component, module or dependency changes `ARCHITECTURE.md` and its
-  diagram in the same commit, and gets its spec folder before its code.
+- [ARCHITECTURE.md](ARCHITECTURE.md) holds the rules the code follows.
+  Re-read the grounding before designing, specifying or building.
+- A new component gets its spec folder before its code; it changes
+  `ARCHITECTURE.md` only for a new rule or kind of component.
 - No component imports another. Only the UI modules import `DesignSystem`.
   Only the root (`ios/App/`) knows concrete types.
 - Only the apps (main, preview, rehearsal) import `SystemClock`, and only it
