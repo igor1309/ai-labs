@@ -89,4 +89,4 @@ function scene(rich: boolean): Geometry {
 }
 
 export const PARASAUROLOPHUS_HATCHLING = scene(false);
-export const PARASAUROLOPHUS_EXPLORER = scene(true);
+export const PARASAUROLOPHUS_EXPLORER_1 = scene(true);

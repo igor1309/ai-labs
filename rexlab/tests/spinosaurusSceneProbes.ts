@@ -35,7 +35,7 @@ export const spinosaurusExplorer2ProtectedProbes: readonly (readonly [number, nu
   [742, 242], [418, 542]
 ];
 
-export const spinosaurusExplorerProbes: readonly (readonly [number, number, string])[] = [
+export const spinosaurusExplorer3Probes: readonly (readonly [number, number, string])[] = [
   [636, 88, "sky"], [70, 62, "sun"], [744, 90, "cloud-1"], [268, 54, "cloud-2"], [294, 268, "far-hills"],
   [780, 382, "hills"], [152, 220, "fern-trunk"], [82, 182, "frond-left"], [206, 182, "frond-right"], [138, 126, "frond-top"],
   [144, 280, "tail-fin"], [148, 340, "tail"], [110, 320, "tail-stripe-1"], [192, 314, "tail-stripe-2"], [272, 312, "tail-stripe-3"],
@@ -47,6 +47,22 @@ export const spinosaurusExplorerProbes: readonly (readonly [number, number, stri
 ];
 
 // Eye and nostril or fish-eye ink in the current Explorer scene.
-export const spinosaurusExplorerProtectedProbes: readonly (readonly [number, number])[] = [
+export const spinosaurusExplorer3ProtectedProbes: readonly (readonly [number, number])[] = [
   [773, 211], [872, 322]
+];
+
+// Interior probes of the traced Explorer scene, in region order.
+export const spinosaurusExplorerProbes: readonly (readonly [number, number, string])[] = [
+  [605, 68, "sky"], [158, 82, "sun"], [327, 72, "cloud-1"], [750, 80, "cloud-2"], [647, 191, "hill-far"],
+  [129, 199, "hill-left"], [789, 227, "hill-right"], [480, 427, "hill-between-legs"], [585, 350, "hill-behind-leg"], [327, 479, "bank"],
+  [370, 561, "river"], [233, 551, "fish"], [147, 464, "palm"], [178, 324, "palm-leaves-1"], [216, 383, "palm-leaves-2"],
+  [665, 488, "stone-left"], [777, 470, "stone-big"], [722, 505, "stone-small"], [399, 165, "sail-band-1"], [434, 126, "sail-band-2"],
+  [483, 96, "sail-band-3"], [528, 102, "sail-band-4"], [562, 136, "sail-band-5"], [589, 179, "sail-band-6"], [610, 232, "sail-band-7"],
+  [435, 438, "leg-far-hind"], [423, 287, "body"], [392, 238, "back-stripe"], [452, 345, "belly"], [684, 303, "tail-band-1"],
+  [665, 335, "tail-band-2"], [733, 328, "tail-band-3"], [773, 328, "tail-tip"], [527, 333, "leg-near-hind"], [277, 238, "head"]
+];
+
+// Eye and fish-eye ink in the traced Explorer scene.
+export const spinosaurusExplorerProtectedProbes: readonly (readonly [number, number])[] = [
+  [256, 204], [137, 539]
 ];
