@@ -306,8 +306,11 @@ result is reviewed by the owner before the next begins.
    every wait and failure they can see. Nothing about components.
 2. **Architecture.** The architect designs from the user spec: the
    `architecture` skill, or agister's `architect` process run on a brief
-   that names the spec and the architecture document. Its output changes
-   the project's architecture document.
+   that names the spec and the architecture document. Its output names
+   the components the feature adds or changes, each with its one
+   responsibility. The architecture document holds only rules and
+   component kinds; it changes only for a new rule or kind, never to
+   describe a feature's design, which goes in the component specs.
 3. **Component specs.** One spec for each component the architecture adds
    or changes, written for that component's client.
 
