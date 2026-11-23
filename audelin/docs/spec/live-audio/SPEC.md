@@ -9,7 +9,7 @@ waiting for the other.
 ## Decided
 
 - **A decorator over the capture, not over the track,** so the disk is
-  never between the speaker and the text (call text, Decided; LAB-551).
+  never between the speaker and the text (call text, Decided).
   It owns its interface for the capture and knows no track.
 - **Hearing and reading are independent:** each waits for its own slow
   side in memory, without a bound, as the captures already do; dropping
@@ -18,7 +18,7 @@ waiting for the other.
   time (system audio capture) and a track starts at its first sample
   (track file), so live and written agree. How far it has captured is
   counted as a piece arrives, ahead of the listener, so call text can
-  mark what it fills in later (LAB-553b review).
+  mark what it fills in later.
 - **Live audio ends with the capture:** its stop, even a failed one, its
   failure or a refused start, so a listener is never left waiting
   (Session, Decided: bring-down). Every piece given is heard before.
