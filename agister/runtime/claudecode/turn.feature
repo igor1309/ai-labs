@@ -28,6 +28,12 @@ Feature: The claude-code wrapper runs a turn
     Then the arguments hold "--tools=Skill,Read" and
       "--allowedTools=Skill,Read"
 
+  Scenario: Bash given only by rules runs sandboxed
+    When claude-code runs "m" in "/r" with "Read" and "Bash(git diff:*)"
+    Then the arguments hold "--tools=Read,Bash,Skill", the options and
+      Skill as --allowedTools, and claude's sandbox denying "/r" writes;
+      with "Bash" among the options, no sandbox
+
   Scenario: A successful result is the reply
     Given the lines of an init event of the session "s1", an assistant
       text "thinking", and a success result of the text "done", the

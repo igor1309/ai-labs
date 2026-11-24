@@ -123,7 +123,7 @@ func TestAStepOnClaudeCodeIsGivenItsMessageInstructionModelEffortOptionsAndSchem
 		t.Fatalf("stderr %q, exit %d; want none, 0", got.stderr, got.code)
 	}
 	want := []claudecode.Turn{{SessionCostBefore: usd(0), Message: askMessage, Dir: "/r", Env: append(slices.Clone(environ), "A=1"), Instruction: "i",
-		Model: "opus", Effort: "high", Options: []string{"Glob"}, Schema: []byte(answerSchema)}}
+		Model: "opus", Effort: "high", Options: []string{"Read"}, Schema: []byte(answerSchema)}}
 	if ran := f.runtimes.claude.ran(); !reflect.DeepEqual(ran, want) {
 		t.Errorf("ran\n%#v\nwant\n%#v", ran, want)
 	}

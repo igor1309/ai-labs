@@ -25,7 +25,7 @@ func TestTheShippedRuntimeMappingsType(t *testing.T) {
 		options []string
 	}{
 		{"bash", "", nil},
-		{"claude-code", "any", []string{"Bash", "Edit", "Glob", "Grep", "NotebookEdit", "Read", "WebFetch", "WebSearch", "Write"}},
+		{"claude-code", "any", []string{"Bash", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)", "Edit", "Glob", "Grep", "NotebookEdit", "Read", "WebFetch", "WebSearch", "Write"}},
 		{"codex", "one", []string{"read-only", "workspace-write"}},
 		{"pi", "any", []string{"bash", "edit", "find", "grep", "ls", "read", "write"}},
 	}

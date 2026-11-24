@@ -106,7 +106,8 @@ func TestItsFacts(t *testing.T) {
 }
 
 // turn.feature, "A turn asks the supervisor for claude, the message on
-// stdin", "What is not given is left out" and "Skill is given once".
+// stdin", "What is not given is left out", "Skill is given once" and
+// "Bash given only by rules runs sandboxed".
 func TestATurnAsksTheSupervisorForClaudeTheMessageOnStdin(t *testing.T) {
 	t.Parallel()
 	head := []string{"-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "dontAsk"}
@@ -133,6 +134,19 @@ func TestATurnAsksTheSupervisorForClaudeTheMessageOnStdin(t *testing.T) {
 			name: "Skill given",
 			turn: claudecode.Turn{Message: "m", Options: []string{"Skill", "Read"}},
 			want: claudecode.Program{Name: "claude", Stdin: "m", Args: args("--tools=Skill,Read", "--allowedTools=Skill,Read", "--strict-mcp-config")},
+		},
+		{
+			name: "rules of one tool",
+			turn: claudecode.Turn{Message: "m", Dir: "/r", Options: []string{"Read", "Bash(git diff:*)", "Bash(git log:*)"}},
+			want: claudecode.Program{Name: "claude", Dir: "/r", Stdin: "m", Args: args(
+				"--tools=Read,Bash,Skill", "--allowedTools=Read,Bash(git diff:*),Bash(git log:*),Skill", "--strict-mcp-config",
+				"--settings", `{"sandbox":{"allowUnsandboxedCommands":false,"autoAllowBashIfSandboxed":false,"enabled":true,"filesystem":{"denyWrite":["/r"]}}}`)},
+		},
+		{
+			name: "bare Bash among rules",
+			turn: claudecode.Turn{Message: "m", Dir: "/r", Options: []string{"Bash(git diff:*)", "Bash"}},
+			want: claudecode.Program{Name: "claude", Dir: "/r", Stdin: "m", Args: args(
+				"--tools=Bash,Skill", "--allowedTools=Bash(git diff:*),Bash,Skill", "--strict-mcp-config")},
 		},
 	} {
 		t.Run(c.name, func(t *testing.T) {

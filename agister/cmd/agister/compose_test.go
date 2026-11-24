@@ -117,39 +117,8 @@ func heldNames(t *testing.T) int {
 func TestShippedSettingsCheckClean(t *testing.T) {
 	t.Parallel()
 	got := compose(t, nil, "check")
-	// The fallback plans include Bash, whose grants exceed read-only reviews.
-	var warnings strings.Builder
-	for _, w := range []struct {
-		name      string
-		processes []string
-	}{
-		{"adr_review", []string{"adr_review_codex"}},
-		{"code_review", []string{"architecture_review", "tests_review", "adversarial_review", "clarity_review", "intent_review"}},
-	} {
-		for i, process := range w.processes {
-			// The tests slot is a workflow; its own call plans follow below.
-			if w.name == "code_review" && i == 1 {
-				continue
-			}
-			for _, extra := range []string{"repository.write", "repository.history.write", "network", "host.write"} {
-				fmt.Fprintf(&warnings, "warning: /u/.agister/workflows/%s.yaml:%d steps[0].parallel.steps[%d]: its plan on its fallback \"claude-opus\" grants %q beyond what its process %q allows\n  with workflow %s\n", w.name, 16+i, i, extra, process, w.name)
-			}
-		}
-	}
-	for _, step := range []struct {
-		place, process, how string
-		line                int
-	}{
-		{"steps[0]", "tests_review", " on its fallback \"claude-opus\"", 10},
-		{"steps[1]", "review_critique", "", 11},
-		{"steps[2].repeat.steps[0]", "review_revise", " on its fallback \"claude-opus\"", 16},
-		{"steps[2].repeat.steps[1]", "review_critique", "", 17},
-	} {
-		for _, extra := range []string{"repository.write", "repository.history.write", "network", "host.write"} {
-			fmt.Fprintf(&warnings, "warning: /u/.agister/workflows/tests_debate.yaml:%d %s: its plan%s grants %q beyond what its process %q allows\n  with workflow code_review, workflow tests_debate\n", step.line, step.place, step.how, extra, step.process)
-		}
-	}
-	if want := (ran{stdout: warnings.String() + fmt.Sprintf("%d resolve, 0 refused\n", heldNames(t))}); got != want {
+	// Every review plan takes only the options its process allows: no warning.
+	if want := (ran{stdout: fmt.Sprintf("%d resolve, 0 refused\n", heldNames(t))}); got != want {
 		t.Errorf("ran %+v, want %+v", got, want)
 	}
 }
@@ -442,7 +411,7 @@ func TestAStepsPlanComesThroughTheSourceAndTheFacts(t *testing.T) {
 		}
 		prefix := fmt.Sprintf("code_review steps[0].parallel.steps[%d]: process %s, agent ", i, reviews[i].process)
 		want[prefix+"codex-sol-61"] = plan{runtime: "codex", options: "read-only"}
-		want[prefix+"claude-opus"] = plan{runtime: "claude-code", options: "Glob, Bash"}
+		want[prefix+"claude-opus"] = plan{runtime: "claude-code", options: "Read, Bash(git diff:*)"}
 	}
 	for _, step := range []struct {
 		place, process string
@@ -457,7 +426,7 @@ func TestAStepsPlanComesThroughTheSourceAndTheFacts(t *testing.T) {
 		if step.codex {
 			want[prefix+"codex-sol-61"] = plan{runtime: "codex", options: "read-only"}
 		}
-		want[prefix+"claude-opus"] = plan{runtime: "claude-code", options: "Glob, Bash"}
+		want[prefix+"claude-opus"] = plan{runtime: "claude-code", options: "Read, Bash(git diff:*)"}
 	}
 	if !maps.Equal(plans, want) {
 		t.Errorf("plans %+v, want %+v", plans, want)
@@ -597,5 +566,30 @@ func TestACommandLineIsBuiltWithAStoreOfRuns(t *testing.T) {
 	t.Parallel()
 	if _, err := build("/u", &linksSpy{}, newFilesystemSpy(nil), rootSpy{root: "/r"}, newRuntimesSpy(t).runtimes(), schemaValidator{}, (&sourcesSpy{}).sourcing(), (&holdingSpy{}).holding(), nil, idleHost(t), io.Discard, io.Discard); err == nil || err.Error() != "build: no record store" {
 		t.Errorf("command line built with no store of runs: %v, want build: no record store", err)
+	}
+}
+
+// compose.feature, "A step's plan comes through the source and the facts":
+// on the shipped claude-code mapping, a process requiring process.execute
+// takes bare Bash, not a Git rule, which runs no other command; a review
+// takes Read and the diff rule.
+//
+// Contract test: the files home holds, as Agister ships them.
+func TestAShellStepOnClaudeCodeTakesBareBash(t *testing.T) {
+	t.Parallel()
+	got := compose(t, map[string]string{
+		"/r/.agister/processes/shell.yaml": "schema: agister.process/v1alpha1\ninstruction: i\npermissions:\n  require: [repository.read, process.execute]\n",
+		"/r/.agister/workflows/w.yaml": "schema: agister.workflow/v1alpha1\nparams:\n  brief: {}\nsteps:\n" +
+			"  - {name: shell, process: shell, agent: claude-opus}\n" +
+			"  - {name: implement, process: implement, agent: claude-opus, inputs: {brief: {from: params.brief}}}\n",
+	}, "inspect", "workflow", "w")
+	var options []string
+	for _, line := range strings.Split(got.stdout, "\n") {
+		if rest, ok := strings.CutPrefix(line, "  options: "); ok {
+			options = append(options, rest)
+		}
+	}
+	if want := []string{"Read, Bash", "Bash"}; !slices.Equal(options, want) {
+		t.Errorf("options %q, want %q\nstdout:\n%s\nstderr:\n%s", options, want, got.stdout, got.stderr)
 	}
 }

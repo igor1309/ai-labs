@@ -59,7 +59,7 @@ func TestFallbackIsReportedAndRecordedWithoutChaining(t *testing.T) {
 						prepared = event.event.CallFact
 					}
 				}
-				if prepared == nil || prepared.Agent != "claude-opus" || !slices.Equal(prepared.Permissions.Options, []string{"Glob"}) {
+				if prepared == nil || prepared.Agent != "claude-opus" || !slices.Equal(prepared.Permissions.Options, []string{"Read"}) {
 					t.Errorf("fallback began without its admitted plan: %+v", prepared)
 				}
 				return answer(ctx, turn)
@@ -128,7 +128,7 @@ func TestFallbackIsReportedAndRecordedWithoutChaining(t *testing.T) {
 			wantTurns := make([]claudecode.Turn, wantFallbacks)
 			for i := range wantTurns {
 				wantTurns[i] = claudecode.Turn{Message: "Go on.", Dir: "/r", Env: append(slices.Clone(environ), "A=1"),
-					Instruction: "i", Model: "opus", Effort: "medium", Options: []string{"Glob"}, Schema: []byte(answerSchema),
+					Instruction: "i", Model: "opus", Effort: "medium", Options: []string{"Read"}, Schema: []byte(answerSchema),
 					Session: "fallback-session"}
 				if i == 0 {
 					wantTurns[i].Session, wantTurns[i].SessionCostBefore, wantTurns[i].Message = "", usd(0), askMessage
@@ -150,7 +150,7 @@ func TestFallbackIsReportedAndRecordedWithoutChaining(t *testing.T) {
 				primary.Result.Class == nil || *primary.Result.Class != "capacity" ||
 				primary.Result.Reason == nil || *primary.Result.Reason != "5 of 5 turns at capacity: Selected model is at capacity" ||
 				primary.Result.Session == nil || *primary.Result.Session != "primary-session" || !slices.Equal(primary.Permissions.Options, []string{"read-only"}) ||
-				!slices.Equal(kept.Permissions.Options, []string{"Glob"}) {
+				!slices.Equal(kept.Permissions.Options, []string{"Read"}) {
 				t.Errorf("primary %+v, answering plan %+v; want primary capacity result and both agents' plans", primary, kept.Permissions)
 			}
 			if !slices.Contains(p.Warnings, `the step "ask" was made again on the agent "claude-opus", the fallback of "codex-sol-61": 5 of 5 turns at capacity: Selected model is at capacity`) {

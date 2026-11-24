@@ -9,7 +9,8 @@ Feature: The composition checks and inspects settings
 
   Scenario: Shipped settings check clean
     When "agister check" runs in "/r", which has no .agister
-    Then it prints no fault, every name resolves, and it exits 0
+    Then it prints no fault and no warning, every name resolves, and it
+      exits 0
 
   Scenario: A missing runtime is reported with what it refuses
     Given "/r/.agister/agents/claude-opus.toml" names the runtime "gone"
