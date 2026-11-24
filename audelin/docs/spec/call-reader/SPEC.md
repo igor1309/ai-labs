@@ -21,10 +21,14 @@ and `transcript.md`; it reads them and writes nothing.
   followed call is found again after a rename by that fixed prefix.
 - **It reads the transcript as `../transcript-format/` renders it:** each
   part's side, start in call time and words, gaps and names skipped. The
-  format is a contract (ADR-003); its tests run on transcripts Audelin wrote.
-- **The tail is read as the file shows it,** with no reconciling (ADR-003);
-  an unfinished last line is left for the next read. A followed transcript
-  that vanishes is a failed read, not an end.
+  format is a contract (ADR-003). A legacy transcript without front matter
+  is readable. A malformed origin block or finishing stage is a failed read.
+- **The tail is read as the file shows it.** The reader keeps a part's ID
+  across revisions by matching rows on each recording side with the previous
+  read. Unchanged rows anchor the match, and revised tail rows keep their IDs
+  in track order even if their displayed start moves. New parts get fresh IDs.
+  An unfinished last line is left for the next read. A followed transcript
+  that vanishes is a failed read.
 
 ```gherkin
 Feature: Reading the live call

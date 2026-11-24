@@ -29,6 +29,7 @@ type Reader struct {
 	// found is the call followed once one was found; the reader stays on
 	// it to its end, whatever starts after it.
 	found *folder
+	parts partIDs
 }
 
 // New makes a reader of the calls folder dir, whose folder names tell
@@ -70,7 +71,7 @@ func (r *Reader) Live() (Call, bool, error) {
 			continue
 		}
 		r.found = &f
-		return Call{ID: f.id, Start: f.start, Parts: t.parts}, true, nil
+		return Call{ID: f.id, Start: f.start, Parts: r.parts.assign(t.parts, t.incomplete)}, true, nil
 	}
 	return Call{}, false, nil
 }
@@ -90,9 +91,9 @@ func (r *Reader) follow(folders []folder) (Call, bool, error) {
 		if err != nil {
 			return Call{}, false, err
 		}
-		call := Call{ID: f.id, Start: f.start, Parts: t.parts}
+		call := Call{ID: f.id, Start: f.start, Parts: r.parts.assign(t.parts, t.incomplete)}
 		if t.origin != nil && len(t.origin.Calls) == 1 && t.origin.Calls[0].Origin != nil {
-			call.Ended = finishing(t.origin.Calls[0].Origin)
+			call.Ended = t.origin.Calls[0].Origin.finishing()
 		}
 		return call, true, nil
 	}
@@ -144,15 +145,8 @@ func (r *Reader) folders() ([]folder, error) {
 // recording tells a transcript of one call that tells how it was heard
 // and no finishing stage.
 func recording(o *origin) bool {
-	if o == nil || o.MergedBy != nil || len(o.Calls) != 1 || o.Calls[0].Origin == nil || o.Calls[0].Origin.Hearing == nil {
+	if o == nil || o.MergedBy != nil || len(o.Calls) != 1 || o.Calls[0].Origin == nil {
 		return false
 	}
-	return !finishing(o.Calls[0].Origin)
+	return !o.Calls[0].Origin.finishing()
 }
-
-// finishing tells whether a call's origin tells a finishing stage.
-func finishing(c *callOrigin) bool {
-	return told(c.Split) || told(c.Cleaning)
-}
-
-func told(raw []byte) bool { return len(raw) > 0 && string(raw) != "null" }

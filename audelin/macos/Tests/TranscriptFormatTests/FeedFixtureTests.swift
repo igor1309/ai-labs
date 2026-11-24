@@ -61,10 +61,21 @@ struct FeedFixture: Sendable, CustomTestStringConvertible {
         .init(id: "S2", name: nil, state: "unknown"),
     ]
 
+    static let pending = TranscriptFormat.Segment(side: .mine, start: 6.2, settled: "", pending: "We should wait.")
+    static let remote = TranscriptFormat.Segment(side: .theirs, start: 6.5, settled: "Are we ready?", pending: "")
+
     static let all: [FeedFixture] = [
         FeedFixture(name: "live.md", segments: early, speakers: speakers, origin: live),
         FeedFixture(name: "live-later.md", segments: later, speakers: speakers, origin: live),
         FeedFixture(name: "live-no-text.md", segments: [], origin: live),
+        FeedFixture(name: "pending.md", segments: [pending, remote], origin: live),
+        FeedFixture(name: "retimed.md", segments: [
+            remote, .init(side: .mine, start: 7.2, settled: "", pending: "Let's wait for the team."),
+        ], origin: live),
+        FeedFixture(name: "retimed-with-new-part.md", segments: [
+            .init(side: .mine, start: 5.2, settled: "Let's wait for the team.", pending: ""),
+            remote, .init(side: .mine, start: 6.9, settled: "", pending: "I'll send an update."),
+        ], origin: live),
         FeedFixture(name: "finished.md", segments: later, speakers: speakers, origin: finished),
         FeedFixture(name: "split-told.md", segments: later, speakers: speakers, origin: split),
         FeedFixture(name: "no-origin.md", segments: early, origin: nil),

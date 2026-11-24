@@ -158,6 +158,57 @@ func TestAFollowedCallIsServedFromJoinToEnd(t *testing.T) {
 	}
 }
 
+func TestPendingPartRetimingDoesNotResendItOrHideNewWords(t *testing.T) {
+	t.Parallel()
+	original := []wirePart{
+		{Speaker: "Me", Start: 6, Words: "We should wait."},
+		{Speaker: "Them", Start: 6, Words: "Are we ready?"},
+	}
+	for _, tc := range []struct {
+		fixture string
+		fresh   []wirePart
+	}{
+		{fixture: "retimed.md", fresh: []wirePart{}},
+		{
+			fixture: "retimed-with-new-part.md",
+			fresh:   []wirePart{{Speaker: "Me", Start: 6, Words: "I'll send an update."}},
+		},
+	} {
+		t.Run(tc.fixture, func(t *testing.T) {
+			t.Parallel()
+			dir := t.TempDir()
+			save(t, dir, "pending.md")
+			clock := newClock(callStart.Add(7500 * time.Millisecond))
+			stream, err := (source{dir: dir, loc: time.UTC, clock: clock}).Open(10*time.Second, 5*time.Second)
+			if err != nil {
+				t.Fatal(err)
+			}
+			assertWindow := func(want wireWindow) {
+				t.Helper()
+				ev, err := stream.Next(context.Background())
+				if err != nil {
+					t.Fatal(err)
+				}
+				var got wireWindow
+				if err := json.Unmarshal(ev.Data, &got); err != nil {
+					t.Fatal(err)
+				}
+				if ev.Name != "chunk" || !reflect.DeepEqual(got, want) {
+					t.Fatalf("got %s %s, want chunk %+v", ev.Name, ev.Data, want)
+				}
+			}
+			assertWindow(wireWindow{From: 0, To: 7.5, Context: []wirePart{}, New: original})
+
+			save(t, dir, tc.fixture)
+			clock.raise(callStart.Add(15 * time.Second))
+
+			assertWindow(wireWindow{From: 0, To: 10, Context: original, New: tc.fresh})
+			context := append(append([]wirePart{}, original...), tc.fresh...)
+			assertWindow(wireWindow{From: 5, To: 15, Context: context, New: []wirePart{}})
+		})
+	}
+}
+
 func TestWithNoCallNoCallIsSaid(t *testing.T) {
 	c := newClock(callStart)
 	client, _ := started(t, t.TempDir(), c)

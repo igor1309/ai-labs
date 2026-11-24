@@ -26,11 +26,11 @@ func (c *clock) Wait(ctx context.Context, t time.Time) error {
 
 // live is a fake live call whose answer is a function of the clock.
 type live struct {
-	clock *clock
-	at    func(now time.Duration) (callevents.Call, bool, error)
+	now func() time.Time
+	at  func(now time.Duration) (callevents.Call, bool, error)
 }
 
-func (l *live) Live() (callevents.Call, bool, error) { return l.at(l.clock.now.Sub(zero)) }
+func (l *live) Live() (callevents.Call, bool, error) { return l.at(l.now().Sub(zero)) }
 
 // heard gives a call started at zero whose parts are read once the clock
 // passes their start.

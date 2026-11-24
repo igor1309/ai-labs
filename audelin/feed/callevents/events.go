@@ -56,17 +56,14 @@ func New(live LiveCall, clock Clock, size, overlap time.Duration) (*Events, erro
 func (e *Events) Next(ctx context.Context) (Event, error) {
 	for !e.started {
 		call, ok, err := e.live.Live()
-		if err != nil {
-			return Event{}, err
-		}
-		if ok {
+		if err == nil && ok {
 			e.start, e.started = call.Start, true
 			if joined, ok := e.join(call); ok {
 				return joined, nil
 			}
 			break
 		}
-		if !e.saidNoCall {
+		if err == nil && !e.saidNoCall {
 			e.saidNoCall = true
 			return Event{Kind: NoCall}, nil
 		}
@@ -121,7 +118,15 @@ func (e *Events) afterEnd() Event {
 	}
 	if !e.lastGiven {
 		e.lastGiven = true
-		if last := e.window(e.last.Parts, from, e.endAt); len(last.Window.New) > 0 {
+		// The clock dates the observation of the end. The final snapshot
+		// may still contain unsent parts at or beyond that time.
+		to = e.endAt
+		for _, p := range e.last.Parts {
+			if _, given := e.given[p.ID]; !given {
+				to = max(to, p.Start+time.Nanosecond)
+			}
+		}
+		if last := e.window(e.last.Parts, from, to); len(last.Window.New) > 0 {
 			return last
 		}
 	}
