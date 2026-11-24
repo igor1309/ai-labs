@@ -11,6 +11,12 @@
 - `issue children LAB-<n>` lists a parent's sub-issues with their status;
   `issue create --parent LAB-<n> --title ... --description-file ...`
   adds one; `issue status LAB-<n> <status>` moves it.
+- Every issue belongs to the project it is about: pass
+  `--project <project UUID>` to `issue create`, sub-issues included.
+  `project list --output json` gives the UUIDs; `issue update LAB-<n>
+  --project <UUID>` sets it later. Work for the whole repository (CI,
+  shared rules, research) has no project. Read an issue's project with
+  `issue get`: `issue list` shows `project_id` as null.
 - Write the full `multica --workspace-id ...` in each call, one command per
   call, with no `cd`, shell function or variable around it. Permission
   rules match the command's start, so a wrapped call is not allowed and
