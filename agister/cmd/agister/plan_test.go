@@ -11,7 +11,7 @@ import (
 )
 
 func askPermissions() runstore.Permissions {
-	return runstore.Permissions{Options: []string{"Glob"}, Required: []string{"repository.read"},
+	return runstore.Permissions{Options: []string{"Read"}, Required: []string{"repository.read"},
 		Allowed: []string{"repository.read", "host.read"}, Granted: []string{"repository.read", "host.read"},
 		Extra: []string{}, Withheld: []string{}}
 }

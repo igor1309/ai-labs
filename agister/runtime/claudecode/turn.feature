@@ -28,6 +28,12 @@ Feature: The claude-code wrapper runs a turn
     Then the arguments hold "--tools=Skill,Read" and
       "--allowedTools=Skill,Read"
 
+  Scenario: A rule names its tool once
+    When claude-code runs the message "m" with the options "Read",
+      "Bash(git diff:*)" and "Bash(git log:*)"
+    Then the arguments hold "--tools=Read,Bash,Skill" and
+      "--allowedTools=Read,Bash(git diff:*),Bash(git log:*),Skill"
+
   Scenario: A successful result is the reply
     Given the lines of an init event of the session "s1", an assistant
       text "thinking", and a success result of the text "done", the

@@ -229,20 +229,28 @@ func (w *Wrapper) Run(ctx context.Context, turn Turn, report func(Report)) (Resu
 	return Result{Ended: ended, Session: read.session, Reply: reply}, nil
 }
 
-// arguments are claude's for turn, contract claude-code/3: the tools are
-// the options and Skill, Skill once, given as both --tools and
-// --allowedTools under --permission-mode dontAsk, so the repository's
+// arguments are claude's for turn, contract claude-code/3: the options
+// and Skill, Skill once, are the rules given as --allowedTools under
+// --permission-mode dontAsk, and the tool each rule names, each once, is
+// given as --tools, so an option such as "Bash(git diff:*)" makes Bash
+// available and allows only the commands it matches; the repository's
 // skills load as they would for a person there (ADR-003, rule 6); a
 // session given is resumed, --resume.
 func arguments(turn Turn) []string {
-	tools := turn.Options
-	if !slices.Contains(tools, skill) {
-		tools = append(slices.Clip(tools), skill)
+	rules := turn.Options
+	if !slices.Contains(rules, skill) {
+		rules = append(slices.Clip(rules), skill)
 	}
-	joined := strings.Join(tools, ",")
+	var tools []string
+	for _, rule := range rules {
+		tool, _, _ := strings.Cut(rule, "(")
+		if !slices.Contains(tools, tool) {
+			tools = append(tools, tool)
+		}
+	}
 	args := []string{
 		"-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "dontAsk",
-		"--tools=" + joined, "--allowedTools=" + joined, "--strict-mcp-config",
+		"--tools=" + strings.Join(tools, ","), "--allowedTools=" + strings.Join(rules, ","), "--strict-mcp-config",
 	}
 	if turn.Model != "" {
 		args = append(args, "--model", turn.Model)

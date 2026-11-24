@@ -150,11 +150,14 @@ dropped, no error. Best effort: a line too long to hold is skipped.
 
 **The claude-code wrapper** runs a turn: the message on stdin, and
 `claude -p --output-format stream-json --verbose --permission-mode
-dontAsk --tools=<tools> --allowedTools=<tools> --strict-mcp-config`,
+dontAsk --tools=<tools> --allowedTools=<rules> --strict-mcp-config`,
 then `--model`, `--effort`, `--append-system-prompt <instruction>` and
-`--json-schema <schema>` where given; the tools the options and `Skill`,
+`--json-schema <schema>` where given; the rules the options and `Skill`,
 joined by commas, `Skill` once and on every turn, as the archive gave
-it: the repository's skills load as they would for a person (ADR-003,
+it, and the tools the tool each rule names, the name before any `(`,
+each once: an option `Bash(git diff:*)` makes Bash available and
+allows only the commands it matches. The repository's skills load as
+they would for a person (ADR-003,
 rule 6), and the mapping's contract, `claude-code/3`, is written for
 these flags. It reads
 stdout's lines as stream-json: the session from the init event, the last

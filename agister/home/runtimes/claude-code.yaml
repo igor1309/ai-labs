@@ -5,13 +5,16 @@ efforts: [low, medium, high, xhigh, max]
 select: any
 options:
   Read: {grants: [repository.read, host.read], verified: ["2.1."]}
-  Glob: {grants: [repository.read, host.read], verified: ["2.1."]}
+  Glob: {grants: [repository.search, host.read], verified: ["2.1."]}
   Grep: {grants: [repository.search, host.read], verified: ["2.1."]}
   Edit: {grants: [repository.write, host.write], verified: ["2.1."]}
   Write: {grants: [repository.write, host.write], verified: ["2.1."]}
   NotebookEdit: {grants: [repository.write]}
   WebFetch: {grants: [network]}
   WebSearch: {grants: [network]}
+  "Bash(git diff:*)": {grants: [process.execute, repository.diff], verified: ["2.1."]}
+  "Bash(git log:*)": {grants: [process.execute, repository.history.read], verified: ["2.1."]}
+  "Bash(git show:*)": {grants: [process.execute, repository.history.read], verified: ["2.1."]}
   Bash:
     verified: ["2.1."]
     grants:
