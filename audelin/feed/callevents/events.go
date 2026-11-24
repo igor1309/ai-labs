@@ -6,6 +6,9 @@ import (
 	"time"
 )
 
+// lookAgain is how often a waiting iterator looks for a call to start.
+const lookAgain = time.Second
+
 // Events steps through the events of the live call for one client. It
 // keeps its own place, as an iterator does; use one per client.
 type Events struct {
@@ -16,6 +19,8 @@ type Events struct {
 
 	start   time.Time
 	started bool
+	// saidNoCall is true once no call was said, so it is said once.
+	saidNoCall bool
 	// next is the index of the next window to give.
 	next int
 }
@@ -34,12 +39,22 @@ func New(live LiveCall, clock Clock, size, overlap time.Duration) (*Events, erro
 
 // Next gives the next event once it is due.
 func (e *Events) Next(ctx context.Context) (Event, error) {
-	if !e.started {
-		call, _, err := e.live.Live()
+	for !e.started {
+		call, ok, err := e.live.Live()
 		if err != nil {
 			return Event{}, err
 		}
-		e.start, e.started = call.Start, true
+		if ok {
+			e.start, e.started = call.Start, true
+			break
+		}
+		if !e.saidNoCall {
+			e.saidNoCall = true
+			return Event{Kind: NoCall}, nil
+		}
+		if err := e.clock.Wait(ctx, e.clock.Now().Add(lookAgain)); err != nil {
+			return Event{}, err
+		}
 	}
 	from, to := e.bounds(e.next)
 	if err := e.clock.Wait(ctx, e.start.Add(to)); err != nil {
