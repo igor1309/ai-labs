@@ -22,7 +22,7 @@ Feature: Hints during a call
       When I ask the thread to follow the call, and a call starts
       Then I can read that it waits, then that it has joined
 
-    Scenario: S-4 Joining mid-call takes in what was said
+    Scenario: S-3 Joining mid-call takes in what was said
       Given a call has been recorded for a while
       When I ask the thread to follow it and ask about something said before
       Then I can read an answer that uses what was said before I asked
@@ -38,14 +38,14 @@ Feature: Hints during a call
 
       Examples:
         | id  | trigger                              | says                                          | hint       |
-        | S-5 | A question answered in the project   | asks a question the project answers           | answer     |
-        | S-6 | A claim against a decision           | contradicts a project decision                | correction |
+        | S-4 | A question answered in the project   | asks a question the project answers           | answer     |
+        | S-5 | A claim against a decision           | contradicts a project decision                | correction |
 
-    Scenario: S-7 Routine talk stays silent
+    Scenario: S-6 Routine talk stays silent
       When the talk raises nothing the project answers or contradicts
       Then I see no message from the thread about it
 
-    Scenario: S-8 The start of a long call is remembered
+    Scenario: S-7 The start of a long call is remembered
       Given a fact was spoken only near the start of a long call
       When I ask about that fact in text near the end
       Then I can read an answer that uses it
@@ -56,9 +56,9 @@ Feature: Hints during a call
 
       Examples:
         | id   | what                      | after                  |
-        | S-15 | a hint for a question     | later hints still come |
-        | S-16 | a hint for a claim        | later hints still come |
-        | S-17 | an answer to my text      | I can ask again        |
+        | S-8 | a hint for a question     | later hints still come |
+        | S-9 | a hint for a claim        | later hints still come |
+        | S-10 | an answer to my text      | I can ask again        |
 
   Rule: Following ends with the call, or when I stop it
 
@@ -69,13 +69,13 @@ Feature: Hints during a call
 
       Examples:
         | id   | when             | state         | event                    |
-        | S-9  | The call ending  | follows a call | the call ends           |
-        | S-10 | Stopping a call  | follows a call | I ask the thread to stop |
-        | S-11 | Stopping a wait  | waits for a call | I ask the thread to stop |
+        | S-11  | The call ending  | follows a call | the call ends           |
+        | S-12 | Stopping a call  | follows a call | I ask the thread to stop |
+        | S-13 | Stopping a wait  | waits for a call | I ask the thread to stop |
 
   Rule: Missing text is said once
 
-    Scenario: S-12 The call's text not coming is said once
+    Scenario: S-14 The call's text not coming is said once
       Given the thread follows a call
       When the call's live text is off or stops
       Then I can read once that the call's text is not coming
