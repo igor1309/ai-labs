@@ -3,3 +3,9 @@ tests/theme.test.tsx > a board of silhouettes keeps face-down cards, open cards 
 tests/theme.test.tsx > a board of silhouettes keeps face-down cards, open cards and silhouettes apart from what is behind them in the light theme
 # Most of its time is the file's first accessible-name lookup (gameDoor's getByRole warming up, ~110 ms) and first catalogue render, which whichever test runs first pays; the rest is the two whole-app re-layouts the test is about (measured 2026-11-17).
 tests/catalogueTurn.test.tsx > the picture's close interrupted by a turn continues the skipped native close from its drawn box through two turns, loaded: true
+# The file's first test, so it pays the theme file's warm-up (~230 ms of its ~610 ms alone); the rest is the var() resolution seam above on the whole home page, which the dark-theme twin also pays (measured 2026-11-24).
+tests/theme.test.tsx > every screen in the light theme on the home page and its menus: the home page
+# Four whole-app catalogue starts (no age level, then each of the three) compared by innerHTML, ~110 ms each plus the first render's warm-up; fewer starts drops an age level from the check (measured 2026-11-24).
+tests/ageLevelStart.test.tsx > today's games start the catalogue exactly as it does with no age level set, at each age level in turn
+# About half its time is jsdom's own getComputedStyle over 500+ elements, the oracle the fast path is checked against, and a quarter the fast path itself; fewer elements leaves app.css classes unchecked (measured 2026-11-24).
+tests/cascadingOnRead.test.tsx > reads display, visibility and pointer-events as jsdom's whole computed style does
