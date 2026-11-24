@@ -6,6 +6,7 @@ package sseserver
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -38,6 +39,10 @@ type Handler struct {
 func NewHandler(src Source) *Handler { return &Handler{src: src} }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if !loopbackHost(r.Host) {
+		http.Error(w, "only a loopback host name is served", http.StatusForbidden)
+		return
+	}
 	size, overlap, reason := windows(r)
 	if reason != "" {
 		http.Error(w, reason, http.StatusBadRequest)
@@ -70,6 +75,25 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+}
+
+// Listen listens on port on this Mac's loopback address only; port 0
+// picks a free one.
+func Listen(port int) (net.Listener, error) {
+	return net.Listen("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)))
+}
+
+// loopbackHost tells whether a request's Host names this Mac's loopback,
+// so a page that rebinds its own name to it cannot read the stream.
+func loopbackHost(host string) bool {
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 // windows reads the request's size and overlap, in whole seconds, or says
