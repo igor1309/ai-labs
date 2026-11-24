@@ -14,9 +14,12 @@
 - Every issue belongs to the project it is about: pass
   `--project <project UUID>` to `issue create`, sub-issues included.
   `project list --output json` gives the UUIDs; `issue update LAB-<n>
-  --project <UUID>` sets it later. Work for the whole repository (CI,
-  shared rules, research) has no project. Read an issue's project with
-  `issue get`: `issue list` shows `project_id` as null.
+  --project <UUID>` sets it later. Work on the monorepo itself (CI,
+  shared rules, cross-project research) goes to the `ai-labs` project.
+- A daily automation sets missing projects: a script copies a parent's
+  project to its sub-issues and matches a project name at the start of a
+  title, and an agent judges what is left, asking the owner in its thread
+  when unsure.
 - Write the full `multica --workspace-id ...` in each call, one command per
   call, with no `cd`, shell function or variable around it. Permission
   rules match the command's start, so a wrapped call is not allowed and
