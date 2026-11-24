@@ -568,3 +568,28 @@ func TestACommandLineIsBuiltWithAStoreOfRuns(t *testing.T) {
 		t.Errorf("command line built with no store of runs: %v, want build: no record store", err)
 	}
 }
+
+// compose.feature, "A step's plan comes through the source and the facts":
+// on the shipped claude-code mapping, a process requiring process.execute
+// takes bare Bash, not a Git rule, which runs no other command; a review
+// takes Read and the diff rule.
+//
+// Contract test: the files home holds, as Agister ships them.
+func TestAShellStepOnClaudeCodeTakesBareBash(t *testing.T) {
+	t.Parallel()
+	got := compose(t, map[string]string{
+		"/r/.agister/processes/shell.yaml": "schema: agister.process/v1alpha1\ninstruction: i\npermissions:\n  require: [repository.read, process.execute]\n",
+		"/r/.agister/workflows/w.yaml": "schema: agister.workflow/v1alpha1\nparams:\n  brief: {}\nsteps:\n" +
+			"  - {name: shell, process: shell, agent: claude-opus}\n" +
+			"  - {name: implement, process: implement, agent: claude-opus, inputs: {brief: {from: params.brief}}}\n",
+	}, "inspect", "workflow", "w")
+	var options []string
+	for _, line := range strings.Split(got.stdout, "\n") {
+		if rest, ok := strings.CutPrefix(line, "  options: "); ok {
+			options = append(options, rest)
+		}
+	}
+	if want := []string{"Read, Bash", "Bash"}; !slices.Equal(options, want) {
+		t.Errorf("options %q, want %q\nstdout:\n%s\nstderr:\n%s", options, want, got.stdout, got.stderr)
+	}
+}

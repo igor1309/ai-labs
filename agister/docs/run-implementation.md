@@ -156,8 +156,12 @@ then `--model`, `--effort`, `--append-system-prompt <instruction>` and
 joined by commas, `Skill` once and on every turn, as the archive gave
 it, and the tools the tool each rule names, the name before any `(`,
 each once: an option `Bash(git diff:*)` makes Bash available and
-allows only the commands it matches. The repository's skills load as
-they would for a person (ADR-003,
+allows only the commands it matches. A rule is no bound on what a
+matching command writes (`git diff --output=<file>`), so where Bash is
+given only by rules the turn also gets `--settings` turning on claude's
+sandbox: the turn's directory, absolute, denied writes, network closed,
+Bash still asked of the rules, and no command let out of the sandbox.
+The repository's skills load as they would for a person (ADR-003,
 rule 6), and the mapping's contract, `claude-code/3`, is written for
 these flags. It reads
 stdout's lines as stream-json: the session from the init event, the last

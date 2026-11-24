@@ -12,9 +12,9 @@ options:
   NotebookEdit: {grants: [repository.write]}
   WebFetch: {grants: [network]}
   WebSearch: {grants: [network]}
-  "Bash(git diff:*)": {grants: [process.execute, repository.diff], verified: ["2.1."]}
-  "Bash(git log:*)": {grants: [process.execute, repository.history.read], verified: ["2.1."]}
-  "Bash(git show:*)": {grants: [process.execute, repository.history.read], verified: ["2.1."]}
+  "Bash(git diff:*)": {grants: [repository.diff], verified: ["2.1."]}
+  "Bash(git log:*)": {grants: [repository.history.read], verified: ["2.1."]}
+  "Bash(git show:*)": {grants: [repository.history.read], verified: ["2.1."]}
   Bash:
     verified: ["2.1."]
     grants:

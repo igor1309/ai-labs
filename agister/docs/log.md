@@ -1,8 +1,8 @@
 # Changes
 
 - LAB-1836: Review steps on claude-code run with Read and Bash limited to
-  `git diff`, not full write Bash; `agister check` no longer warns about
-  their permissions.
+  `git diff` in Claude's sandbox with the worktree read-only, not full
+  write Bash; `agister check` no longer warns about their permissions.
 
 - LAB-930: The tests reviewer flags test machinery that stands in for a
   product fix: a lock, retry or ordering that makes a failure go away, a

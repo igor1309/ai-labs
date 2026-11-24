@@ -6,7 +6,10 @@ package claudecode
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -163,6 +166,9 @@ const (
 // skill is the tool that uses the repository's skills; every turn gets it.
 const skill = "Skill"
 
+// bash is the tool a rule "Bash(...)" names.
+const bash = "Bash"
+
 // Wrapper is the claude-code wrapper.
 type Wrapper struct {
 	supervisor Supervisor
@@ -206,9 +212,13 @@ func (w *Wrapper) Run(ctx context.Context, turn Turn, report func(Report)) (Resu
 	if report == nil {
 		return Result{}, errors.New("claude-code: no report")
 	}
+	dir, err := filepath.Abs(turn.Dir)
+	if err != nil {
+		return Result{}, fmt.Errorf("claude-code: %w", err)
+	}
 	read := stream{report: report}
 	ended, err := w.supervisor.Run(ctx, Program{
-		Name: "claude", Args: arguments(turn), Dir: turn.Dir, Env: turn.Env, Stdin: turn.Message, Line: read.line,
+		Name: "claude", Args: arguments(turn, dir), Dir: turn.Dir, Env: turn.Env, Stdin: turn.Message, Line: read.line,
 	})
 	if err != nil {
 		return Result{}, err
@@ -235,8 +245,12 @@ func (w *Wrapper) Run(ctx context.Context, turn Turn, report func(Report)) (Resu
 // given as --tools, so an option such as "Bash(git diff:*)" makes Bash
 // available and allows only the commands it matches; the repository's
 // skills load as they would for a person there (ADR-003, rule 6); a
-// session given is resumed, --resume.
-func arguments(turn Turn) []string {
+// session given is resumed, --resume. Where Bash is given only by rules,
+// a rule is no bound on what a matching command writes ("git diff
+// --output=f"), so the turn runs in claude's sandbox, its directory dir,
+// absolute, denied writes, its network closed and no command let out of
+// the sandbox: a command the sandbox stops fails.
+func arguments(turn Turn, dir string) []string {
 	rules := turn.Options
 	if !slices.Contains(rules, skill) {
 		rules = append(slices.Clip(rules), skill)
@@ -251,6 +265,9 @@ func arguments(turn Turn) []string {
 	args := []string{
 		"-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "dontAsk",
 		"--tools=" + strings.Join(tools, ","), "--allowedTools=" + strings.Join(rules, ","), "--strict-mcp-config",
+	}
+	if slices.ContainsFunc(rules, func(rule string) bool { return strings.HasPrefix(rule, bash+"(") }) && !slices.Contains(rules, bash) {
+		args = append(args, "--settings", sandboxSettings(dir))
 	}
 	if turn.Model != "" {
 		args = append(args, "--model", turn.Model)
@@ -271,4 +288,17 @@ func arguments(turn Turn) []string {
 		args = append(args, "--resume", turn.Session)
 	}
 	return args
+}
+
+// sandboxSettings are claude's settings that run Bash in its sandbox with
+// dir denied writes: Bash is still asked of the allowed rules, and a
+// command the sandbox stops is not run outside it.
+func sandboxSettings(dir string) string {
+	settings, _ := json.Marshal(map[string]any{"sandbox": map[string]any{
+		"enabled":                  true,
+		"autoAllowBashIfSandboxed": false,
+		"allowUnsandboxedCommands": false,
+		"filesystem":               map[string]any{"denyWrite": []string{dir}},
+	}})
+	return string(settings)
 }

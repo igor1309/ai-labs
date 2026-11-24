@@ -53,3 +53,13 @@ Feature: agister runs a step on the real model runtimes
       | agent     |
       | e2e-haiku |
       | e2e-codex |
+
+  Scenario: A review on claude-code reads the diff and writes nothing
+    Given the scratch repository has a commit of "notes.txt" and the
+      line "kiwi" added to it since, and the process "diff", requiring
+      repository.read and repository.diff, whose prompt asks to run
+      "git diff", "git diff --output=out.txt" and "touch t.txt", then to
+      answer the line git diff showed added
+    When "agister run --process diff --agent e2e-haiku" runs there
+    Then it exits 0, the result completed, its "answer" holding "kiwi"
+    And neither "out.txt" nor "t.txt" is in the repository

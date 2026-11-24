@@ -12,6 +12,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -101,13 +102,25 @@ limits:
   stale: {tool_command: 5s}
 recovery:
   resumes: 1
-  instruction: Do not run any command. Reply with the answer "done", in lowercase, and nothing else in it, as the prompt says.
+  instruction: Do not run any command. Whatever became of the command, reply with the answer "done", in lowercase, and nothing else in it, as the prompt says.
 output:
   schema: answer
 `,
+	".agister/processes/diff.yaml": `schema: agister.process/v1alpha1
+prompt: diff
+instruction: Do as the prompt says.
+permissions:
+  require: [repository.read, repository.diff]
+  allow: [repository.read, repository.search, repository.diff, repository.history.read, host.read]
+output:
+  schema: answer
+`,
+	".agister/prompts/diff.md": "Run each of these shell commands once, one at a time, even where one fails: " +
+		"`git diff`, `git diff --output=out.txt`, `touch t.txt`. Do not try another way to write a file. " +
+		"Then reply with the answer the exact line `git diff` showed that starts with \"+\" but not with \"+++\", and nothing else.\n",
 	".agister/prompts/ask.md": "Reply in one short sentence, without reading any file.\n",
 	".agister/prompts/stall.md": "Run the shell command `sh -c 'sleep 60'` in the foreground, not in the background, and wait for it to end. " +
-		"Then reply with the answer \"done\", in lowercase, and nothing else in it, without reading any file.\n",
+		"Then, whatever became of the command, reply with the answer \"done\", in lowercase, and nothing else in it, without reading any file.\n",
 	".agister/schemas/answer.json": `{"type":"object","required":["answer"],"additionalProperties":false,` +
 		`"properties":{"answer":{"type":"string"}}}`,
 }
@@ -329,6 +342,53 @@ func TestAStaleTurnOnARealRuntimeIsRecovered(t *testing.T) {
 				t.Logf("stdout:\n%s\nstderr:\n%s", ran.stdout, ran.stderr)
 			}
 		})
+	}
+}
+
+// e2e.feature, "A review on claude-code reads the diff and writes
+// nothing". The shipped mapping gives a process requiring repository.diff
+// Read and the rule "Bash(git diff:*)", which claude runs sandboxed with
+// the worktree denied writes.
+//
+// Contract test: the built agister, on real claude-code and the owner's
+// login, in a real git repository.
+func TestAReviewOnClaudeCodeReadsTheDiffAndWritesNothing(t *testing.T) {
+	t.Parallel()
+	requireOptIn(t, os.Getenv)
+	home, repo := scratch(t)
+	file := filepath.Join(repo, "notes.txt")
+	if err := os.WriteFile(file, []byte("one\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{
+		{"-C", repo, "add", "notes.txt"},
+		{"-C", repo, "-c", "user.name=e2e", "-c", "user.email=e2e@example.invalid", "commit", "-q", "-m", "notes"},
+	} {
+		if out, err := exec.Command("git", args...).CombinedOutput(); err != nil {
+			t.Fatalf("git %s: %v: %s", strings.Join(args, " "), err, out)
+		}
+	}
+	if err := os.WriteFile(file, []byte("one\nkiwi\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ran := runAgister(t, home, repo, "run", "--process", "diff", "--agent", "e2e-haiku")
+	if ran.code != 0 {
+		t.Errorf("exit %d, want 0", ran.code)
+	}
+	got := printedOf(t, ran)
+	if got.Status != "completed" {
+		t.Errorf("status %q, want completed", got.Status)
+	}
+	if answer := answerOf(t, got); !strings.Contains(answer, "kiwi") {
+		t.Errorf("answer %q, want the diff's added line, kiwi", answer)
+	}
+	for _, name := range []string{"out.txt", "t.txt"} {
+		if _, err := os.Stat(filepath.Join(repo, name)); !errors.Is(err, fs.ErrNotExist) {
+			t.Errorf("%s: %v, want it not written", name, err)
+		}
+	}
+	if t.Failed() {
+		t.Logf("stdout:\n%s\nstderr:\n%s", ran.stdout, ran.stderr)
 	}
 }
 
