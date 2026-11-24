@@ -33,12 +33,16 @@ func TestS3_TwoClientsGetTheirOwnWindows(t *testing.T) {
 	}
 }
 
+// Contract test: a loopback client closing its HTTP response cancels the source's read.
 func TestS5_AClientLeavingLetsItsSourceGo(t *testing.T) {
+	t.Parallel()
 	src := newSource()
 	srv := httptest.NewServer(sseserver.NewHandler(src))
 	t.Cleanup(srv.Close)
 	first := get(t, srv.URL+"/events?size=60")
 	o := <-src.opened
+	get(t, srv.URL+"/events?size=60")
+	<-src.opened
 
 	first.Body.Close()
 	<-o.stream.let

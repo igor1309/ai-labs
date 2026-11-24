@@ -47,5 +47,5 @@ func heard(parts ...callevents.Part) func(time.Duration) (callevents.Call, bool,
 }
 
 func part(side string, start time.Duration, words string) callevents.Part {
-	return callevents.Part{Side: side, Start: start, Words: words}
+	return callevents.Part{ID: side + "/" + start.String(), Side: side, Start: start, Words: words}
 }

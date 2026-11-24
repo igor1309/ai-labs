@@ -37,9 +37,9 @@ type Handler struct {
 
 	mu     sync.Mutex
 	active int
-	// idle is closed once the last of one or more streams has ended.
-	idle     chan struct{}
-	idleOnce sync.Once
+	served bool
+	// idle is closed once a stream has been served and no requests remain.
+	idle chan struct{}
 }
 
 // NewHandler makes a handler over src.
@@ -59,19 +59,23 @@ func Serve(ln net.Listener, src Source) error {
 	}
 }
 
-func (h *Handler) begin() {
+func (h *Handler) begin() bool {
 	h.mu.Lock()
+	defer h.mu.Unlock()
+	if h.served && h.active == 0 {
+		return false
+	}
 	h.active++
-	h.mu.Unlock()
+	return true
 }
 
-func (h *Handler) end() {
+func (h *Handler) end(served bool) {
 	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.served = h.served || served
 	h.active--
-	last := h.active == 0
-	h.mu.Unlock()
-	if last {
-		h.idleOnce.Do(func() { close(h.idle) })
+	if h.served && h.active == 0 {
+		close(h.idle)
 	}
 }
 
@@ -85,20 +89,25 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, reason, http.StatusBadRequest)
 		return
 	}
-	stream, err := h.src.Open(size, overlap)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	h.begin()
-	defer h.end()
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "streaming is not supported", http.StatusInternalServerError)
 		return
 	}
+	if !h.begin() {
+		http.Error(w, "server is shutting down", http.StatusServiceUnavailable)
+		return
+	}
+	served := false
+	defer func() { h.end(served) }()
+	stream, err := h.src.Open(size, overlap)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-store")
+	served = true
 	w.WriteHeader(http.StatusOK)
 	flusher.Flush()
 	for {

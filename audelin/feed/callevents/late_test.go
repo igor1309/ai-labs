@@ -9,14 +9,16 @@ import (
 )
 
 func TestS7_WordsSavedLateComeInTheNextWindow(t *testing.T) {
+	t.Parallel()
 	late := part("them", 50*time.Second, "saved late")
 	revised := part("me", 10*time.Second, "first")
+	initial := heard(revised)
 	readLate := func(now time.Duration) (callevents.Call, bool, error) {
-		call := callevents.Call{ID: "call", Start: zero, Parts: []callevents.Part{revised}}
+		call, ok, err := initial(now)
 		if now > time.Minute {
 			call.Parts = []callevents.Part{part("me", 10*time.Second, "first, revised"), late}
 		}
-		return call, true, nil
+		return call, ok, err
 	}
 	e, _ := newEvents(t, readLate, time.Minute, 0)
 

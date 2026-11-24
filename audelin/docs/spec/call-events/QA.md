@@ -14,7 +14,7 @@ Drive: size 3, overlap 1; parts at 0:30, 2:30, 3:00; after the wait is reported,
 Drive: a live call with no parts; advance past 3:00; an empty window comes. Evidence: `TestS4_AWindowWithNoWordsComesEmpty` in `audelin/feed/callevents`, run by `audelin-feed-core`.
 
 ## S-5 Joining mid-call gives what was said before
-Drive: join at 10:00 with parts from 0:10 to 9:50, then again at 2:00 with parts at 0:40 and 1:50; each first event holds every part; at 11:00 the next window holds 8:00–11:00. Evidence: `TestS5_JoiningMidCallGivesWhatWasSaidBefore` in `audelin/feed/callevents`, run by `audelin-feed-core`.
+Drive: join at 2:00 before the first scheduled end and at 7:40 between later ends. Each catch-up holds all saved parts through the join. The next windows still end at 3:00 and 9:00, with previously sent parts as context and newly saved parts as new text. Evidence: `TestS5_JoiningMidCallGivesWhatWasSaidBefore` in `audelin/feed/callevents` and `TestAFollowedCallIsServedFromJoinToEnd` in `audelin/feed/cmd/audelin-feed`, run by `audelin-feed-core`.
 
 ## S-6 A call starting after no call is joined
 Drive: no call, take an event; the next event is still pending after the clock moves; add a call; the next events are its windows. Evidence: `TestS6_ACallStartingAfterNoCallIsJoined` in `audelin/feed/callevents`, run by `audelin-feed-core`.
@@ -35,7 +35,7 @@ Drive: the fake fails at 3:00; the window to 3:00 comes empty; it recovers; the 
 Drive: size 3, overlap 1; parts at 2:50 and 4:10, end at 4:30; then a call of 1:20 with one part; each ends with a window holding its last part, then the end. Evidence: `TestS12_ACallEndingBetweenWindowsGivesItsLastWords` in `audelin/feed/callevents`, run by `audelin-feed-core`.
 
 ## S-13 New words can be told from the overlap
-Drive: size 3, overlap 1; parts at 2:30 and 4:00; the window to 5:00 marks 2:30 as context and 4:00 as new. Evidence: `TestS13_NewWordsCanBeToldFromTheOverlap` in `audelin/feed/callevents`, run by `audelin-feed-core`.
+Drive: size 3, overlap 1; parts at 2:30 and 4:00; the window to 5:00 marks 2:30 as context and 4:00 as new. After the transcript revises and relabels one 2:30 part and removes the other, both appear in context as originally sent. Only the new speaker's part appears as new text. Evidence: `TestS13_NewWordsCanBeToldFromTheOverlap` and `TestS13_OverlapRepeatsEmittedWordsAfterRevisionAndRelabeling` in `audelin/feed/callevents`, run by `audelin-feed-core`.
 
 ## S-14 An overlap alone reads as no new words
 Drive: a part at 2:30 only; the window to 5:00 holds it as context and no new words. Evidence: `TestS14_AnOverlapAloneReadsAsNoNewWords` in `audelin/feed/callevents`, run by `audelin-feed-core`.

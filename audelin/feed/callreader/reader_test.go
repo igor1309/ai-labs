@@ -1,6 +1,7 @@
 package callreader
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -83,9 +84,29 @@ func TestACallWithLiveTextOffIsLiveWithNoParts(t *testing.T) {
 	}
 }
 
+func TestS2_DiscoverySkipsNewerIneligibleTranscripts(t *testing.T) {
+	t.Parallel()
+	for _, fixture := range []string{"finished.md", "split-told.md", "merged.md", "no-origin.md"} {
+		t.Run(fixture, func(t *testing.T) {
+			t.Parallel()
+			dir := calls(t, map[string]string{
+				"2026.11.24-0900": "live-later.md",
+				"2026.11.24-1015": "live.md",
+				"2026.11.24-1100": fixture,
+			})
+
+			call, ok := live(t, New(dir, moscow))
+
+			if !ok || call.ID != "2026.11.24-1015" || call.Ended || !reflect.DeepEqual(call.Parts, early) {
+				t.Fatalf("got %+v, %v; want the newest recording and its parts", call, ok)
+			}
+		})
+	}
+}
+
 func TestS8_AMergedTranscriptIsNeverLive(t *testing.T) {
 	dir := calls(t, map[string]string{
-		"2026.11.24-0900":        "live.md",
+		"2026.11.24-0900":        "finished.md",
 		"2026.11.24-1100 Merged": "merged.md",
 	})
 
@@ -219,6 +240,25 @@ func TestS6_AMalformedTranscriptIsAFailedRead(t *testing.T) {
 	save(t, filepath.Dir(folder), "2026.11.24-1015", "live-later.md")
 	if call, ok := live(t, r); !ok || len(call.Parts) != 6 {
 		t.Fatalf("after the failure: %d parts, %v", len(call.Parts), ok)
+	}
+}
+
+func TestS6_AMalformedTranscriptOnDiscoveryIsAFailedRead(t *testing.T) {
+	t.Parallel()
+	const newest = "2026.11.24-1015"
+	dir := calls(t, map[string]string{"2026.11.24-0900": "live.md", newest: ""})
+	path := filepath.Join(dir, newest, "transcript.md")
+	if err := os.WriteFile(path, []byte("---\n{\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r := New(dir, moscow)
+
+	if call, ok, err := r.Live(); ok || !errors.Is(err, errNotATranscript) {
+		t.Fatalf("got %+v, %v, %v; want a parse error", call, ok, err)
+	}
+	save(t, dir, newest, "live.md")
+	if call, ok := live(t, r); !ok || call.ID != newest || !reflect.DeepEqual(call.Parts, early) {
+		t.Fatalf("after the failure: %+v, %v; want the repaired transcript", call, ok)
 	}
 }
 

@@ -24,6 +24,8 @@ const (
 // Part is one stretch of speech: its side, its start in call time and its
 // words.
 type Part struct {
+	// ID is unique within a call and persists across reads of the part.
+	ID    string
 	Side  string
 	Start time.Duration
 	Words string

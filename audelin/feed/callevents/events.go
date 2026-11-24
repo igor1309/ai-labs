@@ -1,9 +1,11 @@
 package callevents
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"io"
+	"slices"
 	"time"
 )
 
@@ -23,10 +25,10 @@ type Events struct {
 	// saidNoCall is true once no call was said, so it is said once.
 	saidNoCall bool
 	// next is the index of the next window to give.
-	next int
-	// given holds the parts already given, so none is given twice and a
-	// revision of one is not sent.
-	given map[partKey]bool
+	next  int
+	given map[string]struct{}
+	// sent keeps the original parts for context even if the transcript rewrites them.
+	sent []Part
 
 	// ended is true once the call was read ended, at endAt in call time,
 	// as last; lastGiven once its last part-window was looked at; over
@@ -47,7 +49,7 @@ func New(live LiveCall, clock Clock, size, overlap time.Duration) (*Events, erro
 	if overlap < 0 || overlap >= size {
 		return nil, errors.New("overlap must be from zero to below the window size")
 	}
-	return &Events{live: live, clock: clock, size: size, overlap: overlap, given: map[partKey]bool{}}, nil
+	return &Events{live: live, clock: clock, size: size, overlap: overlap, given: make(map[string]struct{})}, nil
 }
 
 // Next gives the next event once it is due.
@@ -128,8 +130,28 @@ func (e *Events) afterEnd() Event {
 }
 
 func (e *Events) window(parts []Part, from, to time.Duration) Event {
-	context := e.repeated(parts, from, to)
-	return Event{Kind: Chunk, Window: Window{From: from, To: to, Context: context, New: e.give(parts, to)}}
+	w := Window{From: from, To: to}
+	for _, p := range e.sent {
+		if p.Start >= from && p.Start < to {
+			w.Context = append(w.Context, p)
+		}
+	}
+	slices.SortStableFunc(w.Context, func(a, b Part) int { return cmp.Compare(a.Start, b.Start) })
+	for _, p := range parts {
+		if _, given := e.given[p.ID]; !given && p.Start < to {
+			// Words first read after their own window go in this one.
+			w.New = append(w.New, p)
+		}
+	}
+	e.remember(w.New)
+	return Event{Kind: Chunk, Window: w}
+}
+
+func (e *Events) remember(parts []Part) {
+	for _, p := range parts {
+		e.given[p.ID] = struct{}{}
+	}
+	e.sent = append(e.sent, parts...)
 }
 
 func earlier(a, b time.Time) time.Time {
@@ -139,18 +161,18 @@ func earlier(a, b time.Time) time.Time {
 	return b
 }
 
-// join gives a call under way as one window of everything said up to the
-// last window end passed, and goes on from there. A call with no window
-// end passed yet is not under way.
+// join gives everything already saved, then resumes the regular cadence.
 func (e *Events) join(call Call) (Event, bool) {
-	elapsed := e.clock.Now().Sub(call.Start)
-	if elapsed < e.size {
+	elapsed := max(0, e.clock.Now().Sub(call.Start))
+	if elapsed < e.size && len(call.Parts) == 0 {
 		return Event{}, false
 	}
-	k := int((elapsed - e.size) / e.step())
-	_, to := e.bounds(k)
-	e.next = k + 1
-	return Event{Kind: Chunk, Window: Window{From: 0, To: to, New: e.give(call.Parts, to)}}, true
+	if elapsed >= e.size {
+		e.next = 1 + int((elapsed-e.size)/e.step())
+	}
+	w := Window{To: elapsed, New: slices.Clone(call.Parts)}
+	e.remember(w.New)
+	return Event{Kind: Chunk, Window: w}, true
 }
 
 func (e *Events) step() time.Duration { return e.size - e.overlap }
@@ -158,36 +180,4 @@ func (e *Events) step() time.Duration { return e.size - e.overlap }
 func (e *Events) bounds(k int) (from, to time.Duration) {
 	from = time.Duration(k) * e.step()
 	return from, from + e.size
-}
-
-// partKey tells a part apart from the others of its call.
-type partKey struct {
-	side  string
-	start time.Duration
-}
-
-// repeated gives the parts in [from, to) already given: the overlap's
-// words, which a window carries as context.
-func (e *Events) repeated(parts []Part, from, to time.Duration) []Part {
-	var ctx []Part
-	for _, p := range parts {
-		if p.Start >= from && p.Start < to && e.given[partKey{p.Side, p.Start}] {
-			ctx = append(ctx, p)
-		}
-	}
-	return ctx
-}
-
-// give gives the parts starting before to that were not given yet, words
-// first read after their own window included, and marks them given.
-func (e *Events) give(parts []Part, to time.Duration) []Part {
-	var fresh []Part
-	for _, p := range parts {
-		k := partKey{p.Side, p.Start}
-		if p.Start < to && !e.given[k] {
-			e.given[k] = true
-			fresh = append(fresh, p)
-		}
-	}
-	return fresh
 }

@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -88,6 +89,7 @@ func started(t *testing.T, dir string, c *clock) (*sseclient.Client, chan error)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { ln.Close() })
 	done := make(chan error, 1)
 	go func() { done <- serve(ln, dir, time.UTC, c) }()
 	_, port, _ := net.SplitHostPort(ln.Addr().String())
@@ -103,22 +105,31 @@ func next(t *testing.T, s *sseclient.Stream) sseclient.Event {
 	return ev
 }
 
+// Contract test: the composed feed serves its transcript over loopback HTTP.
 func TestAFollowedCallIsServedFromJoinToEnd(t *testing.T) {
+	t.Parallel()
 	dir := t.TempDir()
 	save(t, dir, "live.md")
-	c := newClock(callStart.Add(200 * time.Second))
+	c := newClock(callStart.Add(140 * time.Second))
 	client, done := started(t, dir, c)
 
-	s, err := client.Connect(context.Background(), 180*time.Second, 60*time.Second)
+	s, err := client.Connect(context.Background(), 90*time.Second, 10*time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer s.Close()
 	joined := next(t, s)
 	var w wireWindow
 	if err := json.Unmarshal(joined.Data, &w); err != nil {
 		t.Fatal(err)
 	}
-	if joined.Name != "chunk" || w.From != 0 || w.To != 180 || len(w.New) != 4 || w.New[0] != (wirePart{Speaker: "Me", Start: 2, Words: w.New[0].Words}) {
+	want := wireWindow{From: 0, To: 140, Context: []wirePart{}, New: []wirePart{
+		{Speaker: "Me", Start: 2, Words: "Hello, can you hear me?"},
+		{Speaker: "Them 1", Start: 5, Words: `Yes. The code word is "**Them** 00:00:09".`},
+		{Speaker: "Them 2", Start: 64, Words: "Where are call notes saved?"},
+		{Speaker: "Me", Start: 90, Words: "Next to the transcript,\nin the call's folder."},
+	}}
+	if joined.Name != "chunk" || !reflect.DeepEqual(w, want) {
 		t.Fatalf("joined: %s %s", joined.Name, joined.Data)
 	}
 
@@ -129,7 +140,11 @@ func TestAFollowedCallIsServedFromJoinToEnd(t *testing.T) {
 	if err := json.Unmarshal(last.Data, &w); err != nil {
 		t.Fatal(err)
 	}
-	if last.Name != "chunk" || w.From != 120 || w.To != 201 || len(w.Context) != 0 || len(w.New) != 2 {
+	want = wireWindow{From: 80, To: 141, Context: want.New[3:], New: []wirePart{
+		{Speaker: "Them 1", Start: 125, Words: "And the CLI is called what?"},
+		{Speaker: "Me", Start: 130, Words: "It is still being"},
+	}}
+	if last.Name != "chunk" || !reflect.DeepEqual(w, want) {
 		t.Fatalf("last words: %s %s", last.Name, last.Data)
 	}
 	if ev := next(t, s); ev.Name != "callEnded" {
@@ -138,7 +153,6 @@ func TestAFollowedCallIsServedFromJoinToEnd(t *testing.T) {
 	if _, err := s.Next(); !errors.Is(err, io.EOF) {
 		t.Fatalf("after the end: %v", err)
 	}
-	s.Close()
 	if err := <-done; err != nil {
 		t.Fatalf("serve: %v", err)
 	}

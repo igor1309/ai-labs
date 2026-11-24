@@ -15,6 +15,8 @@ import (
 // Part is one stretch of speech as the transcript tells it: who spoke
 // ("Me", "Them", "Them 2"), when in call time and the words.
 type Part struct {
+	// ID identifies the same part across reads of a call.
+	ID      string
 	Speaker string
 	Start   time.Duration
 	Words   string
@@ -68,10 +70,18 @@ func parse(text string) (transcript, error) {
 	var label string
 	var start time.Duration
 	var lines []string
+	rows := make(map[string]int)
 	closePart := func() {
-		words := strings.TrimSpace(strings.Join(lines, "\n"))
-		if label != "" && label != "Gap" && words != "" {
-			t.parts = append(t.parts, Part{Speaker: label, Start: start, Words: words})
+		if label != "" && label != "Gap" {
+			// The format saves only whole seconds and may renumber speakers.
+			// Count rows of the same track and second, including wordless rows.
+			side, _, _ := strings.Cut(label, " ")
+			key := side + "/" + start.String()
+			rows[key]++
+			if words := strings.TrimSpace(strings.Join(lines, "\n")); words != "" {
+				id := key + "/" + strconv.Itoa(rows[key])
+				t.parts = append(t.parts, Part{ID: id, Speaker: label, Start: start, Words: words})
+			}
 		}
 		label, lines = "", nil
 	}

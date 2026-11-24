@@ -1,6 +1,6 @@
 # SSE server QA
 
-Driven for real on a loopback port, with a fake event source behind it.
+Loopback tests use a fake event source. The admission test drives the HTTP handler directly.
 
 ## S-1 Each event is sent as it comes
 Drive: the fake gives one event and holds the next; the client reads the first while the stream is open; then the fake gives the second. Evidence: `TestS1_EachEventIsSentAsItComes` in `audelin/feed/sseserver`, run by `audelin-feed-core`.
@@ -21,7 +21,7 @@ Drive: with a second client connected, disconnect the first while its fake holds
 Drive: connect to loopback first as a control (served), then to the Mac's network address (refused). Evidence: `TestS6_OnlyThisMacCanConnect` in `audelin/feed/sseserver`, run by `audelin-feed-core`.
 
 ## S-7 The last client leaving ends the program
-Drive: two clients; the first disconnects, the second reads its next window; the second disconnects; the program exits. Evidence: `TestS7_TheLastClientLeavingEndsTheProgram` in `audelin/feed/sseserver`, run by `audelin-feed-core`.
+Drive: the first client disconnects and the second reads on; the program exits after the second disconnects. Hold the second client's source open while the first disconnects. Shutdown waits for the pending request, whether it streams or fails to open. A later request receives HTTP 503. Evidence: `TestS7_TheLastClientLeavingEndsTheProgram` and `TestS7_OpeningClientKeepsServerRunning` in `audelin/feed/sseserver`, run by `audelin-feed-core`.
 
 ## S-8 A web page cannot read the stream
 Drive: request on loopback with a Host of example.com, and with an Origin header from a page; both are refused, no event read. Evidence: `TestS8_AWebPageCannotReadTheStream` in `audelin/feed/sseserver`, run by `audelin-feed-core`.

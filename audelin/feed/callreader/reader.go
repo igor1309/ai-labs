@@ -63,8 +63,11 @@ func (r *Reader) Live() (Call, bool, error) {
 			return Call{}, false, err
 		}
 		t, err := parse(string(text))
-		if err != nil || !recording(t.origin) {
-			return Call{}, false, nil
+		if err != nil {
+			return Call{}, false, err
+		}
+		if !recording(t.origin) {
+			continue
 		}
 		r.found = &f
 		return Call{ID: f.id, Start: f.start, Parts: t.parts}, true, nil

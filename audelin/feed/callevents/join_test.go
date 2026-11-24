@@ -9,45 +9,67 @@ import (
 )
 
 func TestS5_JoiningMidCallGivesWhatWasSaidBefore(t *testing.T) {
+	t.Parallel()
 	early := part("them", 30*time.Second, "code word")
+	beforeFirstEnd := part("me", 110*time.Second, "first answer")
+	afterJoin := part("them", 150*time.Second, "next question")
 	mid := part("me", 4*time.Minute, "later on")
 	tail := part("them", 7*time.Minute+30*time.Second, "just now")
-	next1 := part("me", 8*time.Minute+10*time.Second, "next")
-	c := &clock{now: zero.Add(7*time.Minute + 40*time.Second)}
-	e, err := callevents.New(&live{clock: c, at: heard(early, mid, tail, next1)}, c, 3*time.Minute, time.Minute)
-	if err != nil {
-		t.Fatal(err)
-	}
+	later := part("me", 8*time.Minute+10*time.Second, "next")
 
-	first := next(t, e)
+	for _, tc := range []struct {
+		name    string
+		joinAt  time.Duration
+		parts   []callevents.Part
+		catchUp []callevents.Part
+		next    callevents.Event
+	}{
+		{
+			name:    "before the first end",
+			joinAt:  2 * time.Minute,
+			parts:   []callevents.Part{early, beforeFirstEnd, afterJoin},
+			catchUp: []callevents.Part{early, beforeFirstEnd},
+			next:    chunk(0, 3*time.Minute, []callevents.Part{early, beforeFirstEnd}, []callevents.Part{afterJoin}),
+		},
+		{
+			name:    "between later ends",
+			joinAt:  7*time.Minute + 40*time.Second,
+			parts:   []callevents.Part{early, mid, tail, later},
+			catchUp: []callevents.Part{early, mid, tail},
+			next:    chunk(6*time.Minute, 9*time.Minute, []callevents.Part{tail}, []callevents.Part{later}),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			e, c := newEvents(t, heard(tc.parts...), 3*time.Minute, time.Minute)
+			c.now = zero.Add(tc.joinAt)
 
-	// Windows of 3 minutes step by 2: ends 3, 5, 7, 9. The last passed is 7.
-	want := callevents.Event{Kind: callevents.Chunk, Window: callevents.Window{
-		From: 0, To: 7 * time.Minute, New: []callevents.Part{early, mid},
-	}}
-	if !reflect.DeepEqual(first, want) {
-		t.Fatalf("got %+v, want %+v", first, want)
-	}
-	if c.now != zero.Add(7*time.Minute+40*time.Second) {
-		t.Fatalf("waited %v to join", c.now.Sub(zero))
-	}
-	if w := next(t, e).Window; w.From != 6*time.Minute || w.To != 9*time.Minute {
-		t.Fatalf("next window [%v, %v), want [6m, 9m)", w.From, w.To)
+			if got, want := next(t, e), chunk(0, tc.joinAt, nil, tc.catchUp); !reflect.DeepEqual(got, want) {
+				t.Fatalf("catch-up %+v, want %+v", got, want)
+			}
+			if got := c.now.Sub(zero); got != tc.joinAt {
+				t.Fatalf("catch-up at %v, want %v", got, tc.joinAt)
+			}
+			if got := next(t, e); !reflect.DeepEqual(got, tc.next) {
+				t.Fatalf("next window %+v, want %+v", got, tc.next)
+			}
+			if got := c.now.Sub(zero); got != tc.next.Window.To {
+				t.Fatalf("next window at %v, want %v", got, tc.next.Window.To)
+			}
+		})
 	}
 }
 
-func TestACallNotYetAWindowLongIsNotJoinedEarly(t *testing.T) {
-	said := part("me", 10*time.Second, "hi")
-	c := &clock{now: zero.Add(40 * time.Second)}
-	e, err := callevents.New(&live{clock: c, at: heard(said)}, c, time.Minute, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
+func TestAQuietCallBeforeTheFirstEndWaitsForItsFirstWindow(t *testing.T) {
+	t.Parallel()
+	said := part("me", 50*time.Second, "hi")
+	e, c := newEvents(t, heard(said), time.Minute, 0)
+	c.now = zero.Add(40 * time.Second)
 
-	if w := next(t, e).Window; w.From != 0 || w.To != time.Minute {
-		t.Fatalf("first window [%v, %v), want [0, 1m)", w.From, w.To)
+	if got, want := next(t, e), chunk(0, time.Minute, nil, []callevents.Part{said}); !reflect.DeepEqual(got, want) {
+		t.Fatalf("first window %+v, want %+v", got, want)
 	}
-	if c.now != zero.Add(time.Minute) {
-		t.Fatalf("given at %v, want 1m", c.now.Sub(zero))
+	if got := c.now.Sub(zero); got != time.Minute {
+		t.Fatalf("given at %v, want 1m", got)
 	}
 }

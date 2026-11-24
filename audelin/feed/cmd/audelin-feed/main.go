@@ -95,7 +95,7 @@ func (l liveCall) Live() (callevents.Call, bool, error) {
 	}
 	parts := make([]callevents.Part, len(call.Parts))
 	for i, p := range call.Parts {
-		parts[i] = callevents.Part{Side: p.Speaker, Start: p.Start, Words: p.Words}
+		parts[i] = callevents.Part{ID: p.ID, Side: p.Speaker, Start: p.Start, Words: p.Words}
 	}
 	return callevents.Call{ID: call.ID, Start: call.Start, Parts: parts, Ended: call.Ended}, true, nil
 }

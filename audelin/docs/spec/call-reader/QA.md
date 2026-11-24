@@ -8,7 +8,7 @@ filled in late and a revised tail.
 Drive: a temp folder with two finished transcripts and one old one with no origin; read none. Evidence: `TestS1_WithNoCallRecordingThereIsNoLiveCall` in `audelin/feed/callreader`, run by `audelin-feed-core`.
 
 ## S-2 The call being recorded is the live call
-Drive: a transcript saved mid-call in a renamed folder with copied dates, and one saved with live text off, beside an older finished one; the start is the name's time; read back each part's side, start and words against the file. Evidence: `TestS2_TheCallBeingRecordedIsTheLiveCall`, `TestReadsEachPartsSpeakerStartAndWords`, `TestACallWithLiveTextOffIsLiveWithNoParts` in `audelin/feed/callreader`, run by `audelin-feed-core`.
+Drive: find the newest live transcript below newer finished, merged or originless transcripts. Read a renamed folder's start from its name and read each part's label, start and words. Two rows with the same label and displayed second have distinct IDs that persist when the speaker is relabeled. A call saved with live text off has no parts. Evidence: `TestS2_TheCallBeingRecordedIsTheLiveCall`, `TestS2_DiscoverySkipsNewerIneligibleTranscripts`, `TestReadsEachPartsSpeakerStartAndWords`, `TestPartIDsSurviveRelabelingAndDistinguishRowsInOneSecond` and `TestACallWithLiveTextOffIsLiveWithNoParts` in `audelin/feed/callreader`, run by `audelin-feed-core`.
 
 ## S-3 Text added since is read
 Drive: replace the transcript with Audelin's next save of it, its tail revised; read the new parts and the tail as the file shows it. Evidence: `TestS3_NewTextOfTheFollowedCallIsRead`, `TestReadsTheTailAsTheFileShowsIt` in `audelin/feed/callreader`, run by `audelin-feed-core`.
@@ -20,13 +20,13 @@ Drive: beside an older unfinished transcript, replace the live one with a versio
 Drive: make the live transcript unreadable by permissions; read the failure. Evidence: `TestS5_AVanishedTranscriptIsAFailedRead`, `TestS5_AVanishedFolderIsAFailedRead`, `TestS5_AnUnreadableTranscriptIsAFailedRead` in `audelin/feed/callreader`, run by `audelin-feed-core`.
 
 ## S-6 A transcript that cannot be understood is said
-Drive: cut the live transcript mid front matter; read the failure. Evidence: `TestS6_AMalformedTranscriptIsAFailedRead`, `TestTextNotAsAudelinWritesItIsRefused` in `audelin/feed/callreader`, run by `audelin-feed-core`.
+Drive: read a transcript cut off inside its front matter during discovery and an invalid transcript after following has started. Both reads fail, and the reader recovers once the file is repaired. Evidence: `TestS6_AMalformedTranscriptOnDiscoveryIsAFailedRead`, `TestS6_AMalformedTranscriptIsAFailedRead` and `TestTextNotAsAudelinWritesItIsRefused` in `audelin/feed/callreader`, run by `audelin-feed-core`.
 
 ## S-7 The call found is read until it ends
 Drive: while reading one call, add a newer live one; the first call's next save is read, then its finish. Evidence: `TestS7_ANewerCallDoesNotTakeTheFollowedOnesPlace` in `audelin/feed/callreader`, run by `audelin-feed-core`.
 
 ## S-8 A merged transcript is never live
-Drive: the newest fixture is a merge Audelin wrote; read none. Evidence: `TestS8_AMergedTranscriptIsNeverLive` in `audelin/feed/callreader`, run by `audelin-feed-core`.
+Drive: the newest fixture is a merge Audelin wrote. Read none when the older calls are finished, or read the newest eligible recording. Evidence: `TestS8_AMergedTranscriptIsNeverLive` and `TestS2_DiscoverySkipsNewerIneligibleTranscripts` in `audelin/feed/callreader`, run by `audelin-feed-core`.
 
 ## S-9 The later of two calls in one minute is live
 Drive: two unfinished calls, the second named with -2; read the second. Evidence: `TestS9_TheLaterOfTwoCallsInOneMinuteIsLive` in `audelin/feed/callreader`, run by `audelin-feed-core`.
