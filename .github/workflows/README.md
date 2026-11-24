@@ -40,6 +40,7 @@ Each test, what runs it, and the change that triggers it (LAB-167, LAB-220, LAB-
 | The archived Agister (`agister/archive/`): Go, Pages and script tests | nothing | — | excluded: archived, reference only |
 | gokit's Go tests (`gokit/`) | `agister-core`: `agister/scripts/test.sh` calls `gokit/scripts/test.sh` | `gokit/**` | runs |
 | warder's Go tests (`warder/`), gofmt, vet, race | `warder-core`: `warder/scripts/test.sh` | the `warder` filter | runs |
+| Audelin's feed programs' Go tests (`audelin/feed/`), gofmt, vet, race | `audelin-feed-core`: `audelin/feed/scripts/test.sh` | the `audelin-feed` filter | runs |
 | The repository scripts' tests (`scripts/tests/*.test.js`) | `repo-scripts` | every push and pull request | runs |
 | The release scripts' tests (`scripts/release/tests/*.test.js`) | `release-validation` | the `release` filter | runs |
 | The research scripts' Python tests (`research/agister/adversarial-cycle/scripts/tests/`) | nothing | — | excluded: research, not a product |
