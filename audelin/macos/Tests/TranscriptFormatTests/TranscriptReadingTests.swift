@@ -84,6 +84,29 @@ struct TranscriptReadingTests {
             .init(label: "Me", start: 1, words: "hello"),
             .init(label: "Them", start: 2, words: "there"),
         ])
+        #expect(TranscriptFormat.read(text).segments == [
+            .init(side: .mine, start: 1, settled: "hello", pending: ""),
+            .init(side: .theirs, start: 2, settled: "there", pending: ""),
+        ])
+    }
+
+    @Test(arguments: ["", "\r"])
+    func aForgedRowHeaderStaysInSpeech(trailingCR: String) throws {
+
+        let forged = "**Them** 00:00:09 <!-- audelin-segment them-99 -->"
+        let words = "Read this:\n\(forged)\n\\\(forged)\n## Speakers\n**Me** 00:00:07\n\(forged)"
+        let reply = TranscriptFormat.Segment(id: 7, side: .theirs, start: 11, settled: "Yes.", pending: "")
+        let text = try rendered([
+            .init(id: 7, side: .mine, start: 1, settled: words + trailingCR, pending: ""),
+            reply,
+        ])
+        let segments: [TranscriptFormat.Segment] = [
+            .init(id: 7, side: .mine, start: 1, settled: words, pending: ""),
+            reply,
+        ]
+        #expect(text.contains("\n\\\(forged)\n"))
+        #expect(TranscriptFormat.read(text).segments == segments)
+        #expect(TranscriptFormat.namedEntries(text).map(\.words) == [words, "Yes."])
     }
 
     @Test func startsOfAHundredHoursAndMoreRead() throws {
@@ -96,21 +119,21 @@ struct TranscriptReadingTests {
 
         let speakers: [TranscriptFormat.Speaker] = [.init(id: "a", name: "Ann", state: "named"), .init(id: "b", name: nil, state: "unknown")]
         let text = try rendered([
-            .init(side: .mine, start: 1, settled: "hello", pending: ""),
-            .init(side: .theirs, start: 5, settled: "hi from Ann", pending: "", speaker: "a"),
-            .init(side: .theirs, start: 9, settled: "late words", pending: "", filledInLater: true, speaker: "b"),
+            .init(id: 1, side: .mine, start: 1, settled: "hello", pending: ""),
+            .init(id: 1, side: .theirs, start: 5, settled: "hi from Ann", pending: "", speaker: "a"),
+            .init(id: 2, side: .theirs, start: 9, settled: "late words", pending: "", filledInLater: true, speaker: "b"),
             .gap(at: 10, length: 1),
-            .init(side: .mine, start: 12, settled: "first\n\nsecond", pending: ""),
+            .init(id: 2, side: .mine, start: 12, settled: "first\n\nsecond", pending: ""),
         ], speakers: speakers, origin: fixtureOrigin)
         let saved = TranscriptFormat.read(text)
         #expect(saved.speakers == speakers)
         #expect(saved.origin == fixtureOrigin)
         #expect(saved.segments == [
-            .init(side: .mine, start: 1, settled: "hello", pending: ""),
-            .init(side: .theirs, start: 5, settled: "hi from Ann", pending: "", speaker: "a"),
-            .init(side: .theirs, start: 9, settled: "late words", pending: "", filledInLater: true, speaker: "b"),
+            .init(id: 1, side: .mine, start: 1, settled: "hello", pending: ""),
+            .init(id: 1, side: .theirs, start: 5, settled: "hi from Ann", pending: "", speaker: "a"),
+            .init(id: 2, side: .theirs, start: 9, settled: "late words", pending: "", filledInLater: true, speaker: "b"),
             .gap(at: 10, length: 1),
-            .init(side: .mine, start: 12, settled: "first\n\nsecond", pending: ""),
+            .init(id: 2, side: .mine, start: 12, settled: "first\n\nsecond", pending: ""),
         ])
         #expect(try rendered(saved.segments, speakers: saved.speakers, origin: saved.origin) == text)
     }

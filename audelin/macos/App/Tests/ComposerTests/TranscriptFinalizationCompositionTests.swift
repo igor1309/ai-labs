@@ -179,7 +179,7 @@ struct TranscriptFinalizationCompositionTests {
             #expect(finalization.state.inputEnded && finalization.state.settled)
             #expect(resources.resource(call: savedCall.key) == nil)
             #expect(try transcriptBody(at: URL(fileURLWithPath: savedCall.key).appendingPathComponent("transcript.md"))
-                == "# Transcript\n\n**Me** 00:00:00\nmine final\n\n**Them** 00:00:00\ntheirs final\n")
+                == "# Transcript\n\n**Me** 00:00:00 <!-- audelin-segment me-0 -->\nmine final\n\n**Them** 00:00:00 <!-- audelin-segment them-0 -->\ntheirs final\n")
         }
     }
 
@@ -227,10 +227,10 @@ struct TranscriptFinalizationCompositionTests {
                 #expect(body.contains("Them 1:") && body.contains("Them 2:") && body.contains("Me:"))
                 #expect(body.contains("answer") && body.contains("second"))
                 let text = try await transcriptText(of: rig)
-                #expect(text.contains("**Them 1** 00:00:00\nshared words here"))
-                #expect(text.contains("**Them 2** 00:00:03\nsecond"))
+                #expect(text.contains("**Them 1** 00:00:00 <!-- audelin-segment them-0 -->\nshared words here"))
+                #expect(text.contains("**Them 2** 00:00:03 <!-- audelin-segment them-1 -->\nsecond"))
                 #expect(text.contains("**Me** 00:00:05\nanswer"))
-                #expect(!text.contains("**Me** 00:00:00\nshared words here"))
+                #expect(!text.contains("**Me** 00:00:00"))
                 await rig.finish()
             } catch {
                 attribute.send(); clean.send()

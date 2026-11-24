@@ -8,6 +8,12 @@ Observer: compose, rendering call text live and a replaced or merged transcript 
 - **Markdown the user reads, one part per segment in call text's order,** each marked
   mine or theirs with its start in call time, as Amanu keeps `transcript.md`. Text filled
   in after live text was switched on is marked so (design, Added late). Pending renders as settled.
+- **A live segment's ID is written on its row header,** after the time and any
+  filled-in mark, as `<!-- audelin-segment me-7 -->` or `<!-- audelin-segment them-7 -->`.
+  The recording side qualifies the ID, so speaker relabeling, retiming and revised
+  words leave it intact. A speaker split keeps the source segment's ID on its
+  pieces, and a merge carries the IDs from each original call. Header-shaped speech
+  is escaped in the body and reads back as words. Rows from older files can have no ID.
 - **Their side's parts name the diarized speaker by a stable generic ID, never a
   name,** so final text never changes when names do. The current
   names follow the parts, readable and in one versioned machine-readable block,
@@ -21,7 +27,7 @@ Observer: compose, rendering call text live and a replaced or merged transcript 
   none unknown. It renders whole every time, as the start of the final text:
   a told final length counts it; a changed origin tells none, so the file is replaced whole.
 - **Reading gives back what rendering needs to render it again:** each part
-  with words, side, speaker, start in whole seconds, filled-in mark and words,
+  with words, segment ID if present, side, speaker, start in whole seconds, filled-in mark and words,
   each gap as a gap, the names and the origin, if any. Other leading text is skipped.
 - **A gap is a row of its own,** with no side or words, saying how long the call was cut off.
 - **A failed rendering is told and keeps the final text** the next one goes on from.
@@ -76,7 +82,7 @@ Feature: Rendering a call's transcript
     Then I can tell the speakers apart, and read each one's current name after the text
 
   Scenario: S-11 A rendered transcript reads back
-    Given a transcript I rendered, with origin, named speakers, a gap and filled-in text
+    Given a transcript I rendered, with segment IDs, origin, named speakers, a gap and filled-in text
     When I read it back and render what I read
     Then I can read the same transcript
 

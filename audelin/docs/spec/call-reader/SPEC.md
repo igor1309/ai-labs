@@ -23,10 +23,11 @@ and `transcript.md`; it reads them and writes nothing.
   part's side, start in call time and words, gaps and names skipped. The
   format is a contract (ADR-003). A legacy transcript without front matter
   is readable. A malformed origin block or finishing stage is a failed read.
-- **The tail is read as the file shows it.** The reader keeps a part's ID
-  across revisions by matching rows on each recording side with the previous
-  read. Unchanged rows anchor the match, and revised tail rows keep their IDs
-  in track order even if their displayed start moves. New parts get fresh IDs.
+- **The tail is read as the file shows it.** Each part takes its ID from its
+  row header. A revision keeps the segment's ID through retiming or speaker
+  relabeling. New speech gets its own ID, including speech at a retracted row's
+  old position. A row without an ID uses the recording side, displayed second
+  and row within that side and second. Escaped headers in the body are words.
   An unfinished last line is left for the next read. A followed transcript
   that vanishes is a failed read.
 
@@ -45,8 +46,8 @@ Feature: Reading the live call
 
   Scenario: S-3 Text added since is read
     Given I read the live call
-    When more text is saved
-    Then I can read the new text too
+    When a later save revises or retracts rows and adds new ones
+    Then I can read the new parts and tell them apart from revisions by their IDs
 
   Scenario: S-4 A finished call has ended
     Given I read the live call

@@ -21,8 +21,8 @@
 
 # Transcript
 
-**Them** 00:00:06
+**Them** 00:00:06 <!-- audelin-segment them-1 -->
 Are we ready?
 
-**Me** 00:00:07
+**Me** 00:00:07 <!-- audelin-segment me-1 -->
 Let's wait for the team.

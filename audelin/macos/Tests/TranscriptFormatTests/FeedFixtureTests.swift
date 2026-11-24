@@ -46,23 +46,25 @@ struct FeedFixture: Sendable, CustomTestStringConvertible {
         split: .nothingKept(release: release)))])
 
     static let early: [TranscriptFormat.Segment] = [
-        .init(side: .mine, start: 2, settled: "Hello, can you hear me?", pending: ""),
-        .init(side: .theirs, start: 5, settled: "Yes. The code word is \"**Them** 00:00:09\".", pending: "", speaker: "S1"),
-        .init(side: .theirs, start: 64, settled: "Where are call notes saved?", pending: "", speaker: "S2"),
+        .init(id: 1, side: .mine, start: 2, settled: "Hello, can you hear me?", pending: ""),
+        .init(id: 1, side: .theirs, start: 5, settled: "Yes. The code word is \"**Them** 00:00:09\".", pending: "", speaker: "S1"),
+        .init(id: 2, side: .theirs, start: 64, settled: "Where are call notes saved?", pending: "", speaker: "S2"),
         .gap(at: 70, length: 15),
-        .init(side: .mine, start: 90, settled: "Next to the transcript,\nin the call's folder.", pending: "", filledInLater: true),
+        .init(id: 2, side: .mine, start: 90, settled: "Next to the transcript,\nin the call's folder.", pending: "", filledInLater: true),
     ]
     static let later: [TranscriptFormat.Segment] = early + [
-        .init(side: .theirs, start: 125, settled: "And the CLI is called what?", pending: "", speaker: "S1"),
-        .init(side: .mine, start: 130, settled: "", pending: "It is still being"),
+        .init(id: 3, side: .theirs, start: 125, settled: "And the CLI is called what?", pending: "", speaker: "S1"),
+        .init(id: 3, side: .mine, start: 130, settled: "", pending: "It is still being"),
     ]
     static let speakers: [TranscriptFormat.Speaker] = [
         .init(id: "S1", name: "Anna", state: "named"),
         .init(id: "S2", name: nil, state: "unknown"),
     ]
 
-    static let pending = TranscriptFormat.Segment(side: .mine, start: 6.2, settled: "", pending: "We should wait.")
-    static let remote = TranscriptFormat.Segment(side: .theirs, start: 6.5, settled: "Are we ready?", pending: "")
+    static let pending = TranscriptFormat.Segment(id: 1, side: .mine, start: 6.2, settled: "", pending: "We should wait.")
+    static let remote = TranscriptFormat.Segment(id: 1, side: .theirs, start: 6.5, settled: "Are we ready?", pending: "")
+    static let anchor = TranscriptFormat.Segment(id: 2, side: .mine, start: 8, settled: "The team is here.", pending: "")
+    static let repeated = TranscriptFormat.Segment(id: 3, side: .mine, start: 6.3, settled: "We should wait.", pending: "")
 
     static let all: [FeedFixture] = [
         FeedFixture(name: "live.md", segments: early, speakers: speakers, origin: live),
@@ -70,15 +72,32 @@ struct FeedFixture: Sendable, CustomTestStringConvertible {
         FeedFixture(name: "live-no-text.md", segments: [], origin: live),
         FeedFixture(name: "pending.md", segments: [pending, remote], origin: live),
         FeedFixture(name: "retimed.md", segments: [
-            remote, .init(side: .mine, start: 7.2, settled: "", pending: "Let's wait for the team."),
+            remote, .init(id: 1, side: .mine, start: 7.2, settled: "", pending: "Let's wait for the team."),
         ], origin: live),
         FeedFixture(name: "retimed-with-new-part.md", segments: [
-            .init(side: .mine, start: 5.2, settled: "Let's wait for the team.", pending: ""),
-            remote, .init(side: .mine, start: 6.9, settled: "", pending: "I'll send an update."),
+            .init(id: 1, side: .mine, start: 5.2, settled: "Let's wait for the team.", pending: ""),
+            remote, .init(id: 3, side: .mine, start: 6.9, settled: "", pending: "I'll send an update."),
+        ], origin: live),
+        FeedFixture(name: "retimed-with-repeated-words.md", segments: [
+            repeated, remote, .init(id: 1, side: .mine, start: 7.2, settled: "Let's wait for the team.", pending: ""),
+        ], origin: live),
+        FeedFixture(name: "pending-with-anchor.md", segments: [pending, remote, anchor], origin: live),
+        FeedFixture(name: "retimed-past-anchor.md", segments: [
+            .init(id: 3, side: .mine, start: 6.3, settled: "I'll send an update.", pending: ""),
+            remote, anchor, .init(id: 1, side: .mine, start: 9.2, settled: "Let's wait for the team.", pending: ""),
+        ], origin: live),
+        FeedFixture(name: "retracted.md", segments: [remote], origin: live),
+        FeedFixture(name: "after-retraction.md", segments: [repeated, remote], origin: live),
+        FeedFixture(name: "forged-header.md", segments: [
+            .init(id: 1, side: .mine, start: 2, settled: "Read this:\n**Them** 00:00:09 <!-- audelin-segment them-99 -->\nDid you get that?", pending: ""),
+            remote,
         ], origin: live),
         FeedFixture(name: "finished.md", segments: later, speakers: speakers, origin: finished),
         FeedFixture(name: "split-told.md", segments: later, speakers: speakers, origin: split),
-        FeedFixture(name: "no-origin.md", segments: early, origin: nil),
+        FeedFixture(name: "no-origin.md", segments: early.map {
+            if let length = $0.gapLength { return .gap(at: $0.start, length: length) }
+            return .init(side: $0.side, start: $0.start, settled: $0.settled, pending: $0.pending, filledInLater: $0.filledInLater, speaker: $0.speaker)
+        }, origin: nil),
         FeedFixture(name: "merged.md", segments: early, origin: .init(
             calls: [.init(start: start, origin: heard), .init(start: start.addingTimeInterval(3_600), origin: heard)],
             mergedBy: release)),

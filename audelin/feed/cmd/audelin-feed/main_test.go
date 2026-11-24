@@ -165,47 +165,88 @@ func TestPendingPartRetimingDoesNotResendItOrHideNewWords(t *testing.T) {
 		{Speaker: "Them", Start: 6, Words: "Are we ready?"},
 	}
 	for _, tc := range []struct {
-		fixture string
-		fresh   []wirePart
+		before string
+		after  string
+		anchor []wirePart
+		fresh  []wirePart
 	}{
-		{fixture: "retimed.md", fresh: []wirePart{}},
+		{before: "pending.md", after: "retimed.md", fresh: []wirePart{}},
 		{
-			fixture: "retimed-with-new-part.md",
-			fresh:   []wirePart{{Speaker: "Me", Start: 6, Words: "I'll send an update."}},
+			before: "pending.md", after: "retimed-with-new-part.md",
+			fresh: []wirePart{{Speaker: "Me", Start: 6, Words: "I'll send an update."}},
+		},
+		{
+			before: "pending.md", after: "retimed-with-repeated-words.md",
+			fresh: []wirePart{{Speaker: "Me", Start: 6, Words: "We should wait."}},
+		},
+		{
+			before: "pending-with-anchor.md", after: "retimed-past-anchor.md",
+			anchor: []wirePart{{Speaker: "Me", Start: 8, Words: "The team is here."}},
+			fresh:  []wirePart{{Speaker: "Me", Start: 6, Words: "I'll send an update."}},
 		},
 	} {
-		t.Run(tc.fixture, func(t *testing.T) {
+		t.Run(tc.after, func(t *testing.T) {
 			t.Parallel()
 			dir := t.TempDir()
-			save(t, dir, "pending.md")
-			clock := newClock(callStart.Add(7500 * time.Millisecond))
-			stream, err := (source{dir: dir, loc: time.UTC, clock: clock}).Open(10*time.Second, 5*time.Second)
-			if err != nil {
-				t.Fatal(err)
-			}
-			assertWindow := func(want wireWindow) {
-				t.Helper()
-				ev, err := stream.Next(context.Background())
-				if err != nil {
-					t.Fatal(err)
-				}
-				var got wireWindow
-				if err := json.Unmarshal(ev.Data, &got); err != nil {
-					t.Fatal(err)
-				}
-				if ev.Name != "chunk" || !reflect.DeepEqual(got, want) {
-					t.Fatalf("got %s %s, want chunk %+v", ev.Name, ev.Data, want)
-				}
-			}
-			assertWindow(wireWindow{From: 0, To: 7.5, Context: []wirePart{}, New: original})
+			save(t, dir, tc.before)
+			clock := newClock(callStart.Add(9500 * time.Millisecond))
+			assertWindow := feedWindows(t, dir, clock)
+			initial := append(append([]wirePart{}, original...), tc.anchor...)
+			assertWindow(wireWindow{From: 0, To: 9.5, Context: []wirePart{}, New: initial})
 
-			save(t, dir, tc.fixture)
+			save(t, dir, tc.after)
 			clock.raise(callStart.Add(15 * time.Second))
 
-			assertWindow(wireWindow{From: 0, To: 10, Context: original, New: tc.fresh})
+			assertWindow(wireWindow{From: 0, To: 10, Context: initial, New: tc.fresh})
 			context := append(append([]wirePart{}, original...), tc.fresh...)
+			context = append(context, tc.anchor...)
 			assertWindow(wireWindow{From: 5, To: 15, Context: context, New: []wirePart{}})
 		})
+	}
+}
+
+func TestSpeechAfterARetractionHasItsOwnIdentity(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	save(t, dir, "pending.md")
+	clock := newClock(callStart.Add(7500 * time.Millisecond))
+	assertWindow := feedWindows(t, dir, clock)
+	original := []wirePart{
+		{Speaker: "Me", Start: 6, Words: "We should wait."},
+		{Speaker: "Them", Start: 6, Words: "Are we ready?"},
+	}
+	assertWindow(wireWindow{From: 0, To: 7.5, Context: []wirePart{}, New: original})
+
+	save(t, dir, "retracted.md")
+	clock.raise(callStart.Add(10 * time.Second))
+	assertWindow(wireWindow{From: 0, To: 10, Context: original, New: []wirePart{}})
+
+	save(t, dir, "after-retraction.md")
+	clock.raise(callStart.Add(15 * time.Second))
+	assertWindow(wireWindow{From: 5, To: 15, Context: original, New: original[:1]})
+}
+
+// feedWindows drives the real call reader and window iterator through their
+// composition port without starting a server.
+func feedWindows(t *testing.T, dir string, clock *clock) func(wireWindow) {
+	t.Helper()
+	stream, err := (source{dir: dir, loc: time.UTC, clock: clock}).Open(10*time.Second, 5*time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return func(want wireWindow) {
+		t.Helper()
+		ev, err := stream.Next(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got wireWindow
+		if err := json.Unmarshal(ev.Data, &got); err != nil {
+			t.Fatal(err)
+		}
+		if ev.Name != "chunk" || !reflect.DeepEqual(got, want) {
+			t.Fatalf("got %s %s, want chunk %+v", ev.Name, ev.Data, want)
+		}
 	}
 }
 
