@@ -71,7 +71,8 @@ func (e *Events) Next(ctx context.Context) (Event, error) {
 		return Event{}, err
 	}
 	e.next++
-	return Event{Kind: Chunk, Window: Window{From: from, To: to, New: e.give(call.Parts, to)}}, nil
+	context := e.repeated(call.Parts, from, to)
+	return Event{Kind: Chunk, Window: Window{From: from, To: to, Context: context, New: e.give(call.Parts, to)}}, nil
 }
 
 // join gives a call under way as one window of everything said up to the
@@ -99,6 +100,18 @@ func (e *Events) bounds(k int) (from, to time.Duration) {
 type partKey struct {
 	side  string
 	start time.Duration
+}
+
+// repeated gives the parts in [from, to) already given: the overlap's
+// words, which a window carries as context.
+func (e *Events) repeated(parts []Part, from, to time.Duration) []Part {
+	var ctx []Part
+	for _, p := range parts {
+		if p.Start >= from && p.Start < to && e.given[partKey{p.Side, p.Start}] {
+			ctx = append(ctx, p)
+		}
+	}
+	return ctx
 }
 
 // give gives the parts starting before to that were not given yet, words
