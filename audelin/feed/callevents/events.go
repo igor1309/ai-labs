@@ -46,6 +46,9 @@ func (e *Events) Next(ctx context.Context) (Event, error) {
 		}
 		if ok {
 			e.start, e.started = call.Start, true
+			if joined, ok := e.join(call); ok {
+				return joined, nil
+			}
 			break
 		}
 		if !e.saidNoCall {
@@ -68,8 +71,24 @@ func (e *Events) Next(ctx context.Context) (Event, error) {
 	return Event{Kind: Chunk, Window: Window{From: from, To: to, New: partsIn(call.Parts, from, to)}}, nil
 }
 
+// join gives a call under way as one window of everything said up to the
+// last window end passed, and goes on from there. A call with no window
+// end passed yet is not under way.
+func (e *Events) join(call Call) (Event, bool) {
+	elapsed := e.clock.Now().Sub(call.Start)
+	if elapsed < e.size {
+		return Event{}, false
+	}
+	k := int((elapsed - e.size) / e.step())
+	_, to := e.bounds(k)
+	e.next = k + 1
+	return Event{Kind: Chunk, Window: Window{From: 0, To: to, New: partsIn(call.Parts, 0, to)}}, true
+}
+
+func (e *Events) step() time.Duration { return e.size - e.overlap }
+
 func (e *Events) bounds(k int) (from, to time.Duration) {
-	from = time.Duration(k) * (e.size - e.overlap)
+	from = time.Duration(k) * e.step()
 	return from, from + e.size
 }
 
