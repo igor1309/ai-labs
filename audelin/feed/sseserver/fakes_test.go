@@ -12,8 +12,11 @@ import (
 )
 
 // stream gives the events sent on its channel; a closed channel is a
-// failed source.
-type stream struct{ events chan sseserver.Event }
+// failed source. It reports on let when its connection let it go.
+type stream struct {
+	events chan sseserver.Event
+	let    chan struct{}
+}
 
 func (s *stream) Next(ctx context.Context) (sseserver.Event, error) {
 	select {
@@ -23,6 +26,7 @@ func (s *stream) Next(ctx context.Context) (sseserver.Event, error) {
 		}
 		return ev, nil
 	case <-ctx.Done():
+		close(s.let)
 		return sseserver.Event{}, ctx.Err()
 	}
 }
@@ -38,7 +42,7 @@ type source struct{ opened chan opened }
 func newSource() *source { return &source{opened: make(chan opened, 8)} }
 
 func (s *source) Open(size, overlap time.Duration) (sseserver.Stream, error) {
-	st := &stream{events: make(chan sseserver.Event)}
+	st := &stream{events: make(chan sseserver.Event), let: make(chan struct{})}
 	s.opened <- opened{size, overlap, st}
 	return st, nil
 }

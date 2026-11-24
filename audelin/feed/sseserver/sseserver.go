@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -33,10 +34,46 @@ type Source interface {
 // Handler serves the events of streams src opens.
 type Handler struct {
 	src Source
+
+	mu     sync.Mutex
+	active int
+	// idle is closed once the last of one or more streams has ended.
+	idle     chan struct{}
+	idleOnce sync.Once
 }
 
 // NewHandler makes a handler over src.
-func NewHandler(src Source) *Handler { return &Handler{src: src} }
+func NewHandler(src Source) *Handler { return &Handler{src: src, idle: make(chan struct{})} }
+
+// Serve serves src's events on ln until the last client leaves.
+func Serve(ln net.Listener, src Source) error {
+	h := NewHandler(src)
+	srv := &http.Server{Handler: h}
+	failed := make(chan error, 1)
+	go func() { failed <- srv.Serve(ln) }()
+	select {
+	case err := <-failed:
+		return err
+	case <-h.idle:
+		return srv.Shutdown(context.Background())
+	}
+}
+
+func (h *Handler) begin() {
+	h.mu.Lock()
+	h.active++
+	h.mu.Unlock()
+}
+
+func (h *Handler) end() {
+	h.mu.Lock()
+	h.active--
+	last := h.active == 0
+	h.mu.Unlock()
+	if last {
+		h.idleOnce.Do(func() { close(h.idle) })
+	}
+}
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !loopbackHost(r.Host) {
@@ -53,6 +90,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	h.begin()
+	defer h.end()
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "streaming is not supported", http.StatusInternalServerError)
