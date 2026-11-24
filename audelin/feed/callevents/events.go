@@ -3,6 +3,7 @@ package callevents
 import (
 	"context"
 	"errors"
+	"io"
 	"time"
 )
 
@@ -26,6 +27,15 @@ type Events struct {
 	// given holds the parts already given, so none is given twice and a
 	// revision of one is not sent.
 	given map[partKey]bool
+
+	// ended is true once the call was read ended, at endAt in call time,
+	// as last; lastGiven once its last part-window was looked at; over
+	// once the end was given.
+	ended     bool
+	lastGiven bool
+	endAt     time.Duration
+	last      Call
+	over      bool
 }
 
 // New makes an iterator whose windows are size long and overlap the window
@@ -62,17 +72,71 @@ func (e *Events) Next(ctx context.Context) (Event, error) {
 			return Event{}, err
 		}
 	}
+	for {
+		if e.over {
+			return Event{}, io.EOF
+		}
+		if e.ended {
+			return e.afterEnd(), nil
+		}
+		from, to := e.bounds(e.next)
+		due := e.start.Add(to)
+		if e.clock.Now().Before(due) {
+			if err := e.clock.Wait(ctx, earlier(due, e.clock.Now().Add(lookAgain))); err != nil {
+				return Event{}, err
+			}
+			if call, ok, err := e.live.Live(); err == nil && ok && call.Ended {
+				e.end(call)
+			}
+			continue
+		}
+		call, ok, err := e.live.Live()
+		e.next++
+		if err != nil || !ok {
+			return Event{Kind: Chunk, Window: Window{From: from, To: to}}, nil
+		}
+		if call.Ended {
+			e.next--
+			e.end(call)
+			continue
+		}
+		return e.window(call.Parts, from, to), nil
+	}
+}
+
+// end keeps the ended call and the call time its end was seen at.
+func (e *Events) end(call Call) {
+	e.ended, e.last, e.endAt = true, call, e.clock.Now().Sub(e.start)
+}
+
+// afterEnd gives the windows due before the end, then the last part-window
+// if it has words not yet given, then the end, then nothing.
+func (e *Events) afterEnd() Event {
 	from, to := e.bounds(e.next)
-	if err := e.clock.Wait(ctx, e.start.Add(to)); err != nil {
-		return Event{}, err
+	if to <= e.endAt {
+		e.next++
+		return e.window(e.last.Parts, from, to)
 	}
-	call, _, err := e.live.Live()
-	if err != nil {
-		return Event{}, err
+	if !e.lastGiven {
+		e.lastGiven = true
+		if last := e.window(e.last.Parts, from, e.endAt); len(last.Window.New) > 0 {
+			return last
+		}
 	}
-	e.next++
-	context := e.repeated(call.Parts, from, to)
-	return Event{Kind: Chunk, Window: Window{From: from, To: to, Context: context, New: e.give(call.Parts, to)}}, nil
+	e.over = true
+	return Event{Kind: CallEnded}
+}
+
+func (e *Events) window(parts []Part, from, to time.Duration) Event {
+	context := e.repeated(parts, from, to)
+	return Event{Kind: Chunk, Window: Window{From: from, To: to, Context: context, New: e.give(parts, to)}}
+}
+
+func earlier(a, b time.Time) time.Time {
+	if a.Before(b) {
+		return a
+	}
+	return b
 }
 
 // join gives a call under way as one window of everything said up to the
