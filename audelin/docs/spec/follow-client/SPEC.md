@@ -9,8 +9,9 @@ its own and knows no transport.
 - **Each event is printed at once, in one write,** so Monitor, which turns
   lines printed together into one notification, wakes the thread once per
   event.
-- **The call's text is set apart as untrusted data,** every word kept: it is
-  what other people said, and the thread must not take it for instructions.
+- **The call's text is set apart as untrusted data,** every word kept, as an
+  escaped JSON string in a record marked untrusted, new words apart from
+  overlap context: no word can close the mark or pass for a record of its own.
 - **The call's end and a lost source end it,** saying which, so the thread
   can tell the user.
 

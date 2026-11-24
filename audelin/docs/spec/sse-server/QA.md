@@ -22,3 +22,6 @@ Drive: connect to loopback first as a control (served), then to the Mac's networ
 
 ## S-7 The last client leaving ends the program
 Drive: two clients; the first disconnects, the second reads its next window; the second disconnects; the program exits. Evidence: Missing.
+
+## S-8 A web page cannot read the stream
+Drive: request on loopback with a Host of example.com, and with an Origin header from a page; both are refused, no event read. Evidence: Missing.

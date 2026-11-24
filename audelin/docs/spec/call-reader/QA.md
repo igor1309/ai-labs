@@ -24,3 +24,15 @@ Drive: cut the live transcript mid front matter; read the failure. Evidence: Mis
 
 ## S-7 The call found is read until it ends
 Drive: while reading one call, add a newer live one; the first call's next save is read, then its finish. Evidence: Missing.
+
+## S-8 A merged transcript is never live
+Drive: the newest fixture is a merge Audelin wrote; read none. Evidence: Missing.
+
+## S-9 The later of two calls in one minute is live
+Drive: two unfinished calls, the second named with -2; read the second. Evidence: Missing.
+
+## S-10 A renamed call is still read
+Drive: rename the live folder with a title, then save more; the new part is read. Evidence: Missing.
+
+## S-11 A half-written last line is left for later
+Drive: cut the file mid-row; read the rows before it; complete it; read the row. Evidence: Missing.

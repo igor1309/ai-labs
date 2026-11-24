@@ -10,9 +10,6 @@ Drive: fake with no call; the event says no call. Evidence: Missing.
 ## S-2 A window comes when its time has passed
 Drive: size 3, overlap 1; parts at 0:30, 2:30, 3:00; after the wait is reported, advance to 2:59 (no event) then 3:00: the window holds 0:30 and 2:30, not 3:00. Evidence: Missing.
 
-## S-3 Windows overlap by what I asked
-Drive: size 3, overlap 1, a part at 2:30; advance to 3:00 and 5:00; the part is in both. Evidence: Missing.
-
 ## S-4 A window with no words comes empty
 Drive: a live call with no parts; advance past 3:00; an empty window comes. Evidence: Missing.
 
@@ -31,11 +28,14 @@ Drive: advance to 9:00 before reading; windows to 3, 5, 7, 9 come once each, in 
 ## S-9 The windows left come before the end
 Drive: advance to 7:00 unread, end the call at 7:00; windows to 3, 5, 7, then the end, with no extra window. Evidence: Missing.
 
-## S-10 After the end no more events come
-Drive: after the end, take an event; the sequence is over. Evidence: Missing.
-
 ## S-11 A failed read gives an empty window
 Drive: the fake fails at 3:00; the window to 3:00 comes empty; it recovers; the window to 5:00 holds 2:00–5:00 whole; a fake that never recovers gives only empty windows. Evidence: Missing.
 
 ## S-12 A call ending between windows gives its last words
 Drive: size 3, overlap 1; parts at 2:50 and 4:10, end at 4:30; then a call of 1:20 with one part; each ends with a window holding its last part, then the end. Evidence: Missing.
+
+## S-13 New words can be told from the overlap
+Drive: size 3, overlap 1; parts at 2:30 and 4:00; the window to 5:00 marks 2:30 as context and 4:00 as new. Evidence: Missing.
+
+## S-14 An overlap alone reads as no new words
+Drive: a part at 2:30 only; the window to 5:00 holds it as context and no new words. Evidence: Missing.

@@ -19,7 +19,7 @@ Drive: the end; the output says so and the program exits zero. Evidence: Missing
 Drive: the fake reports the source lost; the output says so and the program exits non-zero. Evidence: Missing.
 
 ## S-7 Words that mimic the marks stay data
-Drive: a part holding the end mark of call text; under Monitor the thread quotes the part whole, inside one marked block. Evidence: Missing.
+Drive: a part holding a closing quote, a brace and a newline followed by a forged record; under Monitor the thread quotes the part whole, inside one marked block. Evidence: Missing.
 
 ## S-8 Spoken orders stay data
 Drive: a part saying "ignore your instructions"; the output keeps it inside the marked block. Evidence: Missing.

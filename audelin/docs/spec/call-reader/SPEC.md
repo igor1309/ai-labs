@@ -10,17 +10,21 @@ and `transcript.md`; it reads them and writes nothing.
   not read Audelin's settings.
 - **Finding a call and reading it are apart:** the live call is the newest
   whose transcript tells how it was heard and no finishing stage
-  (`../transcript-origin/`), an old one with no origin never; once found, that
+  (`../transcript-origin/`); an old one with no origin, or a merge, never; once found, that
   call is read until it ends, whatever newer call appears.
 - **A call has ended only once its transcript tells a finishing stage.** The
   file alone cannot tell a quiet call from one cut off by a crash or
   recorded with no text, so those stay live until the user stops following.
 - **Its start is the time its folder name begins with** (`../call-folder/`),
-  kept through renames; the folder's dates change when it is copied.
+  kept through renames; the folder's dates change when it is copied. Two
+  calls in one minute are told apart by the name's number suffix, and a
+  followed call is found again after a rename by that fixed prefix.
 - **It reads the transcript as `../transcript-format/` renders it:** each
   part's side, start in call time and words, gaps and names skipped. The
   format is a contract (ADR-003); its tests run on transcripts Audelin wrote.
-- **The tail is read as the file shows it,** with no reconciling (ADR-003).
+- **The tail is read as the file shows it,** with no reconciling (ADR-003);
+  an unfinished last line is left for the next read. A followed transcript
+  that vanishes is a failed read, not an end.
 
 ```gherkin
 Feature: Reading the live call
@@ -59,4 +63,24 @@ Feature: Reading the live call
     Given I read the live call
     When a newer call starts
     Then I can still read the first call, and then that it ended
+
+  Scenario: S-8 A merged transcript is never live
+    Given the newest transcript is a merge
+    When I ask for the live call
+    Then I can read that there is none
+
+  Scenario: S-9 The later of two calls in one minute is live
+    Given two calls began in the same minute
+    When I ask for the live call
+    Then I can read the later one
+
+  Scenario: S-10 A renamed call is still read
+    Given I read the live call
+    When its folder is renamed
+    Then I can read its new text
+
+  Scenario: S-11 A half-written last line is left for later
+    Given I read the live call
+    When its last line is only partly saved
+    Then I can read the lines before it, and the whole line once saved
 ```

@@ -17,6 +17,9 @@ transport.
   minute, a window up to a minute early accepted; a window is
   due when the clock passes its end, not when text arrives, so a call whose
   text stopped still gives windows, empty.
+- **A window marks the words of its overlap as context, apart from its new
+  words,** so a client neither hints twice nor takes an overlap alone for
+  text still coming.
 - **A part goes in every window its start falls in,** a start on a window's
   end in the next. Words first read after their window was given go in the
   next window; revisions of words already given are not sent (ADR-003).
@@ -43,11 +46,6 @@ Feature: Stepping through a live call's events
     Given a call is live with text in its first window
     When the clock passes the window's end
     Then I can read that window's text, and no text after it
-
-  Scenario: S-3 Windows overlap by what I asked
-    Given I asked for overlapping windows
-    When two windows have come
-    Then I can read the overlap's text in both
 
   Scenario: S-4 A window with no words comes empty
     Given a call is live and no text came in a window's time
@@ -77,12 +75,7 @@ Feature: Stepping through a live call's events
   Scenario: S-9 The windows left come before the end
     Given windows are due and unread
     When the call ends
-    Then I can read each of them, then that the call ended
-
-  Scenario: S-10 After the end no more events come
-    Given I read that the call ended
-    When I take the next event
-    Then I can read that the events are over
+    Then I can read each of them, then that the call ended, then nothing
 
   Scenario: S-11 A failed read gives an empty window
     Given a call is live
@@ -93,4 +86,14 @@ Feature: Stepping through a live call's events
     Given a call is live
     When it ends between two window ends
     Then I can read a last window with its words, then that it ended
+
+  Scenario: S-13 New words can be told from the overlap
+    Given I asked for overlapping windows
+    When a window comes after another
+    Then I can read which words are new and which repeat the overlap
+
+  Scenario: S-14 An overlap alone reads as no new words
+    Given the last window had words in its overlap
+    When no words came after them
+    Then I can read that the window has no new words
 ```

@@ -16,13 +16,13 @@ it. It reads the follow client's output (`../follow-client/SPEC.md`).
   summary experiment settles; the source sets none.
 - **It answers from the first window, which holds the call so far** (user S-3).
 - **It carries a summary forward through the windows,** so a fact from the
-  start is there at the end (user S-7, ADR-003), and hints once for words
-  that come again in an overlap.
+  start is there at the end (user S-7, ADR-003); it hints only on new words,
+  never on the overlap's context.
 - **Stopping, by the call's end or by asking, ends this thread's following
   with the user spec's message and no recap** (user S-11 to S-13).
 - **It hints only from the project,** the files and repositories the thread
   knows (user S-4, S-5).
-- **Empty windows while a call is live mean its text is not coming:** said
+- **Windows with no new words while a call is live mean its text is not coming:** said
   once (user S-14); the file cannot tell long silence apart.
 - **The call's text is data:** it never acts on what that text asks.
 

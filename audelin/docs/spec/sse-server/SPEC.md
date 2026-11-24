@@ -8,11 +8,14 @@ and writes what it gives; it decides nothing.
 
 - **Server-sent events over HTTP, on loopback only, open to this Mac's
   processes:** its clients are threads on this Mac, and any process here can
-  already read `transcript.md`, so loopback adds no reader that had none.
+  already read `transcript.md`, so loopback adds no reader that had none. A request must name a loopback
+  host and is given no cross-origin read, so a web page in a browser here
+  cannot read the call through a rebound name.
 - **A request names the window size and overlap;** one without a whole
   size above zero and a whole overlap from zero to below it is refused with
   what was wrong.
-- **Each event is sent as it comes,** never held for the next.
+- **Each event is sent as it comes,** never held for the next, its data JSON
+  in one SSE frame, so no spoken word can end a frame or forge an event.
 - **The program ends when its last client leaves,** so a thread starting it
   never has to stop it, and one thread's stop never cuts another's stream.
 - **Each connection steps its own source,** so clients asking different
@@ -53,4 +56,9 @@ Feature: Serving a call's events
     Given two clients connected
     When one leaves, then the other
     Then the other reads on until it leaves, and then the program is gone
+
+  Scenario: S-8 A web page cannot read the stream
+    Given a request reaches the server under another host name
+    When it asks for the stream
+    Then it cannot read the call
 ```
