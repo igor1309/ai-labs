@@ -163,3 +163,68 @@ func TestS10_ARenamedFolderIsStillFollowed(t *testing.T) {
 		t.Fatalf("got %s with %d parts, %v", call.ID, len(call.Parts), ok)
 	}
 }
+
+// following gives a reader following a live call in a temp calls folder.
+func following(t *testing.T) (*Reader, string) {
+	t.Helper()
+	dir := calls(t, map[string]string{"2026.11.24-1015": "live.md"})
+	r := New(dir, moscow)
+	live(t, r)
+	return r, filepath.Join(dir, "2026.11.24-1015")
+}
+
+func failed(t *testing.T, r *Reader) {
+	t.Helper()
+	call, ok, err := r.Live()
+	if err == nil || ok || call.Ended {
+		t.Fatalf("got %+v, %v, %v; want a failed read", call, ok, err)
+	}
+}
+
+func TestS5_AVanishedTranscriptIsAFailedRead(t *testing.T) {
+	r, folder := following(t)
+	if err := os.Remove(filepath.Join(folder, "transcript.md")); err != nil {
+		t.Fatal(err)
+	}
+	failed(t, r)
+}
+
+func TestS5_AVanishedFolderIsAFailedRead(t *testing.T) {
+	r, folder := following(t)
+	if err := os.RemoveAll(folder); err != nil {
+		t.Fatal(err)
+	}
+	failed(t, r)
+}
+
+func TestS5_AnUnreadableTranscriptIsAFailedRead(t *testing.T) {
+	r, folder := following(t)
+	path := filepath.Join(folder, "transcript.md")
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(path, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	failed(t, r)
+}
+
+func TestS6_AMalformedTranscriptIsAFailedRead(t *testing.T) {
+	r, folder := following(t)
+	if err := os.WriteFile(filepath.Join(folder, "transcript.md"), []byte("not a transcript\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	failed(t, r)
+
+	save(t, filepath.Dir(folder), "2026.11.24-1015", "live-later.md")
+	if call, ok := live(t, r); !ok || len(call.Parts) != 6 {
+		t.Fatalf("after the failure: %d parts, %v", len(call.Parts), ok)
+	}
+}
+
+func TestAMissingCallsFolderIsAFailedRead(t *testing.T) {
+	r := New(filepath.Join(t.TempDir(), "none"), moscow)
+	if _, _, err := r.Live(); err == nil {
+		t.Fatal("no error")
+	}
+}
