@@ -15,7 +15,7 @@ trusted for that alone.
    https://ucmp.berkeley.edu
 5. Encyclopaedia Britannica, https://www.britannica.com
 
-The flying and sea reptiles (LAB-379) are checked against the same
+The flying and sea reptiles are checked against the same
 sources. Where none of them gives a mass, a peer-reviewed estimate is
 trusted for the mass alone: Witton 2008 for pterosaurs (Zitteliana B28),
 Zhao 2026 for plesiosaurs, and Motani's ichthyosaur weights.
@@ -23,7 +23,7 @@ Zhao 2026 for plesiosaurs, and Motani's ichthyosaur weights.
 ## Rules
 
 - Height is hip height: from the ground to the top of the hip, the
-  dinosaur standing, in metres (owner, 2026-10-18, LAB-263). Not head
+  dinosaur standing, in metres. Not head
   height: how sauropods held their necks is still argued (Stevens and
   Parrish 1999 against Taylor, Wedel and Naish 2009), so a head height
   rests on one side of that debate, while the hip is fixed by the leg
@@ -59,7 +59,7 @@ Zhao 2026 for plesiosaurs, and Motani's ichthyosaur weights.
   equation where it gives one, and the References table shows the
   working.
 - A dinosaur's length is nose to tail, in metres, as the sources give
-  it, kept beside its hip height, which stays its size (LAB-393). Where
+  it, kept beside its hip height, which stays its size. Where
   they disagree, the NHM figure is used when it lies within or near the
   others' range, and the References row notes the disagreement.
 - Mass is the live body mass, in kilograms. It is an estimate: a value
@@ -73,7 +73,7 @@ Zhao 2026 for plesiosaurs, and Motani's ichthyosaur weights.
   the text does not make it unclear. A dinosaur listed as an omnivore is
   `both` (Gallimimus, Oviraptor and Troodon). The sorting game leaves it
   out of a diet board with two baskets and sorts it into BOTH on
-  Explorer's, which has a third (LAB-295).
+  Explorer's, which has a third.
 - Traits sort dinosaurs in the sorting game: `legs` (2, 4 or `either`),
   `horns` (true or false), `feathers` (true, false or `unknown`) and
   `size` (`big` or `small`). `legs` is `either` for the dinosaurs the
@@ -95,7 +95,7 @@ Zhao 2026 for plesiosaurs, and Motani's ichthyosaur weights.
   other meat-eaters and the omnivores drawn without feathers feathers
   are `unknown`: no fossil settles it, Tyrannosaurus included, whose
   scaly skin NHM reports while leaving feathers on its back open.
-- The sorting game (LAB-295) deals `either` and `unknown` only on the
+- The sorting game deals `either` and `unknown` only on the
   Paleontologist level's legs and feathers boards, into TWO OR FOUR and
   NOT KNOWN YET; every other board leaves them out, as it does `null`.
   Paleontologist's feathers board deals only the dinosaurs drawn with
@@ -116,9 +116,7 @@ Zhao 2026 for plesiosaurs, and Motani's ichthyosaur weights.
 
 ## References
 
-What each value rests on, for the dinosaurs added from LAB-282 on and for
-the masses the science check of LAB-288 weighed; heights are under Hip
-heights. NHM is the Dino Directory page of the dinosaur; Britannica
+What each listed value rests on; heights are under Hip heights. NHM is the Dino Directory page of the dinosaur; Britannica
 includes Britannica Kids. Britannica's tons are short tons of 907 kg.
 
 | Dinosaur | Mass | References |
@@ -175,7 +173,7 @@ includes Britannica Kids. Britannica's tons are short tons of 907 kg.
 | `kronosaurus` | 11 t | Zhao 2026: 10.4 m, 11,396 kg, Queensland |
 | `plesiosaurus` | 200 kg | NHM: about 3.5 m, fish and crustaceans, Anning's skeleton; Zhao 2026: Seeleyosaurus 3.66 m, 199 kg |
 | `ophthalmosaurus` | 940 kg | Motani: 4.0 m, 930–950 kg; NHM: eyes over 22 cm across, live birth |
-| `sinosauropteryx` | 500 g | Length 1.1 m: NHM, which gives no mass; Britannica could not be read (LAB-1767). 500 g is kept, the published estimate for a 1 m adult being about 0.55 kg; Compsognathus's 3 kg cubed to 1.1 m (12 kg) would ignore its far slimmer body and long tail |
+| `sinosauropteryx` | 500 g | Length 1.1 m: NHM, which gives no mass; Britannica could not be read. 500 g is kept, the published estimate for a 1 m adult being about 0.55 kg; Compsognathus's 3 kg cubed to 1.1 m (12 kg) would ignore its far slimmer body and long tail |
 | `ouranosaurus` | 2.2 t | Length 7 m: NHM, which gives no mass; Britannica could not be read. 2.2 t is the proposal's working estimate; Iguanodon's 4 t at 10 m cubed to 7 m gives 1.4 t, Ouranosaurus being the lighter-built, so the range is 1.4–2.2 t |
 | `euoplocephalus` | 2 t | Length 7 m and mass 2,000 kg: NHM. The proposal's 6 m and 2.5 t gave way to NHM |
 | `majungasaurus` | 1.1 t | Length 6 m: NHM, which gives no mass; the proposal's 7 m gave way to NHM. Carnotaurus's 1.5 t at 8 m cubed to 6 m gives 0.63 t, Majungasaurus being the stockier; 1.1 t is kept as the working estimate |
@@ -278,7 +276,7 @@ tibia + metatarsal III, over the femur unless said):
 | `maiasaura` | 2.1 m | 2 | MA12, ROM 44770: femur 990, × 2.14 |
 | `corythosaurus` | 2.4 m | 3 | NHM 10 m × Parasaurolophus, 2205 over NHM 9 m; MA12's femora, 500–640 mm, are too small for its length |
 | `chasmosaurus` | 2.2 m | 2 | MA12, ROM 843: femur 840, × 2.60 |
-| `sinosauropteryx` | 0.50 m | 3 | NHM 1.1 m × Compsognathus, 0.32 m over NHM 0.7 m; PC16 and KK25 could not be read (LAB-1767) |
+| `sinosauropteryx` | 0.50 m | 3 | NHM 1.1 m × Compsognathus, 0.32 m over NHM 0.7 m; PC16 and KK25 could not be read |
 | `ouranosaurus` | 1.5 m | 3 | NHM 7 m × Iguanodon, 2.2 m over NHM 10 m; MA12's femora could not be read |
 | `euoplocephalus` | 0.96 m | 3 | NHM 7 m × Ankylosaurus, 1.1 m over NHM 8 m; MA12's femora could not be read |
 | `majungasaurus` | 1.9 m | 3 | NHM 6 m × Carnotaurus, 2.5 m over NHM 8 m; PC16 could not be read |
