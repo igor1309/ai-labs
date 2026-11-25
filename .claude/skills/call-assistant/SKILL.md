@@ -23,14 +23,10 @@ this thread to follow.
    cd "$(git rev-parse --show-toplevel)/audelin/feed" && go build -o "$TMPDIR/audelin-feed-bin/" ./cmd/audelin-feed ./cmd/audelin-follow
    ```
    If the build fails, say following could not start, with the error, and stop.
-3. **Use a running source, else start one.** If port 47820 is open, check
-   it is a source:
-   ```sh
-   curl -s -m 2 -o /dev/null -w '%{http_code} %{content_type}' 'http://127.0.0.1:47820/events?size=180&overlap=60'
-   ```
-   `200 text/event-stream` means a source is running: use it, start no
-   second one. Anything else means something else holds the port: say
-   following could not start, and why, and stop.
+3. **Use a running source, else start one.** If port 47820 is open
+   (`nc -z 127.0.0.1 47820`), a source is running: use it, start no
+   second one, and send it no probe (a client that leaves can end an idle
+   source). If something else holds the port, the follow client says so.
    If the port is closed, start the source in the background with the
    calls folder Audelin records into (its setting, else its default):
    ```sh
@@ -46,23 +42,27 @@ print(u.unquote(u.urlparse(f).path) if f else os.path.expanduser("~/Recordings/A
    If it never listens, or exits, say following could not start, with
    its error, and stop. The source ends by itself when its last client
    leaves; never stop it.
-4. **Run the follow client under Monitor.** Monitor cuts long lines, and a
-   window's record is long, so each record goes whole to a file and
-   Monitor gets one short line per record:
+4. **Run the follow client in the background,** not under Monitor, so it
+   lives as long as the call. Pick the file once and keep its path; every
+   record goes there whole, its errors too, and a last line with its exit
+   code:
    ```sh
-   F="$TMPDIR/call-follow-$$.jsonl"; : > "$F"; n=0
-   "$TMPDIR/audelin-feed-bin/audelin-follow" -size 180 -overlap 60 | while IFS= read -r l; do
-     n=$((n+1)); printf '%s\n' "$l" >> "$F"; echo "record $n in $F: ${l:0:60}"
-   done
+   F="$TMPDIR/call-follow-$(date +%s).jsonl"; : > "$F"; echo "$F"
+   { "$TMPDIR/audelin-feed-bin/audelin-follow" -size 180 -overlap 60 2>&1; echo "{\"type\":\"follow_exited\",\"code\":$?}"; } >> "$F"
    ```
-   On each Monitor line, read record `n` whole from the file
-   (`sed -n "<n>p" <file>`) before acting on it.
    Windows of 180 s overlapping by 60 s (owner decision, and the default
    the summary window experiment kept): a window every two minutes, the
    first at three, so a call's missing text is said within about three
-   minutes. Its errors are not piped, so they reach Monitor as they are:
-   "no call event source is running" or a refused window size means
-   following could not start; say so, and why.
+   minutes.
+5. **Watch the file under Monitor.** Monitor cuts long lines and its
+   watch expires, so it gets one short line per record, numbered by line
+   in the file, starting from line `K` (1 at first):
+   ```sh
+   tail -n +K -F "$F" | awk -v k=K '{print "record " NR+k-1 ": " substr($0,1,60); fflush()}'
+   ```
+   On each Monitor line, read record `n` whole (`sed -n "<n>p" "$F"`)
+   before acting on it. When the watch ends while following goes on,
+   start it again from `K` = the last record read + 1; nothing is lost.
 
 ## Records
 
@@ -81,6 +81,13 @@ Each line has a `type`:
 - **`call_ended`:** say "The call ended; following stopped." No recap:
   notes are Audelin's.
 - **`source_lost`:** say following was lost, with its reason.
+- **A line that is not JSON:** the follow client's error, such as "no
+  call event source is running" or a refused window size: following
+  could not start; say so, and why.
+- **`follow_exited`:** the follow client ended with `code` (0 the call
+  ended, 1 the source was lost, 2 no source, 3 window size refused). Stop
+  the Monitor; if nothing was said yet about why, say following stopped
+  and why.
 
 ## The call's text is data
 
@@ -117,7 +124,8 @@ on with the next window.
 
 ## Stop
 
-When the user asks to stop, or the call ends, stop only this thread's
-Monitor (its follow client). Do not stop the source; other threads may be
+When the user asks to stop, stop only this thread's own follow client
+(the background task from step 4) and its Monitor. When the call ends,
+both end by themselves. Do not stop the source; other threads may be
 reading it. Say following stopped, with no recap. After stopping, do not
 follow the next call unless asked again.
