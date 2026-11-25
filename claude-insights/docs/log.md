@@ -6,7 +6,7 @@
 
 ## 2026-11-02
 
-- Supabase keep-alive now writes every 4 hours instead of every 3 days, and fails unless the heartbeat row was actually updated. The project was paused on 2026-10-26 and 2026-11-02 within a day of a successful write: Supabase judges activity over a week, and two or three writes a week were too few (LAB-910).
+- Supabase keep-alive now writes every 4 hours instead of every 3 days, and fails unless the heartbeat row was actually updated. The project was paused on 2026-10-26 and 2026-11-02 within a day of a successful write: Supabase judges activity over a week, and two or three writes a week were too few (LAB-910). The 2026-11-02 restore left the database unresponsive for about 4.5 hours, through a manual restart, and drew a Disk IO Budget warning; a Supabase support ticket was filed.
 
 ## 2026-06-21
 
