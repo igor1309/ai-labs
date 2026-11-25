@@ -21,7 +21,7 @@ and `transcript.md`; it reads them and writes nothing.
   followed call is found again after a rename by that fixed prefix.
 - **It reads the transcript as `../transcript-format/` renders it:** each
   part's side, start in call time and words, gaps and names skipped. The
-  format is a contract (ADR-003). A legacy transcript without front matter
+  format is a contract between the app and the feed. A legacy transcript without front matter
   is readable. A malformed origin block or finishing stage is a failed read.
 - **The tail is read as the file shows it.** The reader keeps a part's ID
   across revisions by matching rows on each recording side with the previous
