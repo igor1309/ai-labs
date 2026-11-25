@@ -30,12 +30,13 @@ type Events struct {
 	// sent keeps the original parts for context even if the transcript rewrites them.
 	sent []Part
 
-	// ended is true once the call was read ended, at endAt in call time.
-	// remaining holds the ended snapshot's unsent parts. over is true
+	// ended is true once the call was read ended, at endAt in call time,
+	// as last; lastGiven once its last part-window was looked at; over
 	// once the end was given.
 	ended     bool
+	lastGiven bool
 	endAt     time.Duration
-	remaining []Part
+	last      Call
 	over      bool
 }
 
@@ -102,15 +103,9 @@ func (e *Events) Next(ctx context.Context) (Event, error) {
 	}
 }
 
-// end takes the unsent parts once. A finishing pass can split one
-// segment into speaker rows that still share the original segment ID.
+// end keeps the ended call and the call time its end was seen at.
 func (e *Events) end(call Call) {
-	e.ended, e.endAt = true, e.clock.Now().Sub(e.start)
-	for _, p := range call.Parts {
-		if _, given := e.given[p.ID]; !given {
-			e.remaining = append(e.remaining, p)
-		}
-	}
+	e.ended, e.last, e.endAt = true, call, e.clock.Now().Sub(e.start)
 }
 
 // afterEnd gives the windows due before the end, then the last part-window
@@ -119,23 +114,34 @@ func (e *Events) afterEnd() Event {
 	from, to := e.bounds(e.next)
 	if to <= e.endAt {
 		e.next++
-		return e.drain(from, to)
+		return e.window(e.last.Parts, from, to)
 	}
-	if len(e.remaining) > 0 {
+	if !e.lastGiven {
+		e.lastGiven = true
 		// The clock dates the observation of the end. The final snapshot
 		// may still contain unsent parts at or beyond that time.
 		to = e.endAt
-		for _, p := range e.remaining {
-			to = max(to, p.Start+time.Nanosecond)
+		for _, p := range e.last.Parts {
+			if _, given := e.given[p.ID]; !given {
+				to = max(to, p.Start+time.Nanosecond)
+			}
 		}
-		return e.drain(from, to)
+		if last := e.window(e.last.Parts, from, to); len(last.Window.New) > 0 {
+			return last
+		}
 	}
 	e.over = true
 	return Event{Kind: CallEnded}
 }
 
 func (e *Events) window(parts []Part, from, to time.Duration) Event {
-	w := e.withContext(from, to)
+	w := Window{From: from, To: to}
+	for _, p := range e.sent {
+		if p.Start >= from && p.Start < to {
+			w.Context = append(w.Context, p)
+		}
+	}
+	slices.SortStableFunc(w.Context, func(a, b Part) int { return cmp.Compare(a.Start, b.Start) })
 	for _, p := range parts {
 		if _, given := e.given[p.ID]; !given && p.Start < to {
 			// Words first read after their own window go in this one.
@@ -144,30 +150,6 @@ func (e *Events) window(parts []Part, from, to time.Duration) Event {
 	}
 	e.remember(w.New)
 	return Event{Kind: Chunk, Window: w}
-}
-
-func (e *Events) drain(from, to time.Duration) Event {
-	w := e.withContext(from, to)
-	e.remaining = slices.DeleteFunc(e.remaining, func(p Part) bool {
-		if p.Start >= to {
-			return false
-		}
-		w.New = append(w.New, p)
-		return true
-	})
-	e.sent = append(e.sent, w.New...)
-	return Event{Kind: Chunk, Window: w}
-}
-
-func (e *Events) withContext(from, to time.Duration) Window {
-	w := Window{From: from, To: to}
-	for _, p := range e.sent {
-		if p.Start >= from && p.Start < to {
-			w.Context = append(w.Context, p)
-		}
-	}
-	slices.SortStableFunc(w.Context, func(a, b Part) int { return cmp.Compare(a.Start, b.Start) })
-	return w
 }
 
 func (e *Events) remember(parts []Part) {

@@ -19,7 +19,7 @@ struct MergeChainTests {
     @Test func joinsThePartsTranscriptsIntoTheEarliestCallAndHandsItToNotes() async throws {
         try await withComposeFolder { root in
             try call(first, in: root, [.init(side: .mine, start: 1, settled: "hello", pending: "")])
-            try call(second, in: root, [.init(id: 7, side: .theirs, start: 2, settled: "hi", pending: "", speaker: "s1")],
+            try call(second, in: root, [.init(side: .theirs, start: 2, settled: "hi", pending: "", speaker: "s1")],
                      speakers: [.init(id: "s1", name: "Ann", state: "named")])
             let handed = Mutex<[(String, [String], [Job.Entry])]>([])
             let sut = SummaryCalls(storage: storage(root), release: testTranscriptBuild.release, deleted: { _ in },
@@ -31,7 +31,7 @@ struct MergeChainTests {
             let joined = TranscriptFormat.read(try String(contentsOf: root.appendingPathComponent("\(first)/transcript.md"), encoding: .utf8))
             #expect(joined.segments == [.init(side: .mine, start: 1, settled: "hello", pending: ""),
                                         .gap(at: 10, length: 50),
-                                        .init(id: 7, side: .theirs, start: 62, settled: "hi", pending: "", speaker: "2.s1")])
+                                        .init(side: .theirs, start: 62, settled: "hi", pending: "", speaker: "2.s1")])
             #expect(joined.speakers == [.init(id: "2.s1", name: "Ann", state: "named")])
             let notes = try #require(handed.withLock { $0 }.first)
             #expect(notes.0 == first && notes.1 == [second, first])

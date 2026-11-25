@@ -37,26 +37,26 @@
 
 # Transcript
 
-**Me** 00:00:02 <!-- audelin-segment me-1 -->
+**Me** 00:00:02
 Hello, can you hear me?
 
-**Them 1** 00:00:05 <!-- audelin-segment them-1 -->
+**Them 1** 00:00:05
 Yes. The code word is "**Them** 00:00:09".
 
-**Them 2** 00:01:04 <!-- audelin-segment them-2 -->
+**Them 2** 00:01:04
 Where are call notes saved?
 
 **Gap** 00:01:10
 Cut off for 00:00:15.
 
-**Me** 00:01:30 (filled in later) <!-- audelin-segment me-2 -->
+**Me** 00:01:30 (filled in later)
 Next to the transcript,
 in the call's folder.
 
-**Them 1** 00:02:05 <!-- audelin-segment them-3 -->
+**Them 1** 00:02:05
 And the CLI is called what?
 
-**Me** 00:02:10 <!-- audelin-segment me-3 -->
+**Me** 00:02:10
 It is still being
 
 ## Speakers

@@ -185,8 +185,8 @@ struct TranscriptFinalizationPortsTests {
             #expect(far.far.speakers.map(\.id) == ["d0", "d1"])
             #expect(samples.all == [160])
             let text = try #require(await bytes.replacements.first)
-            #expect(text.contains("**Them 1** 00:00:00 <!-- audelin-segment them-0 -->\nfirst"))
-            #expect(text.contains("**Them 2** 00:00:02 <!-- audelin-segment them-2 -->\nsecond"))
+            #expect(text.contains("**Them 1** 00:00:00\nfirst"))
+            #expect(text.contains("**Them 2** 00:00:02\nsecond"))
             await resources.published(call: "a")
         }
     }

@@ -1,13 +1,5 @@
 # Log
 
-## 2026-11-25
-
-- LAB-1800: `audelin-folder-index` writes `~/.audelin/feed/folders.md`, one line per repository and its direct projects with its README's first line and a link, from the folders named in `~/.audelin/feed/folder-index.json`, for the call assistant to know where to look.
-
-## 2026-11-24
-
-- LAB-1799: `audelin-feed` serves the call being recorded as it goes on, in windows of the size each client asks, on this Mac's loopback only; `audelin-follow` prints them for a thread, telling no call, the call's end and a lost source apart.
-
 ## 2026-11-21
 
 - LAB-1754: Stop in a finished call's panel no longer stops the call recording now. A far-side line said while the previous call's watch was still closing now takes its speaker's name once the new watch sees them.

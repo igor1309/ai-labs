@@ -15,7 +15,6 @@ enum Transcript {
     static func segment(from entry: CallState.Entry, speaker: String? = nil) -> TranscriptFormat.Segment {
 
         TranscriptFormat.Segment(
-            id: entry.text.id,
             side: entry.speaker == .mine ? .mine : .theirs,
             start: entry.text.start,
             settled: entry.text.settledText,
@@ -56,7 +55,7 @@ enum Transcript {
                 speakers.append(.init(id: id, name: name, state: name == nil ? "diarized" : "confirmed"))
             }
             return TranscriptFormat.Segment(
-                id: piece.segment.id, side: .theirs, start: piece.segment.start, settled: piece.segment.settledText, pending: piece.segment.pendingText,
+                side: .theirs, start: piece.segment.start, settled: piece.segment.settledText, pending: piece.segment.pendingText,
                 filledInLater: later[piece.segment.id] ?? false, speaker: id
             )
         }

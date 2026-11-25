@@ -21,11 +21,11 @@
 
 # Transcript
 
-**Me** 00:00:05 <!-- audelin-segment me-1 -->
+**Me** 00:00:05
 Let's wait for the team.
 
-**Them** 00:00:06 <!-- audelin-segment them-1 -->
+**Them** 00:00:06
 Are we ready?
 
-**Me** 00:00:06 <!-- audelin-segment me-3 -->
+**Me** 00:00:06
 I'll send an update.

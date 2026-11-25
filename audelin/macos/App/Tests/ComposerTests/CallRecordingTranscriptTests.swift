@@ -44,7 +44,7 @@ struct CallRecordingTranscriptTests {
             #expect(callTrack.sampleRate == 48_000)
             #expect(callTrack.samples == theirs)
             #expect(try await transcriptText(of: rig, folder: name)
-                == "# Transcript\n\n**Me** 00:00:00 <!-- audelin-segment me-0 -->\nmine final\n\n**Them** 00:00:00 <!-- audelin-segment them-0 -->\ntheirs final\n")
+                == "# Transcript\n\n**Me** 00:00:00\nmine final\n\n**Them** 00:00:00\ntheirs final\n")
         }
     }
 }
