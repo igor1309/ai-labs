@@ -3,7 +3,6 @@
 Observer: the user, whose one call was saved as several because it was cut
 off. The merged call's notes behave as any ended call's
 (`../call-summaries/SPEC.md`).
-Oracle: the owner's rulings on merging calls.
 
 ## Decided
 
