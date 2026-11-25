@@ -2,6 +2,7 @@ package folderindex
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -25,7 +26,7 @@ func TestS1_ARepositoryIsListedWithItsREADMEsFirstLine(t *testing.T) {
 	writeFile(t, filepath.Join(repo, "README"), "Second choice.\n")
 	writeFile(t, filepath.Join(repo, "README.markdown"), "Third choice.\n")
 
-	runIndex(t, 0, "-out", out, root)
+	runIndex(t, 0, base, out, root)
 	assertFile(t, out, header(root)+fmt.Sprintf("- `%s`: This is the first line. ([README](<%s>))\n", repo, readme))
 }
 
@@ -50,7 +51,7 @@ func TestS2_AMonoreposProjectsAreListed(t *testing.T) {
 	writeFile(t, filepath.Join(repo, ".hidden", "README.md"), "Hidden project.\n")
 	writeFile(t, filepath.Join(repo, "node_modules", "README.md"), "Dependency.\n")
 
-	runIndex(t, 0, "-out", out, root)
+	runIndex(t, 0, base, out, root)
 	assertFile(t, out, header(root)+fmt.Sprintf(
 		"- `%s`: The monorepo. ([README](<%s/rEaDmE.Markdown>))\n"+
 			"- `%s`: Project A. ([README](<%s/readme.md>))\n"+
@@ -67,7 +68,7 @@ func TestS3_ARepositoryWithNoREADMEIsStillListed(t *testing.T) {
 	out := filepath.Join(base, "folders.md")
 	writeFile(t, filepath.Join(repo, ".git"), "gitdir: /example/worktrees/worktree\n")
 
-	runIndex(t, 0, "-out", out, root)
+	runIndex(t, 0, base, out, root)
 	assertFile(t, out, header(root)+fmt.Sprintf("- `%s`: no README\n", repo))
 }
 
@@ -88,7 +89,7 @@ func TestS4_OnlyProseMakesTheSummary(t *testing.T) {
 		"See [guide](https://example.com/guide(v2)) and [API][docs]: "+strings.Repeat("界", 160)+"\n"+
 		"\n[docs]: https://example.com/api\n")
 
-	runIndex(t, 0, "-out", out, root)
+	runIndex(t, 0, base, out, root)
 	assertFile(t, out, header(root)+fmt.Sprintf(
 		"- `%s`: no summary ([README](<%s/README.md>))\n"+
 			"- `%s`: See guide and API: %s… ([README](<%s/README.md>))\n",
@@ -123,7 +124,7 @@ func TestS5_FoldersThatAreNotRepositoriesAreNotEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	runIndex(t, 0, "-out", out, root)
+	runIndex(t, 0, base, out, root)
 	assertFile(t, out, header(root)+fmt.Sprintf("- `%s`: no README\n", repo))
 }
 
@@ -143,7 +144,7 @@ func TestS6_ARunReplacesTheIndexAndIsStable(t *testing.T) {
 	want := header(b, a) + fmt.Sprintf("- `%s`: no README\n- `%s`: no README\n", aRepo, bRepo)
 
 	for range 2 {
-		runIndex(t, 0, "-out", out, b, a)
+		runIndex(t, 0, base, out, b, a)
 		assertFile(t, out, want)
 	}
 }
@@ -163,15 +164,53 @@ func TestS7_AMissingRootFailsAndKeepsTheOldIndex(t *testing.T) {
 	writeFile(t, out, old)
 
 	for _, badRoot := range []string{missing, file} {
-		if stderr := runIndex(t, 1, "-out", out, root, badRoot); !strings.Contains(stderr, badRoot) {
+		if stderr := runIndex(t, 1, base, out, root, badRoot); !strings.Contains(stderr, badRoot) {
 			t.Errorf("stderr = %q, want root %q", stderr, badRoot)
 		}
 		assertFile(t, out, old)
 	}
-	if stderr := runIndex(t, 2, "-out", out); !strings.Contains(stderr, "Usage: audelin-folder-index") {
+	if stderr := run(t, 2, filepath.Join(base, "home"), "-out", out, root); !strings.Contains(stderr, "Usage: audelin-folder-index") {
 		t.Errorf("stderr = %q, want usage", stderr)
 	}
 	assertFile(t, out, old)
+}
+
+// Contract test: a missing or malformed settings file is said and keeps the old index.
+func TestS8_BadSettingsFailAndKeepTheOldIndex(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	home := filepath.Join(base, "home")
+	settings := filepath.Join(home, ".audelin", "feed", "folder-index.json")
+	out := filepath.Join(base, "folders.md")
+	const old = "# Old index\n"
+	writeFile(t, out, old)
+
+	if stderr := run(t, 1, home, "-out", out); !strings.Contains(stderr, settings) {
+		t.Errorf("stderr = %q, want settings path %q", stderr, settings)
+	}
+	for _, bad := range []string{"", "{", `{"roots": "/one"}`, `{"roots": []}`, `{"folders": ["/one"]}`, `{"roots": ["relative"]}`, `{"roots": ["/a"]} {}`} {
+		writeFile(t, settings, bad)
+		if stderr := run(t, 1, home, "-out", out); !strings.Contains(stderr, "settings") && !strings.Contains(stderr, "relative") {
+			t.Errorf("settings %q: stderr = %q, want a settings error", bad, stderr)
+		}
+		assertFile(t, out, old)
+	}
+}
+
+// Contract test: with no flags the settings and index are under home's
+// .audelin/feed, its folder made, and a ~/ root is under home.
+func TestS9_TheIndexIsWrittenUnderHomeByDefault(t *testing.T) {
+	t.Parallel()
+
+	home := filepath.Join(t.TempDir(), "home")
+	repo := filepath.Join(home, "code", "repo")
+	mkdir(t, filepath.Join(repo, ".git"))
+	writeFile(t, filepath.Join(home, ".audelin", "feed", "folder-index.json"), `{"roots": ["~/code"]}`)
+
+	run(t, 0, home)
+	assertFile(t, filepath.Join(home, ".audelin", "feed", "folders.md"),
+		header(filepath.Join(home, "code"))+fmt.Sprintf("- `%s`: no README\n", repo))
 }
 
 // Contract test: a failed rename keeps the destination and removes its temporary file.
@@ -185,14 +224,14 @@ func TestFailedReplacementRemovesTemporaryFile(t *testing.T) {
 	mkdir(t, root)
 	writeFile(t, marker, "Keep this file.\n")
 
-	runIndex(t, 1, "-out", out, root)
+	runIndex(t, 1, base, out, root)
 	assertFile(t, marker, "Keep this file.\n")
 	files, err := os.ReadDir(base)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(files) != 2 || files[0].Name() != "folders.md" || files[1].Name() != "root" {
-		t.Fatalf("output directory has entries %v, want only folders.md and root", files)
+	if len(files) != 3 || files[0].Name() != "folders.md" || files[1].Name() != "home" || files[2].Name() != "root" {
+		t.Fatalf("output directory has entries %v, want only folders.md, home and root", files)
 	}
 }
 
@@ -243,10 +282,23 @@ func writeFile(t *testing.T, path, data string) {
 	}
 }
 
-func runIndex(t *testing.T, want int, args ...string) string {
+// runIndex writes roots into a settings file under base's temp home and
+// runs the generator with the index at out.
+func runIndex(t *testing.T, want int, base, out string, roots ...string) string {
+	t.Helper()
+	home := filepath.Join(base, "home")
+	data, err := json.Marshal(map[string][]string{"roots": roots})
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, filepath.Join(home, ".audelin", "feed", "folder-index.json"), string(data))
+	return run(t, want, home, "-out", out)
+}
+
+func run(t *testing.T, want int, home string, args ...string) string {
 	t.Helper()
 	var stderr bytes.Buffer
-	if got := Run(args, &stderr); got != want {
+	if got := Run(args, home, &stderr); got != want {
 		t.Fatalf("Run(%q) = %d, want %d; stderr = %q", args, got, want, stderr.String())
 	}
 	return stderr.String()

@@ -2,6 +2,8 @@
 package folderindex
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -14,40 +16,49 @@ import (
 
 const command = "audelin-folder-index"
 
-// Run writes the folder index and returns the command's exit code.
-func Run(args []string, stderr io.Writer) int {
+// Run writes the folder index and returns the command's exit code. home is
+// the user's home folder: the settings and the default index live under
+// home/.audelin/feed.
+func Run(args []string, home string, stderr io.Writer) int {
 	flags := flag.NewFlagSet(command, flag.ContinueOnError)
 	flags.SetOutput(stderr)
-	out := flags.String("out", "", "destination Markdown file")
-	flags.Usage = func() { fmt.Fprintf(stderr, "Usage: %s -out <file> <root>...\n", command) }
+	feed := filepath.Join(home, ".audelin", "feed")
+	settingsPath := flags.String("settings", filepath.Join(feed, "folder-index.json"), "settings file naming the roots")
+	out := flags.String("out", filepath.Join(feed, "folders.md"), "destination Markdown file")
+	flags.Usage = func() { fmt.Fprintf(stderr, "Usage: %s [-settings <file>] [-out <file>]\n", command) }
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
-	if *out == "" || flags.NArg() == 0 {
+	if home == "" || *out == "" || *settingsPath == "" || flags.NArg() != 0 {
 		flags.Usage()
 		return 2
 	}
 
+	configured, err := readSettings(*settingsPath)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
 	index := catalog{readDir: os.ReadDir, readFile: os.ReadFile}
-	roots := make([]string, 0, flags.NArg())
-	for _, root := range flags.Args() {
-		if root == "" {
-			fmt.Fprintf(stderr, "root %q: expected a directory path\n", root)
+	roots := make([]string, 0, len(configured))
+	for _, root := range configured {
+		if root == "~" || strings.HasPrefix(root, "~/") {
+			root = filepath.Join(home, root[1:])
+		}
+		if !filepath.IsAbs(root) {
+			fmt.Fprintf(stderr, "root %q in %s: expected an absolute path or one starting with ~/\n", root, *settingsPath)
 			return 1
 		}
-		absolute, err := filepath.Abs(root)
-		if err == nil {
-			var info fs.FileInfo
-			info, err = os.Lstat(absolute)
-			if err == nil && !info.IsDir() {
-				err = fmt.Errorf("expected a directory")
-			}
+		root = filepath.Clean(root)
+		info, err := os.Lstat(root)
+		if err == nil && !info.IsDir() {
+			err = fmt.Errorf("expected a directory")
 		}
 		if err != nil {
 			fmt.Fprintf(stderr, "root %q: %v\n", root, err)
 			return 1
 		}
-		roots = append(roots, absolute)
+		roots = append(roots, root)
 	}
 	entries, err := index.collect(roots)
 	if err == nil {
@@ -58,6 +69,29 @@ func Run(args []string, stderr io.Writer) int {
 		return 1
 	}
 	return 0
+}
+
+// readSettings reads the roots from the settings file: {"roots": ["..."]}.
+func readSettings(path string) ([]string, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("settings %s: %w", path, err)
+	}
+	var settings struct {
+		Roots []string `json:"roots"`
+	}
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&settings); err != nil {
+		return nil, fmt.Errorf("settings %s: not {\"roots\": [...]}: %w", path, err)
+	}
+	if decoder.More() {
+		return nil, fmt.Errorf("settings %s: not {\"roots\": [...]}: data after the object", path)
+	}
+	if len(settings.Roots) == 0 {
+		return nil, fmt.Errorf("settings %s: \"roots\" names no folder", path)
+	}
+	return settings.Roots, nil
 }
 
 type catalog struct {
@@ -174,6 +208,9 @@ func codePath(path string) string {
 }
 
 func replace(path, data string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("write index %q: %w", path, err)
+	}
 	temp, err := os.CreateTemp(filepath.Dir(path), ".audelin-folder-index-*")
 	if err != nil {
 		return fmt.Errorf("write index %q: %w", path, err)

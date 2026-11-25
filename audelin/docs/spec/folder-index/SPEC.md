@@ -2,18 +2,22 @@
 
 Observer: the call assistant's thread, which reads the index to know where
 to look for local context before it hints (`../call-assistant-skill/SPEC.md`).
-Its client is the owner, who runs the generator; nothing edits the index by
-hand.
+Its client is the owner, who names the folders to index in a setting and
+runs the generator; nothing edits the index by hand.
 
 ## Decided
 
-- **The index is `.claude/skills/call-assistant/folders.md`,** beside the
-  skill. It names the owner's own folders, so it is not committed: the
-  generator writes it on the owner's Mac and git ignores it.
+- **The folders are a user setting, and the index is its output;** neither
+  is in the repository. Both live in `~/.audelin/feed/`.
+- **The setting is `~/.audelin/feed/folder-index.json`:**
+  `{"roots": ["<root>", ...]}`, each root an absolute path or one starting
+  with `~/`. `-settings <file>` names another file.
+- **The index is `~/.audelin/feed/folders.md`;** `-out <file>` names another.
+  The generator makes the index's folder when it is missing.
 - **The generator is `audelin-folder-index`,** a Go program in
-  `audelin/feed`: `audelin-folder-index -out <file> <root>...`. It reads
-  only the roots it is given and writes only `-out`, whole, so a run
-  replaces the file.
+  `audelin/feed`: `audelin-folder-index [-settings <file>] [-out <file>]`.
+  It reads only the setting and the roots it names, and writes only the
+  index, whole, so a run replaces the file.
 - **An entry is a repository:** a folder under a root holding `.git`, a
   directory or a file. Its direct subfolders that hold a README are entries
   too, so a monorepo's projects are listed. The walk goes no deeper inside
@@ -30,8 +34,11 @@ hand.
 - **The file opens with a heading and one line saying it is generated, by
   which command, from which roots,** then the entries sorted by path. The
   same tree gives the same bytes.
-- **A root that is missing or not a folder fails the run** with a message
-  naming it, exit 1, and the old file is left as it was. Bad usage exits 2.
+- **A missing or malformed setting fails the run** with a message naming the
+  setting file, exit 1: not JSON, not an object with only `roots`, no roots,
+  or a relative root. **So does a root that is missing or not a folder,**
+  with a message naming it. Either way the old index is left as it was.
+  Bad usage, such as a positional argument, exits 2.
   An unreadable folder inside a root is skipped.
 
 ```gherkin
@@ -71,4 +78,14 @@ Feature: Indexing the owner's folders
     Given an index from an earlier run
     When the generator runs with a root that does not exist
     Then it exits 1 naming the root, and the old index is unchanged
+
+  Scenario: S-8 A bad setting fails and keeps the old index
+    Given an index from an earlier run
+    When the setting is missing or malformed
+    Then it exits 1 naming the setting, and the old index is unchanged
+
+  Scenario: S-9 The index is written beside the setting by default
+    Given a setting naming a root under the home folder with ~/
+    When the generator runs with no flags
+    Then the index is written in ~/.audelin/feed, its folder made
 ```

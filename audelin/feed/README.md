@@ -12,7 +12,10 @@ repositories for the call assistant. Run them from source.
   for a thread to read: a window's words inside marked call text, no call,
   the call's end, or the source being lost.
 - **`audelin-folder-index`** writes a Markdown index of local repositories
-  and their direct projects, with summaries from their READMEs.
+  and their direct projects, with summaries from their READMEs. It reads the
+  folders to index from `~/.audelin/feed/folder-index.json`,
+  `{"roots": ["~/<folder>"]}`, and writes `~/.audelin/feed/folders.md`;
+  `-settings` and `-out` name other files.
 
 ## Run
 
@@ -21,8 +24,7 @@ From `audelin/feed`:
 ```sh
 go run ./cmd/audelin-feed -calls ~/Recordings/Audelin [-port 47820]
 go run ./cmd/audelin-follow [-port 47820] [-size 180] [-overlap 60]
-mkdir -p ../../.claude/skills/call-assistant
-go run ./cmd/audelin-folder-index -out ../../.claude/skills/call-assistant/folders.md ~/Developer
+go run ./cmd/audelin-folder-index [-settings <file>] [-out <file>]
 ```
 
 `audelin-follow` exits 0 after the call's end, 1 when the source was lost,

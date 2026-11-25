@@ -2,11 +2,17 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/igor1309/ai-labs/audelin/feed/folderindex"
 )
 
 func main() {
-	os.Exit(folderindex.Run(os.Args[1:], os.Stderr))
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	os.Exit(folderindex.Run(os.Args[1:], home, os.Stderr))
 }
