@@ -6,10 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"slices"
 	"sort"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -31,6 +29,7 @@ type Reader struct {
 	// found is the call followed once one was found; the reader stays on
 	// it to its end, whatever starts after it.
 	found *folder
+	parts partIDs
 }
 
 // New makes a reader of the calls folder dir, whose folder names tell
@@ -72,7 +71,7 @@ func (r *Reader) Live() (Call, bool, error) {
 			continue
 		}
 		r.found = &f
-		return Call{ID: f.id, Start: f.start, Parts: t.parts}, true, nil
+		return Call{ID: f.id, Start: f.start, Parts: r.parts.assign(t.parts, t.incomplete)}, true, nil
 	}
 	return Call{}, false, nil
 }
@@ -92,30 +91,14 @@ func (r *Reader) follow(folders []folder) (Call, bool, error) {
 		if err != nil {
 			return Call{}, false, err
 		}
-		call := Call{ID: f.id, Start: f.start, Parts: t.parts}
+		call := Call{ID: f.id, Start: f.start, Parts: r.parts.assign(t.parts, t.incomplete)}
 		if t.origin != nil && len(t.origin.Calls) == 1 && t.origin.Calls[0].Origin != nil {
 			call.Ended = t.origin.Calls[0].Origin.finishing()
-		}
-		if call.Ended {
-			call.Parts = rewritten(call.Parts)
 		}
 		return call, true, nil
 	}
 	return Call{}, false, errGone
 }
-
-// rewritten leaves out of an ended call the rows a finishing pass wrote
-// without a segment ID, such as a microphone side heard again after the
-// call: they repeat words the live rows already told. A transcript with no
-// segment IDs at all, as older Audelin writes, keeps every row.
-func rewritten(parts []Part) []Part {
-	if !slices.ContainsFunc(parts, func(p Part) bool { return !unmarked(p) }) {
-		return parts
-	}
-	return slices.DeleteFunc(slices.Clone(parts), unmarked)
-}
-
-func unmarked(p Part) bool { return strings.HasPrefix(p.ID, legacyPrefix) }
 
 // errGone is the followed call's folder no longer being in the calls
 // folder.

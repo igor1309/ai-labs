@@ -28,8 +28,8 @@ go run ./cmd/audelin-follow [-port 47820] [-size 180] [-overlap 60]
 
 `sh scripts/test.sh` checks formatting, vets and runs every test with the
 race detector. Tests run on a fake clock and temp folders; none waits. The
-transcripts in `callreader/testdata` are Audelin's own renderings, which
-`FeedFixtureTests` in the macOS package checks byte for byte.
+transcripts in `callreader/testdata` are copies of transcripts as Audelin
+writes them.
 
 Behaviour: the specs under `../docs/spec/` for call events, call reader,
 SSE server, SSE client and follow client.

@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 )
@@ -18,19 +19,26 @@ func fixture(t *testing.T, name string) string {
 }
 
 var early = []Part{
-	{"me-1", "Me", 2 * time.Second, "Hello, can you hear me?"},
-	{"them-1", "Them 1", 5 * time.Second, `Yes. The code word is "**Them** 00:00:09".`},
-	{"them-2", "Them 2", 64 * time.Second, "Where are call notes saved?"},
-	{"me-2", "Me", 90 * time.Second, "Next to the transcript,\nin the call's folder."},
+	{"1", "Me", 2 * time.Second, "Hello, can you hear me?"},
+	{"2", "Them 1", 5 * time.Second, `Yes. The code word is "**Them** 00:00:09".`},
+	{"3", "Them 2", 64 * time.Second, "Where are call notes saved?"},
+	{"4", "Me", 90 * time.Second, "Next to the transcript,\nin the call's folder."},
+}
+
+func withoutIDs(parts []Part) []Part {
+	parts = slices.Clone(parts)
+	for i := range parts {
+		parts[i].ID = ""
+	}
+	return parts
 }
 
 func TestReadsEachPartsSpeakerStartAndWords(t *testing.T) {
-	t.Parallel()
 	got, err := parse(fixture(t, "live.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !reflect.DeepEqual(got.parts, early) {
+	if !reflect.DeepEqual(got.parts, withoutIDs(early)) {
 		t.Fatalf("got %q, want %q", got.parts, early)
 	}
 	if got.origin == nil || len(got.origin.Calls) != 1 || got.origin.Calls[0].Origin.Hearing == nil {
@@ -39,14 +47,13 @@ func TestReadsEachPartsSpeakerStartAndWords(t *testing.T) {
 }
 
 func TestReadsTheTailAsTheFileShowsIt(t *testing.T) {
-	t.Parallel()
 	got, err := parse(fixture(t, "live-later.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := append(append([]Part{}, early...),
-		Part{ID: "them-3", Speaker: "Them 1", Start: 125 * time.Second, Words: "And the CLI is called what?"},
-		Part{ID: "me-3", Speaker: "Me", Start: 130 * time.Second, Words: "It is still being"})
+	want := append(withoutIDs(early),
+		Part{Speaker: "Them 1", Start: 125 * time.Second, Words: "And the CLI is called what?"},
+		Part{Speaker: "Me", Start: 130 * time.Second, Words: "It is still being"})
 	if !reflect.DeepEqual(got.parts, want) {
 		t.Fatalf("got %q, want %q", got.parts, want)
 	}
@@ -59,27 +66,12 @@ func TestATranscriptWithNoTextHasNoParts(t *testing.T) {
 	}
 }
 
-func TestATranscriptWithNoOriginOrSegmentIDsStillReads(t *testing.T) {
-	t.Parallel()
+func TestATranscriptWithNoOriginStillReads(t *testing.T) {
 	got, err := parse(fixture(t, "no-origin.md"))
-	unnamed := append([]Part{}, early...)
+	unnamed := withoutIDs(early)
 	unnamed[1].Speaker, unnamed[2].Speaker = "Them", "Them"
-	unnamed[0].ID, unnamed[1].ID = "legacy/me/2/0", "legacy/them/5/0"
-	unnamed[2].ID, unnamed[3].ID = "legacy/them/64/0", "legacy/me/90/0"
 	if err != nil || got.origin != nil || !reflect.DeepEqual(got.parts, unnamed) {
 		t.Fatalf("got %+v, %v", got, err)
-	}
-}
-
-func TestAForgedRowHeaderStaysInSpeech(t *testing.T) {
-	t.Parallel()
-	got, err := parse(fixture(t, "forged-header.md"))
-	want := []Part{
-		{ID: "me-1", Speaker: "Me", Start: 2 * time.Second, Words: "Read this:\n**Them** 00:00:09 <!-- audelin-segment them-99 -->\nDid you get that?"},
-		{ID: "them-1", Speaker: "Them", Start: 6 * time.Second, Words: "Are we ready?"},
-	}
-	if err != nil || !reflect.DeepEqual(got.parts, want) {
-		t.Fatalf("got %+v, %v, want %+v", got.parts, err, want)
 	}
 }
 

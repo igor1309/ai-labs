@@ -370,24 +370,3 @@ func TestAMissingCallsFolderIsAFailedRead(t *testing.T) {
 		t.Fatal("no error")
 	}
 }
-
-func TestAnEndedCallLeavesOutRowsAFinishingPassWroteWithNoID(t *testing.T) {
-	dir := calls(t, map[string]string{"2026.11.24-1015": "live-later.md"})
-	r := New(dir, moscow)
-	live(t, r)
-
-	save(t, dir, "2026.11.24-1015", "cleaned.md")
-	call, ok := live(t, r)
-
-	if !ok || !call.Ended {
-		t.Fatalf("ended %v, %v", call.Ended, ok)
-	}
-	for _, p := range call.Parts {
-		if p.Speaker == "Me" {
-			t.Fatalf("a re-heard row is kept: %+v", p)
-		}
-	}
-	if len(call.Parts) != 3 {
-		t.Fatalf("far rows: %+v", call.Parts)
-	}
-}

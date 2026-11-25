@@ -14,7 +14,7 @@ extension TranscriptFormat.Segment: JoinRow {
         switch side {
         case .gap: .gap(at: time, length: gapLength ?? 0)
         case .mine, .theirs:
-            .init(id: id, side: side, start: time, settled: settled, pending: pending, filledInLater: filledInLater, speaker: speaker)
+            .init(side: side, start: time, settled: settled, pending: pending, filledInLater: filledInLater, speaker: speaker)
         }
     }
 }
