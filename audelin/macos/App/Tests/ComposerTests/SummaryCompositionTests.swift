@@ -272,8 +272,12 @@ struct SummaryCompositionTests {
                 #expect(try await files.notes(call: id)?.text == "previous notes")
                 #expect(try String(contentsOf: folder.appendingPathComponent("transcript.md"), encoding: .utf8) == savedTranscript)
                 if !retryFails {
+                    // Observe before completing: a settled call can be forgotten right after it is
+                    // ready, and a late subscription would then wait out the suite's time limit.
+                    var statuses = rig.menu.summaryStates().makeAsyncIterator()
+                    _ = await statuses.next()
                     http.complete.send()
-                    _ = try await summary(rig.menu) { $0[id] == "Итоги готовы" }
+                    while let state = await statuses.next(), state[id] != "Итоги готовы" {}
                     #expect(calls.state.rows.first?.summary == CallsListState.Row.Summary.none)
                     #expect(try await files.load(call: id) == nil)
                 }
