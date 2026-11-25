@@ -21,6 +21,7 @@ From `audelin/feed`:
 ```sh
 go run ./cmd/audelin-feed -calls ~/Recordings/Audelin [-port 47820]
 go run ./cmd/audelin-follow [-port 47820] [-size 180] [-overlap 60]
+mkdir -p ../../.claude/skills/call-assistant
 go run ./cmd/audelin-folder-index -out ../../.claude/skills/call-assistant/folders.md ~/Developer
 ```
 
