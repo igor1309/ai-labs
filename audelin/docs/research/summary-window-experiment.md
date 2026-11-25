@@ -6,7 +6,8 @@ windows? And which window size and overlap?
 
 ## Method
 
-The harness in `audelin/feed/experiment/summarywindow` replays two generated
+A one-off harness (since removed from the feed: model runs belong in evals,
+not in the feed's code) replayed two generated
 calls through the feed's call events on a fake clock, the same iterator
 `audelin-feed` serves, so an hour replays in seconds. At each window it asks
 the model for a summary of the whole call so far, under 250 words, with the
