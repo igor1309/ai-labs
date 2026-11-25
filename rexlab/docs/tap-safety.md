@@ -30,8 +30,9 @@ animates out.
 5. **Pictures.** One `<Picture>` component holds a picture's place with a
    shimmer while it loads and fades it in once decoded, so no screen waits
    for its pictures before it changes (`docs/features/pictures.feature`).
-   Every screen that shows a picture uses it, each with its own loading
-   and failure behaviour.
+   The game and catalogue screens use it for their pictures, each with its
+   own loading and failure behaviour; saved coloring thumbnails are drawn
+   directly.
 
 ## Why 500 ms and 100 px
 
