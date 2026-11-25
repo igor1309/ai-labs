@@ -33,13 +33,6 @@ Telemost calls, for Chrome and Yandex Browser. Its [README](extension/README.md)
 gives the install steps; Audelin registers the extension's native helper at
 each launch.
 
-## Call feed
-
-`feed/` holds two Go programs that let a thread follow a call as it is
-recorded: `audelin-feed` serves the live transcript's words on loopback and
-`audelin-follow` prints them for the thread. Its [README](feed/README.md)
-says how to run them.
-
 ## Install and updates
 
 - **First install:** `sh audelin/macos/scripts/install.sh` from the repository root
