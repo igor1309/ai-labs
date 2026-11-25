@@ -134,13 +134,11 @@ A macOS launchd agent runs the push every Sunday at 8:40 AM local time. Use `--r
 ## Pauses and health
 
 The project is on the Free plan (NANO compute). Supabase pauses a Free project for
-too little database activity over a week and does not say what counts. It was
-paused on 2026-10-26 01:13 UTC and 2026-11-02 03:41 UTC, each less than a day after
-a confirmed keep-alive write, when the keep-alive wrote every 3 days (LAB-910). The
-Nov 2 restore left the database unresponsive for about 4.5 hours, through a manual
-restart, and set off a "depleting its Disk IO Budget" email; a Supabase support
-ticket was filed. If it pauses again on the 4-hour keep-alive, the cause is
-something else.
+too little database activity over a week and does not say what counts; a write every
+3 days was too few, so the keep-alive writes every 4 hours and fails unless the
+heartbeat row was updated. A restore after a pause can leave the database
+unresponsive for hours, until a manual restart. If it pauses on the 4-hour
+keep-alive, the cause is something else.
 
 How to check:
 
