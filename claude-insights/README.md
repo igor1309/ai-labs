@@ -137,7 +137,7 @@ The project is on the Free plan (NANO compute). Supabase pauses a Free project f
 too little database activity over a week and does not say what counts; a write every
 3 days was too few, so the keep-alive writes every 4 hours and fails unless the
 heartbeat row was updated. A restore after a pause can leave the database
-unresponsive for hours, until a manual restart. If it pauses on the 4-hour
+unresponsive for hours, even through a manual restart. If it pauses on the 4-hour
 keep-alive, the cause is something else.
 
 How to check:
