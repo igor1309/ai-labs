@@ -2,13 +2,10 @@
 package folderindex
 
 import (
-	"bytes"
-	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
-	"io/fs"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -33,138 +30,56 @@ func Run(args []string, home string, stderr io.Writer) int {
 		flags.Usage()
 		return 2
 	}
-
-	configured, err := readSettings(*settingsPath)
+	destination, err := filepath.Abs(*out)
+	if err == nil && insideClaudeSkills(destination) {
+		err = errors.New("expected a path outside .claude/skills")
+	}
 	if err != nil {
-		fmt.Fprintln(stderr, err)
+		fmt.Fprintf(stderr, "index %q: %v\n", *out, err)
 		return 1
 	}
-	index := catalog{readDir: os.ReadDir, readFile: os.ReadFile}
-	roots := make([]string, 0, len(configured))
-	for _, root := range configured {
-		if root == "~" || strings.HasPrefix(root, "~/") {
-			root = filepath.Join(home, root[1:])
-		}
-		if !filepath.IsAbs(root) {
-			fmt.Fprintf(stderr, "root %q in %s: expected an absolute path or one starting with ~/\n", root, *settingsPath)
-			return 1
-		}
-		root = filepath.Clean(root)
-		info, err := os.Lstat(root)
-		if err == nil && !info.IsDir() {
-			err = fmt.Errorf("expected a directory")
-		}
-		if err != nil {
-			fmt.Fprintf(stderr, "root %q: %v\n", root, err)
-			return 1
-		}
-		roots = append(roots, root)
-	}
-	entries, err := index.collect(roots)
-	if err == nil {
-		err = replace(*out, render(roots, entries))
-	}
-	if err != nil {
+
+	disk := diskJob(*settingsPath, home, destination)
+	if err := disk.generate(); err != nil {
 		fmt.Fprintln(stderr, err)
 		return 1
 	}
 	return 0
 }
 
-// readSettings reads the roots from the settings file: {"roots": ["..."]}.
-func readSettings(path string) ([]string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("settings %s: %w", path, err)
-	}
-	var settings struct {
-		Roots []string `json:"roots"`
-	}
-	decoder := json.NewDecoder(bytes.NewReader(data))
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(&settings); err != nil {
-		return nil, fmt.Errorf("settings %s: not {\"roots\": [...]}: %w", path, err)
-	}
-	if decoder.More() {
-		return nil, fmt.Errorf("settings %s: not {\"roots\": [...]}: data after the object", path)
-	}
-	if len(settings.Roots) == 0 {
-		return nil, fmt.Errorf("settings %s: \"roots\" names no folder", path)
-	}
-	return settings.Roots, nil
+// job is one generation: the roots are loaded, their entries collected and
+// the index published, each step only after the one before succeeded.
+type job struct {
+	load    func() ([]string, error)
+	collect func(roots []string) (map[string]entry, error)
+	publish func(index string) error
 }
 
-type catalog struct {
-	readDir  func(string) ([]fs.DirEntry, error)
-	readFile func(string) ([]byte, error)
+func (j job) generate() error {
+	roots, err := j.load()
+	if err != nil {
+		return err
+	}
+	entries, err := j.collect(roots)
+	if err != nil {
+		return err
+	}
+	return j.publish(render(roots, entries))
+}
+
+func insideClaudeSkills(path string) bool {
+	parts := strings.Split(filepath.Clean(path), string(filepath.Separator))
+	for i := 0; i+1 < len(parts); i++ {
+		if parts[i] == ".claude" && parts[i+1] == "skills" {
+			return true
+		}
+	}
+	return false
 }
 
 type entry struct {
 	readme  string
 	summary string
-}
-
-func (c catalog) collect(roots []string) (map[string]entry, error) {
-	entries := make(map[string]entry)
-	for _, root := range roots {
-		children, err := c.readDir(root)
-		if err != nil {
-			return nil, fmt.Errorf("root %q: %w", root, err)
-		}
-		c.walk(root, children, entries)
-	}
-	return entries, nil
-}
-
-func (c catalog) walk(path string, children []fs.DirEntry, entries map[string]entry) {
-	repo := slices.ContainsFunc(children, func(child fs.DirEntry) bool {
-		return child.Name() == ".git" && (child.IsDir() || child.Type().IsRegular())
-	})
-	if repo {
-		c.add(path, readmeName(children), entries)
-	}
-	for _, child := range children {
-		name := child.Name()
-		if !child.IsDir() || name == "node_modules" || strings.HasPrefix(name, ".") {
-			continue
-		}
-		subdir := filepath.Join(path, name)
-		files, err := c.readDir(subdir)
-		if err != nil {
-			continue
-		}
-		if !repo {
-			c.walk(subdir, files, entries)
-		} else if readme := readmeName(files); readme != "" {
-			c.add(subdir, readme, entries)
-		}
-	}
-}
-
-func readmeName(files []fs.DirEntry) string {
-	for _, preferred := range [...]string{"README.md", "README", "README.markdown"} {
-		for _, file := range files {
-			if file.Type().IsRegular() && strings.EqualFold(preferred, file.Name()) {
-				return file.Name()
-			}
-		}
-	}
-	return ""
-}
-
-func (c catalog) add(path, readme string, entries map[string]entry) {
-	if _, exists := entries[path]; exists {
-		return
-	}
-	item := entry{summary: "no README"}
-	if readme != "" {
-		item.readme = filepath.Join(path, readme)
-		item.summary = "no summary"
-		if data, err := c.readFile(item.readme); err == nil {
-			item.summary = summary(string(data))
-		}
-	}
-	entries[path] = item
 }
 
 func render(roots []string, entries map[string]entry) string {
@@ -205,23 +120,4 @@ func codePath(path string) string {
 		path = " " + path + " "
 	}
 	return fence + path + fence
-}
-
-func replace(path, data string) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return fmt.Errorf("write index %q: %w", path, err)
-	}
-	temp, err := os.CreateTemp(filepath.Dir(path), ".audelin-folder-index-*")
-	if err != nil {
-		return fmt.Errorf("write index %q: %w", path, err)
-	}
-	defer os.Remove(temp.Name())
-	_, writeErr := temp.WriteString(data)
-	if err := temp.Close(); err != nil && writeErr == nil {
-		writeErr = err
-	}
-	if writeErr != nil {
-		return fmt.Errorf("write index %q: %w", path, writeErr)
-	}
-	return os.Rename(temp.Name(), path)
 }

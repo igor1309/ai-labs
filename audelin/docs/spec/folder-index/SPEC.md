@@ -11,17 +11,24 @@ runs the generator; nothing edits the index by hand.
   is in the repository. Both live in `~/.audelin/feed/`.
 - **The setting is `~/.audelin/feed/folder-index.json`:**
   `{"roots": ["<root>", ...]}`, each root an absolute path or one starting
-  with `~/`. `-settings <file>` names another file.
+  with `~/`. The file is that one object and nothing after it, its one key
+  `roots` spelled exactly so. `-settings <file>` names another file.
 - **The index is `~/.audelin/feed/folders.md`;** `-out <file>` names another.
-  The generator makes the index's folder when it is missing.
+  The generator makes the index's folder when it is missing. It never
+  writes inside a `.claude/skills` folder: such an `-out` fails the run
+  before anything is made.
 - **The generator is `audelin-folder-index`,** a Go program in
   `audelin/feed`: `audelin-folder-index [-settings <file>] [-out <file>]`.
   It reads only the setting and the roots it names, and writes only the
-  index, whole, so a run replaces the file.
+  index, whole: it writes a temp file beside the index and renames it over,
+  so a reader sees the old index or the new one, never part of one.
 - **An entry is a repository:** a folder under a root holding `.git`, a
   directory or a file. Its direct subfolders that hold a README are entries
-  too, so a monorepo's projects are listed. The walk goes no deeper inside
-  a repository, and skips hidden folders, `node_modules` and symlinks.
+  too, so a monorepo's projects are listed, and so are its direct
+  subfolders holding `.git`, such as submodules, README or not. The walk
+  goes no deeper inside a repository, and skips hidden folders,
+  `node_modules` and symlinks. It never reads outside a root, even when a
+  folder is swapped for a symlink while it runs.
 - **One line per entry:** `` - `<path>`: <summary> ([README](<readme path>)) ``,
   paths absolute. The summary is the README's first prose line: the first
   non-blank line that is not a heading, an HTML tag, a badge or image line,
@@ -35,8 +42,8 @@ runs the generator; nothing edits the index by hand.
   which command, from which roots,** then the entries sorted by path. The
   same tree gives the same bytes.
 - **A missing or malformed setting fails the run** with a message naming the
-  setting file, exit 1: not JSON, not an object with only `roots`, no roots,
-  or a relative root. **So does a root that is missing or not a folder,**
+  setting file, exit 1: not JSON, not an object with only `roots`, data
+  after the object, no roots, or a root that is relative or a bare `~`. **So does a root that is missing or not a folder,**
   with a message naming it. Either way the old index is left as it was.
   Bad usage, such as a positional argument, exits 2.
   An unreadable folder inside a root is skipped.
@@ -88,4 +95,8 @@ Feature: Indexing the owner's folders
     Given a setting naming a root under the home folder with ~/
     When the generator runs with no flags
     Then the index is written in ~/.audelin/feed, its folder made
+
+  Scenario: S-10 The index is never written into .claude/skills
+    When the generator runs with -out inside a .claude/skills folder
+    Then it exits 1 saying so, and nothing is made there
 ```

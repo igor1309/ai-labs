@@ -3,10 +3,13 @@ package folderindex
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -42,6 +45,8 @@ func TestS2_AMonoreposProjectsAreListed(t *testing.T) {
 	out := filepath.Join(base, "folders.md")
 	mkdir(t, filepath.Join(repo, ".git"))
 	mkdir(t, filepath.Join(repo, "no-readme"))
+	submodule := filepath.Join(repo, "submodule")
+	writeFile(t, filepath.Join(submodule, ".git"), "gitdir: ../.git/modules/submodule\n")
 	writeFile(t, filepath.Join(repo, "rEaDmE.Markdown"), "The monorepo.\n")
 	mkdir(t, filepath.Join(b, "README.md"))
 	writeFile(t, filepath.Join(b, "README"), "Project B.\n")
@@ -55,7 +60,8 @@ func TestS2_AMonoreposProjectsAreListed(t *testing.T) {
 	assertFile(t, out, header(root)+fmt.Sprintf(
 		"- `%s`: The monorepo. ([README](<%s/rEaDmE.Markdown>))\n"+
 			"- `%s`: Project A. ([README](<%s/readme.md>))\n"+
-			"- `%s`: Project B. ([README](<%s/README>))\n", repo, repo, a, a, b, b))
+			"- `%s`: Project B. ([README](<%s/README>))\n"+
+			"- `%s`: no README\n", repo, repo, a, a, b, b, submodule))
 }
 
 // Contract test: a worktree's .git file marks a repository on disk.
@@ -143,9 +149,23 @@ func TestS6_ARunReplacesTheIndexAndIsStable(t *testing.T) {
 	writeFile(t, out, "# Old index\n\n- `/stale`: no README\n")
 	want := header(b, a) + fmt.Sprintf("- `%s`: no README\n- `%s`: no README\n", aRepo, bRepo)
 
+	old, err := os.Open(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer old.Close()
 	for range 2 {
 		runIndex(t, 0, base, out, b, a)
 		assertFile(t, out, want)
+	}
+	// The old index is replaced by a rename, not written over in place: a
+	// handle opened before the run still reads the old bytes.
+	kept, err := io.ReadAll(old)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(kept) != "# Old index\n\n- `/stale`: no README\n" {
+		t.Errorf("old handle reads %q, want the old index", kept)
 	}
 }
 
@@ -181,6 +201,8 @@ func TestS8_BadSettingsFailAndKeepTheOldIndex(t *testing.T) {
 
 	base := t.TempDir()
 	home := filepath.Join(base, "home")
+	root := filepath.Join(base, "root")
+	mkdir(t, filepath.Join(root, "repo", ".git"))
 	settings := filepath.Join(home, ".audelin", "feed", "folder-index.json")
 	out := filepath.Join(base, "folders.md")
 	const old = "# Old index\n"
@@ -189,13 +211,22 @@ func TestS8_BadSettingsFailAndKeepTheOldIndex(t *testing.T) {
 	if stderr := run(t, 1, home, "-out", out); !strings.Contains(stderr, settings) {
 		t.Errorf("stderr = %q, want settings path %q", stderr, settings)
 	}
-	for _, bad := range []string{"", "{", `{"roots": "/one"}`, `{"roots": []}`, `{"folders": ["/one"]}`, `{"roots": ["relative"]}`, `{"roots": ["/a"]} {}`} {
+	valid := fmt.Sprintf(`{"roots": [%q]}`, root)
+	for _, bad := range []string{
+		"", "{", "null", `{"roots": "/one"}`, `{"roots": []}`, `{"roots": null}`,
+		`{"folders": ["/one"]}`, `{"roots": ["relative"]}`, `{"roots": ["~"]}`,
+		valid + " {}", valid + "}", valid + "]",
+		fmt.Sprintf(`{"Roots": [%q]}`, root), fmt.Sprintf(`{"ROOTS": [%q]}`, root),
+		fmt.Sprintf(`{"roots": [%q], "extra": 1}`, root),
+	} {
 		writeFile(t, settings, bad)
-		if stderr := run(t, 1, home, "-out", out); !strings.Contains(stderr, "settings") && !strings.Contains(stderr, "relative") {
-			t.Errorf("settings %q: stderr = %q, want a settings error", bad, stderr)
+		if stderr := run(t, 1, home, "-out", out); !strings.Contains(stderr, "settings "+settings+":") {
+			t.Errorf("settings %q: stderr = %q, want an error naming %q", bad, stderr, settings)
 		}
 		assertFile(t, out, old)
 	}
+	writeFile(t, settings, valid)
+	run(t, 0, home, "-out", out)
 }
 
 // Contract test: with no flags the settings and index are under home's
@@ -235,35 +266,236 @@ func TestFailedReplacementRemovesTemporaryFile(t *testing.T) {
 	}
 }
 
-func TestUnreadableDescendantIsSkipped(t *testing.T) {
-	t.Parallel()
-	files := fstest.MapFS{
-		"root/skipped/repo/.git": {},
-		"root/visible/.git":      {},
-	}
-	index := catalog{
-		readDir: func(path string) ([]fs.DirEntry, error) {
-			if path == "root/skipped" {
-				return nil, fs.ErrPermission
-			}
-			return fs.ReadDir(files, path)
-		},
-		readFile: files.ReadFile,
-	}
-	entries, err := index.collect([]string{"root"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got, want := render([]string{"root"}, entries), header("root")+"- `root/visible`: no README\n"; got != want {
-		t.Errorf("index = %q, want %q", got, want)
-	}
-}
-
 func TestSummaryKeepsLiteralBracketText(t *testing.T) {
 	t.Parallel()
 	readme := "# Title\r\r```[label](example)``` is illustrated in [the guide](guide.md).\r\rAnother line."
 	if got, want := summary(readme), "```[label](example)``` is illustrated in the guide."; got != want {
 		t.Errorf("summary = %q, want %q", got, want)
+	}
+}
+
+// Contract test: no -out path inside .claude/skills is written.
+func TestS10_TheIndexIsNeverWrittenIntoClaudeSkills(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	root := filepath.Join(base, "root")
+	mkdir(t, filepath.Join(root, "repo", ".git"))
+	skills := filepath.Join(base, "project", ".claude", "skills")
+	for _, out := range []string{
+		filepath.Join(skills, "call-assistant", "folders.md"),
+		filepath.Join(skills, "folders.md"),
+		filepath.Join(base, "project", ".claude", "other", "..", "skills", "x", "folders.md"),
+	} {
+		if stderr := runIndex(t, 1, base, out, root); !strings.Contains(stderr, ".claude/skills") {
+			t.Errorf("out %q: stderr = %q, want a .claude/skills refusal", out, stderr)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(base, "project")); !os.IsNotExist(err) {
+		t.Errorf("project folder: err = %v, want nothing made", err)
+	}
+	runIndex(t, 0, base, filepath.Join(base, "project", ".claude", "folders.md"), root)
+}
+
+// A folder listed as a directory and swapped for a symlink to outside the
+// root before it is opened is not followed.
+func TestSwappedSymlinkDoesNotLeaveTheRoot(t *testing.T) {
+	t.Parallel()
+
+	base := t.TempDir()
+	root := filepath.Join(base, "root")
+	outside := filepath.Join(base, "outside")
+	mkdir(t, filepath.Join(root, "plain"))
+	mkdir(t, filepath.Join(outside, "repo", ".git"))
+	writeFile(t, filepath.Join(outside, "repo", "README.md"), "Outside the root.\n")
+	opened, err := os.OpenRoot(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer opened.Close()
+	swap := swappingTree{tree: rootTree{opened}, swap: func() {
+		if err := os.Remove(filepath.Join(root, "plain")); err != nil {
+			t.Error(err)
+		}
+		if err := os.Symlink(outside, filepath.Join(root, "plain")); err != nil {
+			t.Error(err)
+		}
+	}}
+
+	entries := make(map[string]entry)
+	if err := collectTree(root, &swap, entries); err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Errorf("entries = %v, want none from outside the root", entries)
+	}
+}
+
+type swappingTree struct {
+	tree
+	swap    func()
+	swapped bool
+}
+
+func (s *swappingTree) ReadDir(name string) ([]fs.DirEntry, error) {
+	children, err := s.tree.ReadDir(name)
+	if name == "." && !s.swapped {
+		s.swapped = true
+		s.swap()
+	}
+	return children, err
+}
+
+func TestUnreadableDescendantIsSkipped(t *testing.T) {
+	t.Parallel()
+	files := fstest.MapFS{
+		"skipped/repo/.git": {},
+		"visible/.git":      {},
+	}
+	entries := make(map[string]entry)
+	if err := collectTree("/root", failingTree{files, "skipped"}, entries); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := render([]string{"/root"}, entries), header("/root")+"- `/root/visible`: no README\n"; got != want {
+		t.Errorf("index = %q, want %q", got, want)
+	}
+}
+
+type failingTree struct {
+	files fstest.MapFS
+	fail  string
+}
+
+func (f failingTree) ReadDir(name string) ([]fs.DirEntry, error) {
+	if name == f.fail {
+		return nil, fs.ErrPermission
+	}
+	return fs.ReadDir(f.files, name)
+}
+
+func (f failingTree) ReadFile(name string) ([]byte, error) { return f.files.ReadFile(name) }
+
+// A step that fails stops the generation before the next, and its error is
+// the result.
+func TestGenerationStopsAtTheFirstFailure(t *testing.T) {
+	t.Parallel()
+	failure := errors.New("injected")
+	for _, failAt := range []string{"load", "collect", "publish"} {
+		var steps []string
+		step := func(name string) error {
+			steps = append(steps, name)
+			if name == failAt {
+				return failure
+			}
+			return nil
+		}
+		var published string
+		j := job{
+			load: func() ([]string, error) { return []string{"/root"}, step("load") },
+			collect: func(roots []string) (map[string]entry, error) {
+				return map[string]entry{"/root/repo": {summary: "no README"}}, step("collect")
+			},
+			publish: func(index string) error { published = index; return step("publish") },
+		}
+		if err := j.generate(); !errors.Is(err, failure) {
+			t.Errorf("fail at %s: err = %v, want the injected failure", failAt, err)
+		}
+		want := map[string][]string{"load": {"load"}, "collect": {"load", "collect"}, "publish": {"load", "collect", "publish"}}[failAt]
+		if !slices.Equal(steps, want) {
+			t.Errorf("fail at %s: steps = %v, want %v", failAt, steps, want)
+		}
+		if failAt == "publish" && published != header("/root")+"- `/root/repo`: no README\n" {
+			t.Errorf("published %q", published)
+		}
+	}
+}
+
+// The writer puts a temp file beside the index and renames it over; a
+// failed write, close or rename removes the temp file and keeps the index.
+func TestPublishReplacesThroughATempFileBesideTheIndex(t *testing.T) {
+	t.Parallel()
+	failure := errors.New("injected")
+	for _, failAt := range []string{"", "write", "close", "rename"} {
+		dir := t.TempDir()
+		out := filepath.Join(dir, "folders.md")
+		writeFile(t, out, "old\n")
+		var tempDir, renamedFrom string
+		p := diskPublisher
+		p.createTemp = func(d, pattern string) (tempFile, error) {
+			tempDir = d
+			file, err := os.CreateTemp(d, pattern)
+			if err != nil {
+				return nil, err
+			}
+			return faultyFile{File: file, failAt: failAt, failure: failure}, nil
+		}
+		p.rename = func(from, to string) error {
+			renamedFrom = from
+			if failAt == "rename" {
+				return failure
+			}
+			return os.Rename(from, to)
+		}
+		err := p.publish(out, "new\n")
+		if tempDir != dir {
+			t.Errorf("fail at %q: temp file in %q, want %q", failAt, tempDir, dir)
+		}
+		files, readErr := os.ReadDir(dir)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		if len(files) != 1 {
+			t.Errorf("fail at %q: folder holds %v, want only the index", failAt, files)
+		}
+		if failAt == "" {
+			if err != nil || filepath.Dir(renamedFrom) != dir {
+				t.Errorf("err = %v, renamed from %q", err, renamedFrom)
+			}
+			assertFile(t, out, "new\n")
+			continue
+		}
+		if !errors.Is(err, failure) {
+			t.Errorf("fail at %q: err = %v, want the injected failure", failAt, err)
+		}
+		assertFile(t, out, "old\n")
+	}
+}
+
+type faultyFile struct {
+	*os.File
+	failAt  string
+	failure error
+}
+
+func (f faultyFile) Write(data []byte) (int, error) {
+	if f.failAt == "write" {
+		return 0, f.failure
+	}
+	return f.File.Write(data)
+}
+
+func (f faultyFile) Close() error {
+	err := f.File.Close()
+	if f.failAt == "close" {
+		return f.failure
+	}
+	return err
+}
+
+// Lines of unmatched brackets, parentheses and backtick runs are read in
+// one pass; a quadratic scan would not finish within the test's timeout.
+func TestSummaryOfLongUnmatchedLinesIsLinear(t *testing.T) {
+	t.Parallel()
+	const size = 1 << 20
+	var runs strings.Builder
+	for runs.Len() < size {
+		runs.WriteString("`` ``` ")
+	}
+	for _, line := range []string{strings.Repeat("[", size), strings.Repeat("[(", size/2), runs.String()} {
+		got := summary("# Title\n\n" + line + " end\n")
+		if want := line[:159] + "…"; got != want {
+			t.Errorf("summary of %q… = %q…, want %q…", line[:8], got[:8], want[:8])
+		}
 	}
 }
 
