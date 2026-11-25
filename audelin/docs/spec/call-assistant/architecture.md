@@ -1,6 +1,6 @@
 # Live call events: architecture
 
-The components of ADR-003's event source and its follow client, which the
+The components of the live call event source and its follow client, which the
 call assistant (`SPEC.md`) reads: what each is responsible for, what it
 depends on and who builds it. The app does not change.
 
@@ -33,6 +33,3 @@ call events ──▶ [live call] ◁┄┄ call reader      call events ──�
 Call text is what other people said. The follow client marks it as data, so its
 reader can keep it apart from instructions.
 
-## Open for the component specs
-
-The language and place of the two programs, chunk size units, telling a call's end, and access to the transport.
