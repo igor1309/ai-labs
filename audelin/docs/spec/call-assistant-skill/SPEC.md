@@ -12,7 +12,8 @@ it. It reads the follow client's output (`../follow-client/SPEC.md`).
   Monitor; it stops only its follow client:** the source ends itself when its
   last client leaves (`../sse-server/SPEC.md`).
 - **It picks the window size and overlap:** 180-second windows overlapping
-  by 60 seconds, a fact at most about two minutes behind the call; the
+  by 60 seconds: the first at three minutes into the call, then one every
+  two minutes, so a fact is at most about two minutes behind; the
   source sets none.
 - **It answers from the first window, which holds the call so far.**
 - **It carries a summary forward through the windows,** so a fact from the
