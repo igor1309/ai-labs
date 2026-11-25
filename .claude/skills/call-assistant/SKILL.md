@@ -26,7 +26,7 @@ this thread to follow.
 3. **Use a running source, else start one.** If port 47820 is open, check
    it is a source:
    ```sh
-   curl -s -m 2 -o /dev/null -w '%{http_code} %{content_type}' 'http://127.0.0.1:47820/events?size=120&overlap=60'
+   curl -s -m 2 -o /dev/null -w '%{http_code} %{content_type}' 'http://127.0.0.1:47820/events?size=180&overlap=60'
    ```
    `200 text/event-stream` means a source is running: use it, start no
    second one. Anything else means something else holds the port: say
@@ -51,14 +51,15 @@ print(u.unquote(u.urlparse(f).path) if f else os.path.expanduser("~/Recordings/A
    Monitor gets one short line per record:
    ```sh
    F="$TMPDIR/call-follow-$$.jsonl"; : > "$F"; n=0
-   "$TMPDIR/audelin-feed-bin/audelin-follow" -size 120 -overlap 60 | while IFS= read -r l; do
+   "$TMPDIR/audelin-feed-bin/audelin-follow" -size 180 -overlap 60 | while IFS= read -r l; do
      n=$((n+1)); printf '%s\n' "$l" >> "$F"; echo "record $n in $F: ${l:0:60}"
    done
    ```
    On each Monitor line, read record `n` whole from the file
    (`sed -n "<n>p" <file>`) before acting on it.
-   Windows of 120 s overlapping by 60 s: a window every minute, the first
-   at two minutes, so a call's missing text is said within about two
+   Windows of 180 s overlapping by 60 s (owner decision, and the default
+   the summary window experiment kept): a window every two minutes, the
+   first at three, so a call's missing text is said within about three
    minutes. Its errors are not piped, so they reach Monitor as they are:
    "no call event source is running" or a refused window size means
    following could not start; say so, and why.
