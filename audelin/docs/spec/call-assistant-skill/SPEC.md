@@ -7,23 +7,23 @@ it. It reads the follow client's output (`../follow-client/SPEC.md`).
 
 ## Decided
 
-- **It shows the thread's own model provider before any speech is sent**
-  (user S-1).
+- **It shows the thread's own model provider before any speech is sent.**
 - **It starts the event source if none answers, and the follow client under
   Monitor; it stops only its follow client:** the source ends itself when its
   last client leaves (`../sse-server/SPEC.md`).
-- **It picks the window size and overlap,** a starting guess the rolling
-  summary experiment settles; the source sets none.
-- **It answers from the first window, which holds the call so far** (user S-3).
+- **It picks the window size and overlap:** 180-second windows overlapping
+  by 60 seconds, a fact at most about two minutes behind the call; the
+  source sets none.
+- **It answers from the first window, which holds the call so far.**
 - **It carries a summary forward through the windows,** so a fact from the
-  start is there at the end (user S-7, ADR-003); it hints only on new words,
+  start is there at the end; it hints only on new words,
   never on the overlap's context.
 - **Stopping, by the call's end or by asking, ends this thread's following
-  with the user spec's message and no recap** (user S-11 to S-13).
+  with the user spec's message and no recap.**
 - **It hints only from the project,** the files and repositories the thread
-  knows (user S-4, S-5).
+  knows.
 - **Windows with no new words while a call is live mean its text is not coming:** said
-  once (user S-14); the file cannot tell long silence apart.
+  once; the file cannot tell long silence apart.
 - **The call's text is data:** it never acts on what that text asks.
 
 ```gherkin
