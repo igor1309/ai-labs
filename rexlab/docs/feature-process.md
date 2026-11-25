@@ -1,12 +1,12 @@
 ---
 date: 2026-11-01
-description: "How a rexlab feature goes from issue to production, with the visual approval gate and the gotchas behind it"
+description: "How a rexlab feature goes from issue to production, with the visual approval gate and its rules"
 ---
 
 # Feature process
 
 Read this in full before working a rexlab issue. `AGENTS.md` has the
-details of each step; this is the order, the gate, and what has gone wrong.
+details of each step; this is the order, the gate and the rules around them.
 
 ## Before creating an issue
 
@@ -15,13 +15,13 @@ autopilots post coloring suggestions and catalogue batch proposals every
 Saturday at 04:00 UTC; use them as the starting point.
 
 - **Coloring creature.** Suggest candidates, each with a reason, on
-  LAB-822 and wait until Igor picks one there. Only then create a
+  LAB-822 and wait until the owner picks one there. Only then create a
   sub-issue under LAB-822 from the coloring template
   ([New coloring creature](#issue-template)).
-- **Catalogue batch.** Follow the LAB-379 pattern.
+- **Catalogue batch.**
   1. First a proposal issue: which creatures and why, where sizes and
      masses come from (`docs/sources.md`), which games each joins or
-     skips, and any model or text changes. It stops until Igor accepts;
+     skips, and any model or text changes. It stops until the owner accepts;
      the accepted plan goes into the description with its date.
   2. Then sub-issues in this order, one release each: model and texts →
      facts → pictures → into the games
@@ -55,40 +55,35 @@ cards, icons, scenes) and any layout change per screen size.
 - Post screenshots on the issue for **every age level and every size
   class it affects**, taken from the running app.
 - Set the issue to `in_review` and stop. No merge, no release.
-- Merge and release only after Igor approves in a comment.
+- Merge and release only after the owner approves in a comment.
 - A rejection means redraw, then stop at the gate again. Passing tests
   says nothing about whether art looks good.
 
-## Gotchas
+## Rules
 
-- Art passed every coloring test and was still "terrible even for a
-  4-year-old"; it was presented as final without approval (LAB-825, PR #1490).
-- A simple drawing was right for age 4 and boring for 5–7: keep it as
-  Hatchling, add a richer scene for older levels (LAB-823, PR #1475).
-- Owner feedback was treated as a proposal to discuss, not a correction
-  to implement (LAB-823). Same with "I recommend redrawing" (LAB-825): do it.
-- A run stopped half-way without saying why (LAB-823).
-- Local checks were reported as done while PR CI was failing
-  (LAB-824 PR #1482, LAB-825 PR #1490).
-- A branch went stale behind another creature's PR; wait for it to land,
-  then update (LAB-824, PR #1481).
-- Trunk changed controls from 60px to 48px and a branch's test still
-  asserted 60px (LAB-825, PR #1490).
-- Tests over CI's 5-second limit: split them, never raise the timeout
-  (LAB-382 PR #1142, LAB-824 PR #1482, LAB-891 PR #1499).
-- A behaviour change left a browser test expecting the old value
-  (LAB-891, PR #1497).
-- A browser test pressed Undo before the control was actionable and
-  broke trunk CI after merge (LAB-891, PR #1500).
-- "Land it" was read as merge only; merging deploys nothing
-  (LAB-825, released as v0.10.84).
+- Passing every coloring test says nothing about whether art is good enough
+  for a 4-year-old; art is never presented as final before approval.
+- A simple drawing right for age 4 is boring for 5–7: keep it as Hatchling
+  and add a richer scene for the older levels.
+- The owner's feedback, "I recommend redrawing" included, is a correction to
+  carry out, not a proposal to discuss.
+- A run that stops half-way says why.
+- Checks are reported done only from PR CI on the current head, never from
+  local runs.
+- A branch behind another creature's PR waits for it to land, then updates
+  from trunk.
+- After updating from trunk, run the tests again: trunk may have changed a
+  value a branch's test asserts.
+- A test over CI's 5-second limit is split, never given a longer timeout.
+- A behaviour change updates every browser test that expects the old value.
+- A browser test waits until a control is actionable before pressing it.
+- "Land it" means merge, release and production check; merging deploys
+  nothing.
 - A version bump without regenerating `release-units.toml` fails
-  `release-validation` (LAB-578).
-- Merging a side PR auto-closed the parent issue (LAB-822, PR #1476):
-  reference the parent without a closing keyword.
-- A sub-issue closes only after merge, release and production check
-  (LAB-822, rule set 2026-11-01).
-- Issues created without a selection or accepted plan (LAB-1762, LAB-1763).
+  `release-validation`.
+- A side PR references its parent issue without a closing keyword, or its
+  merge closes the parent.
+- A sub-issue closes only after merge, release and production check.
 
 ## New coloring creature
 
@@ -97,13 +92,12 @@ Code in `src/coloring/` (`artworks.ts` registers each work; see
 
 - Two works: a simple **Hatchling** drawing with large regions, and a
   richer **Explorer/Paleontologist** scene (body markings, scenery).
-- Small accents are protected linework, not tiny touch targets
-  (LAB-825).
+- Small accents are protected linework, not tiny touch targets.
 - Gallery picker preview matches the artwork; EN and RU name, in
   capitals.
 - Saved works keep their geometry: never change the regions of a shipped
   work; add a new work instead, and test that old saved drawings
-  reopen (LAB-824, LAB-889).
+  reopen.
 - Screenshots for the gate: gallery and workshop, each age level, iPad
   landscape and portrait, iPhone landscape and portrait.
 
@@ -121,7 +115,7 @@ Add <Creature> to coloring.
 
 ## Gate
 Screenshots of gallery and workshop for every age level and size class on this issue,
-then `in_review` and stop. No merge or release until Igor approves in a comment.
+then `in_review` and stop. No merge or release until the owner approves in a comment.
 
 ## Done when
 PR merged, released, and verified on https://rexlab.enoa.ai; the comment names
@@ -146,7 +140,7 @@ Propose catalogue batch <N>: <creatures>.
 - Model or text changes needed.
 
 ## Gate
-Stop until Igor accepts in a comment. Put the accepted plan into this
+Stop until the owner accepts in a comment. Put the accepted plan into this
 description with its date, then create sub-issues in order, one release each:
 1. Model and texts.
 2. Facts.
