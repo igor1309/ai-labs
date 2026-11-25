@@ -1,0 +1,520 @@
+{
+  "name": "short-check-in",
+  "durationSeconds": 900,
+  "turns": [
+    {
+      "side": "me",
+      "at": 3,
+      "words": "Yes, I saw that message in the channel."
+    },
+    {
+      "side": "them",
+      "at": 15,
+      "words": "Mm-hm, sounds good to me."
+    },
+    {
+      "side": "me",
+      "at": 25,
+      "words": "Let's not go too deep on this today."
+    },
+    {
+      "side": "them",
+      "at": 36,
+      "words": "Let's keep the standups short this week. The hiring panel needs one more interviewer. Let's keep the standups short this week."
+    },
+    {
+      "side": "me",
+      "at": 46,
+      "words": "We should plan the retro for after the release."
+    },
+    {
+      "side": "them",
+      "at": 56,
+      "words": "Mm-hm, sounds good to me. Good point, I'll mention it to the others. Yes, I saw that message in the channel."
+    },
+    {
+      "side": "them",
+      "at": 70,
+      "words": "Quick note, the code word for the offsite is Juniper Lake, keep it out of the shared calendar."
+    },
+    {
+      "side": "me",
+      "at": 70,
+      "words": "I'll be out on Thursday afternoon."
+    },
+    {
+      "side": "them",
+      "at": 78,
+      "words": "We should plan the retro for after the release."
+    },
+    {
+      "side": "me",
+      "at": 85,
+      "words": "Half the team is travelling for the conference. The hiring panel needs one more interviewer. Half the team is travelling for the conference."
+    },
+    {
+      "side": "them",
+      "at": 97,
+      "words": "Let's keep the standups short this week. I'll be out on Thursday afternoon."
+    },
+    {
+      "side": "me",
+      "at": 106,
+      "words": "Yes, I saw that message in the channel."
+    },
+    {
+      "side": "them",
+      "at": 114,
+      "words": "Yes, I saw that message in the channel. I'll be out on Thursday afternoon. The hiring panel needs one more interviewer."
+    },
+    {
+      "side": "me",
+      "at": 127,
+      "words": "The hiring panel needs one more interviewer. I'll be out on Thursday afternoon. Let's keep the standups short this week."
+    },
+    {
+      "side": "them",
+      "at": 137,
+      "words": "Half the team is travelling for the conference."
+    },
+    {
+      "side": "me",
+      "at": 151,
+      "words": "Yes, I saw that message in the channel. Good point, I'll mention it to the others. The hiring panel needs one more interviewer."
+    },
+    {
+      "side": "them",
+      "at": 161,
+      "words": "Yes, I saw that message in the channel."
+    },
+    {
+      "side": "me",
+      "at": 175,
+      "words": "Let's not go too deep on this today. Good point, I'll mention it to the others. Good point, I'll mention it to the others."
+    },
+    {
+      "side": "them",
+      "at": 180,
+      "words": "Let's not go too deep on this today. Good point, I'll mention it to the others."
+    },
+    {
+      "side": "me",
+      "at": 187,
+      "words": "Mm-hm, sounds good to me. The hiring panel needs one more interviewer."
+    },
+    {
+      "side": "them",
+      "at": 195,
+      "words": "Let's keep the standups short this week. Let's not go too deep on this today."
+    },
+    {
+      "side": "me",
+      "at": 207,
+      "words": "We should plan the retro for after the release."
+    },
+    {
+      "side": "them",
+      "at": 216,
+      "words": "Let's keep the standups short this week. The hiring panel needs one more interviewer. Let's keep the standups short this week."
+    },
+    {
+      "side": "me",
+      "at": 229,
+      "words": "Half the team is travelling for the conference. Yes, I saw that message in the channel. I'll be out on Thursday afternoon."
+    },
+    {
+      "side": "them",
+      "at": 243,
+      "words": "Half the team is travelling for the conference."
+    },
+    {
+      "side": "me",
+      "at": 257,
+      "words": "The hiring panel needs one more interviewer. Let's not go too deep on this today."
+    },
+    {
+      "side": "them",
+      "at": 263,
+      "words": "Mm-hm, sounds good to me. Let's keep the standups short this week. We should plan the retro for after the release."
+    },
+    {
+      "side": "me",
+      "at": 269,
+      "words": "Let's not go too deep on this today. I'll be out on Thursday afternoon. I'll be out on Thursday afternoon."
+    },
+    {
+      "side": "them",
+      "at": 283,
+      "words": "Mm-hm, sounds good to me. Half the team is travelling for the conference."
+    },
+    {
+      "side": "me",
+      "at": 289,
+      "words": "The new hire starts on Monday and needs a laptop. Good point, I'll mention it to the others."
+    },
+    {
+      "side": "me",
+      "at": 300,
+      "words": "Question: does the Okonkwo team need access to the staging database or only to the logs?"
+    },
+    {
+      "side": "them",
+      "at": 300,
+      "words": "The sync service is where most of the latency comes from. Staging was down for an hour yesterday because of certificates. Let me check the numbers after the call."
+    },
+    {
+      "side": "me",
+      "at": 314,
+      "words": "The migration scripts need another review pass. I profiled the import job and the parser is the slow part. That should be easy to try on staging first."
+    },
+    {
+      "side": "them",
+      "at": 326,
+      "words": "Yeah, I agree, that would cut the load quite a bit. Staging was down for an hour yesterday because of certificates. Hmm, I am not sure that is the root cause."
+    },
+    {
+      "side": "me",
+      "at": 331,
+      "words": "Hmm, I am not sure that is the root cause. The migration scripts need another review pass."
+    },
+    {
+      "side": "them",
+      "at": 339,
+      "words": "We could batch the writes instead of sending them one by one."
+    },
+    {
+      "side": "me",
+      "at": 348,
+      "words": "We could batch the writes instead of sending them one by one. Logging is too noisy, we should cut the debug lines."
+    },
+    {
+      "side": "them",
+      "at": 360,
+      "words": "I profiled the import job and the parser is the slow part. Let me check the numbers after the call. We see retries spike every morning around nine."
+    },
+    {
+      "side": "me",
+      "at": 370,
+      "words": "We see retries spike every morning around nine."
+    },
+    {
+      "side": "them",
+      "at": 378,
+      "words": "Yeah, I agree, that would cut the load quite a bit. The migration scripts need another review pass."
+    },
+    {
+      "side": "me",
+      "at": 389,
+      "words": "Logging is too noisy, we should cut the debug lines. I profiled the import job and the parser is the slow part. We could batch the writes instead of sending them one by one."
+    },
+    {
+      "side": "them",
+      "at": 403,
+      "words": "The migration scripts need another review pass. That should be easy to try on staging first. That should be easy to try on staging first."
+    },
+    {
+      "side": "me",
+      "at": 411,
+      "words": "We could batch the writes instead of sending them one by one."
+    },
+    {
+      "side": "them",
+      "at": 425,
+      "words": "Logging is too noisy, we should cut the debug lines."
+    },
+    {
+      "side": "me",
+      "at": 435,
+      "words": "Logging is too noisy, we should cut the debug lines. The queue depth looks fine in the dashboards. The queue depth looks fine in the dashboards."
+    },
+    {
+      "side": "them",
+      "at": 443,
+      "words": "Logging is too noisy, we should cut the debug lines."
+    },
+    {
+      "side": "me",
+      "at": 453,
+      "words": "Logging is too noisy, we should cut the debug lines. Logging is too noisy, we should cut the debug lines. We see retries spike every morning around nine."
+    },
+    {
+      "side": "them",
+      "at": 466,
+      "words": "That should be easy to try on staging first."
+    },
+    {
+      "side": "me",
+      "at": 473,
+      "words": "I profiled the import job and the parser is the slow part. Yeah, I agree, that would cut the load quite a bit. Hmm, I am not sure that is the root cause."
+    },
+    {
+      "side": "them",
+      "at": 482,
+      "words": "Let me check the numbers after the call."
+    },
+    {
+      "side": "me",
+      "at": 490,
+      "words": "That should be easy to try on staging first. The migration scripts need another review pass."
+    },
+    {
+      "side": "them",
+      "at": 502,
+      "words": "Staging was down for an hour yesterday because of certificates. The sync service is where most of the latency comes from. I profiled the import job and the parser is the slow part."
+    },
+    {
+      "side": "me",
+      "at": 516,
+      "words": "Let me check the numbers after the call."
+    },
+    {
+      "side": "them",
+      "at": 524,
+      "words": "The sync service is where most of the latency comes from. Staging was down for an hour yesterday because of certificates. We could batch the writes instead of sending them one by one."
+    },
+    {
+      "side": "me",
+      "at": 530,
+      "words": "The sync service is where most of the latency comes from. Staging was down for an hour yesterday because of certificates."
+    },
+    {
+      "side": "them",
+      "at": 539,
+      "words": "We could batch the writes instead of sending them one by one."
+    },
+    {
+      "side": "me",
+      "at": 544,
+      "words": "Let me check the numbers after the call. The queue depth looks fine in the dashboards. I profiled the import job and the parser is the slow part."
+    },
+    {
+      "side": "them",
+      "at": 558,
+      "words": "We see retries spike every morning around nine. Hmm, I am not sure that is the root cause."
+    },
+    {
+      "side": "them",
+      "at": 560,
+      "words": "Decision: we freeze the release branch on Wednesday at noon."
+    },
+    {
+      "side": "me",
+      "at": 572,
+      "words": "We see retries spike every morning around nine. Let me check the numbers after the call. The migration scripts need another review pass."
+    },
+    {
+      "side": "them",
+      "at": 585,
+      "words": "The migration scripts need another review pass."
+    },
+    {
+      "side": "me",
+      "at": 598,
+      "words": "Staging was down for an hour yesterday because of certificates. Staging was down for an hour yesterday because of certificates. The queue depth looks fine in the dashboards."
+    },
+    {
+      "side": "them",
+      "at": 611,
+      "words": "Right, I have that written down."
+    },
+    {
+      "side": "me",
+      "at": 621,
+      "words": "I think we covered most of the agenda. Anything else before we wrap up?"
+    },
+    {
+      "side": "them",
+      "at": 633,
+      "words": "Thanks everyone, this was useful. Anything else before we wrap up? Anything else before we wrap up?"
+    },
+    {
+      "side": "me",
+      "at": 641,
+      "words": "Let's sync again next week at the same time. Okay, one more small thing before we go. Okay, one more small thing before we go."
+    },
+    {
+      "side": "them",
+      "at": 655,
+      "words": "I'll write the notes and send them around. Let's sync again next week at the same time."
+    },
+    {
+      "side": "me",
+      "at": 664,
+      "words": "Okay, one more small thing before we go. Thanks everyone, this was useful."
+    },
+    {
+      "side": "them",
+      "at": 671,
+      "words": "Let's sync again next week at the same time. I think we covered most of the agenda. Right, I have that written down."
+    },
+    {
+      "side": "me",
+      "at": 681,
+      "words": "Right, I have that written down."
+    },
+    {
+      "side": "them",
+      "at": 694,
+      "words": "I think we covered most of the agenda."
+    },
+    {
+      "side": "me",
+      "at": 702,
+      "words": "Let's recap what we have so far. Let's recap what we have so far."
+    },
+    {
+      "side": "them",
+      "at": 711,
+      "words": "Let's sync again next week at the same time. Okay, one more small thing before we go."
+    },
+    {
+      "side": "me",
+      "at": 724,
+      "words": "Okay, one more small thing before we go. Let's sync again next week at the same time."
+    },
+    {
+      "side": "them",
+      "at": 733,
+      "words": "Let's sync again next week at the same time."
+    },
+    {
+      "side": "me",
+      "at": 742,
+      "words": "Okay, one more small thing before we go. I'll write the notes and send them around."
+    },
+    {
+      "side": "them",
+      "at": 755,
+      "words": "I'll write the notes and send them around. I'll write the notes and send them around. Right, I have that written down."
+    },
+    {
+      "side": "me",
+      "at": 762,
+      "words": "Okay, one more small thing before we go. Let's recap what we have so far. Right, I have that written down."
+    },
+    {
+      "side": "them",
+      "at": 769,
+      "words": "Anything else before we wrap up?"
+    },
+    {
+      "side": "me",
+      "at": 778,
+      "words": "Right, I have that written down. I'll write the notes and send them around."
+    },
+    {
+      "side": "them",
+      "at": 791,
+      "words": "Okay, one more small thing before we go. Let's recap what we have so far."
+    },
+    {
+      "side": "me",
+      "at": 799,
+      "words": "Let's sync again next week at the same time."
+    },
+    {
+      "side": "me",
+      "at": 800,
+      "words": "Action item: Tomasz updates the runbook for the failover before Monday."
+    },
+    {
+      "side": "them",
+      "at": 811,
+      "words": "Right, I have that written down."
+    },
+    {
+      "side": "me",
+      "at": 816,
+      "words": "Let's recap what we have so far. I'll write the notes and send them around."
+    },
+    {
+      "side": "them",
+      "at": 827,
+      "words": "Let's recap what we have so far. Let's sync again next week at the same time. Thanks everyone, this was useful."
+    },
+    {
+      "side": "me",
+      "at": 832,
+      "words": "Okay, one more small thing before we go."
+    },
+    {
+      "side": "them",
+      "at": 845,
+      "words": "Thanks everyone, this was useful. Right, I have that written down. Let's sync again next week at the same time."
+    },
+    {
+      "side": "me",
+      "at": 858,
+      "words": "I'll write the notes and send them around."
+    },
+    {
+      "side": "them",
+      "at": 866,
+      "words": "Thanks everyone, this was useful. Anything else before we wrap up?"
+    },
+    {
+      "side": "me",
+      "at": 879,
+      "words": "Right, I have that written down."
+    },
+    {
+      "side": "them",
+      "at": 884,
+      "words": "I'll write the notes and send them around. Okay, one more small thing before we go."
+    },
+    {
+      "side": "me",
+      "at": 891,
+      "words": "Thanks everyone, this was useful."
+    }
+  ],
+  "facts": [
+    {
+      "id": "code-word",
+      "kind": "code word",
+      "at": 70,
+      "all": [
+        [
+          "juniper"
+        ]
+      ]
+    },
+    {
+      "id": "okonkwo-question",
+      "kind": "question",
+      "at": 300,
+      "all": [
+        [
+          "okonkwo"
+        ]
+      ]
+    },
+    {
+      "id": "freeze",
+      "kind": "decision",
+      "at": 560,
+      "all": [
+        [
+          "freeze",
+          "frozen"
+        ],
+        [
+          "wednesday"
+        ]
+      ]
+    },
+    {
+      "id": "tomasz-action",
+      "kind": "action",
+      "at": 800,
+      "all": [
+        [
+          "tomasz"
+        ],
+        [
+          "runbook"
+        ]
+      ]
+    }
+  ]
+}
