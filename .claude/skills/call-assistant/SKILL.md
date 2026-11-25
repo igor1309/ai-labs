@@ -23,24 +23,45 @@ this thread to follow.
    cd "$(git rev-parse --show-toplevel)/audelin/feed" && go build -o "$TMPDIR/audelin-feed-bin/" ./cmd/audelin-feed ./cmd/audelin-follow
    ```
    If the build fails, say following could not start, with the error, and stop.
-3. **Use a running source, else start one.** `nc -z 127.0.0.1 47820`
-   succeeding means a source is running: use it, start no second one.
-   Otherwise read the calls folder from Audelin's setting and start the
-   source in the background:
+3. **Use a running source, else start one.** If port 47820 is open, check
+   it is a source:
    ```sh
-   CALLS=$(python3 -I -c 'import json,os,urllib.parse as u;print(u.unquote(u.urlparse(json.load(open(os.path.expanduser("~/.audelin/preferences.json")))["callsFolder"]).path))')
+   curl -s -m 2 -o /dev/null -w '%{http_code} %{content_type}' 'http://127.0.0.1:47820/events?size=120&overlap=60'
+   ```
+   `200 text/event-stream` means a source is running: use it, start no
+   second one. Anything else means something else holds the port: say
+   following could not start, and why, and stop.
+   If the port is closed, start the source in the background with the
+   calls folder Audelin records into (its setting, else its default):
+   ```sh
+   CALLS=$(python3 -I -c 'import json,os,urllib.parse as u
+p=os.path.expanduser("~/.audelin/preferences.json")
+try: f=json.load(open(p)).get("callsFolder")
+except (OSError,ValueError): f=None
+print(u.unquote(u.urlparse(f).path) if f else os.path.expanduser("~/Recordings/Audelin"))')
    "$TMPDIR/audelin-feed-bin/audelin-feed" -calls "$CALLS"
    ```
-   The source ends by itself when its last client leaves; never stop it.
-4. **Run the follow client under Monitor**, one JSON record per line:
+   Then wait up to 5 s for it to listen
+   (`for i in $(seq 50); do nc -z 127.0.0.1 47820 && break; sleep 0.1; done`).
+   If it never listens, or exits, say following could not start, with
+   its error, and stop. The source ends by itself when its last client
+   leaves; never stop it.
+4. **Run the follow client under Monitor.** Monitor cuts long lines, and a
+   window's record is long, so each record goes whole to a file and
+   Monitor gets one short line per record:
    ```sh
-   "$TMPDIR/audelin-feed-bin/audelin-follow" -size 180 -overlap 60
+   F="$TMPDIR/call-follow-$$.jsonl"; : > "$F"; n=0
+   "$TMPDIR/audelin-feed-bin/audelin-follow" -size 120 -overlap 60 | while IFS= read -r l; do
+     n=$((n+1)); printf '%s\n' "$l" >> "$F"; echo "record $n in $F: ${l:0:60}"
+   done
    ```
-   180 s windows overlapping by 60 s are the default the summary window
-   experiment kept (`audelin/docs/research/summary-window-experiment.md`).
-   Exit codes: 0 the call ended, 1 the source was lost, 2 no source is
-   running, 3 the source refused the window size. On 2 or 3, say
-   following could not start, and why.
+   On each Monitor line, read record `n` whole from the file
+   (`sed -n "<n>p" <file>`) before acting on it.
+   Windows of 120 s overlapping by 60 s: a window every minute, the first
+   at two minutes, so a call's missing text is said within about two
+   minutes. Its errors are not piped, so they reach Monitor as they are:
+   "no call event source is running" or a refused window size means
+   following could not start; say so, and why.
 
 ## Records
 
