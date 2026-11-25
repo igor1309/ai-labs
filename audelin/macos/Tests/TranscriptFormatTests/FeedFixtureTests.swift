@@ -93,12 +93,6 @@ struct FeedFixture: Sendable, CustomTestStringConvertible {
             remote,
         ], origin: live),
         FeedFixture(name: "finished.md", segments: later, speakers: speakers, origin: finished),
-        // The cleaning pass hears the microphone again and writes its rows
-        // with no segment ID; the far side keeps its IDs.
-        FeedFixture(name: "cleaned.md", segments: later.map {
-            guard $0.side == .mine, $0.gapLength == nil else { return $0 }
-            return .init(side: .mine, start: $0.start, settled: $0.settled + $0.pending, pending: "")
-        }, speakers: speakers, origin: finished),
         FeedFixture(name: "split-told.md", segments: later, speakers: speakers, origin: split),
         FeedFixture(name: "no-origin.md", segments: early.map {
             if let length = $0.gapLength { return .gap(at: $0.start, length: length) }

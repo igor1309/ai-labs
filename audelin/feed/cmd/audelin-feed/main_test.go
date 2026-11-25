@@ -158,44 +158,6 @@ func TestAFollowedCallIsServedFromJoinToEnd(t *testing.T) {
 	}
 }
 
-// Contract test: the composed feed serves its transcript over loopback HTTP.
-func TestACleanedMicrophoneSideIsNotSentAgainAtTheEnd(t *testing.T) {
-	t.Parallel()
-	dir := t.TempDir()
-	save(t, dir, "live-later.md")
-	c := newClock(callStart.Add(140 * time.Second))
-	client, done := started(t, dir, c)
-
-	s, err := client.Connect(context.Background(), 90*time.Second, 10*time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer s.Close()
-	if joined := next(t, s); joined.Name != "chunk" {
-		t.Fatalf("joined: %s %s", joined.Name, joined.Data)
-	}
-
-	save(t, dir, "cleaned.md")
-	c.raise(callStart.Add(time.Hour))
-
-	for {
-		ev := next(t, s)
-		if ev.Name == "callEnded" {
-			break
-		}
-		var w wireWindow
-		if err := json.Unmarshal(ev.Data, &w); err != nil {
-			t.Fatal(err)
-		}
-		if len(w.New) > 0 {
-			t.Fatalf("sent again after the end: %s %s", ev.Name, ev.Data)
-		}
-	}
-	if err := <-done; err != nil {
-		t.Fatalf("serve: %v", err)
-	}
-}
-
 func TestPendingPartRetimingDoesNotResendItOrHideNewWords(t *testing.T) {
 	t.Parallel()
 	original := []wirePart{

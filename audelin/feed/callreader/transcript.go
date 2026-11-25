@@ -21,9 +21,6 @@ type Part struct {
 	Words   string
 }
 
-// legacyPrefix begins the ID of a row written without a segment ID.
-const legacyPrefix = "legacy/"
-
 // transcript is what a transcript.md tells: its origin, if any, and parts.
 type transcript struct {
 	origin *origin
@@ -79,7 +76,7 @@ func parse(text string) (transcript, error) {
 				key := second{track(label), start}
 				row := legacyRows[key]
 				legacyRows[key]++
-				partID = legacyPrefix + key.track + "/" + strconv.FormatInt(int64(start/time.Second), 10) + "/" + strconv.Itoa(row)
+				partID = "legacy/" + key.track + "/" + strconv.FormatInt(int64(start/time.Second), 10) + "/" + strconv.Itoa(row)
 			}
 			words := strings.TrimSpace(strings.Join(lines, "\n"))
 			if words != "" {
