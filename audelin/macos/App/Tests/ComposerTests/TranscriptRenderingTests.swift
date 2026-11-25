@@ -71,7 +71,7 @@ struct TranscriptRenderingTests {
             in: state, far: attributed ? far : nil, names: names.snapshot(), heard: heard
         )
         let expected: [TranscriptFormat.Segment] = [
-            .init(id: attributed ? nil : 1, side: .theirs, start: 0, settled: attributed ? "attributed far" : "raw far", pending: "",
+            .init(side: .theirs, start: 0, settled: attributed ? "attributed far" : "raw far", pending: "",
                   filledInLater: true, speaker: attributed ? "d0" : "z1"),
             .init(side: .mine, start: 0.5, settled: "new", pending: "microphone"),
         ] + (attributed ? [far.far[1]] : [])
@@ -80,8 +80,7 @@ struct TranscriptRenderingTests {
         try await writer.replaceWhole(replacement.segments, speakers: replacement.speakers, outcomes: .init())
         #expect(bytes.calls() == ["replace"])
         let text = try #require(bytes.replaced())
-        let farID = attributed ? "" : " <!-- audelin-segment them-1 -->"
-        #expect(text.contains("**\(attributed ? "Them 1" : "Them")** 00:00:00 (filled in later)\(farID)\n\(attributed ? "attributed far" : "raw far")\n"))
+        #expect(text.contains("**\(attributed ? "Them 1" : "Them")** 00:00:00 (filled in later)\n\(attributed ? "attributed far" : "raw far")\n"))
         #expect(text.contains("**Me** 00:00:00\nnew microphone\n"))
         #expect(text.contains(attributed ? "- Them 1: Boris\n- Them 2: Cleo\n" : "- Them: Anna\n"))
         #expect(!text.contains("old microphone"))
@@ -144,7 +143,7 @@ struct TranscriptRenderingTests {
                 try await writer.write(snapshot)
                 #expect(binding.take() == ["create", "rename"])
                 let text = try String(contentsOf: url, encoding: .utf8)
-                #expect(text.contains("**Them** 00:00:02 <!-- audelin-segment them-1 -->\n1 hello\n"))
+                #expect(text.contains("**Them** 00:00:02\n1 hello\n"))
                 #expect(text.contains("- Them: Anna\n"))
                 #expect(text.contains("\"revision\":\(revision)"))
             }

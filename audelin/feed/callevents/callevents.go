@@ -24,8 +24,7 @@ const (
 // Part is one stretch of speech: its side, its start in call time and its
 // words.
 type Part struct {
-	// ID identifies a segment within the call across reads. Parts in
-	// the ended snapshot can share an ID when a segment was split.
+	// ID is unique within a call and persists across reads of the part.
 	ID    string
 	Side  string
 	Start time.Duration

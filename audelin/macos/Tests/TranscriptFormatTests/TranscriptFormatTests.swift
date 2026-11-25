@@ -11,24 +11,24 @@ struct TranscriptFormatTests {
         var format = TranscriptFormat()
         var rendering: TranscriptFormat.Rendering
         rendering = try format.render([
-            .init(id: 1, side: .mine, start: 65.99, settled: "1 settled", pending: ""),
-            .init(id: 1, side: .theirs, start: 3_669.9, settled: "", pending: "2 pending"),
-            .init(id: 2, side: .mine, start: 0.99, settled: "3 settled", pending: "3 pending"),
-            .init(id: 2, side: .theirs, start: 60, settled: "4 settled", pending: "4 pending"),
+            .init(side: .mine, start: 65.99, settled: "1 settled", pending: ""),
+            .init(side: .theirs, start: 3_669.9, settled: "", pending: "2 pending"),
+            .init(side: .mine, start: 0.99, settled: "3 settled", pending: "3 pending"),
+            .init(side: .theirs, start: 60, settled: "4 settled", pending: "4 pending"),
         ])
         #expect(markdown(rendering) == """
             # Transcript
 
-            **Me** 00:01:05 <!-- audelin-segment me-1 -->
+            **Me** 00:01:05
             1 settled
 
-            **Them** 01:01:09 <!-- audelin-segment them-1 -->
+            **Them** 01:01:09
             2 pending
 
-            **Me** 00:00:00 <!-- audelin-segment me-2 -->
+            **Me** 00:00:00
             3 settled 3 pending
 
-            **Them** 00:01:00 <!-- audelin-segment them-2 -->
+            **Them** 00:01:00
             4 settled 4 pending
 
             """)
