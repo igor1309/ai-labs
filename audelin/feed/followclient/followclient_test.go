@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -15,11 +16,15 @@ import (
 
 // source gives its events in turn, then its error.
 type source struct {
-	events []followclient.Event
-	err    error
+	events     []followclient.Event
+	err        error
+	beforeNext func()
 }
 
 func (s *source) Next(context.Context) (followclient.Event, error) {
+	if s.beforeNext != nil {
+		s.beforeNext()
+	}
 	if len(s.events) == 0 {
 		if s.err != nil {
 			return followclient.Event{}, s.err
@@ -46,27 +51,34 @@ type record struct {
 	To       string `json:"to"`
 	CallText *struct {
 		About   string `json:"about"`
-		Context []struct{ Speaker, At, Words string }
-		New     []struct{ Speaker, At, Words string }
+		Context []spoken
+		New     []spoken
 	} `json:"untrusted_call_text"`
+}
+
+type spoken struct{ Speaker, At, Words string }
+
+func (w *writes) records(t *testing.T) []record {
+	t.Helper()
+	var got []record
+	for i, b := range w.each {
+		if bytes.Count(b, []byte("\n")) != 1 || !bytes.HasSuffix(b, []byte("\n")) {
+			t.Fatalf("write %d (%d bytes) is not one newline-terminated line", i+1, len(b))
+		}
+		var r record
+		if err := json.Unmarshal(b, &r); err != nil {
+			t.Fatalf("write %d is not a JSON record: %v", i+1, err)
+		}
+		got = append(got, r)
+	}
+	return got
 }
 
 func follow(t *testing.T, events ...followclient.Event) ([]record, error) {
 	t.Helper()
 	w := &writes{}
 	err := followclient.Follow(context.Background(), &source{events: events, err: io.ErrUnexpectedEOF}, w)
-	var got []record
-	for _, b := range w.each {
-		if bytes.Count(b, []byte("\n")) != 1 || !bytes.HasSuffix(b, []byte("\n")) {
-			t.Fatalf("a write is not one line: %q", b)
-		}
-		var r record
-		if err := json.Unmarshal(b, &r); err != nil {
-			t.Fatalf("%q: %v", b, err)
-		}
-		got = append(got, r)
-	}
-	return got, err
+	return w.records(t), err
 }
 
 var ended = followclient.Event{Kind: followclient.CallEnded}
@@ -93,6 +105,78 @@ func TestS1_AWindowWithWordsCanBeReadApartFromInstructions(t *testing.T) {
 	}
 	if n := r.CallText.New; len(n) != 1 || n[0].Words != "new answer" {
 		t.Fatalf("new %+v", n)
+	}
+}
+
+func TestS1_EachRecordIsOneLineWrittenBeforeTheNextEvent(t *testing.T) {
+	t.Parallel()
+
+	contextParts := []followclient.Part{
+		{Speaker: "Them 1", Start: 150 * time.Second, Words: strings.Repeat("The label reads \"{draft}\".\n", 256)},
+		{Speaker: "Me", Start: 180 * time.Second, Words: "Line one\n{\"status\": \"ready\"}"},
+		{Speaker: "Them 1", Start: 195 * time.Second, Words: "Keep \"this\"\ninside {the note}."},
+	}
+	newParts := []followclient.Part{
+		{Speaker: "Me", Start: 200 * time.Second, Words: strings.Repeat("The result reads \"{ready}\".\n", 256)},
+		{Speaker: "Them 1", Start: 230 * time.Second, Words: "End with \"}\"\nand keep going."},
+		{Speaker: "Me", Start: 260 * time.Second, Words: "Final line\n{\"status\": \"done\"}"},
+	}
+
+	w := &writes{}
+	var writesBeforeNext []int
+	src := &source{
+		events: []followclient.Event{
+			{Kind: followclient.NoCall},
+			window(slices.Clone(contextParts), slices.Clone(newParts)),
+			{Kind: followclient.Chunk, From: 5 * time.Minute, To: 6 * time.Minute},
+			ended,
+		},
+		err: io.ErrUnexpectedEOF,
+		beforeNext: func() {
+			writesBeforeNext = append(writesBeforeNext, len(w.each))
+		},
+	}
+
+	if err := followclient.Follow(context.Background(), src, w); err != nil {
+		t.Fatal(err)
+	}
+	if want := []int{0, 1, 2, 3}; !slices.Equal(writesBeforeNext, want) {
+		t.Fatalf("writes before each Next = %v, want %v", writesBeforeNext, want)
+	}
+	wantTypes := []string{"no_call", "window", "window", "call_ended"}
+	if len(w.each) != len(wantTypes) {
+		t.Fatalf("got %d writes, want %d", len(w.each), len(wantTypes))
+	}
+	got := w.records(t)
+	for i, want := range wantTypes {
+		if got[i].Type != want {
+			t.Fatalf("write %d has record type %q, want %q", i+1, got[i].Type, want)
+		}
+	}
+	if got[2].From != "00:05:00" || got[2].To != "00:06:00" {
+		t.Fatalf("second window spans %q to %q, want 00:05:00 to 00:06:00", got[2].From, got[2].To)
+	}
+
+	callText := got[1].CallText
+	if callText == nil {
+		t.Fatal("catch-up window has no marked call text")
+	}
+	for _, group := range []struct {
+		name string
+		got  []spoken
+		want []followclient.Part
+	}{
+		{"context", callText.Context, contextParts},
+		{"new", callText.New, newParts},
+	} {
+		if len(group.got) != len(group.want) {
+			t.Fatalf("got %d %s parts, want %d", len(group.got), group.name, len(group.want))
+		}
+		for i, part := range group.want {
+			if group.got[i].Words != part.Words {
+				t.Errorf("%s part %d words differ from input", group.name, i+1)
+			}
+		}
 	}
 }
 
