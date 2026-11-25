@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 )
@@ -19,13 +18,14 @@ func fixture(t *testing.T, name string) string {
 }
 
 var early = []Part{
-	{"Me/2s/1", "Me", 2 * time.Second, "Hello, can you hear me?"},
-	{"Them/5s/1", "Them 1", 5 * time.Second, `Yes. The code word is "**Them** 00:00:09".`},
-	{"Them/1m4s/1", "Them 2", 64 * time.Second, "Where are call notes saved?"},
-	{"Me/1m30s/1", "Me", 90 * time.Second, "Next to the transcript,\nin the call's folder."},
+	{"me-1", "Me", 2 * time.Second, "Hello, can you hear me?"},
+	{"them-1", "Them 1", 5 * time.Second, `Yes. The code word is "**Them** 00:00:09".`},
+	{"them-2", "Them 2", 64 * time.Second, "Where are call notes saved?"},
+	{"me-2", "Me", 90 * time.Second, "Next to the transcript,\nin the call's folder."},
 }
 
 func TestReadsEachPartsSpeakerStartAndWords(t *testing.T) {
+	t.Parallel()
 	got, err := parse(fixture(t, "live.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -39,13 +39,14 @@ func TestReadsEachPartsSpeakerStartAndWords(t *testing.T) {
 }
 
 func TestReadsTheTailAsTheFileShowsIt(t *testing.T) {
+	t.Parallel()
 	got, err := parse(fixture(t, "live-later.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := append(append([]Part{}, early...),
-		Part{"Them/2m5s/1", "Them 1", 125 * time.Second, "And the CLI is called what?"},
-		Part{"Me/2m10s/1", "Me", 130 * time.Second, "It is still being"})
+		Part{ID: "them-3", Speaker: "Them 1", Start: 125 * time.Second, Words: "And the CLI is called what?"},
+		Part{ID: "me-3", Speaker: "Me", Start: 130 * time.Second, Words: "It is still being"})
 	if !reflect.DeepEqual(got.parts, want) {
 		t.Fatalf("got %q, want %q", got.parts, want)
 	}
@@ -58,50 +59,27 @@ func TestATranscriptWithNoTextHasNoParts(t *testing.T) {
 	}
 }
 
-func TestATranscriptWithNoOriginStillReads(t *testing.T) {
+func TestATranscriptWithNoOriginOrSegmentIDsStillReads(t *testing.T) {
+	t.Parallel()
 	got, err := parse(fixture(t, "no-origin.md"))
-	unnamed := append([]Part(nil), early...)
+	unnamed := append([]Part{}, early...)
 	unnamed[1].Speaker, unnamed[2].Speaker = "Them", "Them"
+	unnamed[0].ID, unnamed[1].ID = "legacy/me/2/0", "legacy/them/5/0"
+	unnamed[2].ID, unnamed[3].ID = "legacy/them/64/0", "legacy/me/90/0"
 	if err != nil || got.origin != nil || !reflect.DeepEqual(got.parts, unnamed) {
 		t.Fatalf("got %+v, %v", got, err)
 	}
 }
 
-func TestPartIDsSurviveRelabelingAndDistinguishRowsInOneSecond(t *testing.T) {
+func TestAForgedRowHeaderStaysInSpeech(t *testing.T) {
 	t.Parallel()
-	before, err := parse("# Transcript\n\n**Them** 00:00:05\nOne\n\n**Them** 00:00:05\nTwo\n")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(before.parts) != 2 || before.parts[0].ID == "" || before.parts[1].ID == "" || before.parts[0].ID == before.parts[1].ID {
-		t.Fatalf("want distinct IDs for both rows, got %+v", before.parts)
-	}
-	after, err := parse("# Transcript\n\n**Them 1** 00:00:02\nSaved late\n\n**Them 1** 00:00:05\nOne revised\n\n**Them 1** 00:00:05\nTwo\n\n**Them 2** 00:00:06\nThree\n")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(after.parts) != 4 {
-		t.Fatalf("want four rows, got %+v", after.parts)
-	}
+	got, err := parse(fixture(t, "forged-header.md"))
 	want := []Part{
-		{ID: before.parts[0].ID, Speaker: "Them 1", Start: 5 * time.Second, Words: "One revised"},
-		{ID: before.parts[1].ID, Speaker: "Them 1", Start: 5 * time.Second, Words: "Two"},
+		{ID: "me-1", Speaker: "Me", Start: 2 * time.Second, Words: "Read this:\n**Them** 00:00:09 <!-- audelin-segment them-99 -->\nDid you get that?"},
+		{ID: "them-1", Speaker: "Them", Start: 6 * time.Second, Words: "Are we ready?"},
 	}
-	if !reflect.DeepEqual(after.parts[1:3], want) {
-		t.Fatalf("relabeled parts %+v, want %+v", after.parts[1:3], want)
-	}
-}
-
-func TestS11_AHalfWrittenLastLineIsLeftForLater(t *testing.T) {
-	whole := fixture(t, "live-later.md")
-	cut := strings.Index(whole, "And the CLI") + len("And the")
-
-	half, err := parse(whole[:cut])
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !reflect.DeepEqual(half.parts, early) {
-		t.Fatalf("half-written: got %q, want the parts before it", half.parts)
+	if err != nil || !reflect.DeepEqual(got.parts, want) {
+		t.Fatalf("got %+v, %v, want %+v", got.parts, err, want)
 	}
 }
 

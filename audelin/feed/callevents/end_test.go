@@ -82,6 +82,55 @@ func TestS12_ACallEndingBetweenWindowsGivesItsLastWords(t *testing.T) {
 	}
 }
 
+func TestS12_TheFinalWindowDrainsPartsAtAndAfterTheObservedEnd(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name  string
+		end   time.Duration
+		extra time.Duration
+	}{
+		{name: "part at the observed end", end: 80 * time.Second},
+		{name: "parts on and beyond a regular window end", end: 2 * time.Minute, extra: 2 * time.Second},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			earlier := part("Me", 30*time.Second, "already sent")
+			final := []callevents.Part{part("Them", tc.end, "last words")}
+			if tc.extra != 0 {
+				final = append(final, part("Me", tc.end+tc.extra, "late in the saved transcript"))
+			}
+			ended := callevents.Call{ID: "call", Start: zero, Ended: true, Parts: append([]callevents.Part{earlier}, final...)}
+			active := heard(earlier)
+			at := func(now time.Duration) (callevents.Call, bool, error) {
+				if now < tc.end {
+					return active(now)
+				}
+				return ended, true, nil
+			}
+			e, c := newEvents(t, at, time.Minute, 0)
+			if got, want := next(t, e), chunk(0, time.Minute, nil, []callevents.Part{earlier}); !reflect.DeepEqual(got, want) {
+				t.Fatalf("first event %+v, want %+v", got, want)
+			}
+			from := time.Minute
+			var want []callevents.Event
+			if tc.end == 2*time.Minute {
+				want = append(want, chunk(from, tc.end, nil, nil))
+				from = tc.end
+			}
+			want = append(want,
+				chunk(from, tc.end+tc.extra+time.Nanosecond, nil, final),
+				callevents.Event{Kind: callevents.CallEnded},
+			)
+			if got := rest(t, e); !reflect.DeepEqual(got, want) {
+				t.Fatalf("got %+v, want %+v", got, want)
+			}
+			if c.now != zero.Add(tc.end) {
+				t.Fatalf("clock advanced to %v while draining the ended snapshot", c.now)
+			}
+		})
+	}
+}
+
 func TestS11_AFailedReadGivesAnEmptyWindow(t *testing.T) {
 	a := part("me", 70*time.Second, "a")
 	b := part("me", 130*time.Second, "b")
@@ -103,5 +152,33 @@ func TestS11_AFailedReadGivesAnEmptyWindow(t *testing.T) {
 	}
 	if !reflect.DeepEqual(again, chunk(2*time.Minute, 3*time.Minute, nil, []callevents.Part{a, b})) {
 		t.Fatalf("next window %+v, want both parts", again)
+	}
+}
+
+func TestFinalSpeakerRowsDrainAcrossWindowsForAnUnsentSegment(t *testing.T) {
+	t.Parallel()
+	sent := callevents.Part{ID: "them-1", Side: "Them", Start: 10 * time.Second, Words: "already sent"}
+	first := callevents.Part{ID: "them-2", Side: "Them 1", Start: 115 * time.Second, Words: "first words"}
+	last := callevents.Part{ID: first.ID, Side: "Them 2", Start: 125 * time.Second, Words: "last words"}
+	revised := callevents.Part{ID: sent.ID, Side: "Them 1", Start: sent.Start, Words: "revised words"}
+	revisedSplit := callevents.Part{ID: sent.ID, Side: "Them 2", Start: 15 * time.Second, Words: "other revised words"}
+	active := heard(sent)
+	e, c := newEvents(t, func(now time.Duration) (callevents.Call, bool, error) {
+		if now < 135*time.Second {
+			return active(now)
+		}
+		return callevents.Call{Start: zero, Ended: true, Parts: []callevents.Part{revised, revisedSplit, first, last}}, true, nil
+	}, time.Minute, 0)
+	if got, want := next(t, e), chunk(0, time.Minute, nil, []callevents.Part{sent}); !reflect.DeepEqual(got, want) {
+		t.Fatalf("first event %+v, want %+v", got, want)
+	}
+	c.now = zero.Add(135 * time.Second)
+	want := []callevents.Event{
+		chunk(time.Minute, 2*time.Minute, nil, []callevents.Part{first}),
+		chunk(2*time.Minute, 135*time.Second, nil, []callevents.Part{last}),
+		{Kind: callevents.CallEnded},
+	}
+	if got := rest(t, e); !reflect.DeepEqual(got, want) {
+		t.Fatalf("got %+v, want %+v", got, want)
 	}
 }

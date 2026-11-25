@@ -16,6 +16,8 @@ public struct TranscriptFormat: Sendable {
             case gap
         }
 
+        /// The segment's ID on its recording side, absent on legacy rows.
+        public let id: Int?
         public let side: Side
         public let start: Double
         public let settled: String
@@ -27,8 +29,9 @@ public struct TranscriptFormat: Sendable {
         /// How long a gap row says the call was cut off, in seconds; none for words.
         public let gapLength: Double?
 
-        public init(side: Side, start: Double, settled: String, pending: String, filledInLater: Bool = false, speaker: String? = nil) {
+        public init(id: Int? = nil, side: Side, start: Double, settled: String, pending: String, filledInLater: Bool = false, speaker: String? = nil) {
 
+            self.id = id
             self.side = side
             self.speaker = speaker
             self.start = start
@@ -43,6 +46,7 @@ public struct TranscriptFormat: Sendable {
 
         private init(gapAt start: Double, length: Double) {
 
+            id = nil
             side = .gap
             self.start = start
             settled = ""
@@ -188,12 +192,13 @@ public struct TranscriptFormat: Sendable {
 
         let (parts, speakers, _) = parts(markdown)
         return parts.filter { $0.gap == nil }.map { part in
-            let index = part.label == "Them" ? (speakers.count == 1 ? 0 : nil)
-                : part.label.hasPrefix("Them ") ? Int(part.label.dropFirst("Them ".count)).map { $0 - 1 } : nil
+            let label = part.header.label
+            let index = label == "Them" ? (speakers.count == 1 ? 0 : nil)
+                : label.hasPrefix("Them ") ? Int(label.dropFirst("Them ".count)).map { $0 - 1 } : nil
             let name = index.flatMap { speakers.indices.contains($0) ? speakers[$0].name : nil }?
                 .trimmingCharacters(in: .whitespacesAndNewlines)
-            let label = name.map { $0.isEmpty ? part.label : "\(part.label) (\($0))" } ?? part.label
-            return Entry(label: label, start: part.start, words: part.words)
+            let named = name.map { $0.isEmpty ? label : "\(label) (\($0))" } ?? label
+            return Entry(label: named, start: part.header.start, words: part.words)
         }
     }
 
@@ -221,12 +226,12 @@ public struct TranscriptFormat: Sendable {
     }
 
     /// Reads a rendered transcript back into its parts with words, in order. A part is
-    /// its header line (`**Me**`, `**Them**` or `**Them N**`, its start, and maybe the
-    /// filled-in mark) and every line up to the next header or the Speakers section.
+    /// its header line (speaker label, start, optional filled-in mark and segment ID)
+    /// and every line up to the next header or the Speakers section.
     /// Lines before the first part, and the Speakers section, are skipped.
     public static func entries(_ markdown: String) -> [Entry] {
 
-        parts(markdown).parts.filter { $0.gap == nil }.map { Entry(label: $0.label, start: $0.start, words: $0.words) }
+        parts(markdown).parts.filter { $0.gap == nil }.map { Entry(label: $0.header.label, start: $0.header.start, words: $0.words) }
     }
 
     /// A saved transcript read back as fully as it was rendered: each part with words and
@@ -250,33 +255,45 @@ public struct TranscriptFormat: Sendable {
         let (parts, speakers, origin) = parts(markdown)
         let ids = speakers.map(\.id)
         let segments = parts.map { part -> Segment in
-            if let length = part.gap { return .gap(at: part.start, length: length) }
-            guard part.label != "Me" else {
-                return Segment(side: .mine, start: part.start, settled: part.words, pending: "", filledInLater: part.later)
+            let header = part.header
+            if let length = part.gap { return .gap(at: header.start, length: length) }
+            guard header.label != "Me" else {
+                return Segment(id: header.id, side: .mine, start: header.start, settled: part.words, pending: "", filledInLater: header.later)
             }
             let speaker: String?
-            if part.label == "Them" { speaker = ids.count == 1 ? ids[0] : nil } else {
-                let index = Int(part.label.dropFirst("Them ".count)).map { $0 - 1 }
+            if header.label == "Them" { speaker = ids.count == 1 ? ids[0] : nil } else {
+                let index = Int(header.label.dropFirst("Them ".count)).map { $0 - 1 }
                 speaker = index.flatMap { ids.indices.contains($0) ? ids[$0] : nil }
             }
-            return Segment(side: .theirs, start: part.start, settled: part.words, pending: "", filledInLater: part.later, speaker: speaker)
+            return Segment(id: header.id, side: .theirs, start: header.start, settled: part.words, pending: "", filledInLater: header.later, speaker: speaker)
         }
         return Saved(segments: segments, speakers: speakers, origin: origin)
     }
 
-    private struct Part { let label: String; let start: Double; let later: Bool; let words: String; var gap: Double? = nil }
+    private struct Header {
+        let label: String
+        let start: Double
+        let later: Bool
+        let id: Int?
+    }
+
+    private struct Part {
+        let header: Header
+        let words: String
+        var gap: Double? = nil
+    }
 
     private static func parts(_ markdown: String) -> (parts: [Part], speakers: [Speaker], origin: Origin?) {
 
         var parts: [Part] = []
         var speakers: [Speaker] = []
-        var current: (label: String, start: Double, later: Bool, lines: [Substring])?
+        var current: (header: Header, lines: [Substring])?
         func close() {
             guard let part = current else { return }
             let words = part.lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-            if part.label == "Gap" {
-                if let length = gapLength(words) { parts.append(Part(label: "Gap", start: part.start, later: false, words: "", gap: length)) }
-            } else if !words.isEmpty { parts.append(Part(label: part.label, start: part.start, later: part.later, words: words)) }
+            if part.header.label == "Gap" {
+                if let length = gapLength(words) { parts.append(Part(header: part.header, words: "", gap: length)) }
+            } else if !words.isEmpty { parts.append(Part(header: part.header, words: words)) }
             current = nil
         }
         let (normalized, origin) = frontMatter(markdown)
@@ -286,12 +303,12 @@ public struct TranscriptFormat: Sendable {
                 if let block = speakerList(line) { speakers = block }
             } else if let header = header(line) {
                 close()
-                current = (header.label, header.start, header.later, [])
+                current = (header, [])
             } else if line == "## Speakers" {
                 close()
                 inSpeakers = true
-            } else {
-                current?.lines.append(line)
+            } else if let currentHeader = current?.header {
+                current?.lines.append(line.first == "\\" && escapes(line, hasID: currentHeader.id != nil) ? line.dropFirst() : line)
             }
         }
         close()
@@ -320,11 +337,43 @@ public struct TranscriptFormat: Sendable {
         return try? JSONDecoder().decode(Metadata.self, from: Data(json.utf8)).speakers
     }
 
-    private static func header(_ line: Substring) -> (label: String, start: Double, later: Bool)? {
+    private static func header(_ line: Substring) -> Header? {
 
-        guard let match = line.wholeMatch(of: /\*\*(Me|Them|Them [1-9][0-9]*|Gap)\*\* ([0-9]{2,}):([0-5][0-9]):([0-5][0-9])( \(filled in later\))?/),
+        guard let match = line.wholeMatch(of: /\*\*(Me|Them|Them [1-9][0-9]*|Gap)\*\* ([0-9]{2,}):([0-5][0-9]):([0-5][0-9])( \(filled in later\))?( <!-- audelin-segment (me|them)-(-?[0-9]+) -->)?/),
               let h = Double(match.2), let m = Double(match.3), let s = Double(match.4) else { return nil }
-        return (String(match.1), h * 3_600 + m * 60 + s, match.5 != nil)
+        let id = match.8.flatMap { Int($0) }
+        if let track = match.7 {
+            guard id != nil, match.1 != "Gap", track == (match.1 == "Me" ? "me" : "them") else { return nil }
+        }
+        return Header(label: String(match.1), start: h * 3_600 + m * 60 + s, later: match.5 != nil, id: id)
+    }
+
+    /// Quote structural lines in speech. Legacy rows can already contain backslashes
+    /// before old headers, so only decode their escapes for the new header form.
+    private static func escapes(_ line: Substring, hasID: Bool) -> Bool {
+
+        let content = line.drop(while: { $0 == "\\" })
+        if content.first == "*" {
+            return header(content).map { hasID || $0.id != nil } ?? false
+        }
+        return hasID && content == "## Speakers"
+    }
+
+    private static func quotedWords(_ words: String, hasID: Bool) -> String {
+
+        // The row separator supplies a newline after the words, so a trailing CR
+        // completes a CRLF just like one already in the body.
+        let body = words.last == "\r" ? words.dropLast() : words[...]
+        if !body.utf8.contains(10) { return escapes(body, hasID: hasID) ? "\\" + words : words }
+        let lines = body.split(omittingEmptySubsequences: false, whereSeparator: { $0 == "\n" || $0 == "\r\n" })
+        var quoted = ""
+        var start = words.startIndex
+        for line in lines where escapes(line, hasID: hasID) {
+            quoted += words[start..<line.startIndex]
+            quoted += "\\"
+            start = line.startIndex
+        }
+        return quoted.isEmpty ? words : quoted + words[start...]
     }
 
     /// A readable Speakers section and one versioned machine-readable block after it.
@@ -376,7 +425,9 @@ public struct TranscriptFormat: Sendable {
             }
             let later = segment.filledInLater ? " (filled in later)" : ""
             let words = [segment.settled, segment.pending].filter { !$0.isEmpty }.joined(separator: " ")
-            text = "**\(side)** \(time)\(later)\n\(words)"
+            let track = segment.side == .mine ? "me" : "them"
+            let identity = segment.id.map { " <!-- audelin-segment \(track)-\($0) -->" } ?? ""
+            text = "**\(side)** \(time)\(later)\(identity)\n\(TranscriptFormat.quotedWords(words, hasID: segment.id != nil))"
             hasWords = !words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
     }

@@ -57,7 +57,7 @@ struct FinishedTextSwitchTests {
                 let mine = onCallSide ? "continuing" : "first last"
                 let theirs = onCallSide ? "first last" : "continuing"
                 #expect(try transcriptBody(at: url)
-                    == "# Transcript\n\n**Me** 00:00:00\n\(mine)\n\n**Them** 00:00:00\n\(theirs)\n")
+                    == "# Transcript\n\n**Me** 00:00:00 <!-- audelin-segment me-0 -->\n\(mine)\n\n**Them** 00:00:00 <!-- audelin-segment them-0 -->\n\(theirs)\n")
                 await transcript.writer.close()
             } catch {
                 await transcript.writer.close()

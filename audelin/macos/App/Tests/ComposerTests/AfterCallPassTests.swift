@@ -23,7 +23,17 @@ struct AfterCallPassTests {
             #expect(tracks.all == [track])
             #expect(await bytes.calls == ["replace"])
             let text = try #require(await bytes.replaced.last)
-            #expect(text.contains("**Them 1** 00:00:00\nfar1\n\n**Them 2** 00:00:04\nfar2\n\n**Them 1** 00:00:08\nfar3\n"))
+            #expect(text.contains("""
+                **Them 1** 00:00:00 <!-- audelin-segment them-1 -->
+                far1
+
+                **Them 2** 00:00:04 <!-- audelin-segment them-2 -->
+                far2
+
+                **Them 1** 00:00:08 <!-- audelin-segment them-3 -->
+                far3
+
+                """))
             #expect(text.contains("- Them 1: Anna\n- Them 2: Boris\n"))
             #expect(logs.all.map(\.message).contains("after-call names confirmed=2 turns=4"))
         }
@@ -81,7 +91,17 @@ struct AfterCallPassTests {
             let boris = try #require(text.firstMatch(of: /- Them (\d): Boris/)?.1)
             let offered = summaryEntries(.init(status: .finished, entries: [], finalCount: 0), attributed: returned.far)
             #expect(offered.map(\.label) == ["Them \(anna) (Anna)", "Them \(boris) (Boris)", "Them \(anna) (Anna)"])
-            #expect(text.contains("**Them \(anna)** 00:00:00\nfar1\n\n**Them \(boris)** 00:00:04\nfar2\n\n**Them \(anna)** 00:00:08\nfar3\n"))
+            #expect(text.contains("""
+                **Them \(anna)** 00:00:00 <!-- audelin-segment them-1 -->
+                far1
+
+                **Them \(boris)** 00:00:04 <!-- audelin-segment them-2 -->
+                far2
+
+                **Them \(anna)** 00:00:08 <!-- audelin-segment them-3 -->
+                far3
+
+                """))
             #expect(text.contains("\"state\":\"confirmed\""))
             #expect(!text.contains("tentative"))
             #expect(logs.all.map(\.message).contains("after-call names saved"))
@@ -109,7 +129,17 @@ struct AfterCallPassTests {
             let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: names, origin: testTranscriptOrigin, sink: PassLog(entries: Values<LogEntry>()))
             try await writer.replaceWhole(replacement.segments, speakers: replacement.speakers, outcomes: .init())
             let text = try #require(await bytes.replaced.last)
-            #expect(text.contains("**Them 1** 00:00:00\nfar1\n\n**Them 2** 00:00:04\nfar2\n\n**Them** 00:00:08\nfar3\n"))
+            #expect(text.contains("""
+                **Them 1** 00:00:00 <!-- audelin-segment them-1 -->
+                far1
+
+                **Them 2** 00:00:04 <!-- audelin-segment them-2 -->
+                far2
+
+                **Them** 00:00:08 <!-- audelin-segment them-3 -->
+                far3
+
+                """))
             #expect(text.contains("- Them 1: Anna\n- Them 2: Boris\n"))
             #expect(text.contains("\"state\":\"tentative\""))
         }
@@ -127,7 +157,17 @@ struct AfterCallPassTests {
             let (_, bytes, pass, raw) = try await unnamedPass(track: track, binding: binding, theirs: [(1, 0, 1), (2, 2, 3), (3, 4, 5)])
             _ = await pass.diarize(raw, evidence: .init(), outcomes: .init())
             let text = try #require(await bytes.replaced.last)
-            #expect(text.contains("**Them 1** 00:00:00\nfar1\n\n**Them 2** 00:00:02\nfar2\n\n**Them 1** 00:00:04\nfar3\n"))
+            #expect(text.contains("""
+                **Them 1** 00:00:00 <!-- audelin-segment them-1 -->
+                far1
+
+                **Them 2** 00:00:02 <!-- audelin-segment them-2 -->
+                far2
+
+                **Them 1** 00:00:04 <!-- audelin-segment them-3 -->
+                far3
+
+                """))
             #expect(text.contains("- Them 1: unknown\n- Them 2: unknown\n"))
             #expect(await bytes.calls == ["replace"])
         }
@@ -159,7 +199,14 @@ struct AfterCallPassTests {
             let (_, bytes, pass, raw) = try await unnamedPass(track: track, binding: binding, theirs: [(1, 0, 1), (2, 2, 3)])
             _ = await pass.diarize(raw, evidence: .init(), outcomes: .init())
             let text = try #require(await bytes.replaced.last)
-            #expect(text.contains("**Them** 00:00:00\nfar1\n\n**Them** 00:00:02\nfar2\n"))
+            #expect(text.contains("""
+                **Them** 00:00:00 <!-- audelin-segment them-1 -->
+                far1
+
+                **Them** 00:00:02 <!-- audelin-segment them-2 -->
+                far2
+
+                """))
             #expect(!text.contains("Them 1"))
         }
     }
@@ -191,16 +238,16 @@ struct AfterCallPassTests {
             #expect(returned.far.far.map(\.speaker) == [ids.first, ids.first, ids.last])
             let text = try #require(await bytes.replaced.last)
             #expect(text.contains("""
-                **Them 1** 00:00:00 (filled in later)
+                **Them 1** 00:00:00 (filled in later) <!-- audelin-segment them-1 -->
                 far1
 
-                **Me** 00:00:01
+                **Me** 00:00:01 <!-- audelin-segment me-10 -->
                 me10
 
-                **Them 1** 00:00:02 (filled in later)
+                **Them 1** 00:00:02 (filled in later) <!-- audelin-segment them-2 -->
                 a
 
-                **Them 2** 00:00:04 (filled in later)
+                **Them 2** 00:00:04 (filled in later) <!-- audelin-segment them-2 -->
                 b
 
                 """))
@@ -222,7 +269,14 @@ struct AfterCallPassTests {
             let writer = WritingTranscript(file: bytes, format: TranscriptFormat(), names: names, origin: testTranscriptOrigin, sink: PassLog(entries: Values<LogEntry>()))
             try await writer.replaceWhole(replacement.segments, speakers: replacement.speakers, outcomes: .init())
             let text = try #require(await bytes.replaced.last)
-            #expect(text.contains("**Them** 00:00:00\nfar1\n\n**Them** 00:00:02\nfar2\n"))
+            #expect(text.contains("""
+                **Them** 00:00:00 <!-- audelin-segment them-1 -->
+                far1
+
+                **Them** 00:00:02 <!-- audelin-segment them-2 -->
+                far2
+
+                """))
         }
     }
 

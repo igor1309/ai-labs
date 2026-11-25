@@ -21,9 +21,9 @@ struct SessionRecordingTests {
             let folder = rig.folder()
             #expect(try await recordedSamples(folder.appendingPathComponent("microphone.caf")) == (microphoneFails ? [] : [0.25, -0.5, 0.125]))
             #expect(try await recordedSamples(folder.appendingPathComponent("call.caf")) == [-0.25, 0.5, -0.125])
-            let mine = microphoneFails ? "" : "**Me** 00:00:00\nmine final\n\n"
+            let mine = microphoneFails ? "" : "**Me** 00:00:00 <!-- audelin-segment me-0 -->\nmine final\n\n"
             #expect(try transcriptBody(at: folder.appendingPathComponent("transcript.md"))
-                == "# Transcript\n\n" + mine + "**Them** 00:00:00\ntheirs final\n")
+                == "# Transcript\n\n" + mine + "**Them** 00:00:00 <!-- audelin-segment them-0 -->\ntheirs final\n")
             #expect(await rig.mine.chunks.flatMap(\.samples) == (microphoneFails ? [] : [0.25, -0.5, 0.125]))
             #expect(await rig.theirs.chunks.flatMap(\.samples) == [-0.25, 0.5, -0.125])
             #expect(rig.microphone.stops.all == (microphoneFails ? [] : [true]))

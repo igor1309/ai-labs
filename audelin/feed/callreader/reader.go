@@ -6,8 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -92,12 +94,28 @@ func (r *Reader) follow(folders []folder) (Call, bool, error) {
 		}
 		call := Call{ID: f.id, Start: f.start, Parts: t.parts}
 		if t.origin != nil && len(t.origin.Calls) == 1 && t.origin.Calls[0].Origin != nil {
-			call.Ended = finishing(t.origin.Calls[0].Origin)
+			call.Ended = t.origin.Calls[0].Origin.finishing()
+		}
+		if call.Ended {
+			call.Parts = rewritten(call.Parts)
 		}
 		return call, true, nil
 	}
 	return Call{}, false, errGone
 }
+
+// rewritten leaves out of an ended call the rows a finishing pass wrote
+// without a segment ID, such as a microphone side heard again after the
+// call: they repeat words the live rows already told. A transcript with no
+// segment IDs at all, as older Audelin writes, keeps every row.
+func rewritten(parts []Part) []Part {
+	if !slices.ContainsFunc(parts, func(p Part) bool { return !unmarked(p) }) {
+		return parts
+	}
+	return slices.DeleteFunc(slices.Clone(parts), unmarked)
+}
+
+func unmarked(p Part) bool { return strings.HasPrefix(p.ID, legacyPrefix) }
 
 // errGone is the followed call's folder no longer being in the calls
 // folder.
@@ -144,15 +162,8 @@ func (r *Reader) folders() ([]folder, error) {
 // recording tells a transcript of one call that tells how it was heard
 // and no finishing stage.
 func recording(o *origin) bool {
-	if o == nil || o.MergedBy != nil || len(o.Calls) != 1 || o.Calls[0].Origin == nil || o.Calls[0].Origin.Hearing == nil {
+	if o == nil || o.MergedBy != nil || len(o.Calls) != 1 || o.Calls[0].Origin == nil {
 		return false
 	}
-	return !finishing(o.Calls[0].Origin)
+	return !o.Calls[0].Origin.finishing()
 }
-
-// finishing tells whether a call's origin tells a finishing stage.
-func finishing(c *callOrigin) bool {
-	return told(c.Split) || told(c.Cleaning)
-}
-
-func told(raw []byte) bool { return len(raw) > 0 && string(raw) != "null" }

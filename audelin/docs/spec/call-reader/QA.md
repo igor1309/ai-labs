@@ -8,10 +8,10 @@ filled in late and a revised tail.
 Drive: a temp folder with two finished transcripts and one old one with no origin; read none. Evidence: `TestS1_WithNoCallRecordingThereIsNoLiveCall` in `audelin/feed/callreader`, run by `audelin-feed-core`.
 
 ## S-2 The call being recorded is the live call
-Drive: find the newest live transcript below newer finished, merged or originless transcripts. Read a renamed folder's start from its name and read each part's label, start and words. Two rows with the same label and displayed second have distinct IDs that persist when the speaker is relabeled. A call saved with live text off has no parts. Evidence: `TestS2_TheCallBeingRecordedIsTheLiveCall`, `TestS2_DiscoverySkipsNewerIneligibleTranscripts`, `TestReadsEachPartsSpeakerStartAndWords`, `TestPartIDsSurviveRelabelingAndDistinguishRowsInOneSecond` and `TestACallWithLiveTextOffIsLiveWithNoParts` in `audelin/feed/callreader`, run by `audelin-feed-core`.
+Drive: find the newest live transcript below newer finished, merged or originless transcripts. Read a renamed folder's start from its name and read each part's ID, label, start and words. Two legacy rows with the same label and displayed second have distinct fallback IDs that persist when the speaker is relabeled. A forged header in speech reads as words. A call saved with live text off has no parts. Evidence: `TestS2_TheCallBeingRecordedIsTheLiveCall`, `TestS2_DiscoverySkipsNewerIneligibleTranscripts`, `TestReadsEachPartsSpeakerStartAndWords`, `TestPartIDsSurviveRelabelingAndDistinguishRowsInOneSecond`, `TestAForgedRowHeaderStaysInSpeech` and `TestACallWithLiveTextOffIsLiveWithNoParts` in `audelin/feed/callreader`, run by `audelin-feed-core`.
 
 ## S-3 Text added since is read
-Drive: replace the transcript with Audelin's next save of it, its tail revised; read the new parts and the tail as the file shows it. Evidence: `TestS3_NewTextOfTheFollowedCallIsRead`, `TestReadsTheTailAsTheFileShowsIt` in `audelin/feed/callreader`, run by `audelin-feed-core`.
+Drive: replace the transcript with Audelin's next save of it and read the new parts and current tail. In the composed feed, retime and revise a pending part. Put a repeated phrase at its old second, or put a new row there and leave the later anchor unchanged. Retract a row and then save new speech at the old second. Only the new parts are delivered as new. Evidence: `TestS3_NewTextOfTheFollowedCallIsRead` and `TestReadsTheTailAsTheFileShowsIt` in `audelin/feed/callreader`, and `TestPendingPartRetimingDoesNotResendItOrHideNewWords` and `TestSpeechAfterARetractionHasItsOwnIdentity` in `audelin/feed/cmd/audelin-feed`, run by `audelin-feed-core`.
 
 ## S-4 A finished call has ended
 Drive: beside an older unfinished transcript, replace the live one with a version telling one finishing stage; read that it ended, not the older call. Evidence: `TestS4_AFinishingStageToldEndsTheCall` in `audelin/feed/callreader`, run by `audelin-feed-core`.
@@ -20,7 +20,7 @@ Drive: beside an older unfinished transcript, replace the live one with a versio
 Drive: make the live transcript unreadable by permissions; read the failure. Evidence: `TestS5_AVanishedTranscriptIsAFailedRead`, `TestS5_AVanishedFolderIsAFailedRead`, `TestS5_AnUnreadableTranscriptIsAFailedRead` in `audelin/feed/callreader`, run by `audelin-feed-core`.
 
 ## S-6 A transcript that cannot be understood is said
-Drive: read a transcript cut off inside its front matter during discovery and an invalid transcript after following has started. Both reads fail, and the reader recovers once the file is repaired. Evidence: `TestS6_AMalformedTranscriptOnDiscoveryIsAFailedRead`, `TestS6_AMalformedTranscriptIsAFailedRead` and `TestTextNotAsAudelinWritesItIsRefused` in `audelin/feed/callreader`, run by `audelin-feed-core`.
+Drive: read incomplete or corrupt front matter during discovery, with an older recording available. Follow a recording and read corrupt front matter or a malformed split or cleaning stage above a readable body. The reads fail, and the reader recovers once the file is repaired. Evidence: `TestS6_AMalformedTranscriptOnDiscoveryIsAFailedRead`, `TestS6_AMalformedTranscriptIsAFailedRead`, `TestS6_MalformedFinishingStagesAreFailedReads` and `TestTextNotAsAudelinWritesItIsRefused` in `audelin/feed/callreader`, run by `audelin-feed-core`.
 
 ## S-7 The call found is read until it ends
 Drive: while reading one call, add a newer live one; the first call's next save is read, then its finish. Evidence: `TestS7_ANewerCallDoesNotTakeTheFollowedOnesPlace` in `audelin/feed/callreader`, run by `audelin-feed-core`.
@@ -35,4 +35,4 @@ Drive: two unfinished calls, the second named with -2; read the second. Evidence
 Drive: rename the live folder with a title, then save more; the new part is read. Evidence: `TestS10_ARenamedFolderIsStillFollowed` in `audelin/feed/callreader`, run by `audelin-feed-core`.
 
 ## S-11 A half-written last line is left for later
-Drive: cut the file mid-row; read the rows before it; complete it; read the row. Evidence: `TestS11_AHalfWrittenLastLineIsLeftForLater` in `audelin/feed/callreader`, run by `audelin-feed-core`.
+Drive: read the complete file, cut it mid-row, then restore it. The read of the partial file returns the rows before the cut. The restored rows keep their IDs. Evidence: `TestS11_AHalfWrittenLastLineIsLeftForLater` in `audelin/feed/callreader`, run by `audelin-feed-core`.

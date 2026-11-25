@@ -68,13 +68,17 @@ parts, read back by the reading tests: each part with words, with its label,
 whole-second start and words as written, blank lines and CRLF included,
 starts past 99 hours too; the header, text before the first part and the
 Speakers section are skipped.
-Rendering what was read gives the same parts, times, gaps, filled-in marks,
+Rendering what was read gives the same segment IDs, parts, times, gaps, filled-in marks,
 speakers and names as the saved transcript, the names block's revision
 aside, for a transcript with named speakers, a gap, filled-in and wordless
 parts. Evidence: `TranscriptReadingTests.aRenderedTranscriptReadsBackAndRendersTheSame()`,
 `TranscriptReadingTests.aLoneSpeakerAndPartsWithoutWordsReadBack()` and
 `TranscriptReadingTests.aTranscriptWithoutSpeakersReadsWithNone()`; the gap
 reads back in `aGapRendersAsTheCallCutOffAndReadsBack()`.
+An ID-free transcript reads back with absent IDs. A line of speech shaped
+like a header with an ID reads back in the row's words.
+Evidence: `TranscriptReadingTests.crlfLineEndingsRead()` and
+`TranscriptReadingTests.aForgedRowHeaderStaysInSpeech(trailingCR:)`.
 
 ## S-12 A gap reads as the call cut off
 

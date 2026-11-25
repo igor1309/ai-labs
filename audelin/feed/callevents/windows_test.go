@@ -12,7 +12,7 @@ import (
 func newEvents(t *testing.T, at func(time.Duration) (callevents.Call, bool, error), size, overlap time.Duration) (*callevents.Events, *clock) {
 	t.Helper()
 	c := &clock{now: zero}
-	e, err := callevents.New(&live{clock: c, at: at}, c, size, overlap)
+	e, err := callevents.New(&live{now: c.Now, at: at}, c, size, overlap)
 	if err != nil {
 		t.Fatal(err)
 	}

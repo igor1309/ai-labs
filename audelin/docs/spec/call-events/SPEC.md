@@ -20,8 +20,8 @@ transport.
 - **A window marks the words of its overlap as context, apart from its new
   words,** so a client neither hints twice nor takes an overlap alone for
   text still coming.
-- **A part goes in every window its start falls in,** a start on a window's
-  end in the next. Words first read after their window was given go in the
+- **A part goes in every window its start falls in.** Regular windows
+  exclude their end. Words first read after their window was given go in the
   next window; revisions of words already given are not sent (ADR-003).
 - **No call is said once;** the next event waits for a call to start, so a
   waiting client is not woken for nothing.
@@ -29,10 +29,13 @@ transport.
   windows go on from the last window end passed.
 - **Falling behind, every due window is given in turn, none dropped,** so the
   client decides what to read. At the call's end the windows left come
-  first, then the last part-window, so no words are lost.
+  first. The last part-window includes every unsent part from the ended
+  snapshot, extending its end past any part starting at or after the time
+  the end was observed.
 - **A failed read gives the due window empty and is read again at the next
   step:** ADR-003's three events carry no failure; a lasting failure reads as
-  text not coming (user S-14).
+  text not coming (user S-14). Before finding a call, a failed read keeps
+  the iterator waiting and discovery retries on its clock.
 
 ```gherkin
 Feature: Stepping through a live call's events

@@ -29,12 +29,12 @@ struct TranscriptTests {
             .init(id: .init(speaker: .mine, localID: 7), start: 1, end: 3, settled: expected.0, pending: expected.1),
         ])
         #expect(Transcript.segments(from: state) == [
-            .init(side: .mine, start: 1, settled: expected.0, pending: expected.1),
+            .init(id: 7, side: .mine, start: 1, settled: expected.0, pending: expected.1),
         ])
         var format = TranscriptFormat()
         let rendered = try format.render(Transcript.segments(from: state))
         #expect(String(decoding: rendered.chunks.reduce(into: Data()) { $0.append($1) }, as: UTF8.self)
-            == "# Transcript\n\n**Me** 00:00:01\nOne, two три four!\n")
+            == "# Transcript\n\n**Me** 00:00:01 <!-- audelin-segment me-7 -->\nOne, two три four!\n")
     }
 
     @Test func entryMappingTable() async throws {
@@ -48,10 +48,10 @@ struct TranscriptTests {
             .init(text: .init(id: 2, start: 4, end: 5, words: [.init("да", start: 4, end: 5)], settledCount: 1), writtenLater: true),
         ]
         let mapped: [TranscriptFormat.Segment] = [
-            .init(side: .mine, start: 0, settled: "", pending: "", filledInLater: false),
-            .init(side: .mine, start: 1.5, settled: "me", pending: "next", filledInLater: true),
-            .init(side: .theirs, start: 4, settled: "да", pending: "", filledInLater: true),
-            .init(side: .theirs, start: 8.25, settled: "", pending: "them", filledInLater: false),
+            .init(id: 8, side: .mine, start: 0, settled: "", pending: "", filledInLater: false),
+            .init(id: 4, side: .mine, start: 1.5, settled: "me", pending: "next", filledInLater: true),
+            .init(id: 2, side: .theirs, start: 4, settled: "да", pending: "", filledInLater: true),
+            .init(id: 9, side: .theirs, start: 8.25, settled: "", pending: "them", filledInLater: false),
         ]
         for status: CallState.Status in [.off, .gettingReady, .listening, .failed("failed"), .finished] {
             let empty = try await publishedCall(status: status, mine: [], theirs: [])

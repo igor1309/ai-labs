@@ -40,7 +40,7 @@ struct SessionTextShutdownTests {
             #expect(await theirs.base.finishes == 1)
             let url = rig.folder().appendingPathComponent("transcript.md")
             #expect(try transcriptBody(at: url)
-                == "# Transcript\n\n**Me** 00:00:00\nkept final\n\n**Them** 00:00:00\nkept final\n")
+                == "# Transcript\n\n**Me** 00:00:00 <!-- audelin-segment me-0 -->\nkept final\n\n**Them** 00:00:00 <!-- audelin-segment them-0 -->\nkept final\n")
         }
     }
 }
