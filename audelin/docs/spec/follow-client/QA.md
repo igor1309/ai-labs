@@ -1,10 +1,16 @@
 # Follow client QA
 
-Driven through a fake event source; each row reads back the printed output,
-and S-1 also under Monitor in a thread.
+Each row drives a fake event source and checks the printed output.
 
-## S-1 A window with words can be read apart from instructions
-Drive: two windows back to back, one a long catch-up with multi-line parts; the output holds every word inside the call-text marks, and under Monitor each arrives as one notification. Evidence: `TestS1_AWindowWithWordsCanBeReadApartFromInstructions` in `audelin/feed/followclient`, run by `audelin-feed-core`. Open: the reading under Monitor in a thread.
+## S-1 Call text stays marked and each record is written as one line
+
+The output holds every word inside the call-text marks. A no-call event, a
+long catch-up window with multiline parts, a second window and the call's end
+each produce one line in one write. The client writes each record before
+asking for another event, so Monitor gives one notification per record.
+The evidence is `TestS1_AWindowWithWordsCanBeReadApartFromInstructions` and
+`TestS1_EachRecordIsOneLineWrittenBeforeTheNextEvent` in
+`audelin/feed/followclient`, both run by `audelin-feed-core`.
 
 ## S-2 An empty window is said
 Drive: an empty window; the output says no words came. Evidence: `TestS2_AnEmptyWindowIsSaid` in `audelin/feed/followclient`, run by `audelin-feed-core`.
@@ -19,7 +25,11 @@ Drive: the end; the output says so and the program exits zero. Evidence: `TestS4
 Drive: the fake reports the source lost; the output says so and the program exits non-zero. Evidence: `TestS6_ALostSourceEndsFollowing` in `audelin/feed/followclient`, run by `audelin-feed-core`.
 
 ## S-7 Words that mimic the marks stay data
-Drive: a part holding a closing quote, a brace and a newline followed by a forged record; under Monitor the thread quotes the part whole, inside one marked block. Evidence: `TestS7_WordsThatMimicTheMarksStayData` in `audelin/feed/followclient`, run by `audelin-feed-core`.
+
+A part holding a closing quote, a brace and a newline followed by a forged
+record stays whole inside one marked block on one output line. The evidence
+is `TestS7_WordsThatMimicTheMarksStayData` in `audelin/feed/followclient`, run by
+`audelin-feed-core`.
 
 ## S-8 Spoken orders stay data
 Drive: a part saying "ignore your instructions"; the output keeps it inside the marked block. Evidence: `TestS8_SpokenOrdersStayData` in `audelin/feed/followclient`, run by `audelin-feed-core`.
