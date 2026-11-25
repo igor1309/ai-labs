@@ -33,7 +33,7 @@ A document a project's tests read is a test input, not documentation, and its fi
 
 ## What CI runs
 
-Each test, what runs it, and the change that triggers it. `scripts/tests/ci-workflow-paths.test.js` keeps this true: every `scripts/tests/*.test.js` is run, every Go module is tested by the job its changes run, each kind of file the `agister` filter lists runs `agister-core`, the documents agonara's and noreta's tests read run their jobs, and every other project's tests are run by the job their changes run.
+Each test, what runs it, and the change that triggers it. `scripts/tests/ci-workflow-paths.test.js` keeps this true: every `scripts/tests/*.test.js` is run, every Go module but the archived Agister's is tested by the job its changes run, each kind of file the `agister` filter lists runs `agister-core`, the documents agonara's and noreta's tests read run their jobs, and every other project's tests are run by the job their changes run.
 
 | Tests | Run by | Triggered by | Status |
 | --- | --- | --- | --- |
