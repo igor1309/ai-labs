@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -29,6 +30,9 @@ func (s settingsReader) roots(path, home string) ([]string, error) {
 	}
 	roots := make([]string, 0, len(configured))
 	for _, root := range configured {
+		if slices.Contains(strings.Split(filepath.ToSlash(root), "/"), "..") {
+			return nil, fmt.Errorf("settings %s: root %q: expected a path with no .. part", path, root)
+		}
 		if strings.HasPrefix(root, "~/") {
 			root = filepath.Join(home, root[2:])
 		}
@@ -59,6 +63,11 @@ func parseSettings(data []byte) ([]string, error) {
 	if _, err := decoder.Token(); err != io.EOF {
 		return nil, fmt.Errorf("%s: data after the object", settingsShape)
 	}
+	if members, err := topLevelMembers(data); err != nil {
+		return nil, fmt.Errorf("%s: %w", settingsShape, err)
+	} else if members != 1 {
+		return nil, fmt.Errorf(`%s: "roots" given more than once`, settingsShape)
+	}
 	raw, ok := document["roots"]
 	if !ok || len(document) != 1 {
 		return nil, errors.New(settingsShape)
@@ -71,4 +80,25 @@ func parseSettings(data []byte) ([]string, error) {
 		return nil, errors.New(`"roots" names no folder`)
 	}
 	return roots, nil
+}
+
+// topLevelMembers counts the object's members as written, so a repeated
+// key, which decoding into a map silently merges, is seen.
+func topLevelMembers(data []byte) (int, error) {
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	if _, err := decoder.Token(); err != nil {
+		return 0, err
+	}
+	members := 0
+	for decoder.More() {
+		if _, err := decoder.Token(); err != nil {
+			return 0, err
+		}
+		var value json.RawMessage
+		if err := decoder.Decode(&value); err != nil {
+			return 0, err
+		}
+		members++
+	}
+	return members, nil
 }

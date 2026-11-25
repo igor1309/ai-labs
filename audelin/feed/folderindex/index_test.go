@@ -218,6 +218,10 @@ func TestS8_BadSettingsFailAndKeepTheOldIndex(t *testing.T) {
 		valid + " {}", valid + "}", valid + "]",
 		fmt.Sprintf(`{"Roots": [%q]}`, root), fmt.Sprintf(`{"ROOTS": [%q]}`, root),
 		fmt.Sprintf(`{"roots": [%q], "extra": 1}`, root),
+		fmt.Sprintf(`{"roots": ["/elsewhere"], "roots": [%q]}`, root),
+		fmt.Sprintf(`{"roots": [%q]}`, root+"/.."),
+		fmt.Sprintf(`{"roots": [%q]}`, root+"/../root"),
+		`{"roots": ["~/../root"]}`,
 	} {
 		writeFile(t, settings, bad)
 		if stderr := run(t, 1, home, "-out", out); !strings.Contains(stderr, "settings "+settings+":") {

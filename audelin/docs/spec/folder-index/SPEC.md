@@ -27,8 +27,7 @@ runs the generator; nothing edits the index by hand.
   too, so a monorepo's projects are listed, and so are its direct
   subfolders holding `.git`, such as submodules, README or not. The walk
   goes no deeper inside a repository, and skips hidden folders,
-  `node_modules` and symlinks. It never reads outside a root, even when a
-  folder is swapped for a symlink while it runs.
+  `node_modules` and symlinks.
 - **One line per entry:** `` - `<path>`: <summary> ([README](<readme path>)) ``,
   paths absolute. The summary is the README's first prose line: the first
   non-blank line that is not a heading, an HTML tag, a badge or image line,
@@ -42,11 +41,19 @@ runs the generator; nothing edits the index by hand.
   which command, from which roots,** then the entries sorted by path. The
   same tree gives the same bytes.
 - **A missing or malformed setting fails the run** with a message naming the
-  setting file, exit 1: not JSON, not an object with only `roots`, data
-  after the object, no roots, or a root that is relative or a bare `~`. **So does a root that is missing or not a folder,**
+  setting file, exit 1: not JSON, not an object with only `roots`, `roots`
+  given more than once, data after the object, no roots, or a root that is
+  relative, a bare `~`, or has a `..` part. **So does a root that is missing or not a folder,**
   with a message naming it. Either way the old index is left as it was.
   Bad usage, such as a positional argument, exits 2.
   An unreadable folder inside a root is skipped.
+
+## Out of scope
+
+- **Folders changing while a run goes on,** such as a folder or a root
+  swapped for a symlink, or the index's folder moved, mid-run. The owner runs
+  the generator on their own folders; it checks them as it finds them and
+  does not guard against another process changing them under it.
 
 ```gherkin
 Feature: Indexing the owner's folders
