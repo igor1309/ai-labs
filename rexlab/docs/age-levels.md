@@ -49,9 +49,9 @@ the games.
 | --- | --- | --- | --- |
 | Skeleton (`skeleton-levels.md`) | four pieces, the right way up, on a full outline; a mystery skeleton at every level | 6–8 pieces, help in steps | 10–12 pieces, a partial outline, distractor bones |
 | Find the pair | 3 to 6 pairs, picture to picture, then to silhouette | 18 cards, picture to silhouette | 24 cards, picture to skeleton |
-| Care | need bubbles and the matching item | planned: one-step missions | open: a reasoning puzzle, whose first prototype failed the game design questions (`game-design.md`) |
+| Care | need bubbles and the matching item | planned: one-step missions | open: a reasoning puzzle that answers the game design questions (`game-design.md`) |
 | Sorting | 2 baskets, 6 cards, every property | 8 cards; diet adds BOTH | 10 cards, legs or feathers, with TWO OR FOUR or NOT KNOWN YET |
-| Quiz | heavier or taller, at a gap of 1.5 times or more | adds longer | adds lighter, shorter and longer; earlier/later is not planned |
+| Quiz | heavier or taller, at a gap of 1.5 times or more | adds longer | adds lighter, shorter and longer; earlier/later is later work |
 | Reading (planned, `games.md`) | the first letter, with a picture cue | the missing letter, from 3 tiles | the name built from shuffled letters |
 | Dig (`dig-levels.md`) | brush the sand off a dinosaur; the last grains blow away at 95% | a mystery dinosaur, named from 3 pictures once three quarters show | the same from 4 pictures |
 | Labyrinth | procedural 9×7 maze, at least 14 steps, 2 decisions and 1 long wrong turn | procedural 15×9 maze, at least 32 steps, 4 decisions and 3 long wrong turns | procedural 17×11 maze, at least 50 steps, 6 decisions and 4 long wrong turns |
