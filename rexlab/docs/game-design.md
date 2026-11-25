@@ -2,9 +2,9 @@
 
 Answer these for each level of a game before writing its Gherkin. They
 come from research on games for 5-7-year-olds and on care games children
-return to (LAB-387). A level that cannot answer them well is a quiz, not
-a game: the care game's need-to-item rounds and its Option A prototype
-(LAB-281) both failed here.
+return to. A level that cannot answer them well is a quiz, not a game: the
+care game's need-to-item rounds and its first reasoning-puzzle prototype
+both fail here.
 
 | Question | A good answer |
 |---|---|

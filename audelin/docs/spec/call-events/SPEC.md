@@ -1,7 +1,7 @@
 # Call events
 
 Observer: the SSE server, which gives each client the events of the call
-being recorded (`../call-assistant/architecture.md`, ADR-003). An iterator
+being recorded. An iterator
 over a live call and a clock, both its own ports; it knows no file and no
 transport.
 
@@ -10,9 +10,9 @@ transport.
 - **The source and follow programs are Go, in `audelin/feed/`,** a folder of
   their own beside the app's Swift package: small command-line programs that
   need the standard library's HTTP and no app build. They read
-  `transcript.md` as the outside contract ADR-003 accepts.
+  `transcript.md`, whose format is the outside contract they rely on.
 - **Size and overlap are the client's,** in call time; this iterator sets no
-  values (ADR-003: the client cuts the windows it needs).
+  values: the client cuts the windows it needs.
 - **Call time zero is the call's start the call reader gives,** true to the
   minute, a window up to a minute early accepted; a window is
   due when the clock passes its end, not when text arrives, so a call whose
@@ -22,7 +22,7 @@ transport.
   text still coming.
 - **A part goes in every window its start falls in.** Regular windows
   exclude their end. Words first read after their window was given go in the
-  next window; revisions of words already given are not sent (ADR-003).
+  next window; revisions of words already given are not sent.
 - **No call is said once;** the next event waits for a call to start, so a
   waiting client is not woken for nothing.
 - **Joining a call under way, the first event is everything said so far;**
@@ -33,8 +33,8 @@ transport.
   snapshot, extending its end past any part starting at or after the time
   the end was observed.
 - **A failed read gives the due window empty and is read again at the next
-  step:** ADR-003's three events carry no failure; a lasting failure reads as
-  text not coming (user S-14). Before finding a call, a failed read keeps
+  step:** the three events carry no failure; a lasting failure reads as
+  text not coming, which the call assistant says once. Before finding a call, a failed read keeps
   the iterator waiting and discovery retries on its clock.
 
 ```gherkin

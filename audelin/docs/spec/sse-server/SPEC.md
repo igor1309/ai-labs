@@ -1,6 +1,6 @@
 # SSE server
 
-Observer: a client of the event source on this Mac (ADR-003); here the SSE
+Observer: a client of the event source on this Mac; here the SSE
 client (`../sse-client/SPEC.md`). An adapter: it asks its event source port
 and writes what it gives; it decides nothing.
 

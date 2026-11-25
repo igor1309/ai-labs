@@ -4,9 +4,9 @@ Observer: the user, helped during a call by an agent thread that knows the proje
 
 ## Decided
 
-- **By hand, one thread, one call; hints only there** (owner, ADR-003): no other thread and no next call gets it unasked.
+- **By hand, one thread, one call; hints only there:** no other thread and no next call gets it unasked.
 - **Where speech goes shows before any is sent,** as in `../call-notes/`; no recap, notes are Audelin's.
-- **Two triggers** (owner), else silent, as hinting products are by default; they measured no delay, so none is promised (`../../research/live-call-assistants.md`).
+- **Two triggers,** else silent, as hinting products are by default; none publishes a measured delay, so none is promised.
 
 ```gherkin
 Feature: Hints during a call

@@ -1,8 +1,6 @@
 # Call tags
 
-Tags in the calls window (LAB-1617). The owner picked this variation over
-chips in each row and a search-only design. Frames are the "Calls — …"
-tag screens in `visual-language.pen` (frame index); parts are Tag chip,
+Tags in the calls window. Frames are the "Calls — …" tag screens in `visual-language.pen` (frame index); parts are Tag chip,
 Tag chip/On, Row tag, Tag strip and Tags line; the Two-line row has a
 hidden Tags slot on the "Calls window — components" board.
 

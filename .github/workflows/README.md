@@ -29,11 +29,11 @@ Per-project workflows do not need their own path filters — the dispatcher's `c
 
 Each project's filter in the `changes` job is an **allowlist of build/test inputs** — source, tests, manifests, lockfiles, and build/deploy descriptors (e.g. `Dockerfile`, `compose`, `Caddyfile`, `wrangler.*`). It deliberately **excludes documentation** (`<project>/docs/**`, `README.md`, `TODO.md`, landing/`*.html`, research notes) so a docs-only change skips the expensive core job while the required `report` check still runs. Do **not** use a blanket `<project>/**` glob: it pulls `docs/**` into the trigger set and runs the full core pipeline (tests, and for some projects a Docker build + container smoke) on documentation edits. When adding a project, list its code paths explicitly, as `clipdeck` and `agonara` do.
 
-A document a project's tests read is a test input, not documentation, and its filter lists it. Agister's tests read its ADRs and diagrams (`agister/docs/**`), its skill, its `README.md`, `testdata/` and `scripts/`, and every `AGENTS.md` in the repository, so the `agister` filter lists each. Those tests are now archived under `agister/archive/` and no job runs them; the filter stays for the rewrite.
+A document a project's tests read is a test input, not documentation, and its filter lists it. The `agister` filter also lists Agister's documents (`agister/docs/**`), its skill, its `README.md`, `testdata/` and `scripts/`, and every `AGENTS.md` in the repository; `scripts/tests/ci-workflow-paths.test.js` requires each to run `agister-core`.
 
 ## What CI runs
 
-Each test, what runs it, and the change that triggers it (LAB-167, LAB-220, LAB-219). `scripts/tests/ci-workflow-paths.test.js` keeps this true: every `scripts/tests/*.test.js` is run, every Go module is tested by the job its changes run, each kind of file Agister's tests read runs `agister-core`, the documents agonara's and noreta's tests read run their jobs, and the projects LAB-220 found unrun are each tested by the job their changes run.
+Each test, what runs it, and the change that triggers it. `scripts/tests/ci-workflow-paths.test.js` keeps this true: every `scripts/tests/*.test.js` is run, every Go module but the archived Agister's is tested by the job its changes run, each kind of file the `agister` filter lists runs `agister-core`, the documents agonara's and noreta's tests read run their jobs, and every other project's tests are run by the job their changes run.
 
 | Tests | Run by | Triggered by | Status |
 | --- | --- | --- | --- |
@@ -88,7 +88,7 @@ pull request, and nothing in them fails on a slow test.
 
 ## Keeping it regular
 
-Two things keep the table above from going stale (LAB-219):
+These keep the table above from going stale:
 
 - **Every test file runs some job.** `scripts/tests/ci-workflow-paths.test.js` lists every tracked test file (Go, Node, Python, Swift, Kotlin, shell) and fails when a change to one would select no job. A new project's tests fail there until a filter and a job cover them, or until `unfilteredTests` in that file names the reason they need none.
 - **Every job runs weekly.** A push runs only the jobs its changed paths select, so a project nothing touches is never re-tested. `ci-weekly.yml` dispatches `ci.yml` on trunk each Sunday at 03:37 Moscow time; a manual dispatch runs every job, `real-provider-smoke` included, and the same test keeps that true. A failure arrives through `ci.yml`'s own Telegram notification.

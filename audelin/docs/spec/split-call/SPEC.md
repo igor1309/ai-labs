@@ -3,7 +3,6 @@
 Observer: the user, whose one recording holds two meetings back to back.
 Each part's notes behave as any ended call's (`../call-summaries/SPEC.md`);
 merging the parts back is `../merge-calls/SPEC.md`.
-Oracle: the owner's rulings on splitting calls.
 
 ## Decided
 

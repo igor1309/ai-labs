@@ -1,14 +1,14 @@
 ---
 date: 2026-11-15
 model: claude-opus-5-5
-description: "The exact AGENTS.md Audelin writes to the recordings root from Settings → General (LAB-1647)"
+description: "The exact AGENTS.md Audelin writes to the recordings root from Settings → General"
 ---
 
 # AGENTS.md for the recordings root
 
 The file Settings → General writes to the recordings root
-(`spec/agents-file/SPEC.md`). It is written in English (owner, LAB-1647)
-and is byte-for-byte the block below, ending with one newline. It
+(`spec/agents-file/SPEC.md`). It is written in English and is
+byte-for-byte the block below, ending with one newline. It
 describes what the code writes: `CallFolder` and `CallFolderName` (folder
 names and tracks), `TranscriptFile` (`transcript.md`), `SummaryFiles`
 (`summary.md` and its `.summary-job.json`), `TagsFile` (`tags.txt`) and

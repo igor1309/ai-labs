@@ -4,7 +4,6 @@ Observer: the user, who reads a call's transcript file and decides whether
 to make it again with a newer Audelin. The transcript is owned by
 `../SPEC.md`, merging by `../merge-calls/SPEC.md`, notes by
 `../call-summaries/SPEC.md`; this spec owns what the file tells of its origin.
-Oracle: the owner's rulings on transcript origin.
 
 ## Decided
 
