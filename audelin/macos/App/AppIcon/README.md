@@ -1,6 +1,6 @@
 # App icon
 
-`Audelin.icon` is the Icon Composer source (LAB-609): the two-tracks design
+`Audelin.icon` is the Icon Composer source: the two-tracks design
 as a dark fill and two glass groups (the recording dot; my track and their
 track), each layer a transparent 1024 px PNG exported from the "Icon Composer
 layers" of "Screen 9 — App icon, two tracks, Liquid Glass edition" in `../../../docs/design/visual-language.pen`. Open it in Icon Composer
