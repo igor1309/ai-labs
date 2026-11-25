@@ -26,22 +26,25 @@ Part 2's clock starts at the cut. Its rows move back by the cut, its audio
 starts at the cut, and its exact start, the original's start plus the cut,
 is kept in its transcript origin. Its folder name's minute (the first entry
 after the cut, rounded down) is a name, as an original recording's minute
-already is. The merge chain places a part by its exact start from the
-origin, falling back to the folder minute only for transcripts without one.
+already is. The cut falls on a whole second, the precision Transcript
+format saves, so rebased rows round-trip and a merge puts them back exactly.
+The merge chain and Calls place a part, and each original recording inside
+it, by its exact start from the origin, falling back to the folder minute
+only for transcripts without one; lengths come from the tracks.
 
 ## Components
 
 | Component | Kind | Responsible for | Depends on (its own ports) |
 |---|---|---|---|
-| Split points (new) | plain component | Given a transcript's entries (start and words), the gaps where it may be cut: between two neighbouring entries' starts, so never inside an entry and never leaving a side empty, longest first, each marked when the entry before sounds like an ending or the one after like a start; the cut at the gap's middle and part 2's name minute. No gaps means the call cannot be split. Owns its phrases. Reason to change: how cuts are suggested. | none |
+| Split points (new) | plain component | Given a transcript's entries (start and words), the gaps where it may be cut: between two neighbouring entries' starts, never leaving a side empty, longest first, each marked when the entry before sounds like an ending or the one after like a start; the cut on a whole second (placement per the user spec) and part 2's name minute. No gaps means the call cannot be split. Owns its phrases. Reason to change: how cuts are suggested. | none |
 | Transcript split (new) | operator | The reverse of Transcript join, generic over rows and origins: rows, speakers and original calls, cut at a time, become two parts on the clock above. Rows go by their start; each part keeps only the speakers its rows use, keys and names unchanged; each original call goes whole to the side it lies on, or, when it spans the cut, to both, with its own local cut time. Reads only rows' times, speaker keys and originals' starts and lengths. | none |
 | Track file (changed) | adapter | Adds cutting a finished track into the part before and the part from a time, by stream copy. It stays the one reader and writer of the track format (rule 2). | the audio framework |
 | Calls (changed) | adapter | Adds a split: prepares both part folders out of sight, has the caller write into each, records the split before the original moves, then publishes part 1 under the original's id with its confirmed title and part 2 under its own name. Places each original recording's folder (a merged call's nested ones included) by the original-call plan Transcript split gives: moved whole, or cut through the caller. A failure, or an interruption found when Calls starts, leaves the original as it was; recovery runs beside the merge recovery. | the disk |
-| CallsStorage (changed) | adapter | Runs the split as one operation of its turn: finds which calls folder owns the call, reserves and registers part 2's id in its journal, and publishes the transaction, as for every call change. | Calls |
-| Summary jobs (changed) | machine | Adds two things. A job may say its speakers are already named, and then skips identification; the flag is saved with the job. A replacement event: old calls' jobs dropped, then the new calls' stored jobs read and run as recovered jobs are. Merge uses the same event. | its existing ports |
-| Recordings (changed) | machine | Adds a split phase beside merge mode. When the selected call changes it asks a choices port for its gaps and keeps them, so the toolbar can tell whether splitting is offered. In the phase it holds the chosen gap and both names, refuses while not idle (the idleness value merge already keeps), asks the split port on confirm, and on success publishes the replacement (original id, both parts' ids) and selects part 1 in a fresh listing; on failure it keeps the sheet open with the reason. | a split choices port, a split port |
+| CallsStorage (changed) | adapter | Runs the split as one operation of its turn: finds which calls folder owns the call, reserves and registers part 2's id in its journal, and publishes the transaction, as for every call change. | a folder-transaction port of its own, which compose answers with Calls |
+| Summary jobs (changed) | machine | Adds three things. A job may say its speakers are already named, and then skips identification; the flag is saved with the job. Admission as a pure rule of its own, the one ended calls pass (notes on, transcript usable), which the split and merge chains ask before staging a call's pending job. A replacement event: old calls' jobs dropped, then the new calls' stored jobs read and run as recovered jobs are. | its existing ports |
+| Recordings (changed) | machine | Adds a split phase beside merge mode. When the selected call or its transcript changes (a new transcript, a restore, a finished split) it asks a choices port for its gaps and keeps them with the transcript's identity, so the toolbar can tell whether splitting is offered; the split port is asked with that identity and refuses if the transcript changed since. In the phase it holds the chosen gap and both names, refuses while not idle (the idleness value merge already keeps), asks the split port on confirm, and on success publishes the replacement (original id, both parts' ids) and selects part 1 in a fresh listing; on failure it keeps the sheet open with the reason. | a split choices port, a split port |
 | Split sheet (new, in CallsWindowUI) | UI | Draws the split phase: gaps with the entries on each side, both names, under way, failure; sends the user's choices. The toolbar's split control draws whether splitting is offered. Decides nothing. | none |
-| Split chain (new, in Composer) | composition | Answers Recordings' two ports. Choices: CallsStorage reads the saved transcript, Transcript format reads it back, Split points suggests. Split: Transcript split cuts it; inside the CallsStorage split, Transcript format renders and Transcript file writes each part's transcript, Track file cuts each spanning track, the tags file is copied, and Summary files stores each part's pending notes job marked as named, so the jobs are committed with the folders. | everything it chains |
+| Split chain (new, in Composer) | composition | Answers Recordings' two ports. Choices: CallsStorage reads the saved transcript, Transcript format reads it back, Split points suggests. Split: Transcript split cuts it; inside the CallsStorage split, Transcript format renders and Transcript file writes each part's transcript, Track file cuts each spanning track, the tags file is copied, and, where Summary jobs' admission lets it, Summary files stores each part's pending notes job marked as named, so the jobs are committed with the folders. The merge chain stages the merged call's job the same way. | everything it chains |
 
 ## Holding and building
 
@@ -49,7 +52,8 @@ origin, falling back to the folder minute only for transcripts without one.
   handler; Recordings and Summary jobs are held where they are today.
 - The root subscribes Recordings' published replacement to Summary jobs'
   replacement event, mapping ids only; neither machine drives the other.
-  The merge's notes callback moves to the same subscription.
+  The merge's notes callback moves to the same subscription, with its job
+  staged in its transaction as the split's is.
 - After an interruption past publishing, Summary jobs finds each part's
   stored job at launch as it finds any stored job, so both parts get notes.
 - Split points and Transcript split are pure: no state, no holder.
@@ -79,13 +83,19 @@ the split chain and AudelinCalls are composition (the root)
   interruption; replacing jobs in memory is Summary jobs' own event, fed by
   a subscription, not a callback from the split.
 
-## The call app
+## Needs the user spec
 
-Audelin keeps the call app only in a call's title. Part 1 keeps the original
-title and part 2 is suggested it, so both carry the app unless the user
-renames them.
-
-## Open for the component specs
-
-- A gap is measured between entries' starts, since saved entries have no
-  end; the last words before the cut may run into its first half.
+- **Where the cut lies.** Saved entries have no end, so the middle of a gap
+  between two starts can fall inside speech. Suggested: the cut lies just
+  before the next entry starts, on a whole second, so part 1 keeps any
+  trailing words.
+- **Part 2's start.** Suggested: the spec's start is the shown start (the
+  name's minute); part 2's times count from the cut, where its audio
+  begins.
+- **The call app.** Audelin keeps it only in the title, so a renamed part
+  loses it. Suggested: the spec says the app is carried by the title as
+  suggested, not kept apart from it; keeping it apart is a feature of its
+  own for every call.
+- **Calls in a folder being moved.** Merge refuses a call outside the
+  active calls folder, so a split there could not be undone. Suggested:
+  splitting waits, as merge does, until the call is in the active folder.
