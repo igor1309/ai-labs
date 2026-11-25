@@ -1,7 +1,7 @@
 # Audelin feed
 
-Two Go programs that let a thread follow a call Audelin is recording, as the
-call goes on. Status: built and tested; nothing installs them yet.
+Go programs for following a call as Audelin records it and indexing local
+repositories for the call assistant. Run them from source.
 
 - **`audelin-feed`** reads the live call's `transcript.md` in the calls
   folder and serves its words as server-sent events on this Mac's loopback:
@@ -11,6 +11,8 @@ call goes on. Status: built and tested; nothing installs them yet.
 - **`audelin-follow`** connects to it and prints one JSON record per line
   for a thread to read: a window's words inside marked call text, no call,
   the call's end, or the source being lost.
+- **`audelin-folder-index`** writes a Markdown index of local repositories
+  and their direct projects, with summaries from their READMEs.
 
 ## Run
 
@@ -19,6 +21,7 @@ From `audelin/feed`:
 ```sh
 go run ./cmd/audelin-feed -calls ~/Recordings/Audelin [-port 47820]
 go run ./cmd/audelin-follow [-port 47820] [-size 180] [-overlap 60]
+go run ./cmd/audelin-folder-index -out ../../.claude/skills/call-assistant/folders.md ~/Developer
 ```
 
 `audelin-follow` exits 0 after the call's end, 1 when the source was lost,
@@ -32,4 +35,4 @@ transcripts in `callreader/testdata` are Audelin's own renderings, which
 `FeedFixtureTests` in the macOS package checks byte for byte.
 
 Behaviour: the specs under `../docs/spec/` for call events, call reader,
-SSE server, SSE client and follow client.
+SSE server, SSE client, follow client and folder index.
