@@ -26,7 +26,7 @@ floor, margin, fade and drop gap from settings; scenarios use defaults.
   run; ticks, rivals and the window do not.
 - **This spec may pass 100 lines:** the picker has one job, the signal
   now, and committing over time is already host choice's. A further cut
-  would split one language in two, which the owner ruled a forced split.
+  would split one language in two, a forced split.
 
 ```gherkin
 Feature: Reading the signal of nearby hosts
