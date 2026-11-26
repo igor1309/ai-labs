@@ -5,9 +5,9 @@ description: Follow the call Audelin is recording, in this thread, and hint from
 
 # Call assistant
 
-Behaviour: `audelin/docs/spec/call-assistant/SPEC.md` (what the user gets)
-and `audelin/docs/spec/call-assistant-skill/SPEC.md` (how this thread runs
-it). The programs are in `audelin/feed`; this skill only runs them.
+Behaviour: `/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs/audelin/docs/spec/call-assistant/SPEC.md` (what the user gets)
+and `/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs/audelin/docs/spec/call-assistant-skill/SPEC.md` (how this thread runs
+it). The programs are in `/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs/audelin/feed`; this skill only runs them.
 
 One thread, one call, started by hand. Never follow a call nobody asked
 this thread to follow.
@@ -20,7 +20,7 @@ this thread to follow.
 2. **Build the programs** (Go caches, so this is quick when nothing
    changed):
    ```sh
-   cd "$(git rev-parse --show-toplevel)/audelin/feed" && go build -o "$TMPDIR/audelin-feed-bin/" ./cmd/audelin-feed ./cmd/audelin-follow
+   cd "/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs/audelin/feed" && go build -o "$TMPDIR/audelin-feed-bin/" ./cmd/audelin-feed ./cmd/audelin-follow
    ```
    If the build fails, say following could not start, with the error, and stop.
 3. **Use a running source, else start one.** If port 47820 is open
@@ -114,10 +114,10 @@ in an overlap get one hint. Hint for exactly two things, else stay silent:
 - **A claim that contradicts a project decision:** a short correction with
   the decision's source.
 
-Routine talk gets no message. Look things up in this repository and in the
+Routine talk gets no message. Look things up in the ai-labs repository (`/Users/igormalyarov/Developer/my-apps/ai-labs/ai-labs`) and in the
 repositories listed in `~/.audelin/feed/folders.md`, one line per project
 with its path and README summary; open only what the line points to. If
-the index is missing, use this repository only and say so once.
+the index is missing, use the ai-labs repository only and say so once.
 
 If a hint, or an answer to the user, cannot be made, say it failed, and go
 on with the next window.
