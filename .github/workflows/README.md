@@ -75,7 +75,7 @@ Notes:
 
 - warder pins gokit at a tag (`v0.1.0`), so a gokit change cannot break warder until gokit is tagged and warder moves to it; a gokit change runs `agister-core` only.
 - `warder/cmd/warder/files_test.go`, `process_test.go` and `serve_test.go` are `//go:build unix`: they run on the `local-mac` runner and are skipped on any other OS.
-- Native test and build jobs use the self-hosted `local-mac` runner and its selected Xcode. Notio backend, Agonara container smoke, FolioTell Android and the RexLab browser contracts use hosted Linux. The hosted `local-wait` job cancels CI after 15 minutes of a stalled Mac queue.
+- Native test and build jobs use the self-hosted `local-mac` runner and its selected Xcode. Python jobs use the Mac’s Python 3.12. Notio backend, Agonara container smoke, FolioTell Android and the RexLab browser contracts use hosted Linux. The hosted `local-wait` job cancels CI after 15 minutes of a stalled Mac queue.
 
 ## Slow-test hunts
 
