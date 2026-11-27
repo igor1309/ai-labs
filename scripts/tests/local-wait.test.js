@@ -28,12 +28,13 @@ test("localWait_shouldNameLocalJobsQueuedPastTheLimit", () => {
 
 // A run whose jobs are listed in turn: each poll takes the next list,
 // the last one repeating, and a poll moves the clock on a minute.
-function run(lists) {
+function run(lists, runnerBusy = () => false) {
   let clock = t0;
   let polls = 0;
   const calls = { cancelled: false, logged: [] };
   const code = watch({
     fetchJobs: () => lists[Math.min(polls++, lists.length - 1)],
+    runnerBusy,
     cancel: () => {
       calls.cancelled = true;
     },
@@ -57,8 +58,36 @@ test("localWait_shouldCancelTheRun_whenALocalJobWaitsPastTheLimit", async () => 
   assert.match(got.logged.join("\n"), /agister-core \/ core/);
 });
 
-test("localWait_shouldPass_whenTheLocalJobsStart", async () => {
-  const got = await run([[job("agister-core / core", "queued", 0)], [job("agister-core / core", "in_progress", 0)]]);
+test("localWait_shouldPass_whenTheLocalJobsFinish", async () => {
+  const got = await run([
+    [job("agister-core / core", "queued", 0)],
+    [job("agister-core / core", "in_progress", 0)],
+    [job("agister-core / core", "completed", 0)],
+  ]);
+
+  assert.deepEqual(got, { exit: 0, cancelled: false, logged: [] });
+});
+
+test("localWait_shouldAllowQueuedJobsWhileTheMacIsBusy", async () => {
+  const queued = job("warder-core / core", "queued", 0);
+  const active = job("agister-core / core", "in_progress", 0);
+  const got = await run([
+    ...Array.from({ length: 20 }, () => [active, queued]),
+    [queued],
+    [job(queued.name, "in_progress", 0)],
+    [job(queued.name, "completed", 0)],
+  ]);
+
+  assert.deepEqual(got, { exit: 0, cancelled: false, logged: [] });
+});
+
+test("localWait_shouldAllowTheMacToFinishAnotherWorkflow", async () => {
+  const queued = job("warder-core / core", "queued", 0);
+  const got = await run([
+    ...Array.from({ length: 20 }, () => [queued]),
+    [job(queued.name, "in_progress", 0)],
+    [job(queued.name, "completed", 0)],
+  ], () => true);
 
   assert.deepEqual(got, { exit: 0, cancelled: false, logged: [] });
 });

@@ -13,18 +13,13 @@ permissions:
 
 jobs:
   core:
-    runs-on: macos-latest
+    runs-on: [self-hosted, local-mac]
     timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v5
         with:
           ref: ${{ inputs.ref || github.sha }}
-
-      # macos-latest images differ in default Xcode (16.4 vs 26.5); the reader's
-      # Liquid Glass controls need the iOS 26 SDK to compile the archive.
-      - name: Select newest Xcode
-        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)/Contents/Developer"
 
       - name: Build
         run: swift build

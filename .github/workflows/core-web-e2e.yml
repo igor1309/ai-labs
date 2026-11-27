@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   web-e2e:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, local-mac]
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -38,7 +38,7 @@ jobs:
           key: ${{ runner.os }}-playwright-browsers-${{ hashFiles('package-lock.json') }}
 
       - name: Install Playwright browser
-        run: PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers npx playwright install --with-deps chromium
+        run: PLAYWRIGHT_BROWSERS_PATH=.playwright-browsers npx playwright install chromium
 
       - name: Run web E2E tests
         env:

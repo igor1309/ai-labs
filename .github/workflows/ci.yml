@@ -509,7 +509,7 @@ jobs:
   release-validation:
     needs: [changes]
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.release == 'true' || needs.changes.outputs.shared == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, local-mac]
     timeout-minutes: 5
     steps:
       - name: Checkout
@@ -542,7 +542,7 @@ jobs:
 
   pr-scope:
     if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, local-mac]
     timeout-minutes: 2
     steps:
       # The scope check lists changed paths only: whole history, no old file contents.
@@ -562,11 +562,11 @@ jobs:
 
   # A job on the self-hosted local-mac runner waits queued while the runner
   # is offline, and GitHub fails it only after 24 hours: this cancels the
-  # run once one has waited 15 minutes, naming it.
+  # run after 15 minutes without a local job making progress.
   local-wait:
     needs: [changes]
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 360
     permissions:
       actions: write
       contents: read
@@ -579,7 +579,7 @@ jobs:
         with:
           node-version-file: .node-version
 
-      - name: No local-mac job waits queued past 15 minutes
+      - name: Detect a stalled local-mac queue
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/local-wait.js "${{ github.repository }}" "${{ github.run_id }}" 15
@@ -587,7 +587,7 @@ jobs:
   # The repository scripts' tests read files across the repository, so
   # they run on every push and pull request, behind no filter.
   repo-scripts:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, local-mac]
     timeout-minutes: 5
     steps:
       - name: Checkout
@@ -606,7 +606,7 @@ jobs:
   dev-skills-validation:
     needs: [changes]
     if: ${{ github.event_name == 'workflow_dispatch' || needs.changes.outputs.dev-skills == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, local-mac]
     timeout-minutes: 2
     steps:
       - name: Checkout
