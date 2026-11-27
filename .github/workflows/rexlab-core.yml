@@ -17,7 +17,7 @@ jobs:
       fail-fast: false
       matrix:
         shard: [1, 2, 3, 4]
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, local-mac]
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -48,7 +48,7 @@ jobs:
 
   # The released app, built once for the browser contracts that open it.
   app:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, local-mac]
     timeout-minutes: 10
     steps:
       - name: Checkout

@@ -65,17 +65,17 @@ Each test, what runs it, and the change that triggers it. `scripts/tests/ci-work
 | audelin (`audelin/macos/Tests/`, `audelin/macos/App/Tests/`, `audelin/macos/PreviewApps/Tests/`), profiling tool tests (`audelin/macos/scripts/tests/`) | `audelin-core`: all three test packages built with `-Xswiftc -O` in one cached scratch directory, component and app test runs bounded to 180 seconds, preview to 120 | the `audelin` filter, with the recorded fixtures its tests read | runs |
 | audelin Daily content (`audelin/macos/scripts/daily-content-ci.sh`) | `audelin-daily-content` on the self-hosted `local-mac` runner: the shipped Daily template on frozen calls kept on the Mac, real default notes model, deterministic S-1 to S-5 checks, a report-only judge score | the `audelin-daily` filter: `TemplateFiles`, `NotesGeneration`, `NotesPreferences.swift` and the check's own files; also weekly, Sundays 21:00 Moscow | runs |
 | audelin browser extension (`audelin/extension/tests/*.test.js`) and its build | `audelin-extension-core` on Ubuntu, so an extension change starts no Swift build | the `audelin-extension` filter, with the message fixtures it shares with the app's decoder tests | runs |
-| mizan-ble (`mizan-ble/ios/Tests/`), Python token-generator tests, the token check, iOS and preview-app builds; screen snapshots on the self-hosted `local-mac` runner | `mizan-ble-core` | the `mizan-ble` filter, with the design file `mizan-ble.pen` its tests read | runs |
+| mizan-ble (`mizan-ble/ios/Tests/`), Python token-generator tests, the token check, iOS and preview-app builds, and screen snapshots on `local-mac` | `mizan-ble-core` | the `mizan-ble` filter, with the design file `mizan-ble.pen` its tests read | runs |
 | claude-insights: the script's pytest, all shared Deno tests and edge-function type checks | `claude-insights-core` | the `claude-insights` filter, including the shared sessions analyzer Python sources | runs |
 | The langfuse stack (`tests/test_langfuse_shared_stack.py`) | `langfuse-core` | the `langfuse` filter | runs |
-| mac-health (`tools/mac-health/tests/test-*.sh`) | `mac-health-core`: `tools/mac-health/tests/run-all.sh`, on `macos-latest` | the `mac-health` filter | runs |
+| mac-health (`tools/mac-health/tests/test-*.sh`) | `mac-health-core`: `tools/mac-health/tests/run-all.sh`, on `local-mac` | the `mac-health` filter | runs |
 | sessions-audit (`tools/sessions-audit/test_sessions_audit.py`) | `sessions-audit-core` | the `sessions-audit` filter | runs |
 
 Notes:
 
 - warder pins gokit at a tag (`v0.1.0`), so a gokit change cannot break warder until gokit is tagged and warder moves to it; a gokit change runs `agister-core` only.
 - `warder/cmd/warder/files_test.go`, `process_test.go` and `serve_test.go` are `//go:build unix`: they run on the `local-mac` runner and are skipped on any other OS.
-- Agister, gokit and warder run on the self-hosted `local-mac` runner. When it is offline, the job waits queued; `local-wait` (`scripts/local-wait.js`) cancels the run once one has waited 15 minutes, naming it, so `report` ends red rather than pending for GitHub's 24 hours: never a silent pass.
+- Native test and build jobs use the self-hosted `local-mac` runner and its selected Xcode. Python jobs use the Mac’s Python 3.12. Notio backend, Agonara container smoke, FolioTell Android and the RexLab browser contracts use hosted Linux. The hosted `local-wait` job cancels CI after 15 minutes of a stalled Mac queue.
 
 ## Slow-test hunts
 

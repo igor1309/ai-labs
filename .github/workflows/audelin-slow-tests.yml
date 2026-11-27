@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   measure:
-    runs-on: macos-latest
+    runs-on: [self-hosted, local-mac]
     timeout-minutes: 120
     steps:
       - name: Checkout
@@ -29,9 +29,6 @@ jobs:
 
       # The same Xcode and caches as audelin-core, so the tests measured
       # are the ones CI runs.
-      - name: Select newest Xcode
-        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)/Contents/Developer"
-
       - name: Restore the speech models
         uses: actions/cache/restore@v6
         with:
