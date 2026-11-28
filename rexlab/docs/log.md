@@ -2,6 +2,7 @@
 
 ## 2026-11-28
 
+- LAB-1861: Batch 4's sizes, masses and hip heights are checked against the sources, still hidden. NHM's figures replace the proposal's where it gives them: Stegoceras 2.4 m, Deinocheirus 10 m, Albertosaurus 1.5 t, Centrosaurus 1 t, Camarasaurus 23 m and 20 t; Minmi 320 kg by Ankylosaurus cubed. Hip heights are worked out by docs/sources.md. Nigersaurus keeps 9 m against NHM's 15 m, and its size, with Suchomimus's, Lambeosaurus's, Albertosaurus's and Centrosaurus's, is left unset because the estimates cross a line or fall between them.
 - LAB-1860: Batch 4's ten dinosaurs are in the data with their English and Russian names, look-alikes, traits and descriptions, each marked hidden so no screen or game shows them yet: Stegoceras, Deinocheirus and Minmi join the thin dome-head, long-claws and armoured groups; Albertosaurus, Suchomimus, Centrosaurus and Lambeosaurus; and the long-necks Camarasaurus, Saltasaurus and Nigersaurus. Their sizes and masses are the proposal's working figures until the facts stage checks them (LAB-1861).
 
 ## 2026-11-23

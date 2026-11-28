@@ -1543,7 +1543,7 @@
     "hidden": true,
     "attributes": {
       "heightMeters": 0.55,
-      "lengthMeters": 2,
+      "lengthMeters": 2.4,
       "massKg": 40
     },
     "diet": "plants",
@@ -1568,8 +1568,8 @@
     "group": "dinosaur",
     "hidden": true,
     "attributes": {
-      "heightMeters": 3,
-      "lengthMeters": 11,
+      "heightMeters": 3.2,
+      "lengthMeters": 10,
       "massKg": 6400
     },
     "diet": "both",
@@ -1594,9 +1594,9 @@
     "group": "dinosaur",
     "hidden": true,
     "attributes": {
-      "heightMeters": 0.6,
+      "heightMeters": 0.41,
       "lengthMeters": 3,
-      "massKg": 300
+      "massKg": 320
     },
     "diet": "plants",
     "traits": {
@@ -1620,9 +1620,9 @@
     "group": "dinosaur",
     "hidden": true,
     "attributes": {
-      "heightMeters": 2.5,
+      "heightMeters": 2.3,
       "lengthMeters": 9,
-      "massKg": 2500
+      "massKg": 1500
     },
     "diet": "meat",
     "traits": {
@@ -1672,9 +1672,9 @@
     "group": "dinosaur",
     "hidden": true,
     "attributes": {
-      "heightMeters": 1.6,
+      "heightMeters": 2.6,
       "lengthMeters": 6,
-      "massKg": 2500
+      "massKg": 1000
     },
     "diet": "plants",
     "traits": {
@@ -1698,7 +1698,7 @@
     "group": "dinosaur",
     "hidden": true,
     "attributes": {
-      "heightMeters": 2.3,
+      "heightMeters": 2.2,
       "lengthMeters": 9,
       "massKg": 3000
     },
@@ -1724,9 +1724,9 @@
     "group": "dinosaur",
     "hidden": true,
     "attributes": {
-      "heightMeters": 3.5,
-      "lengthMeters": 18,
-      "massKg": 18000
+      "heightMeters": 3.6,
+      "lengthMeters": 23,
+      "massKg": 20000
     },
     "diet": "plants",
     "traits": {
@@ -1750,7 +1750,7 @@
     "group": "dinosaur",
     "hidden": true,
     "attributes": {
-      "heightMeters": 2.5,
+      "heightMeters": 1.5,
       "lengthMeters": 12,
       "massKg": 7000
     },
@@ -1776,7 +1776,7 @@
     "group": "dinosaur",
     "hidden": true,
     "attributes": {
-      "heightMeters": 2,
+      "heightMeters": 0.96,
       "lengthMeters": 9,
       "massKg": 4000
     },
@@ -1785,7 +1785,7 @@
       "legs": 4,
       "horns": false,
       "feathers": false,
-      "size": "big"
+      "size": null
     },
     "lookAlike": "long-neck",
     "description": {
