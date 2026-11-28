@@ -88,3 +88,11 @@ accessibility: its transcript and notes read. Evidence: `scripts/live/calls-summ
 markers: the captured request holds the spoken marker only, and the fixture
 response echoes the transcript it got, so the saved notes do too.
 Evidence: `scripts/live/calls-summary.swift` `steps`, the completed run; `SummaryCompositionTests.notesRequestCarriesTheWordsWithoutTheOrigin`.
+
+## Remake a transcript after splitting between displayed minutes
+
+Split a recording at a non-minute boundary, remake part 2's transcript
+and merge the parts. Repeat with the cut before the next recording starts.
+Check the row times, timeline start and absolute starts in both saved
+origins. Evidence:
+`TranscriptAgainPortsTests.remakingAPartSplitBetweenMinutesKeepsItsRecordingStartThroughMerge`.

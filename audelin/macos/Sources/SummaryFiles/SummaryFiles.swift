@@ -2,6 +2,8 @@ import CryptoKit
 import Darwin
 import Foundation
 
+private func jobPath(in folder: URL) -> URL { folder.appendingPathComponent(".summary-job.json") }
+
 public struct Record: Codable, Equatable, Sendable {
     public var job: String
     /// Supplied by the containing folder, never by the stored JSON.
@@ -106,6 +108,13 @@ public struct Files: Sendable {
     @inline(never) public init(locations: any Locations, disk: any Disk, ownershipDirectory: URL) {
         storage = DiskFiles(locations: locations, disk: disk, ownershipDirectory: ownershipDirectory)
     }
+    /// Writes a fresh job into an unpublished call folder, within the caller's folder transaction.
+    public static func stagePending(_ record: Record, in folder: URL, disk: any Disk) throws {
+        guard record.phase == "pending", try disk.create(JSONEncoder().encode(record), at: jobPath(in: folder)) else {
+            throw CocoaError(.fileWriteUnknown)
+        }
+    }
+
     public func release(job: String, call: String, input: String) async { await storage.release(job: job, call: call, input: input) }
     public func claim(_ record: Record, replacingInactive: Bool = false) async throws -> (owned: Bool, record: Record) {
         try await storage.claim(record, replacingInactive: replacingInactive)
@@ -185,7 +194,7 @@ private actor DiskFiles: FilesStorage {
     }
     public func claim(_ record: Record, replacingInactive: Bool) async throws -> (owned: Bool, record: Record) {
         try await locations.withFolder(call: record.call) { [disk, ownershipDirectory] folder in
-            let path = folder.appendingPathComponent(".summary-job.json")
+            let path = jobPath(in: folder)
             if try disk.exists(path) {
                 let current = try Self.read(path, disk: disk, call: record.call)
                 if current.phase == "succeeded" {
@@ -201,7 +210,7 @@ private actor DiskFiles: FilesStorage {
     }
     public func replaceAttempt(_ record: Record, with next: Record) async throws -> Record {
         try await locations.withFolder(call: record.call) { [disk, ownershipDirectory] folder in
-            try Self.replaceAttempt(record, with: next, at: folder.appendingPathComponent(".summary-job.json"), disk: disk, directory: ownershipDirectory)
+            try Self.replaceAttempt(record, with: next, at: jobPath(in: folder), disk: disk, directory: ownershipDirectory)
         }
     }
     private static func replaceAttempt(_ record: Record, with next: Record, at path: URL, disk: any Disk, directory: URL) throws -> Record {
@@ -216,7 +225,7 @@ private actor DiskFiles: FilesStorage {
 
     public func load(call: String) async throws -> Record? {
         try await locations.withFolder(call: call) { [disk, ownershipDirectory] folder in
-            let path = folder.appendingPathComponent(".summary-job.json")
+            let path = jobPath(in: folder)
             guard try disk.exists(path) else { return nil }
             var record = try Self.read(path, disk: disk, call: call)
             if record.phase == "succeeded" {
@@ -253,7 +262,7 @@ private actor DiskFiles: FilesStorage {
             // The old attempt's lease serializes retries even across independent instances.
             guard let lease = try Self.acquire(record, directory: ownershipDirectory) else { throw CocoaError(.fileWriteUnknown) }
             defer { flock(lease, LOCK_UN); close(lease) }
-            let path = folder.appendingPathComponent(".summary-job.json")
+            let path = jobPath(in: folder)
             let current = try Self.read(path, disk: disk, call: record.call)
             guard current == record, ["interrupted", "failed"].contains(current.phase), !job.isEmpty, job != current.job else {
                 throw CocoaError(.fileWriteUnknown)
@@ -268,7 +277,7 @@ private actor DiskFiles: FilesStorage {
         let identity = Identity(call: record.call, job: record.job, input: record.input)
         guard leases[identity] == nil else { return false }
         let lease: Int32? = try await locations.withFolder(call: record.call) { [disk, ownershipDirectory] folder in
-            let path = folder.appendingPathComponent(".summary-job.json")
+            let path = jobPath(in: folder)
             guard let fd = try Self.acquire(record, directory: ownershipDirectory) else { return nil }
             do {
                 var current = try Self.read(path, disk: disk, call: record.call)
@@ -291,7 +300,7 @@ private actor DiskFiles: FilesStorage {
         defer { if record.phase != "running" { release(job: record.job, call: record.call, input: record.input) } }
         let publication = publications[identity]
         try await locations.withFolder(call: record.call) { [disk] folder in
-            let path = folder.appendingPathComponent(".summary-job.json")
+            let path = jobPath(in: folder)
             do {
                 let current = try Self.read(path, disk: disk, call: record.call)
                 guard current.job == record.job, current.input == record.input, current.phase == "running" else { throw CocoaError(.fileWriteUnknown) }
@@ -314,7 +323,7 @@ private actor DiskFiles: FilesStorage {
         let saved = publications[identity]
         let publication = try await locations.withFolder(call: record.call) { [disk] folder in
             try Task.checkCancellation()
-            let current = try Self.read(folder.appendingPathComponent(".summary-job.json"), disk: disk, call: record.call)
+            let current = try Self.read(jobPath(in: folder), disk: disk, call: record.call)
             guard current.job == record.job, current.input == record.input, current.phase == "running" else { throw CocoaError(.fileWriteUnknown) }
             let output = folder.appendingPathComponent("summary.md")
             let previous: Data?
@@ -351,7 +360,7 @@ private actor DiskFiles: FilesStorage {
         defer { if let inactiveLease { flock(inactiveLease, LOCK_UN); close(inactiveLease) } }
         let publication = publications[identity]
         try await locations.withFolder(call: record.call) { [disk] folder in
-            let path = folder.appendingPathComponent(".summary-job.json")
+            let path = jobPath(in: folder)
             let output = folder.appendingPathComponent("summary.md")
             let hasRecord: Bool
             do {

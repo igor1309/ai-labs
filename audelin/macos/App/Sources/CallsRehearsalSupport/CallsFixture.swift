@@ -1,4 +1,5 @@
 import Foundation
+import TagsFile
 import TrackFile
 import TranscriptFormat
 
@@ -51,6 +52,37 @@ public enum CallsFixture {
             try FileManager.default.moveItem(at: calls.appendingPathComponent(id), to: merged.appendingPathComponent(id))
         }
         try FileManager.default.moveItem(at: merged, to: calls.appendingPathComponent(a))
+    }
+
+    public static func seedSplit(in calls: URL) async throws {
+        let folder = calls.appendingPathComponent(a + " [Zoom] Product and Release", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        for (name, first, second): (String, Float, Float) in [("call", 0.125, 0.25), ("microphone", 0.375, 0.5)] {
+            let track = try await TrackFile(url: folder.appendingPathComponent(name + ".caf"))
+            for (level, seconds) in [(first, 75), (second, 45)] {
+                try await track.write([Float](repeating: level, count: seconds * Int(TrackFile.sampleRate)),
+                                      sampleRate: TrackFile.sampleRate)
+            }
+            try await track.close()
+        }
+
+        let speakers: [TranscriptFormat.Speaker] = [
+            .init(id: "product", name: "Анна", state: "confirmed"),
+            .init(id: "release", name: "Борис", state: "confirmed"),
+        ]
+        var format = TranscriptFormat()
+        let transcript = try format.render([
+            .init(side: .mine, start: 3, settled: "Готовим план продукта.", pending: ""),
+            .init(side: .theirs, start: 15, settled: "Продукт обсудили, всем пока.", pending: "", speaker: "product"),
+            .init(side: .theirs, start: 75, settled: "Всем привет, обсуждаем релиз.", pending: "", speaker: "release"),
+            .init(side: .mine, start: 89, settled: "Релиз готов к проверке.", pending: ""),
+        ], speakers: speakers).chunks.reduce(Data(), +)
+        try transcript.write(to: folder.appendingPathComponent("transcript.md"))
+        try TagsFile.write(["fixture"], in: folder)
+        try "Предыдущие итоги двух встреч.".write(to: folder.appendingPathComponent("summary.md"), atomically: true, encoding: .utf8)
+        try await call(c, in: calls, words: nil)
+        let single = calls.appendingPathComponent(c)
+        try "**Me** 00:00:03\nОдна реплика.\n".write(to: single.appendingPathComponent("transcript.md"), atomically: true, encoding: .utf8)
     }
 
     private static func call(_ id: String, in calls: URL, words: [String]?, notes: Bool = true, version: String? = nil) async throws {

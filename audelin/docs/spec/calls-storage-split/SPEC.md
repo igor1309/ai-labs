@@ -2,6 +2,13 @@
 
 Observer: the caller changing a recorded call.
 
+Confirmation takes the storage turn and then claims the calls folder
+through publication. An active recording wins a busy refusal. A recording
+cannot allocate a folder while the split holds the claim or while its
+publication awaits recovery. Split confirmation also requires a loaded
+ownership journal or confirmation that it is absent, so a split cannot
+overwrite ownership that recovery has yet to read.
+
 ```gherkin
 Feature: Calls storage split
 

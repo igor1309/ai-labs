@@ -6,11 +6,16 @@
 # app both permissions once; the grant holds across rebuilds because the
 # bundle identifier and signing identity stay the same.
 #
-# Usage: run-driver.sh <driver.swift> <driver arguments...>
+# Usage: run-driver.sh [--support helpers.swift] <driver.swift> <driver arguments...>
 # AUDELIN_LIVE_DRIVER_APP overrides where the app lives;
 # AUDELIN_LIVE_SIGNING_IDENTITY names the codesign identity.
 set -eu
-[ $# -ge 1 ] || { echo "Usage: run-driver.sh <driver.swift> <driver arguments...>" >&2; exit 2; }
+support=
+if [ "${1:-}" = "--support" ] && [ "$#" -ge 2 ]; then
+    support=$2
+    shift 2
+fi
+[ $# -ge 1 ] || { echo "Usage: run-driver.sh [--support helpers.swift] <driver.swift> <driver arguments...>" >&2; exit 2; }
 source=$1
 shift
 app=${AUDELIN_LIVE_DRIVER_APP:-"$HOME/Library/Application Support/Audelin/AudelinLiveDriver.app"}
@@ -18,7 +23,7 @@ identity=${AUDELIN_LIVE_SIGNING_IDENTITY:-"Apple Development: Igor Malyarov"}
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/audelin-live-driver.XXXXXX")
 trap 'rm -rf "$work"' EXIT
-swiftc -parse-as-library -module-cache-path "$work/module-cache" "$source" -o "$work/driver"
+swiftc -parse-as-library -module-cache-path "$work/module-cache" "$source" ${support:+"$support"} -o "$work/driver"
 
 mkdir -p "$app/Contents/MacOS"
 cp "$work/driver" "$app/Contents/MacOS/AudelinLiveDriver"

@@ -80,8 +80,8 @@ public struct TranscriptFormat: Sendable {
     private var finalHasWords = false
     /// Final segments, kept to rebuild the final text when the lone remote speaker gains a second.
     private var finalSegments: [Segment] = []
-    /// Whether the final text was labelled for a lone remote speaker.
-    private var finalLone = false
+    /// The sole remote ID used to label the cached final text.
+    private var finalLoneSpeakerID: String?
     private var speakers: [Speaker] = []
     private var revision = 0
     private static let noText = "# Transcript\n\nNo text was heard.\n"
@@ -109,7 +109,7 @@ public struct TranscriptFormat: Sendable {
         let originChanged = hasRendered && previousOrigin != origin
         self.speakers = speakers
         revision += 1
-        if lone != finalLone { try rebuildFinalText() }
+        if loneSpeakerID != finalLoneSpeakerID { try rebuildFinalText() }
         try renderSegments(count: count, finalCount: finalCount, segment: segment)
         let (prefix, suffix, noText) = text()
         let length = !noText && self.finalCount > 0 && speakers.isEmpty && !originChanged ? frontMatter.count + prefix.count : nil
@@ -124,8 +124,10 @@ public struct TranscriptFormat: Sendable {
         for position in 0..<tailCount {
             let segment = segment(self.finalCount + position)
             let label = label(segment)
-            if position < rendered.count, rendered[position].segment == segment, rendered[position].label == label { continue }
-            let part = try Rendered(segment, label: label)
+            let unattributed = isUnattributedWithLoneSpeaker(segment)
+            if position < rendered.count, rendered[position].segment == segment, rendered[position].label == label,
+               rendered[position].unattributed == unattributed { continue }
+            let part = try Rendered(segment, label: label, unattributed: unattributed)
             if position < rendered.count { rendered[position] = part } else { rendered.append(part) }
         }
         rendered.removeLast(rendered.count - tailCount)
@@ -160,16 +162,23 @@ public struct TranscriptFormat: Sendable {
         finalText = Data(Self.header.utf8)
         finalHasWords = false
         finalSegments = []
-        for segment in segments { appendFinal(try Rendered(segment, label: label(segment))) }
-        finalLone = lone
+        for segment in segments {
+            appendFinal(try Rendered(segment, label: label(segment), unattributed: isUnattributedWithLoneSpeaker(segment)))
+        }
+        finalLoneSpeakerID = loneSpeakerID
     }
 
     /// One listed remote speaker reads as plain `Them`, as a call without diarization does.
-    private var lone: Bool { speakers.count == 1 }
+    private var loneSpeakerID: String? { speakers.count == 1 ? speakers.first?.id : nil }
 
     private func label(_ segment: Segment) -> String {
 
         Self.label(segment, speakerIDs: speakers.map(\.id))
+    }
+
+    private func isUnattributedWithLoneSpeaker(_ segment: Segment) -> Bool {
+        guard segment.side == .theirs, let loneSpeakerID else { return false }
+        return segment.speaker != loneSpeakerID
     }
 
     /// A row's label for notes: the speaker label, followed by the speaker's name in
@@ -188,10 +197,7 @@ public struct TranscriptFormat: Sendable {
 
         let (parts, speakers, _) = parts(markdown)
         return parts.filter { $0.gap == nil }.map { part in
-            let index = part.label == "Them" ? (speakers.count == 1 ? 0 : nil)
-                : part.label.hasPrefix("Them ") ? Int(part.label.dropFirst("Them ".count)).map { $0 - 1 } : nil
-            let name = index.flatMap { speakers.indices.contains($0) ? speakers[$0].name : nil }?
-                .trimmingCharacters(in: .whitespacesAndNewlines)
+            let name = part.speaker(in: speakers)?.name?.trimmingCharacters(in: .whitespacesAndNewlines)
             let label = name.map { $0.isEmpty ? part.label : "\(part.label) (\($0))" } ?? part.label
             return Entry(label: label, start: part.start, words: part.words)
         }
@@ -243,40 +249,54 @@ public struct TranscriptFormat: Sendable {
     }
 
     /// Reads back what rendering needs to render a saved transcript again. A `Them N`
-    /// row is given the Nth listed speaker's ID; a plain `Them` row the only listed
-    /// speaker's, or none. Words come back settled, as final text was rendered.
+    /// row is given the Nth listed speaker's ID. A plain `Them` row has the sole
+    /// listed speaker's ID unless the header marks it as unattributed.
+    /// Words come back settled, as final text was rendered.
     public static func read(_ markdown: String) -> Saved {
 
         let (parts, speakers, origin) = parts(markdown)
-        let ids = speakers.map(\.id)
         let segments = parts.map { part -> Segment in
             if let length = part.gap { return .gap(at: part.start, length: length) }
             guard part.label != "Me" else {
                 return Segment(side: .mine, start: part.start, settled: part.words, pending: "", filledInLater: part.later)
             }
-            let speaker: String?
-            if part.label == "Them" { speaker = ids.count == 1 ? ids[0] : nil } else {
-                let index = Int(part.label.dropFirst("Them ".count)).map { $0 - 1 }
-                speaker = index.flatMap { ids.indices.contains($0) ? ids[$0] : nil }
-            }
-            return Segment(side: .theirs, start: part.start, settled: part.words, pending: "", filledInLater: part.later, speaker: speaker)
+            return Segment(side: .theirs, start: part.start, settled: part.words, pending: "",
+                           filledInLater: part.later, speaker: part.speaker(in: speakers)?.id)
         }
         return Saved(segments: segments, speakers: speakers, origin: origin)
     }
 
-    private struct Part { let label: String; let start: Double; let later: Bool; let words: String; var gap: Double? = nil }
+    private struct Part {
+        let label: String
+        let start: Double
+        let later: Bool
+        let words: String
+        var gap: Double? = nil
+        var unattributed = false
+
+        func speaker(in speakers: [Speaker]) -> Speaker? {
+            if label == "Them" { return !unattributed && speakers.count == 1 ? speakers.first : nil }
+            guard label.hasPrefix("Them "), let number = Int(label.dropFirst("Them ".count)),
+                  speakers.indices.contains(number - 1) else { return nil }
+            return speakers[number - 1]
+        }
+    }
 
     private static func parts(_ markdown: String) -> (parts: [Part], speakers: [Speaker], origin: Origin?) {
 
         var parts: [Part] = []
         var speakers: [Speaker] = []
-        var current: (label: String, start: Double, later: Bool, lines: [Substring])?
+        var current: (header: Header, lines: [Substring])?
         func close() {
             guard let part = current else { return }
             let words = part.lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-            if part.label == "Gap" {
-                if let length = gapLength(words) { parts.append(Part(label: "Gap", start: part.start, later: false, words: "", gap: length)) }
-            } else if !words.isEmpty { parts.append(Part(label: part.label, start: part.start, later: part.later, words: words)) }
+            let header = part.header
+            if header.label == "Gap" {
+                if let length = gapLength(words) { parts.append(Part(label: "Gap", start: header.start, later: false, words: "", gap: length)) }
+            } else if !words.isEmpty {
+                parts.append(Part(label: header.label, start: header.start, later: header.later, words: words,
+                                  unattributed: header.unattributed))
+            }
             current = nil
         }
         let (normalized, origin) = frontMatter(markdown)
@@ -286,7 +306,7 @@ public struct TranscriptFormat: Sendable {
                 if let block = speakerList(line) { speakers = block }
             } else if let header = header(line) {
                 close()
-                current = (header.label, header.start, header.later, [])
+                current = (header, [])
             } else if line == "## Speakers" {
                 close()
                 inSpeakers = true
@@ -320,18 +340,23 @@ public struct TranscriptFormat: Sendable {
         return try? JSONDecoder().decode(Metadata.self, from: Data(json.utf8)).speakers
     }
 
-    private static func header(_ line: Substring) -> (label: String, start: Double, later: Bool)? {
+    private typealias Header = (label: String, start: Double, later: Bool, unattributed: Bool)
+    private static let unattributedMarker = " <!-- audelin-unattributed -->"
 
-        guard let match = line.wholeMatch(of: /\*\*(Me|Them|Them [1-9][0-9]*|Gap)\*\* ([0-9]{2,}):([0-5][0-9]):([0-5][0-9])( \(filled in later\))?/),
+    private static func header(_ line: Substring) -> Header? {
+
+        let marked = line.hasSuffix(unattributedMarker)
+        let visible = marked ? line.dropLast(unattributedMarker.count) : line
+        guard let match = visible.wholeMatch(of: /\*\*(Me|Them|Them [1-9][0-9]*|Gap)\*\* ([0-9]{2,}):([0-5][0-9]):([0-5][0-9])( \(filled in later\))?/),
               let h = Double(match.2), let m = Double(match.3), let s = Double(match.4) else { return nil }
-        return (String(match.1), h * 3_600 + m * 60 + s, match.5 != nil)
+        return (String(match.1), h * 3_600 + m * 60 + s, match.5 != nil, marked)
     }
 
     /// A readable Speakers section and one versioned machine-readable block after it.
     private func speakerBlock() -> String {
 
         guard !speakers.isEmpty else { return "" }
-        let lines = speakers.enumerated().map { "- Them\(lone ? "" : " \($0.offset + 1)"): \($0.element.name.map(Self.escaped) ?? "unknown")" }
+        let lines = speakers.enumerated().map { "- Them\(loneSpeakerID != nil ? "" : " \($0.offset + 1)"): \($0.element.name.map(Self.escaped) ?? "unknown")" }
         struct Metadata: Encodable { let schemaVersion = 1; let revision: Int; let speakers: [Speaker] }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
@@ -359,8 +384,9 @@ public struct TranscriptFormat: Sendable {
         let label: String
         let text: String
         let hasWords: Bool
+        let unattributed: Bool
 
-        init(_ segment: Segment, label side: String) throws {
+        init(_ segment: Segment, label side: String, unattributed: Bool) throws {
 
             guard segment.start.isFinite, segment.start >= 0, segment.start < Double(Int.max) else {
                 throw Failure.invalidStart
@@ -368,6 +394,7 @@ public struct TranscriptFormat: Sendable {
             let time = TranscriptFormat.clock(Int(segment.start.rounded(.down)))
             self.segment = segment
             label = side
+            self.unattributed = unattributed
             if let length = segment.gapLength {
                 guard length.isFinite, length >= 0, length < Double(Int.max) else { throw Failure.invalidGap }
                 text = "**Gap** \(time)\nCut off for \(TranscriptFormat.clock(Int(length.rounded(.down))))."
@@ -376,7 +403,8 @@ public struct TranscriptFormat: Sendable {
             }
             let later = segment.filledInLater ? " (filled in later)" : ""
             let words = [segment.settled, segment.pending].filter { !$0.isEmpty }.joined(separator: " ")
-            text = "**\(side)** \(time)\(later)\n\(words)"
+            let marker = unattributed ? TranscriptFormat.unattributedMarker : ""
+            text = "**\(side)** \(time)\(later)\(marker)\n\(words)"
             hasWords = !words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
     }

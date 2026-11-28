@@ -120,7 +120,7 @@ func recordingsReducer(_ text: @escaping @Sendable () -> SettingsText) -> Record
     RecordingsReducer(failureMessage: { prior, refreshError in
         text()(.refreshFailed, prior, refreshError)
     }, moveText: folderMoveText(text), busyMessage: { text()(.callMergeBusy) },
-                      transcriptMessage: { transcriptMessage($0, text: text()) })
+                      splitMessage: { splitMessage($0, text: text()) }, transcriptMessage: { transcriptMessage($0, text: text()) })
 }
 
 func transcriptMessage(_ refusal: TranscriptRefusal, text: SettingsText) -> String {
@@ -133,5 +133,28 @@ func transcriptMessage(_ refusal: TranscriptRefusal, text: SettingsText) -> Stri
     case let .runningTranscript(id): text(.transcriptRunning, id)
     case let .missingTracks(tracks):
         text(.transcriptMissingTracks, tracks.map { text($0.track == .call ? .transcriptCallTrack : .transcriptMicrophoneTrack, $0.id) }.joined(separator: "; "))
+    }
+}
+
+private func splitMessage(_ message: SplitMessage, text: SettingsText) -> String {
+    switch message {
+    case .checking: text(.splitChecking)
+    case .noChoices: text(.splitNoChoices)
+    case .busy: text(.splitBusy)
+    case .finishing: text(.splitFinishing)
+    case let .refreshFailed(reason): text(.splitRefreshFailed, reason)
+    case let .recoveryRequired(reason): text(.splitRecovery, reason)
+    case let .failed(failure):
+        switch failure {
+        case let .failed(reason): reason
+        case .refused(.inactiveFolder): text(.splitInactive)
+        case .refused(.folderMove): text(.splitFolderMove)
+        case .refused(.busy): text(.splitBusy)
+        case .refused(.invalidTitle): text(.callInvalidTitle)
+        case .refused(.journalUnavailable): text(.splitJournalUnavailable)
+        case .refused(.expiredTranscript): text(.splitExpired)
+        case .refused(.invalidChoice): text(.splitInvalidChoice)
+        case let .refused(.recoveryRequired(reason)), let .refused(.committed(_, reason)): text(.splitRecovery, reason)
+        }
     }
 }

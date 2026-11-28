@@ -6,9 +6,11 @@ extension TranscriptFormat {
     public struct Origin: Sendable, Equatable, Codable {
         public let calls: [OriginalCall]
         public let mergedBy: Release?
+        /// Time of row zero, which may differ from both the folder minute and the first recording's start.
+        public let timelineStart: Date?
 
-        public init(calls: [OriginalCall], mergedBy: Release? = nil) {
-            self.calls = calls; self.mergedBy = mergedBy
+        public init(calls: [OriginalCall], mergedBy: Release? = nil, timelineStart: Date? = nil) {
+            self.calls = calls; self.mergedBy = mergedBy; self.timelineStart = timelineStart
         }
     }
 

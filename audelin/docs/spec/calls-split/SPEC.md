@@ -2,6 +2,10 @@
 
 Observer: the caller replacing a call folder.
 
+The final folder names must be accepted by the destination filesystem
+before the original moves. A rejected name returns an invalid-title error
+and leaves the original readable.
+
 ```gherkin
 Feature: Calls split
 

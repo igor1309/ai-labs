@@ -4,6 +4,23 @@ import TranscriptFormat
 
 struct TranscriptReadingTests {
 
+    @Test func aSoleListedSpeakerAndUnattributedRowsReadBackSeparately() throws {
+        let ann = TranscriptFormat.Speaker(id: "ann", name: "Ann", state: "named")
+        let attributed = TranscriptFormat.Segment(side: .theirs, start: 2, settled: "Named", pending: "", speaker: ann.id)
+        let unattributed = TranscriptFormat.Segment(side: .theirs, start: 4, settled: "Unattributed", pending: "", filledInLater: true)
+        let rows = [attributed, unattributed]
+        var writer = TranscriptFormat()
+        _ = try writer.render(count: rows.count, finalCount: 1) { rows[$0] }
+        let written = try writer.render(count: rows.count, finalCount: 2, speakers: [ann]) { rows[$0] }
+        let markdown = String(decoding: written.chunks.reduce(Data(), +), as: UTF8.self)
+        #expect(TranscriptFormat.read(markdown).segments == rows)
+        #expect(TranscriptFormat.entries(markdown).map(\.label) == ["Them", "Them"])
+        #expect(TranscriptFormat.namedEntries(markdown).map(\.label) == ["Them (Ann)", "Them"])
+
+        let legacy = markdown.replacingOccurrences(of: " <!-- audelin-unattributed -->", with: "")
+        #expect(TranscriptFormat.read(legacy).segments.map(\.speaker) == [ann.id, ann.id])
+    }
+
     @Test func readsBackEachPartWithItsLabelWholeSecondsAndWords() throws {
 
         let text = try rendered([

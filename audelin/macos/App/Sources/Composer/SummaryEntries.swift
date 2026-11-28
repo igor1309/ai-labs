@@ -1,3 +1,4 @@
+import Calls
 import CryptoKit
 import Foundation
 import SummaryJobs
@@ -21,6 +22,10 @@ func summaryEntries(_ segments: [TranscriptFormat.Segment], speakers: [Transcrip
         guard !words.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
         return .init(label: TranscriptFormat.namedLabel(segment, speakers: speakers), time: String(segment.start), text: words)
     }
+}
+
+func storedSummaryEntries(_ lines: [Calls.Text.Line]) -> [Job.Entry] {
+    lines.map { .init(label: $0.label, time: String($0.start), text: $0.words) }
 }
 
 func summaryInput(_ entries: [Job.Entry]) -> String {

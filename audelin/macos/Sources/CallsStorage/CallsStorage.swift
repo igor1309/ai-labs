@@ -20,6 +20,7 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
     private struct State {
         var recordingFolder: URL
         var journal = CallsJournal()
+        var journalLoaded: Bool
     }
     private let state: Mutex<State>
     private let journal: URL?
@@ -40,7 +41,7 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
                 makeCalls: @escaping @Sendable (URL) -> Calls,
                 operation: CallsStorageGuard = .serial()) {
         self.operation = operation
-        state = Mutex(State(recordingFolder: directory(folder)))
+        state = Mutex(State(recordingFolder: directory(folder), journalLoaded: journal == nil))
         self.readPart = readPart
         self.journal = journal; self.writeJournal = writeJournal; self.makeCalls = makeCalls
     }
@@ -71,30 +72,37 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
         }
     }
 
-    /// Puts back every merge and transcript change interrupted in the calls folder and in
-    /// every other folder the journal says owns a call, then recovers the moves it records.
+    /// Recovers interrupted folder changes and reconciles published splits before startup lists calls.
     public func restore() async throws {
         try await perform { [self] in
-            try state.withLock { state in try recoverInterruptedChanges(in: state.recordingFolder) }
-            guard let journal else { return }
-            let data: Data
-            do { data = try Data(contentsOf: journal) }
-            catch let error as CocoaError where error.code == .fileReadNoSuchFile { return }
-            let (saved, migrated) = try CallsJournal.read(data) { [makeCalls] root in try makeCalls(root).list().map(\.id) }
-            if migrated { try save(saved) }
             try state.withLock { state in
-                state.journal = saved
+                state.journalLoaded = false
+                state.journal = try readJournal() ?? CallsJournal()
+                state.journalLoaded = true
                 // A transcript is changed in the folder that owns its call, so each owning folder
                 // is put back before any of its calls is listed or moved on.
-                for root in otherRoots(state) { try recoverInterruptedChanges(in: root) }
+                let active = state.recordingFolder
+                try recoverInterruptedChanges(in: active, state: &state)
+                for root in otherRoots(state) { try recoverInterruptedChanges(in: root, state: &state) }
                 recover(&state)
             }
         }
     }
-    private func recoverInterruptedChanges(in root: URL) throws {
+    private func readJournal() throws -> CallsJournal? {
+        guard let journal else { return nil }
+        let data: Data
+        do { data = try Data(contentsOf: journal) }
+        catch CocoaError.fileReadNoSuchFile { return nil }
+        let (saved, migrated) = try CallsJournal.read(data) { [makeCalls] root in try makeCalls(root).list().map(\.id) }
+        if migrated { try save(saved) }
+        return saved
+    }
+    private func recoverInterruptedChanges(in root: URL, state: inout State) throws {
         // A folder that is not there, such as one on an unmounted volume, holds no change.
         guard FileManager.default.fileExists(atPath: root.path) else { return }
-        try makeCalls(root).recoverInterruptedMerges()
+        try makeCalls(root).recoverInterruptedMerges {
+            try registerSplit(.init(first: $0.first, second: $0.second), in: root, state: &state)
+        }
     }
     /// The folders other than the calls folder that the journal says own a call.
     private func otherRoots(_ state: State) -> [URL] {
@@ -113,6 +121,18 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
         try save(next)
         state.journal = next
     }
+    private func registerSplit(_ parts: SplitReplacement, in root: URL, state: inout State) throws {
+        var next = state.journal
+        // The active directory indexes its own calls. Clear any records that would
+        // route the published ids away from their new folders.
+        let owner = sameRoot(root, state.recordingFolder) ? nil : root
+        for id in [parts.first, parts.second] {
+            next.moves.removeValue(forKey: id)
+            next.owners[id] = owner
+        }
+        try save(next)
+        state.journal = next
+    }
     public static let writeAtomically: @Sendable (CallsJournal, URL) throws -> Void = { record, journal in
         try FileManager.default.createDirectory(at: journal.deletingLastPathComponent(), withIntermediateDirectories: true)
         try JSONEncoder().encode(record).write(to: journal, options: .atomic)
@@ -120,7 +140,10 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
 
     /// Retained volumes need not be mounted to reserve the calls they own.
     public func occupiedCallNames() throws -> [String] {
-        state.withLock { Array(Set($0.journal.moves.keys).union($0.journal.owners.keys)) }
+        try state.withLock { state in
+            try makeCalls(state.recordingFolder).requireRecoveredSplits()
+            return Array(Set(state.journal.moves.keys).union(state.journal.owners.keys))
+        }
     }
     private func recover(_ state: inout State, id: String? = nil) {
         let ids = id.map { [$0] } ?? Array(state.journal.moves.keys)
@@ -254,6 +277,79 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
             }
         }
     }
+
+    public enum SplitFailure: Error, Equatable, Sendable {
+        case inactive(id: String)
+        case heldByMove(id: String)
+        case busy
+        case journalUnavailable
+        case expiredTranscript(id: String)
+    }
+
+    public struct SplitRequest: Sendable {
+        public let root: URL
+        public let id: String
+        public let expectedTranscript: String
+        public let reservedIDs: Set<String>
+    }
+
+    public struct SplitReplacement: Equatable, Sendable {
+        public let first: String
+        public let second: String
+
+        public init(first: String, second: String) {
+            self.first = first; self.second = second
+        }
+    }
+
+    /// The folder transaction confirms the transcript and publishes both parts.
+    /// It calls registration after publication and retains recovery if registration fails.
+    public typealias SplitFolders = @Sendable (
+        _ request: SplitRequest, _ register: (SplitReplacement) throws -> Void
+    ) throws -> SplitReplacement
+
+    private func splitRoot(id: String, state: State) throws -> URL {
+        if let move = state.journal.moves[id], ![.source, .destination].contains(move.phase) {
+            throw SplitFailure.heldByMove(id: id)
+        }
+        let root = state.recordingFolder
+        if let owner = ownerRoot(id: id, state: state), !sameRoot(owner, root) { throw SplitFailure.inactive(id: id) }
+        return root
+    }
+
+    /// Reads the bytes used for split choices together with their identity, within the storage turn.
+    public func splitTranscript(id: String) async throws -> Calls.SplitTranscript {
+        try await perform { [self] in
+            if folderClaim.withLock({ $0.holder?.0 == .move }) { throw SplitFailure.heldByMove(id: id) }
+            return try state.withLock { state in try makeCalls(splitRoot(id: id, state: state)).splitTranscript(id: id) }
+        }
+    }
+
+    /// Holds the folder claim through preparation and publication, after waiting for the storage turn.
+    public func split(id: String, expectedTranscript: String, replace: SplitFolders) async throws -> SplitReplacement {
+        try await perform { [self] in
+            let token: CallsFolderToken
+            switch takeFolder(for: .split) {
+            case let .granted(grant): token = grant
+            case .refused(by: .move): throw SplitFailure.heldByMove(id: id)
+            case .refused: throw SplitFailure.busy
+            }
+            defer { releaseFolder(token) }
+            return try state.withLock { state in
+                guard state.journalLoaded else { throw SplitFailure.journalUnavailable }
+                let root = try splitRoot(id: id, state: state)
+                let reserved = Set(state.journal.moves.keys).union(state.journal.owners.keys)
+                guard try makeCalls(root).transcriptFacts(id: id).identity == expectedTranscript else {
+                    throw SplitFailure.expiredTranscript(id: id)
+                }
+                return try replace(.init(root: root, id: id, expectedTranscript: expectedTranscript,
+                                         reservedIDs: reserved)) {
+                    try registerSplit($0, in: root, state: &state)
+                }
+            }
+        }
+    }
+
     public func location(id: String) async throws -> URL { try await perform { [self] in try folder(call: id) { $0 } } }
     /// A call's transcript lines.
     public func text(id: String) async throws -> Calls.Text {

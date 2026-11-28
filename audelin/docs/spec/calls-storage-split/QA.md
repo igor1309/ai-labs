@@ -29,3 +29,18 @@ Evidence: Missing.
 Drive: Restore a committed fixture with a stale storage journal and compare lookup and listing after two restores.
 
 Evidence: Missing.
+
+## Folder admission and journal recovery
+
+Drive: Attempt a recording claim inside the track cutter, then allocate
+a recording in the same minute after publication. Interrupt a split after
+part 1 and verify recording allocation is refused until recovery. Queue
+a split behind a storage turn, then grant a recording claim before
+releasing the turn.
+Attempt a split after a legacy journal fails to migrate, and try again
+once the retained folder returns and recovery has loaded the journal.
+
+Evidence: `CallsStorageSplitTests.aRecordingCannotAllocateTheSecondPartsIdentityDuringTheCut`,
+`aRecordingCannotAllocateAnUnpublishedPartIdentityAfterInterruptedPublication`,
+`recordingCanWinAdmissionWhileSplitWaitsForTheStorageTurn` and
+`CallsStorageTests.unavailableLegacyRootDoesNotReplaceItsJournal`.

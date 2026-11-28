@@ -182,7 +182,7 @@ private final class RestoreMessageSpy: Sendable {
     var received: [TranscriptRefusal] { storage.withLock { $0 } }
     var reducer: RecordingsReducer {
         .init(failureMessage: { $0 + $1 }, moveText: stubMoveText, busyMessage: { Issue.record("Unexpected busy formatter"); return "busy" },
-              transcriptMessage: { reason in self.storage.withLock { $0.append(reason) }; return "restore busy" })
+              splitMessage: { _ in "split unavailable" }, transcriptMessage: { reason in self.storage.withLock { $0.append(reason) }; return "restore busy" })
     }
 }
 
@@ -234,7 +234,7 @@ private actor RestoreCallsSpy: RecordingsCalls {
 private func makeHandler(_ calls: RestoreCallsSpy, describe: @escaping @Sendable (any Error) -> String = { _ in
     Issue.record("Unexpected error"); return "error"
 }) -> RecordingsEffectHandler {
-    .init(calls: calls, transcriptAgain: UnusedTranscriptPort(),
+    .init(calls: calls, split: UnusedSplit(), transcriptAgain: UnusedTranscriptPort(),
           reserve: { Issue.record("Unexpected reservation"); return nil }, release: { _ in Issue.record("Unexpected release") },
           storeFolder: { _ in Issue.record("Unexpected folder write") }, describe: describe)
 }

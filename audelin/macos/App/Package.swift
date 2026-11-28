@@ -75,6 +75,7 @@ let package = Package(
         .target(
             name: "CallsRehearsalSupport",
             dependencies: [
+                .product(name: "TagsFile", package: "macos"),
                 .product(name: "Preferences", package: "macos"),
                 .product(name: "SummaryRuntime", package: "macos"),
                 .product(name: "TrackFile", package: "macos"),
@@ -92,6 +93,7 @@ let package = Package(
         .target(
             name: "Composer",
             dependencies: [
+                .product(name: "CallsWindowUI", package: "macos"),
                 .product(name: "TranscriptLayout", package: "macos"),
                 .product(name: "LatestText", package: "macos"),
                 .product(name: "RecordingConditions", package: "macos"),
@@ -102,6 +104,9 @@ let package = Package(
                 .product(name: "SummaryPreviewUI", package: "macos"),
                 .product(name: "BrowserBridge", package: "macos"),
                 .product(name: "SummaryJobs", package: "macos"),
+                .product(name: "SplitPoints", package: "macos"),
+                .product(name: "SplitPreparation", package: "macos"),
+                .product(name: "TranscriptSplit", package: "macos"),
                 .product(name: "TemplateFiles", package: "macos"),
                 .product(name: "NotesGeneration", package: "macos"),
                 .product(name: "SummaryFiles", package: "macos"),

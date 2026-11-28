@@ -9,6 +9,22 @@ public enum SummaryPreviewLanguage: String, CaseIterable, Sendable {
 
 /// A fixed piece of summary preview text; its raw value is the key in the strings tables.
 public enum SummaryPreviewPhrase: String, CaseIterable, Sendable {
+    case splitAction = "split.action"
+    case splitTitle = "split.title"
+    case splitChoices = "split.choices"
+    case splitSeconds = "split.seconds"
+    case splitTransition = "split.transition"
+    case splitFirst = "split.first"
+    case splitSecond = "split.second"
+    case splitCancel = "split.cancel"
+    case splitConfirm = "split.confirm"
+    case splitWorking = "split.working"
+    case splitProgress = "split.progress"
+    case splitPublishing = "split.publishing"
+    case splitFailed = "split.failed"
+    case splitUnchanged = "split.unchanged"
+    case splitRefresh = "split.refresh"
+    case splitMe = "split.me"
 
     case earlierTranscript = "preview.earlierTranscript"
     case failureUnavailable = "preview.failureUnavailable"

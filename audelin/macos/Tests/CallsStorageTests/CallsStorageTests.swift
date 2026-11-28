@@ -95,13 +95,36 @@ import CallsStorage
             let source = root.appendingPathComponent("source"), destination = root.appendingPathComponent("offline")
             let journal = root.appendingPathComponent("summary-folders.json")
             let data = try JSONEncoder().encode([destination, source])
+            let retainedID = "1970.01.01-0000", activeID = "1970.01.01-0001"
+            let active = source.appendingPathComponent(activeID)
+            let bytes = Data("original".utf8)
             do {
-                try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+                try FileManager.default.createDirectory(at: active, withIntermediateDirectories: true)
+                try bytes.write(to: active.appendingPathComponent("transcript.md"))
                 try data.write(to: journal)
             }
             let storage = makeStorage(folder: source, journal: journal)
             await #expect(throws: (any Error).self) { try await storage.restore() }
+            let choices = try await storage.splitTranscript(id: activeID)
+            await #expect(throws: CallsStorage.SplitFailure.journalUnavailable) {
+                try await storage.split(id: activeID, expectedTranscript: choices.identity) { _, register in
+                    Issue.record("Split reached folder preparation before the journal was loaded")
+                    let parts = CallsStorage.SplitReplacement(first: activeID, second: retainedID)
+                    try register(parts)
+                    return parts
+                }
+            }
             #expect(try Data(contentsOf: journal) == data)
+            #expect(try await storage.savedTranscript(id: activeID) == bytes)
+
+            try FileManager.default.createDirectory(at: destination.appendingPathComponent(retainedID), withIntermediateDirectories: true)
+            try await storage.restore()
+            #expect(try await sameDirectory(storage.location(id: retainedID), destination.appendingPathComponent(retainedID)))
+            let actual = try await storage.split(id: activeID, expectedTranscript: choices.identity) { request, _ in
+                #expect(request.reservedIDs == [activeID, retainedID])
+                return .init(first: activeID, second: "1970.01.01-0001-2")
+            }
+            #expect(actual.first == activeID)
         }
     }
 

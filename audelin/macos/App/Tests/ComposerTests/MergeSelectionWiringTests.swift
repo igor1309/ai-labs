@@ -38,6 +38,23 @@ struct MergeSelectionWiringTests {
         #expect(control() == (false, false))
     }
 
+    @Test func committedReplacementsAreDeliveredInOrderEvenWhenTheIDsRepeat() async {
+        let stream = AsyncStream<RecordingsState>.makeStream()
+        var events: [SummariesEvent] = []
+        let subscription = subscribeCallReplacements(stream.stream) { events.append($0) }
+        let replacement = RecordingsReplacement(removed: ["A", "B"], published: ["A"])
+        let states: [RecordingsState] = [
+            .init(), .init(replacement: replacement), .init(isListing: true, replacement: replacement),
+            .init(), .init(replacement: replacement),
+        ]
+        for state in states { stream.continuation.yield(state) }
+        stream.continuation.finish()
+        await subscription.value
+
+        #expect(events == [.replaced(removed: ["A", "B"], published: ["A"]),
+                           .replaced(removed: ["A", "B"], published: ["A"])])
+    }
+
     @Test func aMergedCallIsSelectedAndItsNotesAreRead() async throws {
         let listing = Listing()
         let sut = AudelinCalls(inputs: RecordingsInputs(state: { listing.state }, send: { _ in }, states: { AsyncStream { $0.yield(listing.state); $0.finish() } }),

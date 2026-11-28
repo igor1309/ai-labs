@@ -2,6 +2,11 @@
 
 Observer: the calls window presenting split controls.
 
+A successful split result announces the replacement immediately so notes can
+start even when refreshing the calls list fails. A complete listing
+separately tells the window to select part 1. A busy or invalid-title
+refusal on confirmation keeps the boundary and both editable titles.
+
 ```gherkin
 Feature: Recordings split
 

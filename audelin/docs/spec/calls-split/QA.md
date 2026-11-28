@@ -8,9 +8,12 @@ Evidence: Missing.
 
 ## S-2 Fail before commit
 
-Drive: Inject a failure after preparation and compare the original's files and the visible listing.
+Drive: Inject a preparation or commit-marker failure and compare the original
+folder and listing. Submit an overlong title for each part and reopen the
+folder to verify the original remains readable.
 
-Evidence: Missing.
+Evidence: `CallsFolderSplitTests.failureBeforeTheDecisionLeavesTheOriginalByteForByte`
+and `aRejectedDestinationNameLeavesTheOriginalReadable`.
 
 ## S-3 Recover before commit
 
@@ -20,9 +23,11 @@ Evidence: Missing.
 
 ## S-4 Recover after commit
 
-Drive: Open an interrupted committed transaction and recover twice. Compare both parts and confirm the original is absent.
+Drive: Interrupt after publishing part 1 and recover twice. Compare both
+parts' transcripts, notes jobs, recording starts, tracks and attachments
+with an uninterrupted split, including the tracks intentionally absent.
 
-Evidence: Missing.
+Evidence: `CallsFolderSplitTests.recoversBothPartsAfterOnlyOneWasPublished`.
 
 ## S-5 Restore relocated recordings
 

@@ -99,30 +99,29 @@ import Testing
         sut.forget(call: "call")
         try await waitUntil("the call is dropped") { sut.state.calls["call"] == nil }
     }
-    @Test func S15_dropDropsEveryMergedPart() async throws {
+    @Test func aReplacementLoadsTheStagedJobUnderTheReusedIDAndDropsTheOtherPart() async throws {
         let files = FilesFake()
         files.stored = try await record(phase: "succeeded")
-        let sut = makeSUT(files)
+        let transcript = Calls.Text.Line(start: 3, words: "joined transcript", label: "Them (Ann)")
+        let sut = makeSUT(files, transcript: [transcript])
         sut.recover(calls: ["call"])
         sut.waiting(call: "other", notesOn: true)
-        try await waitUntil("the calls are known") { sut.state.calls["call"]?.stage == .succeeded && sut.state.calls["other"] != nil }
-        sut.drop(parts: ["call", "other"])
-        try await waitUntil("the parts are dropped") { sut.state.calls.isEmpty }
-    }
-    @Test func S15_aMergedCallsNotesAreMadeFromItsJoinedTranscript() async throws {
-        let files = FilesFake()
-        files.stored = try await record(phase: "succeeded")
-        let sut = makeSUT(files)
-        sut.recover(calls: ["call"])
-        sut.waiting(call: "other", notesOn: true)
-        try await waitUntil("the parts are known") { sut.state.calls["call"]?.stage == .succeeded && sut.state.calls["other"] != nil }
-        sut.merged(call: "call", parts: ["call", "other"],
-                   entries: [.init(label: "A", time: "0", text: "first part"), .init(label: "1.A", time: "900", text: "second part")],
-                   notesOn: true)
-        try await waitUntil("the merged call's notes are saved") { sut.state.calls["call"]?.stage == .succeeded && files.claimed.count == 1 }
+        for await state in Observations({ sut.state })
+        where state.calls["call"]?.stage == .succeeded && state.calls["other"]?.stage == .waiting { break }
+
+        let entries = storedSummaryEntries([transcript])
+        let job = Job(id: "staged", call: "call", input: summaryInput(entries), entries: entries, speakers: true,
+                      primary: .init(kind: "cli", model: "m", program: "p", endpoint: "", credentialVariable: ""),
+                      speakersNamed: true)
+        files.stored = try SummariesFilesPort.record(job, phase: "pending")
+        sut.send(.replaced(removed: ["call", "other"], published: ["call"]))
+        for await state in Observations({ sut.state })
+        where state.calls["call"]?.job?.id == job.id && state.calls["call"]?.stage == .succeeded { break }
+
         #expect(sut.state.calls["other"] == nil)
-        let snapshot = String(decoding: try #require(files.claimed.first).snapshot, as: UTF8.self)
-        #expect(snapshot.contains("first part") && snapshot.contains("second part"))
+        #expect(files.loaded == ["call", "call"] && files.claimed.isEmpty)
+        #expect(files.writes.contains { if case .publish(let record, "notes", _, _, _) = $0 { record.job == job.id } else { false } })
+        await sut.shutdown()
     }
     @Test func launchRecoversEachStoredCall() async throws {
         let files = FilesFake()

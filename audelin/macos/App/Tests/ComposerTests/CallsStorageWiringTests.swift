@@ -29,7 +29,7 @@ import Testing
                 try JSONEncoder().encode(record).write(to: url, options: .atomic)
             })
             var state = RecordingsState(callsFolder: source)
-            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage, release: testTranscriptBuild.release, deleted: { _ in }), transcriptAgain: UnexpectedTranscriptAgain(), reserve: MoveFolderClaim(storage: storage).take, release: MoveFolderClaim(storage: storage).release,
+            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage, release: testTranscriptBuild.release, deleted: { _ in }), split: UnexpectedSplit(), transcriptAgain: UnexpectedTranscriptAgain(), reserve: MoveFolderClaim(storage: storage).take, release: MoveFolderClaim(storage: storage).release,
                 storeFolder: { folder in try await storage.commitFolder(folder) { try preferences.updateCallsFolder(folder) } }, describe: russianSettings.callsFailure)
             func send(_ event: RecordingsEvent) async {
                 var next: RecordingsEvent? = event
@@ -76,7 +76,7 @@ import Testing
             }
             let storage = callsStorage(folder: source, timeZone: .gmt, journal: root.appendingPathComponent("roots.json"), trash: removeForTrash)
             var state = RecordingsState(callsFolder: source)
-            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage, release: testTranscriptBuild.release, deleted: { _ in }), transcriptAgain: UnexpectedTranscriptAgain(), reserve: MoveFolderClaim(storage: storage).take, release: MoveFolderClaim(storage: storage).release,
+            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage, release: testTranscriptBuild.release, deleted: { _ in }), split: UnexpectedSplit(), transcriptAgain: UnexpectedTranscriptAgain(), reserve: MoveFolderClaim(storage: storage).take, release: MoveFolderClaim(storage: storage).release,
                 storeFolder: { folder in try await storage.commitFolder(folder, commit: {}) }, describe: russianSettings.callsFailure)
             var observedMoves: [CallsFolderMove] = []
             func send(_ event: RecordingsEvent) async {
@@ -166,7 +166,7 @@ import Testing
                             try FileManager.default.removeItem(at: url)
                         }))
                 })
-            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage, release: testTranscriptBuild.release, deleted: { _ in }), transcriptAgain: UnexpectedTranscriptAgain(), reserve: MoveFolderClaim(storage: storage).take, release: MoveFolderClaim(storage: storage).release,
+            let handler = RecordingsEffectHandler(calls: SummaryCalls(storage: storage, release: testTranscriptBuild.release, deleted: { _ in }), split: UnexpectedSplit(), transcriptAgain: UnexpectedTranscriptAgain(), reserve: MoveFolderClaim(storage: storage).take, release: MoveFolderClaim(storage: storage).release,
                 storeFolder: { _ in stored.withLock { $0 = true } }, describe: russianSettings.callsFailure)
             var state = RecordingsState(callsFolder: source)
             var events: [RecordingsEvent] = []
@@ -228,4 +228,15 @@ struct UnexpectedTranscriptAgain: RecordingsTranscriptAgain {
         return AsyncStream { $0.finish() }
     }
     func stop(id: String, request: Int) async { Issue.record("Unexpected transcript stop") }
+}
+
+struct UnexpectedSplit: RecordingsSplit, RecordingsSplitChoices {
+    func splitChoices(id: String) async throws -> SplitChoices {
+        Issue.record("Unexpected split choices for \(id)")
+        throw SplitRefusal.invalidChoice
+    }
+    func split(_ request: SplitRequest) async throws -> SplitReplacement {
+        Issue.record("Unexpected split for \(request.id)")
+        throw SplitRefusal.invalidChoice
+    }
 }

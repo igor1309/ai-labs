@@ -8,13 +8,13 @@ public struct CallsRehearsalOptions: Equatable, Sendable {
     /// Where the rehearsal's Trash port moves items, so a run never reaches the user's Trash.
     public let trashFolder: URL
     /// Calls to write into the calls folder before launch, for a live test.
-    public enum Seed: String, Sendable { case transcriptAgain = "transcript-again", merge, legacyMerge = "legacy-merge", interruptedMerge = "interrupted-merge" }
+    public enum Seed: String, Sendable { case transcriptAgain = "transcript-again", split, merge, legacyMerge = "legacy-merge", interruptedMerge = "interrupted-merge" }
     public let seed: Seed?
     public var preferencesURL: URL { stateFolder.appendingPathComponent("preferences.json") }
     public var controlFolder: URL { stateFolder.appendingPathComponent("control", isDirectory: true) }
 
     public enum Failure: Error { case invalidArguments }
-    public static let usage = "CallsRehearsal --calls <absolute directory> --state <absolute directory> --trash <absolute directory> [--seed merge|legacy-merge|interrupted-merge|transcript-again]"
+    public static let usage = "CallsRehearsal --calls <absolute directory> --state <absolute directory> --trash <absolute directory> [--seed split|merge|legacy-merge|interrupted-merge|transcript-again]"
 
     public static func parse(_ arguments: [String]) throws -> Self {
         var arguments = arguments
@@ -42,6 +42,7 @@ public struct CallsRehearsalOptions: Equatable, Sendable {
     public func seedCalls() async throws {
         switch seed {
         case .transcriptAgain: try await CallsFixture.seedTranscriptAgain(in: callsFolder)
+        case .split: try await CallsFixture.seedSplit(in: callsFolder)
         case .merge: try await CallsFixture.seedMerge(in: callsFolder)
         case .legacyMerge: try await CallsFixture.seedLegacyMerge(in: callsFolder)
         case .interruptedMerge: try await CallsFixture.seedInterruptedMerge(in: callsFolder)
@@ -52,7 +53,7 @@ public struct CallsRehearsalOptions: Equatable, Sendable {
     public func prepare() throws {
         try FileManager.default.createDirectory(at: controlFolder, withIntermediateDirectories: true)
         try PreferencesStore(fileURL: preferencesURL).write(Preferences(
-            notes: .init(enabled: false, speakers: false,
+            notes: .init(enabled: seed == .split, speakers: false,
                          primary: .init(kind: "compatibleAPI", model: "calls-rehearsal", executable: "",
                                         endpoint: "http://127.0.0.1:1", credentialVariable: "")),
             automaticRecording: false, liveText: false, callsFolder: callsFolder,

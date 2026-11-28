@@ -160,6 +160,7 @@ struct RecordingsMergeTests {
             $0.phase = .idle
             $0.mergeSelection = []
             $0.mergedCallID = "A"
+            $0.replacement = .init(removed: ["A", "B"], published: ["A"])
             $0.isListing = true; $0.listRequest = 1
         }
         assert(listed { $0.phase = .merging }, .merged("A"), delivers: nil)
@@ -210,7 +211,7 @@ private final class BusySpy: Sendable {
     var asked: Int { count.withLock { $0 } }
     var reducer: RecordingsReducer {
         RecordingsReducer(failureMessage: { $0 + $1 }, moveText: stubMoveText,
-                          busyMessage: { self.count.withLock { $0 += 1 }; return "Audelin is busy" }, transcriptMessage: { _ in "transcript unavailable" })
+                          busyMessage: { self.count.withLock { $0 += 1 }; return "Audelin is busy" }, splitMessage: { _ in "split unavailable" }, transcriptMessage: { _ in "transcript unavailable" })
     }
 }
 

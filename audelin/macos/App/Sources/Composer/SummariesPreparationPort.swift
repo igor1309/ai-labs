@@ -14,7 +14,7 @@ public struct SummariesPreparationPort: SummariesPreparation {
     }
     public func submission(call: String) async throws -> SummariesSubmission {
         let text = try await callText(call)
-        let entries = text.transcript.map { Job.Entry(label: $0.label, time: String($0.start), text: $0.words) }
+        let entries = storedSummaryEntries(text.transcript)
         return .init(call: call, entries: entries, finalWrite: true, usable: !entries.isEmpty, requested: true, transcriptIdentity: text.identity)
     }
     public func input(call: String) async throws -> String {
@@ -22,11 +22,14 @@ public struct SummariesPreparationPort: SummariesPreparation {
     }
     public func job(for submission: SummariesSubmission) async -> (job: Job, notesOn: Bool) {
         let config = notes()
-        func runtime(_ value: NotesPreferences.Runtime) -> Job.Runtime {
-            .init(kind: value.kind, model: value.model, program: value.executable, endpoint: value.endpoint, credentialVariable: value.credentialVariable)
-        }
-        let job = Job(id: makeID(), call: submission.call, input: summaryInput(submission.entries), entries: submission.entries,
-                      speakers: config.speakers, primary: runtime(config.primary), fallback: config.fallback.map(runtime), transcriptIdentity: submission.transcriptIdentity)
-        return (job, config.enabled)
+        return (summaryJob(for: submission, config: config, id: makeID()), config.enabled)
     }
+}
+
+func summaryJob(for submission: SummariesSubmission, config: NotesPreferences, id: String) -> Job {
+    func runtime(_ value: NotesPreferences.Runtime) -> Job.Runtime {
+        .init(kind: value.kind, model: value.model, program: value.executable, endpoint: value.endpoint, credentialVariable: value.credentialVariable)
+    }
+    return Job(id: id, call: submission.call, input: summaryInput(submission.entries), entries: submission.entries,
+                  speakers: config.speakers, primary: runtime(config.primary), fallback: config.fallback.map(runtime), transcriptIdentity: submission.transcriptIdentity)
 }

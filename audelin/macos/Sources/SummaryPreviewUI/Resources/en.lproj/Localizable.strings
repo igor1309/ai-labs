@@ -47,3 +47,20 @@
 "preview.noUsableTemplates" = "No usable template files. Using built-in Default.";
 "preview.openTemplatesFolder" = "Open templates folder";
 "preview.earlierTranscript" = "Notes from an earlier transcript";
+
+"split.action" = "Split call…";
+"split.title" = "Split call";
+"split.choices" = "Where to split — longest gaps first";
+"split.seconds" = "%lld s";
+"split.transition" = "sounds like a meeting change";
+"split.first" = "Part 1";
+"split.second" = "Part 2";
+"split.cancel" = "Cancel";
+"split.confirm" = "Split";
+"split.working" = "Splitting…";
+"split.progress" = "Cutting audio and saving both parts. You can’t submit it again.";
+"split.publishing" = "Finishing both parts. You can’t submit it again.";
+"split.failed" = "Couldn’t split the call";
+"split.unchanged" = "The call is unchanged.";
+"split.refresh" = "Refresh list";
+"split.me" = "Me";

@@ -341,7 +341,7 @@ private final class TranscriptMessageSpy: Sendable {
     private let storage = Mutex<[TranscriptRefusal]>([])
     var received: [TranscriptRefusal] { storage.withLock { $0 } }
     var reducer: RecordingsReducer {
-        RecordingsReducer(failureMessage: { $0 + $1 }, moveText: stubMoveText, busyMessage: { "busy" }, transcriptMessage: { reason in
+        RecordingsReducer(failureMessage: { $0 + $1 }, moveText: stubMoveText, busyMessage: { "busy" }, splitMessage: { _ in "split unavailable" }, transcriptMessage: { reason in
             self.storage.withLock { $0.append(reason) }; return "text"
         })
     }
@@ -409,7 +409,7 @@ private actor TranscriptCallsSpy: RecordingsCalls {
 }
 
 private func makeHandler(_ calls: TranscriptCallsSpy, _ port: TranscriptPortSpy) -> RecordingsEffectHandler {
-    RecordingsEffectHandler(calls: calls, transcriptAgain: port,
+    RecordingsEffectHandler(calls: calls, split: UnusedSplit(), transcriptAgain: port,
                             reserve: { Issue.record("Unexpected reserve"); return nil },
                             release: { _ in Issue.record("Unexpected release") },
                             storeFolder: { _ in Issue.record("Unexpected folder write") }, describe: { $0.localizedDescription })
@@ -459,5 +459,16 @@ private func expectEffect(_ effect: RecordingsEffect?, sourceLocation: SourceLoc
             #expect(await calls.received == [.delete(id)], sourceLocation: sourceLocation)
         default: Issue.record("Unexpected effect", sourceLocation: sourceLocation)
         }
+    }
+}
+
+struct UnusedSplit: RecordingsSplit, RecordingsSplitChoices {
+    func splitChoices(id: String) async throws -> SplitChoices {
+        Issue.record("Unexpected split choices for \(id)")
+        throw SplitRefusal.invalidChoice
+    }
+    func split(_ request: SplitRequest) async throws -> SplitReplacement {
+        Issue.record("Unexpected split for \(request.id)")
+        throw SplitRefusal.invalidChoice
     }
 }

@@ -50,13 +50,21 @@ public struct Job: Equatable, Sendable {
     public var transcriptIdentity: String?
     public var entries: [Entry]
     public var speakers: Bool
+    /// The transcript already carries its assigned names.
+    public var speakersNamed: Bool
     public var primary: Runtime
     public var fallback: Runtime?
-    public init(id: String, call: String, input: String, entries: [Entry], speakers: Bool, primary: Runtime, fallback: Runtime? = nil, template: Template? = nil, keepPrevious: Bool = true, requested: Bool = false, transcriptIdentity: String? = nil, userName: String? = nil) {
+    public init(id: String, call: String, input: String, entries: [Entry], speakers: Bool, primary: Runtime, fallback: Runtime? = nil, template: Template? = nil, keepPrevious: Bool = true, requested: Bool = false, transcriptIdentity: String? = nil, userName: String? = nil, speakersNamed: Bool = false) {
         self.transcriptIdentity = transcriptIdentity; self.userName = userName
         self.template = template; self.keepPrevious = keepPrevious; self.requested = requested
         self.id = id; self.call = call; self.input = input; self.entries = entries
-        self.speakers = speakers; self.primary = primary; self.fallback = fallback
+        self.speakers = speakers; self.speakersNamed = speakersNamed; self.primary = primary; self.fallback = fallback
+    }
+}
+
+public enum SummaryAdmission {
+    public static func allows(notesOn: Bool, finalWrite: Bool, usable: Bool, entries: [Job.Entry]) -> Bool {
+        notesOn && finalWrite && usable && !entries.isEmpty
     }
 }
 public struct Identity: Equatable, Sendable {

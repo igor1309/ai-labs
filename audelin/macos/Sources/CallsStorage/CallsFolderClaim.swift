@@ -1,6 +1,6 @@
 /// Who has the calls folder: work on it that must not overlap.
 public enum CallsFolderHolder: Equatable, Sendable {
-    case recording, move, relaunch
+    case recording, move, relaunch, split
 }
 
 /// Names one grant of the calls folder; releasing it frees only that grant.

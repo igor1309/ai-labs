@@ -9,6 +9,7 @@ import Observation
 import Preferences
 import Recordings
 import TrackFile
+import TranscriptFile
 import SummaryRuntime
 import SummaryFiles
 import TemplateFiles
@@ -55,7 +56,8 @@ public func compose(
         }, resolveProgram: summaryExecutable(path: ProcessInfo.processInfo.environment["PATH"] ?? "",
                                             home: FileManager.default.homeDirectoryForCurrentUser.path).resolve,
         deadline: { try await boundary.time.sleep(.seconds(120)) })
-    let summaryFiles = SummaryFiles.Files(locations: storage, disk: FileDisk(), ownershipDirectory: preferencesURL.deletingLastPathComponent().appendingPathComponent("summary-ownership"))
+    let notesDisk = SummaryFiles.FileDisk()
+    let summaryFiles = SummaryFiles.Files(locations: storage, disk: notesDisk, ownershipDirectory: preferencesURL.deletingLastPathComponent().appendingPathComponent("summary-ownership"))
     let language = CurrentLanguage(uiLanguage(LanguageChoice(preferences.read().language), preferred: boundary.preferredLanguages()))
     let made: @Sendable (Date) -> String = { date in
         date.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened, locale: language.language.callsList.locale, timeZone: timeZone))
@@ -63,8 +65,14 @@ public func compose(
     let templates = TemplateFiles.Files(folder: preferencesURL.deletingLastPathComponent().appendingPathComponent("Templates"), disk: TemplateFiles.FileDisk(), openFolder: { @MainActor folder in
         guard openCallsFolder(folder) else { throw CocoaError(.fileReadUnknown, userInfo: [NSFilePathErrorKey: folder.path]) }
     })
-    let summaries = SummariesModel(keeping: { preferences.read().keepPreviousNotes },
-                                   userName: { [accountName = boundary.accountName] in userName(zoom: preferences.read().zoomName, account: accountName()) }, templates: DefaultTemplatePort(files: templates), text: { language.language.callsList },
+    let keeping: @Sendable () -> Bool = { preferences.read().keepPreviousNotes }
+    let author: @Sendable () -> String? = { [accountName = boundary.accountName] in
+        userName(zoom: preferences.read().zoomName, account: accountName())
+    }
+    let replacementNotes = ReplacementNotes(preferences: { preferences.read().notes }, keeping: keeping,
+        userName: author, template: { notesTemplate(templates.resolveDefault()) },
+        makeID: { UUID().uuidString }, disk: notesDisk)
+    let summaries = SummariesModel(keeping: { keeping() }, userName: { author() }, templates: DefaultTemplatePort(files: templates), text: { language.language.callsList },
         preparation: SummariesPreparationPort(notes: { preferences.read().notes }, makeID: { UUID().uuidString },
                                               callText: { try await storage.text(id: $0) }),
         files: SummariesFilesPort(files: summaryFiles, makeID: { UUID().uuidString }),
@@ -95,21 +103,22 @@ public func compose(
     menu.installFolderPicker(chooseCallsFolder)
     menu.installSettings(AudelinSettings(preferences: SummaryPreferences(storage: preferences),
                                         availability: SummaryAvailability(runtime: runtime), text: { language.language.settings }), present: presentSettings)
-    var disk = SummaryCalls(storage: storage, release: boundary.transcriptBuild.release, deleted: { await summaries.forget(call: $0) },
-                            merged: { call, parts, entries in
-                                await summaries.merged(call: call, parts: parts, entries: entries,
-                                                       notesOn: preferences.read().notes.enabled,
-                                                       transcriptIdentity: try? await storage.text(id: call).identity)
-                            })
-    disk.log = boundary.log
+    let binding = DiskTranscriptBinding()
+    let disk = SummaryCalls(storage: storage, release: boundary.transcriptBuild.release,
+                            deleted: { await summaries.forget(call: $0) }, notes: replacementNotes,
+                            log: boundary.log, binding: binding)
+    let split = SplitPorts(storage: storage,
+                          calls: callsFolders(timeZone: timeZone, disk: boundary.callsDisk, trash: boundary.trash),
+                          binding: binding, notes: replacementNotes)
     let moveClaim = MoveFolderClaim(storage: storage)
-    let recordings = makeRecordings(handler: RecordingsEffectHandler(calls: disk, transcriptAgain: transcriptAgain(storage: storage, boundary: boundary,
+    let recordings = makeRecordings(handler: RecordingsEffectHandler(calls: disk, split: split, transcriptAgain: transcriptAgain(storage: storage, boundary: boundary,
                                           describe: { language.language.settings.callsFailure($0) }),
                                       reserve: moveClaim.take, release: moveClaim.release,
                                       storeFolder: { destination in
                                           try await storage.commitFolder(destination) { try preferences.updateCallsFolder(destination) }
                                       }, describe: { language.language.settings.callsFailure($0) }), text: { language.language.settings },
                                       initial: .init(callsFolder: preferences.read().callsFolder))
+    menu.installCallReplacements(subscribeCallReplacements(recordings.states(), to: summaries.send))
     menu.installMoveHold(subscribeMoveHold({ recordings.state().callsFolderAvailable },
                                            to: { [weak menu] moving in await menu?.callsFolderMoving(moving) }))
     menu.installNotifications(subscribeNotifications(phase: { [weak menu] in menu?.state.phase ?? .idle },
@@ -164,6 +173,21 @@ public func compose(
 /// Sends each calls-storage transaction state to SummaryJobs, which holds note publication while one runs.
 @MainActor func subscribeTransactions(_ transactions: AsyncStream<CallsTransaction>, to summaries: SummariesModel) -> Task<Void, Never> {
     Task { for await transaction in transactions { summaries.send(.transaction(running: transaction == .running)) } }
+}
+
+/// Passes every committed replacement in reduction order, even if its list refresh fails.
+@MainActor func subscribeCallReplacements(_ states: AsyncStream<RecordingsState>,
+                                         to send: @escaping @MainActor (SummariesEvent) -> Void) -> Task<Void, Never> {
+    Task {
+        var previous: RecordingsReplacement?
+        for await state in states {
+            let replacement = state.replacement
+            defer { previous = replacement }
+            if let replacement, replacement != previous {
+                send(.replaced(removed: replacement.removed, published: replacement.published))
+            }
+        }
+    }
 }
 
 /// Sends Recordings whether Audelin is idle enough to merge: the current value at once, then each change.

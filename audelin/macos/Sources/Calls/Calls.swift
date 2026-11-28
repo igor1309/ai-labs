@@ -91,7 +91,7 @@ public struct Calls: Sendable {
 
     public func list() throws -> [Call] {
         operation.lock(); defer { operation.unlock() }
-        return try folders(in: folder).map { url, name in
+        return try visibleFolders(in: folder).map { url, name in
             let audio = try audio(in: url, name: name)
             return Call(id: name.id, title: name.title, start: name.start, duration: audio.duration,
                         hasPreviousTranscript: try exists(url.appendingPathComponent(Self.previousTranscript)),
@@ -118,7 +118,8 @@ public struct Calls: Sendable {
             return (duration, missing)
         }
         let parts = try folders(in: url)
-        guard !parts.isEmpty else { return (nil, Track.allCases.map { MissingTrack(id: name.id, track: $0) }) }
+        let start = try recordedStart(in: url)
+        guard !parts.isEmpty else { return (start.map { _ in 0 }, Track.allCases.map { MissingTrack(id: name.id, track: $0) }) }
         var end: TimeInterval = 0
         var knownLength = true
         var missing: [MissingTrack] = []
@@ -126,7 +127,8 @@ public struct Calls: Sendable {
             let audio = try audio(in: part, name: partName)
             missing += audio.missing
             if let length = audio.duration {
-                end = max(end, partName.start.timeIntervalSince(name.start) + length)
+                let partStart = try recordedStart(in: part) ?? partName.start
+                end = max(end, partStart.timeIntervalSince(start ?? name.start) + length)
             } else { knownLength = false }
         }
         return (knownLength ? end : nil, missing)
@@ -136,6 +138,8 @@ public struct Calls: Sendable {
     public struct Original: Equatable, Sendable {
         public let id: String
         public let start: Date
+        /// Whether the start was saved with this recording at finer than folder-minute precision.
+        public let hasRecordedStart: Bool
         public let duration: TimeInterval
         public let callTrack: URL
         public let microphoneTrack: URL
@@ -152,11 +156,15 @@ public struct Calls: Sendable {
         let hasTrack = Track.allCases.contains { (try? values(url.appendingPathComponent($0.rawValue + ".caf"))) != nil }
         if hasTrack {
             guard let length = try audio(in: url, name: name).duration else { throw CallsFailure.unknownLength(id: name.id) }
-            return [.init(id: name.id, start: name.start, duration: length,
+            let recorded = try recordedStart(in: url)
+            return [.init(id: name.id, start: recorded ?? name.start, hasRecordedStart: recorded != nil, duration: length,
                           callTrack: url.appendingPathComponent("call.caf"), microphoneTrack: url.appendingPathComponent("microphone.caf"))]
         }
         let parts = try folders(in: url)
-        guard !parts.isEmpty else { throw CallsFailure.unknownLength(id: name.id) }
+        if parts.isEmpty {
+            guard try recordedStart(in: url) != nil else { throw CallsFailure.unknownLength(id: name.id) }
+            return []
+        }
         return try parts.flatMap { try originals(in: $0.0, name: $0.1) }
     }
 
@@ -167,7 +175,7 @@ public struct Calls: Sendable {
     }
 
     private func location(id: String, in root: URL) throws -> URL {
-        let matches = try folders(in: root).filter { $0.1.id == id }
+        let matches = try visibleFolders(in: root).filter { $0.1.id == id }
         guard matches.count == 1, let match = matches.first else {
             throw matches.isEmpty ? CallsFailure.notFound(id: id) : CallsFailure.ambiguous(id: id)
         }
@@ -195,7 +203,7 @@ public struct Calls: Sendable {
         operation.lock(); defer { operation.unlock() }
         let folder = try location(id: id)
         let data = try disk.read(folder.appendingPathComponent("transcript.md"))
-        let identity = data.map { SHA256.hash(data: $0).map { String(format: "%02x", $0) }.joined() }
+        let identity = data.map(Self.transcriptIdentity)
         return Text(transcript: transcript(data.map { String(decoding: $0, as: UTF8.self) } ?? ""), identity: identity)
     }
 
@@ -212,8 +220,12 @@ public struct Calls: Sendable {
         operation.lock(); defer { operation.unlock() }
         let folder = try location(id: id)
         let data = try disk.read(folder.appendingPathComponent("transcript.md"))
-        let identity = data.map { SHA256.hash(data: $0).map { String(format: "%02x", $0) }.joined() }
+        let identity = data.map(Self.transcriptIdentity)
         return .init(identity: identity, hasPrevious: try exists(folder.appendingPathComponent(Self.previousTranscript)))
+    }
+
+    public static func transcriptIdentity(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
     /// A call's saved `transcript.md` as written, for a merge to read back.
@@ -245,9 +257,10 @@ public struct Calls: Sendable {
     private func originalStarts(in url: URL, start: Date) throws -> [Date] {
         let tracks = ["microphone.caf", "call.caf"].map { url.appendingPathComponent($0) }
         // As for duration, a folder with its own track is an original recording.
-        guard !tracks.contains(where: { (try? values($0)) != nil }) else { return [start] }
+        let recorded = try recordedStart(in: url)
+        guard !tracks.contains(where: { (try? values($0)) != nil }) else { return [recorded ?? start] }
         let parts = try folders(in: url)
-        if parts.isEmpty { return [start] }
+        if parts.isEmpty { return recorded == nil ? [start] : [] }
         return try parts.flatMap { try originalStarts(in: $0.0, start: $0.1.start) }
     }
 
@@ -337,23 +350,26 @@ public struct Calls: Sendable {
     @discardableResult
     public func merge(ids: [String], write: (_ prepared: URL, _ parts: [URL]) throws -> Void) throws -> String {
         operation.lock(); defer { operation.unlock() }
+        guard ids.count > 1 else { throw POSIXError(.EINVAL) }
         let parts = try ids.map { try location(id: $0) }
-        guard parts.count > 1, let earliest = zip(ids, parts).min(by: { $0.0 < $1.0 }) else { throw POSIXError(.EINVAL) }
-        for (id, part) in zip(ids, parts) {
+        let starts = try zip(ids, parts).map { id, part -> Date in
             guard let name = CallFolderName(part.lastPathComponent, timeZone: timeZone),
                   try audio(in: part, name: name).duration != nil else { throw CallsFailure.unknownLength(id: id) }
+            return try recordedStart(in: part) ?? name.start
         }
+        let earliest = starts.indices.min { (starts[$0], ids[$0]) < (starts[$1], ids[$1]) }!
         let prepared = try prepare()
         var step = CallsFailure.MergeStep.writingTranscript
         do {
+            if let start = try recordedStart(in: parts[earliest]) { try saveStart(start, in: prepared) }
             try write(prepared, parts)
             for part in parts {
                 step = .movingPart(folder: part.lastPathComponent)
                 try rename(part, prepared.appendingPathComponent(part.lastPathComponent, isDirectory: true))
             }
             step = .publishing
-            try rename(prepared, folder.appendingPathComponent(earliest.1.lastPathComponent, isDirectory: true))
-            return earliest.0
+            try rename(prepared, folder.appendingPathComponent(parts[earliest].lastPathComponent, isDirectory: true))
+            return ids[earliest]
         } catch {
             let failure = CallsFailure.mergeFailed(step: step, reason: error.localizedDescription)
             try putBack(parts, from: prepared)
@@ -361,14 +377,17 @@ public struct Calls: Sendable {
         }
     }
 
-    /// Puts back interrupted transcript changes and merges. A hidden prepared folder
-    /// records each change before anything moves; a published merge has none.
-    /// Run once as Calls starts, before its first listing, never during a change.
-    public func recoverInterruptedMerges() throws {
+    /// Recovers interrupted transcript changes, merges and splits before the first listing.
+    /// For a split, registration runs after publication and may be retried on recovery.
+    public func recoverInterruptedMerges(registerSplit: (SplitReplacement) throws -> Void = { _ in }) throws {
         operation.lock(); defer { operation.unlock() }
         for prepared in try children(folder) {
             if prepared.lastPathComponent.hasPrefix(Self.settledPrefix) {
                 try remove(prepared)
+                continue
+            }
+            if prepared.lastPathComponent.hasPrefix(Self.splitPrefix) {
+                if try isDirectory(prepared) { try recoverSplit(in: prepared, register: registerSplit) }
                 continue
             }
             guard prepared.lastPathComponent.hasPrefix(Self.mergePrefix) else { continue }
@@ -596,7 +615,7 @@ public struct Calls: Sendable {
 
     public func count() throws -> Count {
         operation.lock(); defer { operation.unlock() }
-        let calls = try folders(in: folder)
+        let calls = try visibleFolders(in: folder)
         return Count(calls: calls.count, bytes: try calls.reduce(0) { try $0 + size($1.0) })
     }
 
@@ -609,12 +628,20 @@ public struct Calls: Sendable {
 
     private func folders(in root: URL) throws -> [(URL, CallFolderName)] {
         guard root.isFileURL else { throw POSIXError(.EINVAL) }
-        return try children(root).compactMap { url in
+        return try callFolders(among: children(root))
+    }
+
+    private func callFolders(among entries: [URL]) throws -> [(URL, CallFolderName)] {
+        try entries.compactMap { url in
             guard let name = CallFolderName(url.lastPathComponent, timeZone: timeZone) else { return nil }
-            let info = try values(url)
-            guard info.isDirectory == true, info.isSymbolicLink != true else { return nil }
+            guard try isDirectory(url) else { return nil }
             return (url, name)
         }
+    }
+
+    private func isDirectory(_ url: URL) throws -> Bool {
+        let info = try values(url)
+        return info.isDirectory == true && info.isSymbolicLink != true
     }
 
     /// Extracts only names the call-folder writer can make, with a valid local timestamp.
@@ -624,13 +651,369 @@ public struct Calls: Sendable {
 
 }
 
+extension Calls {
+    public struct SplitSource: Sendable {
+        public let folder: URL
+        public let folderStart: Date
+        public let transcript: Data
+        public let recordings: [Original]
+    }
+
+    public struct SplitTranscript: Equatable, Sendable {
+        public let bytes: Data
+        public let identity: String
+        public let folderStart: Date
+    }
+
+    public func splitTranscript(id: String) throws -> SplitTranscript {
+        operation.lock(); defer { operation.unlock() }
+        let folder = try location(id: id)
+        let name = try splitName(folder.lastPathComponent)
+        let bytes = try savedTranscript(id: id)
+        return .init(bytes: bytes, identity: Self.transcriptIdentity(bytes), folderStart: name.start)
+    }
+
+    public enum SplitSide: String, Codable, Sendable {
+        case first, second
+    }
+
+    /// Each recorded leaf is placed once or cut once. The folder identifies the leaf even
+    /// when recordings from different levels of a merge share a minute and id.
+    public enum SplitRecording: Sendable {
+        case whole(folder: URL, side: SplitSide)
+        case cut(folder: URL, offset: TimeInterval)
+    }
+
+    public struct SplitPlan {
+        public let firstStart: Date
+        public let secondStart: Date
+        public let recordings: [SplitRecording]
+        public let write: (_ first: URL, _ second: URL) throws -> Void
+
+        public init(firstStart: Date, secondStart: Date, recordings: [SplitRecording],
+                    write: @escaping (_ first: URL, _ second: URL) throws -> Void) {
+            self.firstStart = firstStart; self.secondStart = secondStart
+            self.recordings = recordings; self.write = write
+        }
+    }
+
+    public struct SplitReplacement: Equatable, Sendable {
+        public let first: String
+        public let second: String
+    }
+
+    public enum SplitFailure: Error, Equatable, Sendable {
+        case expiredTranscript(id: String)
+        case invalidPlan
+        case occupiedID(String)
+        case recoveryRequired(reason: String)
+        case committed(SplitReplacement, reason: String)
+    }
+
+    /// Stages the caller's files and any cut tracks, then relocates whole recordings.
+    /// The caller's synchronous callbacks must finish their writes before returning.
+    /// Registration runs with both parts published and must be safe to repeat.
+    public func split(id: String, expectedTranscript: String, firstTitle: String, secondTitle: String,
+                      reservedIDs: Set<String> = [],
+                      plan: (SplitSource) throws -> SplitPlan,
+                      cut: (_ offset: TimeInterval, _ source: URL, _ first: URL, _ second: URL) throws -> Void,
+                      register: (SplitReplacement) throws -> Void = { _ in }) throws -> SplitReplacement {
+        operation.lock(); defer { operation.unlock() }
+        guard !firstTitle.contains("\0"), !secondTitle.contains("\0") else { throw CallsFailure.invalidTitle }
+        try Task.checkCancellation()
+        let original = try location(id: id)
+        let name = try splitName(original.lastPathComponent)
+        let transcriptURL = original.appendingPathComponent("transcript.md")
+        guard let transcript = try disk.read(transcriptURL), Self.transcriptIdentity(transcript) == expectedTranscript else {
+            throw SplitFailure.expiredTranscript(id: id)
+        }
+        let leaves = try originals(in: original, name: name).sorted { ($0.start, $0.callTrack.path) < ($1.start, $1.callTrack.path) }
+        let plan = try plan(.init(folder: original, folderStart: name.start, transcript: transcript, recordings: leaves))
+        guard plan.firstStart.timeIntervalSinceReferenceDate.isFinite,
+              plan.secondStart.timeIntervalSinceReferenceDate.isFinite,
+              plan.firstStart < plan.secondStart else { throw SplitFailure.invalidPlan }
+        let recordings = Dictionary(uniqueKeysWithValues: leaves.map { ($0.callTrack.deletingLastPathComponent().path, $0) })
+        try validate(plan.recordings, against: recordings)
+
+        var taken = try occupiedIDs(in: folder).union(reservedIDs)
+        let second = try allocateID(at: plan.secondStart, taken: &taken)
+        let prepared = folder.appendingPathComponent(Self.splitPrefix + UUID().uuidString, isDirectory: true)
+        var record = SplitRecord(original: original.lastPathComponent,
+                                 first: CallFolderName.name(id: id, title: firstTitle),
+                                 second: CallFolderName.name(id: second, title: secondTitle), relocations: [])
+        try disk.makeFolder(prepared)
+        do {
+            try validateSplitNames([record.first, record.second], in: prepared)
+            let first = staged(.first, in: prepared), second = staged(.second, in: prepared)
+            try disk.makeFolder(first)
+            try disk.makeFolder(second)
+            try saveStart(plan.firstStart, in: first)
+            try saveStart(plan.secondStart, in: second)
+            try plan.write(first, second)
+            record.relocations = try stageRecordings(plan.recordings, leaves: recordings, original: original,
+                                                      prepared: prepared, cut: cut)
+            try disk.write(JSONEncoder().encode(record), prepared.appendingPathComponent(Self.splitRecord))
+
+            // No source moves until the caller's files and the undo record are in place.
+            try Task.checkCancellation()
+            guard try disk.read(transcriptURL) == transcript else { throw SplitFailure.expiredTranscript(id: id) }
+            try rename(original, backup(in: prepared))
+            for move in record.relocations { try rename(source(of: move, in: prepared), target(of: move, in: prepared)) }
+            let occupied = try occupiedIDs(in: folder)
+            for id in [id, try splitName(record.second).id] where occupied.contains(id) {
+                throw SplitFailure.occupiedID(id)
+            }
+            try Task.checkCancellation()
+            // The exclusive creation is the commit decision. Recovery only publishes after it.
+            try disk.makeFolder(prepared.appendingPathComponent(Self.splitCommit, isDirectory: true))
+        } catch {
+            do { try rollbackSplit(in: prepared, record: record) }
+            catch { throw SplitFailure.recoveryRequired(reason: error.localizedDescription) }
+            throw error
+        }
+        return try publishSplit(in: prepared, record: record, register: register)
+    }
+
+    /// Test the final components on the same filesystem without claiming a visible call name.
+    private func validateSplitNames(_ names: [String], in prepared: URL) throws {
+        for name in names {
+            let probe = prepared.appendingPathComponent(name, isDirectory: true)
+            do { try disk.makeFolder(probe) }
+            catch {
+                let failure = error as NSError
+                let underlying = failure.userInfo[NSUnderlyingErrorKey] as? NSError
+                if failure.domain == NSPOSIXErrorDomain && failure.code == Int(ENAMETOOLONG) ||
+                    underlying?.domain == NSPOSIXErrorDomain && underlying?.code == Int(ENAMETOOLONG) ||
+                    failure.domain == NSCocoaErrorDomain && failure.code == CocoaError.fileWriteInvalidFileName.rawValue {
+                    throw CallsFailure.invalidTitle
+                }
+                throw error
+            }
+            try remove(probe)
+        }
+    }
+
+    private static let splitPrefix = ".audelin-split-"
+    private static let splitRecord = "split.json"
+    private static let splitCommit = "committed"
+    // A folder name carries only minutes. Keep the audio clock with each part
+    // and each cut leaf, including when they later become nested in a merge.
+    private static let startFile = ".audelin-start"
+
+    private struct SplitRecord: Codable {
+        struct Relocation: Codable {
+            let source: [String]
+            let side: SplitSide
+            let target: String
+        }
+        let original: String
+        let first: String
+        let second: String
+        var relocations: [Relocation]
+    }
+
+    private func recordedStart(in url: URL) throws -> Date? {
+        guard let bytes = try disk.read(url.appendingPathComponent(Self.startFile)) else { return nil }
+        return try JSONDecoder().decode(Date.self, from: bytes)
+    }
+
+    private func saveStart(_ start: Date, in url: URL) throws {
+        try disk.write(JSONEncoder().encode(start), url.appendingPathComponent(Self.startFile))
+    }
+
+    private func occupiedIDs(in root: URL) throws -> Set<String> {
+        Set(try children(root).compactMap { CallFolderName($0.lastPathComponent, timeZone: timeZone)?.id })
+    }
+
+    private func allocateID(at start: Date, taken: inout Set<String>) throws -> String {
+        let base = CallFolderName.id(at: start, timeZone: timeZone)
+        _ = try splitName(base)
+        var number = 1
+        var id = base
+        while !taken.insert(id).inserted {
+            number += 1
+            id = "\(base)-\(number)"
+        }
+        return id
+    }
+
+    private func validate(_ placements: [SplitRecording], against leaves: [String: Original]) throws {
+        var remaining = leaves
+        for placement in placements {
+            switch placement {
+            case let .whole(folder, _):
+                guard remaining.removeValue(forKey: folder.path) != nil else { throw SplitFailure.invalidPlan }
+            case let .cut(folder, offset):
+                guard let recording = remaining.removeValue(forKey: folder.path),
+                      offset > 0, offset < recording.duration else { throw SplitFailure.invalidPlan }
+            }
+        }
+        guard remaining.isEmpty else { throw SplitFailure.invalidPlan }
+    }
+
+    private func stageRecordings(_ placements: [SplitRecording], leaves: [String: Original], original: URL, prepared: URL,
+                                 cut: (TimeInterval, URL, URL, URL) throws -> Void) throws -> [SplitRecord.Relocation] {
+        var firstIDs = try occupiedIDs(in: staged(.first, in: prepared))
+        var secondIDs = try occupiedIDs(in: staged(.second, in: prepared))
+        var relocations: [SplitRecord.Relocation] = []
+        for placement in placements {
+            try Task.checkCancellation()
+            switch placement {
+            case let .whole(folder, side):
+                guard let leaf = leaves[folder.path] else { throw SplitFailure.invalidPlan }
+                let name = try splitName(folder.lastPathComponent)
+                let id: String
+                if side == .first { id = try reserveLeaf(name, start: leaf.start, taken: &firstIDs) }
+                else { id = try reserveLeaf(name, start: leaf.start, taken: &secondIDs) }
+                let target = CallFolderName.name(id: id, title: name.title)
+                relocations.append(.init(source: Array(folder.pathComponents.dropFirst(original.pathComponents.count)),
+                                         side: side, target: target))
+            case let .cut(folder, offset):
+                guard let leaf = leaves[folder.path] else { throw SplitFailure.invalidPlan }
+                let title = try splitName(folder.lastPathComponent).title
+                let after = leaf.start.addingTimeInterval(offset)
+                let first = try stageLeaf(at: leaf.start, title: title, in: staged(.first, in: prepared), taken: &firstIDs)
+                let second = try stageLeaf(at: after, title: title, in: staged(.second, in: prepared), taken: &secondIDs)
+                let sourceNames = Set(try children(folder).map(\.lastPathComponent))
+                for source in [leaf.callTrack, leaf.microphoneTrack] where sourceNames.contains(source.lastPathComponent) {
+                    guard try values(source).isSymbolicLink != true else { continue }
+                    try cut(offset, source, first.appendingPathComponent(source.lastPathComponent),
+                            second.appendingPathComponent(source.lastPathComponent))
+                }
+            }
+        }
+        return relocations
+    }
+
+    private func reserveLeaf(_ name: CallFolderName, start: Date, taken: inout Set<String>) throws -> String {
+        if taken.insert(name.id).inserted { return name.id }
+        return try allocateID(at: start, taken: &taken)
+    }
+
+    private func stageLeaf(at start: Date, title: String, in part: URL, taken: inout Set<String>) throws -> URL {
+        let id = try allocateID(at: start, taken: &taken)
+        let leaf = part.appendingPathComponent(CallFolderName.name(id: id, title: title), isDirectory: true)
+        try disk.makeFolder(leaf)
+        try saveStart(start, in: leaf)
+        return leaf
+    }
+
+    private func staged(_ side: SplitSide, in prepared: URL) -> URL {
+        prepared.appendingPathComponent(side.rawValue, isDirectory: true)
+    }
+
+    private func backup(in prepared: URL) -> URL { prepared.appendingPathComponent("original", isDirectory: true) }
+
+    private func source(of move: SplitRecord.Relocation, in prepared: URL) -> URL {
+        move.source.reduce(backup(in: prepared)) { $0.appendingPathComponent($1, isDirectory: true) }
+    }
+
+    private func target(of move: SplitRecord.Relocation, in prepared: URL) -> URL {
+        staged(move.side, in: prepared).appendingPathComponent(move.target, isDirectory: true)
+    }
+
+    private func rollbackSplit(in prepared: URL, record: SplitRecord) throws {
+        for move in record.relocations {
+            let target = target(of: move, in: prepared)
+            if try exists(target) { try rename(target, source(of: move, in: prepared)) }
+        }
+        let backup = backup(in: prepared)
+        if try exists(backup) { try rename(backup, folder.appendingPathComponent(record.original, isDirectory: true)) }
+        try settle(prepared)
+    }
+
+    private func publishSplit(in prepared: URL, record: SplitRecord,
+                              register: (SplitReplacement) throws -> Void) throws -> SplitReplacement {
+        let replacement = try replacement(from: record)
+        do {
+            for (side, name, id) in [(SplitSide.first, record.first, replacement.first), (.second, record.second, replacement.second)] {
+                let source = staged(side, in: prepared)
+                if try exists(source) {
+                    guard try !occupiedIDs(in: folder).contains(id) else { throw SplitFailure.occupiedID(id) }
+                    try rename(source, folder.appendingPathComponent(name, isDirectory: true))
+                } else {
+                    // The consumed staging name tells us this part was published. Its title can change in Finder.
+                    guard try folders(in: folder).filter({ $0.1.id == id }).count == 1 else {
+                        throw CocoaError(.fileReadCorruptFile)
+                    }
+                }
+            }
+            try register(replacement)
+            try settle(prepared)
+            return replacement
+        } catch { throw SplitFailure.committed(replacement, reason: error.localizedDescription) }
+    }
+
+    private func recoverSplit(in prepared: URL, register: (SplitReplacement) throws -> Void) throws {
+        guard let record = try loadSplit(in: prepared) else { try settle(prepared); return }
+        if try exists(prepared.appendingPathComponent(Self.splitCommit)) {
+            _ = try publishSplit(in: prepared, record: record, register: register)
+        } else {
+            try rollbackSplit(in: prepared, record: record)
+        }
+    }
+
+    private func loadSplit(in prepared: URL) throws -> SplitRecord? {
+        guard let bytes = try disk.read(prepared.appendingPathComponent(Self.splitRecord)) else {
+            guard try !exists(backup(in: prepared)), try !exists(prepared.appendingPathComponent(Self.splitCommit)) else {
+                throw CocoaError(.fileReadCorruptFile)
+            }
+            return nil
+        }
+        let record = try JSONDecoder().decode(SplitRecord.self, from: bytes)
+        let parts = try replacement(from: record)
+        guard try splitName(record.original).id == parts.first, parts.first != parts.second else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        for move in record.relocations {
+            _ = try splitName(move.target)
+            for component in move.source { _ = try splitName(component) }
+        }
+        return record
+    }
+
+    private func replacement(from record: SplitRecord) throws -> SplitReplacement {
+        try .init(first: splitName(record.first).id, second: splitName(record.second).id)
+    }
+
+    private func splitName(_ component: String) throws -> CallFolderName {
+        guard !component.contains("/"), !component.contains("\0"),
+              let name = CallFolderName(component, timeZone: timeZone) else { throw CocoaError(.fileReadCorruptFile) }
+        return name
+    }
+
+    /// An interrupted split still owns its destination IDs.
+    public func requireRecoveredSplits() throws {
+        operation.lock(); defer { operation.unlock() }
+        try requireRecoveredSplits(among: children(folder))
+    }
+
+    private func visibleFolders(in root: URL) throws -> [(URL, CallFolderName)] {
+        guard root.isFileURL else { throw POSIXError(.EINVAL) }
+        let entries = try children(root)
+        try requireRecoveredSplits(among: entries)
+        return try callFolders(among: entries)
+    }
+
+    private func requireRecoveredSplits(among entries: [URL]) throws {
+        for prepared in entries where prepared.lastPathComponent.hasPrefix(Self.splitPrefix) {
+            guard try isDirectory(prepared), let record = try loadSplit(in: prepared) else { continue }
+            let reason = "A split must finish recovery before the calls folder can be read."
+            if try exists(prepared.appendingPathComponent(Self.splitCommit)) {
+                throw try SplitFailure.committed(replacement(from: record), reason: reason)
+            }
+            throw SplitFailure.recoveryRequired(reason: reason)
+        }
+    }
+}
+
 /// What `Calls` refuses or could not finish, with the data a sentence needs; the UI writes the sentence.
 public enum CallsFailure: Error, Equatable, Sendable {
     /// No call folder has this id any more.
     case notFound(id: String)
     /// More than one call folder has this id.
     case ambiguous(id: String)
-    /// The title has a character a folder name cannot hold.
+    /// The title cannot be used in a folder name.
     case invalidTitle
     /// Removing the folder stopped part way; some of it may remain.
     case trashFailed(folder: String, reason: String)
@@ -667,6 +1050,7 @@ public struct CallsDisk: Sendable {
         do { return try Data(contentsOf: url) }
         catch CocoaError.fileReadNoSuchFile { return nil }
     }
+    var write: @Sendable (Data, URL) throws -> Void = { try $0.write(to: $1, options: .atomic) }
 
     /// The local file system; a rename never replaces an existing folder.
     public static let system = CallsDisk(
