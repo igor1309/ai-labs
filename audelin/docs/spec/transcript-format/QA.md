@@ -105,3 +105,10 @@ composition test, the file reads back the new origin, whole. Evidence:
 A canonical transcript saved before origins reads back with no origin and renders again equal to it. Evidence:
 `TranscriptOriginTests.transcriptWithoutOriginReadsAndRendersAsBefore()`;
 `malformedFrontMatterReadsWithoutOrigin(prefix:)` covers malformed front matter.
+
+## One listed speaker with unattributed rows
+
+Read a saved transcript containing both kinds of remote rows. Both display
+as `Them`, only one has a speaker ID and name, and the legacy form keeps
+its interpretation. Evidence:
+`TranscriptReadingTests.aSoleListedSpeakerAndUnattributedRowsReadBackSeparately`.

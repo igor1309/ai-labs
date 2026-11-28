@@ -55,7 +55,7 @@ struct SplitPorts: RecordingsSplitChoices, RecordingsSplit {
             return (replacement.first, replacement.second)
         }, partition: splitPlan, writeTranscript: { try writeReplacementTranscript($0, in: $1, binding: binding) },
            readTags: { try TagsFile.read(in: $0.folder) }, writeTags: { try TagsFile.write($0, in: $1) },
-           notes: notes.snapshot, cutTrack: { try TrackFile.split(at: $0, source: $1, before: $2, after: $3) })
+           notes: { notes.snapshot(reuseSpeakerLabels: true) }, cutTrack: { try TrackFile.split(at: $0, source: $1, before: $2, after: $3) })
     }
 
     func splitChoices(id: String) async throws -> SplitChoices {
@@ -82,6 +82,9 @@ private func splitError(_ error: any Error) -> any Error {
     switch error {
     case CallsStorage.SplitFailure.inactive: SplitRefusal.inactiveFolder
     case CallsStorage.SplitFailure.heldByMove: SplitRefusal.folderMove
+    case CallsStorage.SplitFailure.busy: SplitRefusal.busy
+    case CallsStorage.SplitFailure.journalUnavailable: SplitRefusal.journalUnavailable
+    case CallsFailure.invalidTitle: SplitRefusal.invalidTitle
     case CallsStorage.SplitFailure.expiredTranscript, Calls.SplitFailure.expiredTranscript: SplitRefusal.expiredTranscript
     case let Calls.SplitFailure.committed(parts, reason):
         SplitRefusal.committed(.init(first: parts.first, second: parts.second), reason: reason)

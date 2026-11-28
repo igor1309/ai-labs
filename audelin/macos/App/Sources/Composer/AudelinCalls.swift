@@ -152,18 +152,17 @@ public final class AudelinCalls {
         notesConnections = [
             Task { @MainActor [weak self] in
                 var seenSelection: TranscriptSelection?
-                var seenReplacement: RecordingsReplacement?
+                var seenSplit: Recordings.SplitReplacement?
                 for await state in inputs.states() {
                     guard let self else { return }
                     let selection = TranscriptSelection(state)
-                    let replacement = state.replacement
+                    let split = state.split.listedReplacement
                     defer {
                         seenSelection = selection
-                        seenReplacement = replacement
+                        seenSplit = split
                     }
-                    if let replacement, replacement != seenReplacement,
-                       replacement.published.count == 2, let first = replacement.published.first {
-                        await selectFirstSplitPart(first)
+                    if let split, split != seenSplit {
+                        await selectFirstSplitPart(split.first)
                     } else if let id = selection.id, selection != seenSelection {
                         _ = await syncRows()
                         await sendList(.select(id))

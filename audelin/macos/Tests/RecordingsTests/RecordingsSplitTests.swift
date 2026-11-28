@@ -93,14 +93,16 @@ struct RecordingsSplitTests {
         #expect(finished == .splitFinished(.success(parts)))
         #expect(await port.requests == [request])
         let (publishing, list) = sut.reduce(running, finished)
-        #expect(publishing.phase == .publishingSplit && publishing.replacement == nil)
-        #expect(publishing.split.publishing == parts)
+        let replacement = RecordingsReplacement(removed: ["A"], published: ["A", "C"])
+        #expect(publishing.phase == .publishingSplit && publishing.replacement == replacement)
+        #expect(publishing.split.publishing == parts && publishing.split.listedReplacement == nil)
         #expect(list == .list(request: 1))
 
         let stale = sut.reduce(publishing, .listed(request: 0, publishedCalls)).0
         #expect(stale == publishing)
         let (failed, effect) = sut.reduce(publishing, .listFailed(request: 1, "Busy reading folder"))
-        #expect(effect == nil && failed.phase == .publishingSplit && failed.replacement == nil)
+        #expect(effect == nil && failed.phase == .publishingSplit && failed.replacement == replacement)
+        #expect(failed.split.listedReplacement == nil)
         #expect(failed.split.publicationMessage == "Refresh: Busy reading folder")
         assert(sut, failed, .confirmSplit, delivers: nil)
         let (retry, freshList) = sut.reduce(failed, .refreshSplit)
@@ -111,7 +113,7 @@ struct RecordingsSplitTests {
             $0.calls = publishedCalls
             $0.transcriptOffers = transcriptOffers(ids: ["C", "A"])
             $0.isListing = false
-            $0.replacement = .init(removed: ["A"], published: ["A", "C"])
+            $0.split.listedReplacement = parts
             $0.split.draft = nil
             $0.split.publishing = nil
             $0.split.request = 2
@@ -120,7 +122,8 @@ struct RecordingsSplitTests {
         }
         let (incomplete, _) = sut.reduce(publishing, .listed(request: 1, Array(publishedCalls.dropFirst())))
         #expect(incomplete.phase == .publishingSplit && incomplete.split.refreshFailed)
-        #expect(incomplete.calls == running.calls && incomplete.replacement == nil)
+        #expect(incomplete.calls == running.calls && incomplete.replacement == replacement)
+        #expect(incomplete.split.listedReplacement == nil)
     }
 
     @Test func failuresKeepTheDraftAndExpiryRequiresAChoiceFromTheNewTranscript() async throws {
@@ -149,6 +152,24 @@ struct RecordingsSplitTests {
             $0.split.control = .unavailable(.busy, text: "Busy")
         }
         #expect(spy.messages.contains(.failed(.failed("Disk full"))))
+    }
+
+    @Test(arguments: [SplitRefusal.busy, .invalidTitle, .journalUnavailable])
+    func aPrecommitRefusalKeepsTheBoundaryAndBothTitles(refusal: SplitRefusal) async throws {
+        let (sut, spy) = makeReducer()
+        let running = makeRunning()
+        let request = SplitRequest(id: "A", transcriptIdentity: "a", cut: 6, firstTitle: "First", secondTitle: "Second")
+        let port = SplitSpy(choices: [:], split: .failure(refusal))
+        let answer = try await event(makeHandler(port), .split(request))
+        let message = SplitMessage.failed(.refused(refusal))
+        assert(sut, running, answer, delivers: nil) {
+            $0.phase = .choosingSplit
+            $0.split.draft?.failure = refusal == .busy ? "Busy" : "Refused"
+            $0.split.control = .unavailable(.busy, text: "Busy")
+        }
+        #expect(spy.messages == [message, .busy])
+        let draft = sut.reduce(running, answer).0
+        #expect(sut.reduce(draft, .editSplitTitle(.second, "Edited")).0.split.draft?.secondTitle == "Edited")
     }
 
     @Test func aCommittedFailureKeepsProgressAndBlocksAnotherSplit() {
@@ -252,6 +273,7 @@ private final class SplitTextSpy: Sendable {
         case .busy: "Busy"
         case .finishing: "Finishing"
         case .failed(.refused(.expiredTranscript)): "Expired"
+        case .failed(.refused(.busy)): "Busy"
         case let .failed(.failed(reason)): reason
         case .failed: "Refused"
         case let .refreshFailed(reason): "Refresh: " + reason

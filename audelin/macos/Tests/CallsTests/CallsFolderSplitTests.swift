@@ -26,18 +26,26 @@ struct CallsFolderSplitTests {
             #expect(!FileManager.default.fileExists(atPath: original.path))
             try expectParts(in: calls)
 
-            let first = try calls.originals(id: id)
-            let second = try calls.originals(id: secondID)
-            try #require(first.count == 2 && second.count == 2)
-            #expect(first.map(\.start) == [start, start.addingTimeInterval(60)])
-            #expect(second.map(\.start) == [start.addingTimeInterval(70), start.addingTimeInterval(120)])
-            #expect(try first.map { try read($0.callTrack) } == ["whole first", "before:10.0"])
-            #expect(try second.map { try read($0.callTrack) } == ["after:10.0", "whole second"])
-            #expect(try read(first[1].microphoneTrack) == "before:10.0")
-            #expect(try read(second[0].microphoneTrack) == "after:10.0")
-            #expect(try read(first[0].callTrack.deletingLastPathComponent().appendingPathComponent("keep")) == "first attachment")
-            #expect(!FileManager.default.fileExists(atPath: second[1].microphoneTrack.path))
-            #expect(try calls.part(id: secondID).originalStarts == second.map(\.start))
+            try expectRecordings(in: calls)
+        }
+    }
+
+    @Test(arguments: [false, true])
+    func aRejectedDestinationNameLeavesTheOriginalReadable(overlongSecondTitle: Bool) throws {
+        try withRoot { root in
+            _ = try fixture(in: root)
+            let before = try contents(root)
+            let title = String(repeating: "long title ", count: 80)
+            let first = overlongSecondTitle ? "Earlier" : title
+            let second = overlongSecondTitle ? title : "Later"
+            #expect(throws: CallsFailure.invalidTitle) {
+                try split(calls(in: root), firstTitle: first, secondTitle: second, write: writeParts)
+            }
+            let reopened = calls(in: root)
+            try reopened.recoverInterruptedMerges()
+            #expect(try reopened.list().map(\.id) == [id])
+            #expect(try reopened.savedTranscript(id: id) == Data("original".utf8))
+            #expect(try contents(root) == before)
         }
     }
 
@@ -130,6 +138,7 @@ struct CallsFolderSplitTests {
                 try reopened.recoverInterruptedMerges { registrations.append($0) }
                 #expect(try reopened.list().map(\.id) == [secondID, id])
                 try expectParts(in: reopened)
+                try expectRecordings(in: reopened)
                 #expect(try FileManager.default.contentsOfDirectory(atPath: root.path).sorted() == [firstName, secondID + " Later"])
             }
             #expect(registrations == [replacement])
@@ -205,10 +214,11 @@ struct CallsFolderSplitTests {
         }
     }
 
-    private func split(_ calls: Calls, cut: (TimeInterval, URL, URL, URL) throws -> Void = cutTrack,
+    private func split(_ calls: Calls, firstTitle: String = "Earlier", secondTitle: String = "Later",
+                       cut: (TimeInterval, URL, URL, URL) throws -> Void = cutTrack,
                        write: @escaping (URL, URL) throws -> Void) throws -> Calls.SplitReplacement {
         let transcript = try calls.splitTranscript(id: id)
-        return try calls.split(id: id, expectedTranscript: transcript.identity, firstTitle: "Earlier", secondTitle: "Later", plan: { source in
+        return try calls.split(id: id, expectedTranscript: transcript.identity, firstTitle: firstTitle, secondTitle: secondTitle, plan: { source in
             #expect(source.transcript == transcript.bytes)
             let placements = source.recordings.map { leaf -> Calls.SplitRecording in
                 let folder = leaf.callTrack.deletingLastPathComponent()
@@ -256,6 +266,22 @@ struct CallsFolderSplitTests {
         try write("first job", "notes-job.json", in: first)
         try write("second transcript", "transcript.md", in: second)
         try write("second job", "notes-job.json", in: second)
+    }
+
+    private func expectRecordings(in calls: Calls) throws {
+        let first = try calls.originals(id: id)
+        let second = try calls.originals(id: secondID)
+        try #require(first.count == 2 && second.count == 2)
+        #expect(first.map(\.start) == [start, start.addingTimeInterval(60)])
+        #expect(second.map(\.start) == [start.addingTimeInterval(70), start.addingTimeInterval(120)])
+        #expect(try first.map { try read($0.callTrack) } == ["whole first", "before:10.0"])
+        #expect(try second.map { try read($0.callTrack) } == ["after:10.0", "whole second"])
+        #expect(try read(first[1].microphoneTrack) == "before:10.0")
+        #expect(try read(second[0].microphoneTrack) == "after:10.0")
+        #expect(try read(first[0].callTrack.deletingLastPathComponent().appendingPathComponent("keep")) == "first attachment")
+        #expect(!FileManager.default.fileExists(atPath: second[1].microphoneTrack.path))
+        #expect(try calls.part(id: secondID).originalStarts == second.map(\.start))
+        #expect(!FileManager.default.fileExists(atPath: first[0].microphoneTrack.path))
     }
 
     private func expectParts(in calls: Calls) throws {

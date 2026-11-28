@@ -1,3 +1,4 @@
+import CallFolder
 import Calls
 import CallsStorage
 import Foundation
@@ -129,6 +130,7 @@ struct CallsStorageSplitTests {
             _ = try makeCall(unrelated, in: stale)
             let journal = root.appendingPathComponent("journal.json")
             let storage = storage(in: active, journal: journal, writeJournal: { _, _ in throw ScriptFailure.failed })
+            try await storage.restore()
             let failure = await #expect(throws: Calls.SplitFailure.self) { try await split(storage, id: first) }
             guard case let .committed(parts, _) = failure else { Issue.record("expected a committed split"); return }
             #expect(parts.first == first)
@@ -150,6 +152,100 @@ struct CallsStorageSplitTests {
         }
     }
 
+    @Test func aRecordingCannotAllocateTheSecondPartsIdentityDuringTheCut() async throws {
+        try await withStorageFolder { root in
+            _ = try makeCall(first, in: root)
+            let storage = storage(in: root)
+            let secondStart = start.addingTimeInterval(15)
+            let allocator = CallFolder(callsURL: root, now: { secondStart }, timeZone: .gmt,
+                                       occupiedNames: { try storage.occupiedCallNames() }, disk: .system)
+
+            let parts = try await split(storage, id: first) { offset, source, before, after in
+                let claim = storage.takeFolder(for: .recording)
+                #expect(claim == .refused(by: .split))
+                if case let .granted(token) = claim {
+                    storage.releaseFolder(token)
+                    throw ScriptFailure.failed
+                }
+                try cutTrack(offset, source, before, after)
+            }
+            guard case let .granted(token) = storage.takeFolder(for: .recording) else {
+                Issue.record("Recording could not claim the folder after publication")
+                return
+            }
+            defer { storage.releaseFolder(token) }
+            let recording = try allocator.make(title: "Automatic recording")
+            #expect(parts.second == first + "-2")
+            #expect(recording.id == first + "-3")
+            #expect(try await storage.list().map(\.id) == [recording.id, parts.second, first])
+        }
+    }
+
+    @Test func aRecordingCannotAllocateAnUnpublishedPartIdentityAfterInterruptedPublication() async throws {
+        try await withStorageFolder { root in
+            _ = try makeCall(first, in: root)
+            var disk = CallsDisk.system
+            disk.rename = { source, target in
+                if source.lastPathComponent == "second" { throw POSIXError(.EIO) }
+                try CallsDisk.system.rename(source, target)
+            }
+            let interrupted = storage(in: root, disk: disk)
+            let failure = await #expect(throws: Calls.SplitFailure.self) { try await split(interrupted, id: first, disk: disk) }
+            guard case let .committed(parts, _) = failure else {
+                Issue.record("Expected publication to stop with the second part reserved")
+                return
+            }
+            let secondStart = start.addingTimeInterval(15)
+            let claim = interrupted.takeFolder(for: .recording)
+            guard case let .granted(token) = claim else {
+                Issue.record("Expected the recording to reach folder allocation")
+                return
+            }
+            defer { interrupted.releaseFolder(token) }
+            let allocator = CallFolder(callsURL: root, now: { secondStart }, timeZone: .gmt,
+                                       occupiedNames: { try interrupted.occupiedCallNames() }, disk: .system)
+            #expect(throws: Calls.SplitFailure.self) { try allocator.make(title: "Recording") }
+
+            let reopened = storage(in: root)
+            try await reopened.restore()
+            #expect(try await reopened.list().map(\.id) == [parts.second, parts.first])
+            #expect(try await reopened.savedTranscript(id: parts.second) == Data("second".utf8))
+        }
+    }
+
+    @Test func recordingCanWinAdmissionWhileSplitWaitsForTheStorageTurn() async throws {
+        try await withStorageFolder { root in
+            let call = try makeCall(first, in: root)
+            let admitted = AsyncStream<Bool>.makeStream()
+            let turn = CallsStorageGuard.serial { admitted.continuation.yield($0) }
+            let storage = storage(in: root, operation: turn)
+            let choices = try await storage.splitTranscript(id: first)
+            var admissions = admitted.stream.makeAsyncIterator()
+            #expect(await admissions.next() == true)
+
+            try await turn.take(.access)
+            #expect(await admissions.next() == true)
+            let queued = Task {
+                try await storage.split(id: first, expectedTranscript: choices.identity, replace: unexpectedTransaction)
+            }
+            #expect(await admissions.next() == false)
+            let claim = storage.takeFolder(for: .recording)
+            turn.give()
+            defer {
+                if case let .granted(token) = claim { storage.releaseFolder(token) }
+                admitted.continuation.finish()
+            }
+            guard case .granted = claim else {
+                _ = await queued.result
+                Issue.record("Recording could not claim the folder before split admission")
+                return
+            }
+            await #expect(throws: CallsStorage.SplitFailure.busy) { try await queued.value }
+            #expect(try readTranscript(in: call) == "original")
+            #expect(try FileManager.default.contentsOfDirectory(atPath: root.path) == [first])
+        }
+    }
+
     private func expectParts(in storage: CallsStorage, first: String, second: String) async throws {
         let firstFolder = try await storage.location(id: first)
         let secondFolder = try await storage.location(id: second)
@@ -162,10 +258,11 @@ struct CallsStorageSplitTests {
         #expect(parts.map(\.duration) == [15, 15])
     }
 
-    private func split(_ storage: CallsStorage, id: String) async throws -> CallsStorage.SplitReplacement {
+    private func split(_ storage: CallsStorage, id: String, disk: CallsDisk = .system,
+                       cut: @Sendable (TimeInterval, URL, URL, URL) throws -> Void = cutTrack) async throws -> CallsStorage.SplitReplacement {
         let choices = try await storage.splitTranscript(id: id)
         return try await storage.split(id: id, expectedTranscript: choices.identity) { request, register in
-            let parts = try calls(in: request.root).split(
+            let parts = try calls(in: request.root, disk: disk).split(
                 id: request.id, expectedTranscript: request.expectedTranscript, firstTitle: "Earlier", secondTitle: "Later",
                 reservedIDs: request.reservedIDs, plan: { source in
                     let leaf = try #require(source.recordings.first)
@@ -174,16 +271,16 @@ struct CallsStorageSplitTests {
                         try Data("first".utf8).write(to: first.appendingPathComponent("transcript.md"))
                         try Data("second".utf8).write(to: second.appendingPathComponent("transcript.md"))
                     }
-                }, cut: cutTrack
+                }, cut: cut
             ) { try register(.init(first: $0.first, second: $0.second)) }
             return .init(first: parts.first, second: parts.second)
         }
     }
 
-    private func storage(in root: URL, journal: URL? = nil,
+    private func storage(in root: URL, journal: URL? = nil, operation: CallsStorageGuard = .serial(), disk: CallsDisk = .system,
                          writeJournal: @escaping @Sendable (CallsJournal, URL) throws -> Void = CallsStorage.writeAtomically) -> CallsStorage {
         CallsStorage(folder: root, journal: journal, writeJournal: writeJournal,
-                     readPart: { _, _ in throw ScriptFailure.failed }, makeCalls: calls(in:))
+                     readPart: { _, _ in throw ScriptFailure.failed }, makeCalls: { calls(in: $0, disk: disk) }, operation: operation)
     }
 }
 
@@ -193,10 +290,10 @@ private func unexpectedTransaction(_ request: CallsStorage.SplitRequest,
     throw ScriptFailure.failed
 }
 
-private func calls(in folder: URL) -> Calls {
+private func calls(in folder: URL, disk: CallsDisk = .system) -> Calls {
     Calls(folder: folder, timeZone: .gmt, duration: { url in
         try Data(contentsOf: url) == Data("original audio".utf8) ? 30 : 15
-    }, transcript: { _ in [] }, disk: .system)
+    }, transcript: { _ in [] }, disk: disk)
 }
 
 private func readTranscript(in folder: URL) throws -> String {

@@ -121,6 +121,54 @@ struct TranscriptAgainPortsTests {
         }
     }
 
+    @Test(arguments: [false, true])
+    func remakingAPartSplitBetweenMinutesKeepsItsRecordingStartThroughMerge(gapBeforeAudio: Bool) async throws {
+        try await withComposeFolder { root in
+            let id = "1970.01.01-1000", partID = "1970.01.01-1001"
+            let start = Date(timeIntervalSince1970: 36_000), cutStart = start.addingTimeInterval(64)
+            let recordingStart = gapBeforeAudio ? start.addingTimeInterval(120) : cutStart
+            let folder = root.appendingPathComponent(id)
+            if gapBeforeAudio {
+                try await FixtureTrack.write(far: 3, microphone: 4, seconds: 5, in: folder.appendingPathComponent(id))
+                try await FixtureTrack.write(far: 1, microphone: 2, seconds: 6, in: folder.appendingPathComponent("1970.01.01-1002"))
+            } else {
+                try await FixtureTrack.write(far: 1, microphone: 2, seconds: 70, in: folder)
+            }
+            var format = TranscriptFormat()
+            let rows: [TranscriptFormat.Segment] = [
+                .init(side: .mine, start: 2, settled: "Before", pending: ""),
+                .init(side: .theirs, start: 64, settled: "After", pending: ""),
+            ]
+            let bytes = try format.render(rows).chunks.reduce(Data(), +)
+            try bytes.write(to: folder.appendingPathComponent("transcript.md"))
+            let storage = callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
+            let split = SplitPorts(storage: storage, calls: callsFolders(timeZone: .gmt, disk: .system, trash: removeForTrash),
+                                  binding: DiskTranscriptBinding(), notes: replacementNotes(enabled: false))
+            let choices = try await split.splitChoices(id: id)
+            let parts = try await split.split(.init(id: id, transcriptIdentity: choices.transcriptIdentity, cut: 64,
+                                                   firstTitle: "Earlier", secondTitle: "Later"))
+            #expect(parts.second == partID)
+            #expect(try await storage.originals(id: parts.second).map(\.start) == [recordingStart])
+            let chain = transcriptAgain(root: root, recognizers: TrackRecognizers(answers: [
+                1: [.init("Heard again", start: 1, end: 2)], 2: [],
+            ]), diarizer: TrackDiarizer(model: .nemotron, calls: Values(), turns: { _ in [] }),
+                cleaning: { _ in [] }, hearing: { _ in nil })
+            #expect(await reports(chain.run(id: parts.second, request: 1)).last == .made)
+            let remade = TranscriptFormat.read(String(decoding: try await storage.savedTranscript(id: parts.second), as: UTF8.self))
+            #expect(remade.origin?.timelineStart == cutStart)
+            #expect(remade.origin?.calls.map(\.start) == [recordingStart])
+            #expect(remade.segments.map(\.start) == [recordingStart.timeIntervalSince(cutStart) + 1])
+            #expect(remade.segments.map(\.settled) == ["Heard again"])
+
+            let calls = SummaryCalls(storage: storage, release: testTranscriptBuild.release, deleted: { _ in })
+            #expect(try await calls.merge(ids: [parts.second, parts.first]) == id)
+            let merged = TranscriptFormat.read(String(decoding: try await storage.savedTranscript(id: id), as: UTF8.self))
+            #expect(merged.origin?.timelineStart == start)
+            #expect(merged.origin?.calls.map(\.start) == [start, recordingStart])
+            #expect(merged.segments.filter { $0.side != .gap }.map(\.start) == [2, recordingStart.timeIntervalSince(start) + 1])
+        }
+    }
+
     enum Ambiguity: CaseIterable { case equal, unequal, twoNames }
 
     @Test(arguments: Ambiguity.allCases)

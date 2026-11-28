@@ -35,7 +35,8 @@ struct MergeChainTests {
             let notes = try #require(await summaryFiles(storage, root: root).load(call: first))
             let saved = try SummariesFilesPort.saved(notes)
             #expect(saved.stage == .pending)
-            #expect(saved.job.call == first && saved.job.speakersNamed)
+            #expect(saved.job.call == first)
+            #expect(saved.job.speakers && !saved.job.speakersNamed)
             #expect(saved.job.transcriptIdentity == (try await storage.transcriptFacts(id: first)).identity)
             #expect(saved.job.entries == [.init(label: "Me", time: "1.0", text: "hello"), .init(label: "Them (Ann)", time: "62.0", text: "hi")])
         }

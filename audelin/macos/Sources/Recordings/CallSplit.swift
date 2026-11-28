@@ -38,18 +38,21 @@ public struct RecordingsSplitState: Equatable, Sendable {
     public var control: Control?
     public var draft: Draft?
     public var publishing: SplitReplacement?
+    /// A completed list is ready to select and reopen part one.
+    public var listedReplacement: SplitReplacement?
     public var publicationMessage: String?
     public var refreshFailed: Bool
 
     public init(selectedID: String? = nil, request: Int = 0, choices: Choices = .unchecked, control: Control? = nil,
                 draft: Draft? = nil, publishing: SplitReplacement? = nil, publicationMessage: String? = nil,
-                refreshFailed: Bool = false) {
+                refreshFailed: Bool = false, listedReplacement: SplitReplacement? = nil) {
         self.selectedID = selectedID
         self.request = request
         self.choices = choices
         self.control = control
         self.draft = draft
         self.publishing = publishing
+        self.listedReplacement = listedReplacement
         self.publicationMessage = publicationMessage
         self.refreshFailed = refreshFailed
     }
@@ -105,14 +108,16 @@ extension RecordingsReducer {
             state.split.draft?.failure = nil
             state.failure = nil
             state.replacement = nil
+            state.split.listedReplacement = nil
             return (state, .split(.init(id: draft.call.id, transcriptIdentity: choices.transcriptIdentity, cut: cut,
                                         firstTitle: draft.firstTitle, secondTitle: draft.secondTitle)))
         case let .splitFinished(result):
-            guard state.phase == .runningSplit else { break }
+            guard state.phase == .runningSplit, let original = state.split.draft?.call.id else { break }
             switch result {
             case let .success(replacement):
                 state.phase = .publishingSplit
                 state.split.publishing = replacement
+                state.replacement = .init(removed: [original], published: [replacement.first, replacement.second])
                 let effect = Self.requestList(&state)
                 return (state, effect)
             case let .failure(.refused(.committed(_, reason))), let .failure(.refused(.recoveryRequired(reason))):
@@ -136,8 +141,7 @@ extension RecordingsReducer {
             let effect = Self.requestList(&state)
             return (state, effect)
         case let .listed(request, calls) where state.phase == .publishingSplit:
-            guard state.isListing, request == state.listRequest, let replacement = state.split.publishing,
-                  let original = state.split.draft?.call.id else { break }
+            guard state.isListing, request == state.listRequest, let replacement = state.split.publishing else { break }
             guard calls.contains(where: { $0.id == replacement.first }),
                   calls.contains(where: { $0.id == replacement.second }) else {
                 return splitListFailed(state, splitMessage(.finishing))
@@ -145,7 +149,7 @@ extension RecordingsReducer {
             state.calls = calls
             state.isListing = false
             state.phase = .idle
-            state.replacement = .init(removed: [original], published: [replacement.first, replacement.second])
+            state.split.listedReplacement = replacement
             state.split.selectedID = replacement.first
             state.split.choices = .unchecked
             state.split.draft = nil

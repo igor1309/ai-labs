@@ -80,7 +80,7 @@
 "notes.fallbackNote" = "Retries the request if the main service fails.";
 "calls.notFound" = "Call “%@” can no longer be found.";
 "calls.ambiguous" = "Several folders start with “%@”.";
-"calls.invalidTitle" = "The title contains a character that isn’t allowed.";
+"calls.invalidTitle" = "This title cannot be used as a folder name.";
 "calls.trashFailed" = "Couldn’t move “%1$@” to the Trash; the folder stays where it was. %2$@";
 "calls.sizeMismatch" = "The copied files’ sizes don’t match the originals.";
 "calls.unknownLength" = "Call “%@” has no known length, so it can’t be merged.";
@@ -129,3 +129,4 @@
 "split.invalidChoice" = "That boundary is no longer available. Choose a boundary again.";
 "split.refreshFailed" = "Both parts were saved. The list couldn’t be refreshed. %@";
 "split.recovery" = "Reopen Audelin to finish split recovery. %@";
+"split.journalUnavailable" = "The calls journal is unavailable. Reopen Audelin once the calls folders are available.";

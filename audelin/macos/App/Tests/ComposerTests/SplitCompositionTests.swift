@@ -104,31 +104,57 @@ struct SplitCompositionTests {
     @MainActor @Test(arguments: [false, true])
     func stagedPartJobsUseOnlyTheirSavedNamedEntries(reopen: Bool) async throws {
         try await withComposeFolder { root in
-            let fixture = SplitFixture(root, notesOn: true)
+            let sameMinuteID = firstID + "-2"
+            var disk = CallsDisk.system
+            if reopen {
+                disk.rename = { source, target in
+                    if source.lastPathComponent == "second", target.lastPathComponent == sameMinuteID + " Second" {
+                        throw POSIXError(.EIO)
+                    }
+                    try CallsDisk.system.rename(source, target)
+                }
+            }
+            let fixture = SplitFixture(root, notesOn: true, disk: disk)
+            let eve = TranscriptFormat.Speaker(id: "eve", name: "Eve", state: "named")
             let ann = TranscriptFormat.Speaker(id: "ann", name: "Ann", state: "named")
-            let rows = [spoken(1, "First words", speaker: ann.id), spoken(3, "Second words", speaker: ann.id)]
-            _ = try await call(firstID, fixture, rows: rows, speakers: [ann], audio: 5)
-            let storage = reopen ? SplitFixture(root, notesOn: false).storage : fixture.storage
+            let unknown = TranscriptFormat.Segment(side: .theirs, start: 4, settled: "Unattributed words", pending: "")
+            let rows = [spoken(1, "First words", speaker: eve.id), spoken(3, "Second words", speaker: ann.id), unknown]
+            _ = try await call(firstID, fixture, rows: rows, speakers: [eve, ann], audio: 5)
+            let reopened = SplitFixture(root, notesOn: false)
+            let storage = reopen ? reopened.storage : fixture.storage
             let files = summaryFiles(storage, root: root)
             let generated = SplitGeneration()
-            let model = SummariesModel(keeping: { false }, templates: TestDefaultTemplates(),
-                text: { CallsListText(language: .english) },
-                preparation: SummariesPreparationPort(notes: { .init(enabled: false) }, makeID: { UUID().uuidString },
-                                                       callText: { try await storage.text(id: $0) }),
-                files: .init(files: files, makeID: { UUID().uuidString }), generation: generated)
+            let model = summaryModel(storage, files: files, generation: generated)
             if !reopen {
                 model.waiting(call: firstID, notesOn: true)
                 for await state in Observations({ model.state }) where state.calls[firstID]?.stage == .waiting { break }
             }
 
-            let parts = try await fixture.split(firstID, at: 3)
-            let ids = [parts.first, parts.second]
-            let stagedFiles = summaryFiles(fixture.storage, root: root)
-            let first = try #require(await stagedFiles.load(call: parts.first))
-            let second = try #require(await stagedFiles.load(call: parts.second))
-            #expect(first.phase == "pending" && second.phase == "pending" && first.job != second.job)
+            let parts: SplitReplacement
             if reopen {
+                let failure = await #expect(throws: SplitRefusal.self) { try await fixture.split(firstID, at: 3) }
+                guard case let .committed(replacement, _) = failure else {
+                    Issue.record("Expected interruption after the first part was published")
+                    return
+                }
+                parts = replacement
+                let names = try FileManager.default.contentsOfDirectory(atPath: root.path)
+                #expect(names.contains(firstID + " First"))
+                #expect(!names.contains(sameMinuteID + " Second"))
+                #expect(names.contains { $0.hasPrefix(".audelin-split-") })
                 try await storage.restore()
+            } else {
+                parts = try await fixture.split(firstID, at: 3)
+            }
+            #expect(parts == .init(first: firstID, second: sameMinuteID))
+            let ids = [parts.first, parts.second]
+            let first = try #require(await files.load(call: parts.first))
+            let second = try #require(await files.load(call: parts.second))
+            #expect(first.phase == "pending" && second.phase == "pending" && first.job != second.job)
+            let savedPart = try await storage.savedTranscript(id: parts.second)
+            let secondRows = TranscriptFormat.read(String(decoding: savedPart, as: UTF8.self)).segments
+            #expect(secondRows.map(\.speaker) == [ann.id, nil])
+            if reopen {
                 model.recover(calls: try await storage.list().map(\.id))
             } else {
                 model.send(.replaced(removed: [firstID], published: ids))
@@ -138,12 +164,73 @@ struct SplitCompositionTests {
             #expect(generated.identifications == [])
             let firstNotes = try #require(await files.notes(call: parts.first))
             let secondNotes = try #require(await files.notes(call: parts.second))
-            #expect(firstNotes.text == "Them (Ann) 1.0 First words")
-            #expect(secondNotes.text == "Them (Ann) 0.0 Second words")
+            #expect(firstNotes.text == "Them (Eve) 1.0 First words")
+            #expect(secondNotes.text == "Them (Ann) 0.0 Second words\nThem 1.0 Unattributed words")
             for (id, notes) in zip(ids, [firstNotes, secondNotes]) {
                 #expect(notes.transcriptIdentity == (try await storage.transcriptFacts(id: id)).identity)
             }
             await model.shutdown()
+
+            if reopen {
+                #expect(try await reopened.adapter.merge(ids: ids) == firstID)
+                let transcript = try await storage.savedTranscript(id: firstID)
+                let text = String(decoding: transcript, as: UTF8.self)
+                let rows = TranscriptFormat.read(text).segments.filter { $0.side == .theirs }
+                #expect(rows.map(\.speaker) == ["1.eve", "2.ann", nil])
+                #expect(TranscriptFormat.namedEntries(text).map(\.label) == ["Them 1 (Eve)", "Them 2 (Ann)", "Them"])
+            }
+        }
+    }
+
+    @MainActor @Test func aMergedUnnamedSpeakerGoesThroughEnabledIdentification() async throws {
+        try await withComposeFolder { root in
+            let fixture = SplitFixture(root, notesOn: true)
+            let speaker = TranscriptFormat.Speaker(id: "remote", name: nil, state: "unknown")
+            _ = try await call(firstID, fixture, rows: [spoken(1, "First")], audio: 2)
+            _ = try await call(secondID, fixture, rows: [spoken(1, "Unnamed remote", speaker: speaker.id)], speakers: [speaker], audio: 2)
+            let files = summaryFiles(fixture.storage, root: root)
+            let generation = SplitGeneration()
+            let model = summaryModel(fixture.storage, files: files, generation: generation)
+
+            #expect(try await fixture.adapter.merge(ids: [firstID, secondID]) == firstID)
+            model.send(.replaced(removed: [firstID, secondID], published: [firstID]))
+            for await state in Observations({ model.state }) where state.calls[firstID]?.stage == .succeeded { break }
+            #expect(generation.identifications == [firstID])
+            #expect(try await files.notes(call: firstID)?.text == "Me 1.0 First\nThem 61.0 Unnamed remote")
+            await model.shutdown()
+        }
+    }
+
+    @Test(arguments: [false, true])
+    func anEligibleNotesWriteFailureKeepsOriginalFoldersIntact(merging: Bool) async throws {
+        try await withComposeFolder { root in
+            let disk = FailingPendingNotesDisk()
+            let fixture = SplitFixture(root, notesOn: true, notesDisk: disk)
+            let first = try await call(firstID, fixture, rows: [spoken(1, "First"), spoken(3, "Second")], audio: 5)
+            var originals = [first]
+            if merging { originals.append(try await call(secondID, fixture, rows: [spoken(1, "Later")], audio: 2)) }
+            let before = try originals.map { try snapshot($0) }
+            if merging {
+                let failure = await #expect(throws: CallsFailure.self) {
+                    try await fixture.adapter.merge(ids: [firstID, secondID])
+                }
+                guard case .mergeFailed(step: .writingTranscript, _) = failure else {
+                    Issue.record("Expected merge preparation to fail")
+                    return
+                }
+            } else {
+                await #expect(throws: CocoaError(.fileWriteOutOfSpace)) {
+                    try await fixture.split(firstID, at: 3)
+                }
+            }
+            let record = try #require(disk.attempts.withLock { $0.first })
+            let saved = try SummariesFilesPort.saved(record)
+            #expect(saved.stage == .pending)
+            #expect(saved.job.entries.first?.text == "First")
+            #expect(disk.attempts.withLock { $0.count } == 1)
+            #expect(try originals.map { try snapshot($0) } == before)
+            #expect(Set(try FileManager.default.contentsOfDirectory(atPath: root.path)) == Set(originals.map(\.lastPathComponent)))
+            #expect(Set(try await fixture.adapter.list().map(\.id)) == Set(originals.map(\.lastPathComponent)))
         }
     }
 
@@ -167,6 +254,19 @@ struct SplitCompositionTests {
             #expect(try await fixture.transcript(firstID).segments == changed)
             #expect(try await summaryFiles(fixture.storage, root: root).load(call: firstID) == nil)
         }
+    }
+
+    @MainActor private func summaryModel(_ storage: CallsStorage, files: SummaryFiles.Files, generation: SplitGeneration) -> SummariesModel {
+        SummariesModel(keeping: { false }, templates: TestDefaultTemplates(),
+            text: { CallsListText(language: .english) },
+            preparation: SummariesPreparationPort(notes: { .init(enabled: false) }, makeID: { UUID().uuidString },
+                                                   callText: { try await storage.text(id: $0) }),
+            files: .init(files: files, makeID: { UUID().uuidString }), generation: generation)
+    }
+
+    private func snapshot(_ folder: URL) throws -> [String: Data] {
+        let files = try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)
+        return try Dictionary(uniqueKeysWithValues: files.map { ($0.lastPathComponent, try Data(contentsOf: $0)) })
     }
 
     private func call(_ id: String, _ fixture: SplitFixture, rows: [TranscriptFormat.Segment],
@@ -198,15 +298,17 @@ private struct SplitFixture {
     let root: URL
     let storage: CallsStorage
     let notes: ReplacementNotes
+    let disk: CallsDisk
 
-    init(_ root: URL, notesOn: Bool) {
+    init(_ root: URL, notesOn: Bool, disk: CallsDisk = .system, notesDisk: any Disk = FileDisk()) {
         self.root = root
-        storage = callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
-        notes = replacementNotes(enabled: notesOn)
+        self.disk = disk
+        storage = callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash, disk: disk)
+        notes = replacementNotes(enabled: notesOn, disk: notesDisk)
     }
 
     var ports: SplitPorts {
-        .init(storage: storage, calls: callsFolders(timeZone: .gmt, disk: .system, trash: removeForTrash),
+        .init(storage: storage, calls: callsFolders(timeZone: .gmt, disk: disk, trash: removeForTrash),
               binding: DiskTranscriptBinding(), notes: notes)
     }
 
@@ -234,10 +336,10 @@ func summaryFiles(_ storage: CallsStorage, root: URL) -> SummaryFiles.Files {
     .init(locations: storage, disk: SummaryFiles.FileDisk(), ownershipDirectory: root.appendingPathComponent("ownership"))
 }
 
-func replacementNotes(enabled: Bool = true) -> ReplacementNotes {
+func replacementNotes(enabled: Bool = true, disk: any Disk = FileDisk()) -> ReplacementNotes {
     .init(preferences: { .init(enabled: enabled, speakers: true) }, keeping: { true }, userName: { "Owner" },
           template: { defaultJobTemplate() },
-          makeID: { UUID().uuidString }, disk: SummaryFiles.FileDisk())
+          makeID: { UUID().uuidString }, disk: disk)
 }
 
 private final class SplitGeneration: SummariesGeneration {
@@ -254,4 +356,21 @@ private final class SplitGeneration: SummariesGeneration {
     }
 
     func cancel(_ job: Job) async {}
+}
+
+private final class FailingPendingNotesDisk: Disk {
+    let attempts = Mutex<[SummaryFiles.Record]>([])
+    private let base = FileDisk()
+
+    func create(_ data: Data, at url: URL) throws -> Bool {
+        let record = try JSONDecoder().decode(SummaryFiles.Record.self, from: data)
+        attempts.withLock { $0.append(record) }
+        throw CocoaError(.fileWriteOutOfSpace)
+    }
+    func read(_ url: URL) throws -> Data { try base.read(url) }
+    func exists(_ url: URL) throws -> Bool { try base.exists(url) }
+    func replace(_ data: Data, at url: URL) throws { try base.replace(data, at: url) }
+    func readStamped(_ url: URL) throws -> (data: Data, modified: Date) { try base.readStamped(url) }
+    func restore(_ data: Data, at url: URL, modified: Date) throws { try base.restore(data, at: url, modified: modified) }
+    func remove(_ url: URL) throws { try base.remove(url) }
 }

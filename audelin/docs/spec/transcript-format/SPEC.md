@@ -11,7 +11,11 @@ Observer: compose, rendering call text live and a replaced or merged transcript 
 - **Their side's parts name the diarized speaker by a stable generic ID, never a
   name,** so final text never changes when names do. The current
   names follow the parts, readable and in one versioned machine-readable block,
-  rendered whole each time; while there are names, no final length is told.
+  rendered whole each time. While there are names, no final length is told.
+  With one listed speaker, both attributed and unattributed remote rows
+  display as `Them`. An inline Markdown comment marks unattributed rows,
+  so only the attributed rows inherit the name in the reader and notes.
+  Legacy `Them` rows without the comment keep the single-speaker interpretation.
 - **No text, or only wordless final parts, renders as saying no text was heard.**
 - **During a call, final text with words renders once:** call text never revises a
   final entry, so its rendering is kept, only what follows renders again, and the

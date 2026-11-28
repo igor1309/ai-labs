@@ -8,9 +8,12 @@ Evidence: Missing.
 
 ## S-2 Reuse assigned names
 
-Drive: Run a fresh and a recovered job and compare the generator input without speaker identification.
+Drive: Run fresh and recovered split jobs and compare the notes with
+their saved labels. Merge a call with an unnamed remote speaker and
+verify the enabled identification step runs.
 
-Evidence: Missing.
+Evidence: `SplitCompositionTests.stagedPartJobsUseOnlyTheirSavedNamedEntries`
+and `aMergedUnnamedSpeakerGoesThroughEnabledIdentification`.
 
 ## S-3 Honor notes admission
 

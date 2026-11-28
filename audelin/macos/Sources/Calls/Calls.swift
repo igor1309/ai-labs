@@ -138,6 +138,8 @@ public struct Calls: Sendable {
     public struct Original: Equatable, Sendable {
         public let id: String
         public let start: Date
+        /// Whether the start was saved with this recording at finer than folder-minute precision.
+        public let hasRecordedStart: Bool
         public let duration: TimeInterval
         public let callTrack: URL
         public let microphoneTrack: URL
@@ -154,7 +156,8 @@ public struct Calls: Sendable {
         let hasTrack = Track.allCases.contains { (try? values(url.appendingPathComponent($0.rawValue + ".caf"))) != nil }
         if hasTrack {
             guard let length = try audio(in: url, name: name).duration else { throw CallsFailure.unknownLength(id: name.id) }
-            return [.init(id: name.id, start: try recordedStart(in: url) ?? name.start, duration: length,
+            let recorded = try recordedStart(in: url)
+            return [.init(id: name.id, start: recorded ?? name.start, hasRecordedStart: recorded != nil, duration: length,
                           callTrack: url.appendingPathComponent("call.caf"), microphoneTrack: url.appendingPathComponent("microphone.caf"))]
         }
         let parts = try folders(in: url)
@@ -740,6 +743,7 @@ extension Calls {
                                  second: CallFolderName.name(id: second, title: secondTitle), relocations: [])
         try disk.makeFolder(prepared)
         do {
+            try validateSplitNames([record.first, record.second], in: prepared)
             let first = staged(.first, in: prepared), second = staged(.second, in: prepared)
             try disk.makeFolder(first)
             try disk.makeFolder(second)
@@ -768,6 +772,25 @@ extension Calls {
             throw error
         }
         return try publishSplit(in: prepared, record: record, register: register)
+    }
+
+    /// Test the final components on the same filesystem without claiming a visible call name.
+    private func validateSplitNames(_ names: [String], in prepared: URL) throws {
+        for name in names {
+            let probe = prepared.appendingPathComponent(name, isDirectory: true)
+            do { try disk.makeFolder(probe) }
+            catch {
+                let failure = error as NSError
+                let underlying = failure.userInfo[NSUnderlyingErrorKey] as? NSError
+                if failure.domain == NSPOSIXErrorDomain && failure.code == Int(ENAMETOOLONG) ||
+                    underlying?.domain == NSPOSIXErrorDomain && underlying?.code == Int(ENAMETOOLONG) ||
+                    failure.domain == NSCocoaErrorDomain && failure.code == CocoaError.fileWriteInvalidFileName.rawValue {
+                    throw CallsFailure.invalidTitle
+                }
+                throw error
+            }
+            try remove(probe)
+        }
     }
 
     private static let splitPrefix = ".audelin-split-"
@@ -959,9 +982,20 @@ extension Calls {
         return name
     }
 
+    /// An interrupted split still owns its destination IDs.
+    public func requireRecoveredSplits() throws {
+        operation.lock(); defer { operation.unlock() }
+        try requireRecoveredSplits(among: children(folder))
+    }
+
     private func visibleFolders(in root: URL) throws -> [(URL, CallFolderName)] {
         guard root.isFileURL else { throw POSIXError(.EINVAL) }
         let entries = try children(root)
+        try requireRecoveredSplits(among: entries)
+        return try callFolders(among: entries)
+    }
+
+    private func requireRecoveredSplits(among entries: [URL]) throws {
         for prepared in entries where prepared.lastPathComponent.hasPrefix(Self.splitPrefix) {
             guard try isDirectory(prepared), let record = try loadSplit(in: prepared) else { continue }
             let reason = "A split must finish recovery before the calls folder can be read."
@@ -970,7 +1004,6 @@ extension Calls {
             }
             throw SplitFailure.recoveryRequired(reason: reason)
         }
-        return try callFolders(among: entries)
     }
 }
 
@@ -980,7 +1013,7 @@ public enum CallsFailure: Error, Equatable, Sendable {
     case notFound(id: String)
     /// More than one call folder has this id.
     case ambiguous(id: String)
-    /// The title has a character a folder name cannot hold.
+    /// The title cannot be used in a folder name.
     case invalidTitle
     /// Removing the folder stopped part way; some of it may remain.
     case trashFailed(folder: String, reason: String)

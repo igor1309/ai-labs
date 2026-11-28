@@ -149,6 +149,9 @@ private func splitMessage(_ message: SplitMessage, text: SettingsText) -> String
         case let .failed(reason): reason
         case .refused(.inactiveFolder): text(.splitInactive)
         case .refused(.folderMove): text(.splitFolderMove)
+        case .refused(.busy): text(.splitBusy)
+        case .refused(.invalidTitle): text(.callInvalidTitle)
+        case .refused(.journalUnavailable): text(.splitJournalUnavailable)
         case .refused(.expiredTranscript): text(.splitExpired)
         case .refused(.invalidChoice): text(.splitInvalidChoice)
         case let .refused(.recoveryRequired(reason)), let .refused(.committed(_, reason)): text(.splitRecovery, reason)

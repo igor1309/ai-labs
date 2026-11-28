@@ -16,7 +16,7 @@ struct ReplacementNotes: Sendable {
     let makeID: @Sendable () -> String
     let disk: any SummaryFiles.Disk
 
-    func snapshot() -> @Sendable (Data, URL) throws -> Void {
+    func snapshot(reuseSpeakerLabels: Bool) -> @Sendable (Data, URL) throws -> Void {
         let config = preferences()
         guard config.enabled else { return { _, _ in } }
         let keeping = keeping(), userName = userName(), template = template()
@@ -28,7 +28,7 @@ struct ReplacementNotes: Sendable {
             let submission = SummariesSubmission(call: "", entries: entries, finalWrite: true, usable: true,
                                                  transcriptIdentity: Calls.transcriptIdentity(bytes))
             var job = summaryJob(for: submission, config: config, id: makeID())
-            job.speakersNamed = true
+            job.speakersNamed = reuseSpeakerLabels
             job.keepPrevious = keeping
             job.userName = userName
             job.template = template.jobTemplate

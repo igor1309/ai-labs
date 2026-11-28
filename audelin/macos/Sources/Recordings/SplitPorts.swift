@@ -51,6 +51,9 @@ public struct SplitReplacement: Equatable, Sendable {
 public enum SplitRefusal: Error, Equatable, Sendable {
     case inactiveFolder
     case folderMove
+    case busy
+    case invalidTitle
+    case journalUnavailable
     case expiredTranscript
     case invalidChoice
     case recoveryRequired(String)

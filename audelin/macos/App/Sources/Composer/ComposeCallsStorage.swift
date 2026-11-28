@@ -113,7 +113,7 @@ struct SummaryCalls: RecordingsCalls {
     func prepareMove(to destination: URL) async throws -> [MoveCall] { try await storage.prepareMove(to: destination) }
     func move(id: String, to destination: URL) async throws -> Int64 { try await storage.move(id: id, to: destination) }
     func merge(ids: [String]) async throws -> String {
-        try await mergeCalls(ids: ids, storage: storage, binding: binding, release: release, stageNotes: notes?.snapshot())
+        try await mergeCalls(ids: ids, storage: storage, binding: binding, release: release, stageNotes: notes?.snapshot(reuseSpeakerLabels: false))
     }
     func setTags(id: String, tags: [String]) async throws {
         try await storage.writeTags(id: id) { try TagsFile.write(tags, in: $0) }

@@ -175,7 +175,7 @@ public func compose(
     Task { for await transaction in transactions { summaries.send(.transaction(running: transaction == .running)) } }
 }
 
-/// Passes every committed replacement in reduction order, including replacements that reuse an id.
+/// Passes every committed replacement in reduction order, even if its list refresh fails.
 @MainActor func subscribeCallReplacements(_ states: AsyncStream<RecordingsState>,
                                          to send: @escaping @MainActor (SummariesEvent) -> Void) -> Task<Void, Never> {
     Task {

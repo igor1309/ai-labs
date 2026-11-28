@@ -14,9 +14,12 @@ Evidence: Missing.
 
 ## S-3 Recover notes after a split
 
-Drive: Restore a committed fixture with staged jobs and verify that both results use only their respective transcript.
+Drive: Interrupt publication after part 1, reopen through fresh calls
+storage and run both recovered pending jobs. Compare the notes and their
+transcript identities with the respective parts. Reopen and merge a part
+with named and unattributed speech and verify both labels survive.
 
-Evidence: Missing.
+Evidence: `SplitCompositionTests.stagedPartJobsUseOnlyTheirSavedNamedEntries`.
 
 ## S-4 Keep the clock across an audio gap
 
@@ -29,3 +32,10 @@ Evidence: Missing.
 Drive: Merge a split with no missing audio between the two parts and check that the rendered transcript retains the boundary marker.
 
 Evidence: Missing.
+
+## An eligible notes job cannot be written
+
+Drive: Fail the pending record's write during each transaction and compare
+the original folder contents and listing.
+
+Evidence: `SplitCompositionTests.anEligibleNotesWriteFailureKeepsOriginalFoldersIntact`.

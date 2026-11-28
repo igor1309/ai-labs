@@ -28,9 +28,13 @@ struct TranscriptAgainPorts: Sendable {
 
     func originals(_ id: String) async throws -> [ReRecognition.OriginalCall] {
         let originals = try await storage.originals(id: id)
-        guard let start = originals.first?.start else { throw CallsFailure.notFound(id: id) }
-        return originals.map { .init(id: $0.id, farTrack: $0.callTrack.path, microphoneTrack: $0.microphoneTrack.path,
-                                     duration: $0.duration, start: $0.start.timeIntervalSince(start)) }
+        guard let first = originals.first else { throw CallsFailure.notFound(id: id) }
+        let origin = (try? await savedTranscript(id))?.origin
+        let start = origin?.timelineStart ?? first.start
+        return zip(originals, recordingStarts(originals, origin: origin)).map { original, recordedStart in
+            .init(id: original.id, farTrack: original.callTrack.path, microphoneTrack: original.microphoneTrack.path,
+                  duration: original.duration, start: recordedStart.timeIntervalSince(start))
+        }
     }
 
     func hear(_ path: String, progress: ReRecognition.Fraction) async throws -> ReRecognition.Heard {
@@ -76,7 +80,7 @@ struct TranscriptAgainPorts: Sendable {
     }
 
     func readOld(_ id: String) async throws -> [ReRecognition.OldSpeaker] {
-        let saved = TranscriptFormat.read(String(decoding: try await storage.savedTranscript(id: id), as: UTF8.self))
+        let saved = try await savedTranscript(id)
         let duration = try await storage.list().first { $0.id == id }?.duration ?? 0
         return saved.speakers.map { speaker in
             .init(name: speaker.name, ranges: saved.segments.enumerated().compactMap { index, row in
@@ -88,9 +92,12 @@ struct TranscriptAgainPorts: Sendable {
     }
 
     func publish(_ id: String, transcript: ReRecognition.Transcript) async throws {
-        guard let start = try await storage.list().first(where: { $0.id == id })?.start else { throw CallsFailure.notFound(id: id) }
-        let saved = TranscriptFormat.read(String(decoding: try await storage.savedTranscript(id: id), as: UTF8.self))
-        let parts: [TranscriptJoin.Part<TranscriptFormat.Segment, TranscriptFormat.Speaker, TranscriptFormat.CallOrigin?>] = transcript.originals.map { part in
+        let saved = try await savedTranscript(id)
+        let originals = try await storage.originals(id: id)
+        let starts = Dictionary(uniqueKeysWithValues: zip(originals.map { $0.callTrack.path },
+                                                          recordingStarts(originals, origin: saved.origin)))
+        let parts: [TranscriptJoin.Part<TranscriptFormat.Segment, TranscriptFormat.Speaker, TranscriptFormat.CallOrigin?>] = try transcript.originals.map { part in
+            guard let start = starts[part.original.farTrack] else { throw CallsFailure.notFound(id: part.original.id) }
             let release = TranscriptFormat.Release(version: part.origin.build.version, build: part.origin.build.number)
             let split: TranscriptFormat.Split = switch part.origin.splitting {
             case let .done(diarizer): .done(diarizer: diarizer, release: release)
@@ -101,12 +108,20 @@ struct TranscriptAgainPorts: Sendable {
             let speakers = part.far.map { TranscriptFormat.Speaker(id: String($0.id), name: $0.name, state: $0.name == nil ? "diarized" : "confirmed") }
             let far = self.farRows(part.far)
             let combined = (far + self.rows(part.microphone, side: .mine)).sorted { $0.start < $1.start }
-            return TranscriptJoin.Part(start: start.addingTimeInterval(part.original.start), length: part.original.duration,
-                rows: combined, speakers: speakers, originals: [.init(start: start.addingTimeInterval(part.original.start), origin: Optional(origin))])
+            return TranscriptJoin.Part(start: start, length: part.original.duration,
+                rows: combined, speakers: speakers, originals: [.init(start: start, origin: Optional(origin))])
         }
         let joined = TranscriptJoin.join(parts)
+        // Joining measures from the earliest recording. A split's saved clock can start before it.
+        // Legacy rows stay relative to the first recording, displayed from the folder minute.
+        let offset = saved.origin?.timelineStart.flatMap { timeline in
+            joined.originals.first?.start.timeIntervalSince(timeline)
+        } ?? 0
         let rows = joined.items.map { item -> TranscriptFormat.Segment in
-            switch item { case let .row(row): row; case let .gap(at, length): .gap(at: at, length: length) }
+            switch item {
+            case let .row(row): row.moved(to: row.start + offset, speaker: row.speaker)
+            case let .gap(at, length): .gap(at: at + offset, length: length)
+            }
         }
         var format = TranscriptFormat()
         let chunks = try format.render(rows, speakers: joined.speakers,
@@ -118,6 +133,20 @@ struct TranscriptAgainPorts: Sendable {
             do { for chunk in chunks { try Task.checkCancellation(); try file.write(chunk) }; try file.flush() }
             catch { binding.remove(at: url); throw error }
         }
+    }
+
+    private func recordingStarts(_ recordings: [Calls.Original], origin: TranscriptFormat.Origin?) -> [Date] {
+        // An explicit transcript clock can predate recording start files.
+        guard let origin, origin.timelineStart != nil, origin.calls.count == recordings.count else {
+            return recordings.map(\.start)
+        }
+        return zip(recordings, origin.calls).map { recording, saved in
+            recording.hasRecordedStart ? recording.start : saved.start
+        }
+    }
+
+    private func savedTranscript(_ id: String) async throws -> TranscriptFormat.Saved {
+        TranscriptFormat.read(String(decoding: try await storage.savedTranscript(id: id), as: UTF8.self))
     }
 
     /// The far side in call order: the split hands each speaker's words together, so a speaker

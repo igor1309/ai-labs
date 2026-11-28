@@ -25,6 +25,9 @@ to make it again with a newer Audelin. The transcript is owned by
 - **A merged call tells each original call's origin by its start,** in
   order, and the version that merged them; remerging lists original calls,
   never an earlier merge as one, also for merges made before origins.
+- **Making a transcript again keeps the recording starts in the origin**
+  and places new rows on the transcript's explicit timeline when one
+  exists. A legacy transcript still displays from its folder minute.
 - **No origin is unknown, never guessed:** a transcript without one reads,
   merges and makes notes as before; in a merge its call reads unknown. Only
   the file tells the origin in this feature.

@@ -2,6 +2,11 @@
 
 Observer: the caller reporting a call replacement.
 
+Split jobs reuse saved speaker labels. Ordinary merge jobs still run
+speaker identification when it is enabled. A job admitted for a replacement
+must be staged before publication. If staging fails, the original calls
+remain in place.
+
 ```gherkin
 Feature: Summary jobs replacement
 

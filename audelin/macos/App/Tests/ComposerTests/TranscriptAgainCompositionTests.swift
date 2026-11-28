@@ -270,6 +270,8 @@ struct TranscriptAgainCompositionTests {
                 #expect(read.speakers.map(\.name) == ["Ada"])
                 #expect(read.origin?.calls.first?.origin?.hearing == testTranscriptBuild.release)
                 #expect(read.origin?.timelineStart == timelineStart)
+                #expect(read.origin?.calls.map(\.start) == [timelineStart])
+                #expect(read.segments.map(\.start) == [1, 2])
                 await calls.send(.restorePreviousTranscript(id))
                 for await state in Observations({ calls.recordingsState }) where state.transcriptChanged?.request == 2 && !state.isListing { break }
                 for await detail in Observations({ calls.detail }) where detail?.transcriptMark == nil { break }

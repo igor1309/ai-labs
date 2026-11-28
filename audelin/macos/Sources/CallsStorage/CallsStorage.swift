@@ -20,6 +20,7 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
     private struct State {
         var recordingFolder: URL
         var journal = CallsJournal()
+        var journalLoaded: Bool
     }
     private let state: Mutex<State>
     private let journal: URL?
@@ -40,7 +41,7 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
                 makeCalls: @escaping @Sendable (URL) -> Calls,
                 operation: CallsStorageGuard = .serial()) {
         self.operation = operation
-        state = Mutex(State(recordingFolder: directory(folder)))
+        state = Mutex(State(recordingFolder: directory(folder), journalLoaded: journal == nil))
         self.readPart = readPart
         self.journal = journal; self.writeJournal = writeJournal; self.makeCalls = makeCalls
     }
@@ -75,7 +76,9 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
     public func restore() async throws {
         try await perform { [self] in
             try state.withLock { state in
-                if let saved = try readJournal() { state.journal = saved }
+                state.journalLoaded = false
+                state.journal = try readJournal() ?? CallsJournal()
+                state.journalLoaded = true
                 // A transcript is changed in the folder that owns its call, so each owning folder
                 // is put back before any of its calls is listed or moved on.
                 let active = state.recordingFolder
@@ -137,7 +140,10 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
 
     /// Retained volumes need not be mounted to reserve the calls they own.
     public func occupiedCallNames() throws -> [String] {
-        state.withLock { Array(Set($0.journal.moves.keys).union($0.journal.owners.keys)) }
+        try state.withLock { state in
+            try makeCalls(state.recordingFolder).requireRecoveredSplits()
+            return Array(Set(state.journal.moves.keys).union(state.journal.owners.keys))
+        }
     }
     private func recover(_ state: inout State, id: String? = nil) {
         let ids = id.map { [$0] } ?? Array(state.journal.moves.keys)
@@ -275,6 +281,8 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
     public enum SplitFailure: Error, Equatable, Sendable {
         case inactive(id: String)
         case heldByMove(id: String)
+        case busy
+        case journalUnavailable
         case expiredTranscript(id: String)
     }
 
@@ -301,7 +309,6 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
     ) throws -> SplitReplacement
 
     private func splitRoot(id: String, state: State) throws -> URL {
-        if folderClaim.withLock({ $0.holder?.0 == .move }) { throw SplitFailure.heldByMove(id: id) }
         if let move = state.journal.moves[id], ![.source, .destination].contains(move.phase) {
             throw SplitFailure.heldByMove(id: id)
         }
@@ -313,14 +320,23 @@ public final class CallsStorage: SummaryFiles.Locations, Sendable {
     /// Reads the bytes used for split choices together with their identity, within the storage turn.
     public func splitTranscript(id: String) async throws -> Calls.SplitTranscript {
         try await perform { [self] in
-            try state.withLock { state in try makeCalls(splitRoot(id: id, state: state)).splitTranscript(id: id) }
+            if folderClaim.withLock({ $0.holder?.0 == .move }) { throw SplitFailure.heldByMove(id: id) }
+            return try state.withLock { state in try makeCalls(splitRoot(id: id, state: state)).splitTranscript(id: id) }
         }
     }
 
-    /// Reserves the journal's ids and runs the folder transaction within the storage turn.
+    /// Holds the folder claim through preparation and publication, after waiting for the storage turn.
     public func split(id: String, expectedTranscript: String, replace: SplitFolders) async throws -> SplitReplacement {
         try await perform { [self] in
-            try state.withLock { state in
+            let token: CallsFolderToken
+            switch takeFolder(for: .split) {
+            case let .granted(grant): token = grant
+            case .refused(by: .move): throw SplitFailure.heldByMove(id: id)
+            case .refused: throw SplitFailure.busy
+            }
+            defer { releaseFolder(token) }
+            return try state.withLock { state in
+                guard state.journalLoaded else { throw SplitFailure.journalUnavailable }
                 let root = try splitRoot(id: id, state: state)
                 let reserved = Set(state.journal.moves.keys).union(state.journal.owners.keys)
                 guard try makeCalls(root).transcriptFacts(id: id).identity == expectedTranscript else {

@@ -19,6 +19,7 @@ public enum SettingsPhrase: String, CaseIterable, Sendable {
     case splitInvalidChoice = "split.invalidChoice"
     case splitRefreshFailed = "split.refreshFailed"
     case splitRecovery = "split.recovery"
+    case splitJournalUnavailable = "split.journalUnavailable"
     case transcriptNotIdle = "transcript.notIdle"
     case transcriptActionUnderWay = "transcript.actionUnderWay"
     case transcriptNoPrevious = "transcript.noPrevious"

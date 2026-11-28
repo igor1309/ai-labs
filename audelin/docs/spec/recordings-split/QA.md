@@ -14,15 +14,19 @@ Evidence: `RecordingsSplitTests.theDraftUsesTheAppLabelAndRechecksIdlenessOnConf
 
 ## S-3 Show successful replacement
 
-Drive: Complete the fake split and list ports and inspect the selected part; check that the replacement carries both new identities.
+Drive: Complete the split and fail the listing. Check the notes subscriber
+gets both identities once and the window selects part 1 after a complete
+listing.
 
-Evidence: `RecordingsSplitTests.publishesBothPartsAndSelectsTheFirstOnlyAfterACompleteList`.
+Evidence: `RecordingsSplitTests.publishesBothPartsAndSelectsTheFirstOnlyAfterACompleteList`
+and `SplitSelectionWiringTests`.
 
 ## S-4 Keep the choices after failure
 
 Drive: Complete the split port with an error and compare visible sheet state.
 
-Evidence: `RecordingsSplitTests.failuresKeepTheDraftAndExpiryRequiresAChoiceFromTheNewTranscript`.
+Evidence: `RecordingsSplitTests.failuresKeepTheDraftAndExpiryRequiresAChoiceFromTheNewTranscript`
+and `aPrecommitRefusalKeepsTheBoundaryAndBothTitles`.
 
 ## S-5 Expose a choice read failure
 
