@@ -69,6 +69,8 @@ let package = Package(
         .library(name: "TrackFile", targets: ["TrackFile"]),
         .library(name: "TranscriptFormat", targets: ["TranscriptFormat"]),
         .library(name: "TranscriptJoin", targets: ["TranscriptJoin"]),
+        .library(name: "TranscriptSplit", targets: ["TranscriptSplit"]),
+        .library(name: "SplitPoints", targets: ["SplitPoints"]),
         .library(name: "TranscriptFile", targets: ["TranscriptFile"]),
         .library(name: "SavePacing", targets: ["SavePacing"]),
         .library(name: "LatestText", targets: ["LatestText"]),
@@ -278,6 +280,10 @@ let package = Package(
         .testTarget(name: "TranscriptFormatTests", dependencies: ["TranscriptFormat"]),
         .target(name: "TranscriptJoin"),
         .testTarget(name: "TranscriptJoinTests", dependencies: ["TranscriptJoin"]),
+        .target(name: "TranscriptSplit"),
+        .testTarget(name: "TranscriptSplitTests", dependencies: ["TranscriptSplit"]),
+        .target(name: "SplitPoints"),
+        .testTarget(name: "SplitPointsTests", dependencies: ["SplitPoints"]),
         .target(
             name: "TranscriptFile"
         ),

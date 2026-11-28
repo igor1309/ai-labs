@@ -25,6 +25,12 @@ public actor TrackFile {
     public nonisolated static func duration(at url: URL) throws -> TimeInterval {
         try DiskTrackBinding.duration(at: url)
     }
+
+    /// Copies frames before and from `cut`, in seconds from the track's start, to
+    /// fresh CAF files. An absent source or an empty range creates no file.
+    public nonisolated static func split(at cut: TimeInterval, source: URL, before: URL, after: URL) throws {
+        try DiskTrackBinding.split(at: cut, source: source, before: before, after: after)
+    }
     public struct SavedChunk: Sendable {
         public let start: TimeInterval
         public let samples: [Float]

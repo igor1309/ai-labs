@@ -55,6 +55,19 @@ struct TranscriptOriginTests {
         #expect(try text(format.render(saved.segments, speakers: saved.speakers, origin: saved.origin)) == legacy)
     }
 
+    @Test func exactTimelineStartRoundTripsIndependentlyOfRecordingStarts() throws {
+        let start = fixtureStart.addingTimeInterval(23.125)
+        let origin = TranscriptFormat.Origin(calls: fixtureOrigin.calls, timelineStart: start)
+        let row = TranscriptFormat.Segment(side: .mine, start: 0, settled: "First words", pending: "")
+        var format = TranscriptFormat()
+        let markdown = try text(format.render([row], origin: origin))
+        let saved = TranscriptFormat.read(markdown)
+        #expect(markdown.contains("\"timelineStart\" : 1800000023.125"))
+        #expect(saved == .init(segments: [row], speakers: [], origin: origin))
+        #expect(TranscriptFormat.read(fixtureFrontMatter + "# Transcript\n").origin?.timelineStart == nil)
+        #expect(TranscriptFormat.namedEntries(markdown) == [.init(label: "Me", start: 0, words: "First words")])
+    }
+
     @Test func finishingOutcomesUnknownCallsAndMergingReleaseRoundTrip() throws {
         let release = TranscriptFormat.Release(version: "1.2", build: "34")
         let splits: [TranscriptFormat.Split?] = [nil, .done(diarizer: "VBX", release: release), .nothingKept(release: release), .skipped(release: release)]

@@ -224,10 +224,12 @@ struct TranscriptAgainCompositionTests {
             let id = "1970.01.01-1000", folder = root.appendingPathComponent(id)
             try await FixtureTrack.write(far: 1, microphone: 2, seconds: 4, in: folder)
             var format = TranscriptFormat()
+            let timelineStart = Date(timeIntervalSince1970: 36_023.125)
             let old = try format.render([
                 .init(side: .theirs, start: 1, settled: "Old call", pending: "", speaker: "p"),
                 .init(side: .mine, start: 2, settled: "Old microphone", pending: ""),
-            ], speakers: [.init(id: "p", name: "Ada", state: "confirmed")]).chunks.reduce(Data(), +)
+            ], speakers: [.init(id: "p", name: "Ada", state: "confirmed")],
+               origin: .init(calls: [.init(start: timelineStart, origin: nil)], timelineStart: timelineStart)).chunks.reduce(Data(), +)
             try old.write(to: folder.appendingPathComponent("transcript.md"))
             let storage = callsStorage(folder: root, timeZone: .gmt, trash: removeForTrash)
             let files = SummaryFiles.Files(locations: storage, disk: FileDisk(), ownershipDirectory: root.appendingPathComponent("leases"))
@@ -267,6 +269,7 @@ struct TranscriptAgainCompositionTests {
                 #expect(recognizers.heard.all.map(\.track) == [1, 2])
                 #expect(read.speakers.map(\.name) == ["Ada"])
                 #expect(read.origin?.calls.first?.origin?.hearing == testTranscriptBuild.release)
+                #expect(read.origin?.timelineStart == timelineStart)
                 await calls.send(.restorePreviousTranscript(id))
                 for await state in Observations({ calls.recordingsState }) where state.transcriptChanged?.request == 2 && !state.isListing { break }
                 for await detail in Observations({ calls.detail }) where detail?.transcriptMark == nil { break }

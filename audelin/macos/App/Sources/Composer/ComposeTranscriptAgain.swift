@@ -89,6 +89,7 @@ struct TranscriptAgainPorts: Sendable {
 
     func publish(_ id: String, transcript: ReRecognition.Transcript) async throws {
         guard let start = try await storage.list().first(where: { $0.id == id })?.start else { throw CallsFailure.notFound(id: id) }
+        let saved = TranscriptFormat.read(String(decoding: try await storage.savedTranscript(id: id), as: UTF8.self))
         let parts: [TranscriptJoin.Part<TranscriptFormat.Segment, TranscriptFormat.Speaker, TranscriptFormat.CallOrigin?>] = transcript.originals.map { part in
             let release = TranscriptFormat.Release(version: part.origin.build.version, build: part.origin.build.number)
             let split: TranscriptFormat.Split = switch part.origin.splitting {
@@ -110,7 +111,8 @@ struct TranscriptAgainPorts: Sendable {
         var format = TranscriptFormat()
         let chunks = try format.render(rows, speakers: joined.speakers,
             origin: .init(calls: joined.originals.map { .init(start: $0.start, origin: $0.origin) },
-                          mergedBy: transcript.merger.map { .init(version: $0.version, build: $0.number) })).chunks
+                          mergedBy: transcript.merger.map { .init(version: $0.version, build: $0.number) },
+                          timelineStart: saved.origin?.timelineStart)).chunks
         try await storage.publishTranscript(id: id) { url in
             let file = try binding.create(at: url)
             do { for chunk in chunks { try Task.checkCancellation(); try file.write(chunk) }; try file.flush() }
