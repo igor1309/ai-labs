@@ -155,15 +155,27 @@ extension Driver {
     /// The toolbar's merge control, found anywhere in the app: the toolbar is not inside the content view.
     func pressMergeControl() throws { try pressToolbarControl("calls.merge") }
 
-    /// The toolbar's split control; it changes its icon as the sheet opens, as merge does.
-    func pressSplitControl() throws { try pressToolbarControl("calls.split") }
+    /// The toolbar's split control. Returns the press's own result for a caller's failure message:
+    /// callers judge the press by whether the sheet opens.
+    @discardableResult func pressSplitControl() throws -> AXError { try pressToolbarControl("calls.split") }
 
-    private func pressToolbarControl(_ identifier: String) throws {
+    @discardableResult private func pressToolbarControl(_ identifier: String) throws -> AXError {
         let control = try wait(identifier) {
             descendants(root).first { string($0, kAXIdentifierAttribute) == identifier }
         }
-        // The control can report a failure for a press it acted on, as its icon changes;
-        // each caller waits on what the press does instead.
-        _ = AXUIElementPerformAction(control, kAXPressAction as CFString)
+        return AXUIElementPerformAction(control, kAXPressAction as CFString)
+    }
+
+    /// Focuses a field the way a click does and waits until it reports focus.
+    func focus(_ identifier: String) throws {
+        let field = try element(identifier)
+        let result = AXUIElementSetAttributeValue(field, kAXFocusedAttribute as CFString, kCFBooleanTrue)
+        guard result == .success else { throw LiveFailure("Focusing \(identifier) failed: \(result.rawValue)") }
+        _ = try wait("focus on \(identifier)") { () -> Bool? in
+            guard let field = descendants(root).first(where: { string($0, kAXIdentifierAttribute) == identifier }) else { return nil }
+            var focused: CFTypeRef?
+            AXUIElementCopyAttributeValue(field, kAXFocusedAttribute as CFString, &focused)
+            return (focused as? Bool) == true ? true : nil
+        }
     }
 }

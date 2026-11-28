@@ -78,7 +78,7 @@ private let firstWords = "Готовим план продукта.", secondWord
         try driver.press("calls.split.choice.75")
         try edit("calls.split.first", firstTitle, driver)
         try edit("calls.split.second", secondTitle, driver)
-        AXUIElementSetAttributeValue(try driver.element("calls.split.first"), kAXFocusedAttribute as CFString, kCFBooleanTrue)
+        try driver.focus("calls.split.first")
         try driver.screenshot("choosing-split", into: output)
         try driver.press("calls.split.confirm")
         try driver.absent("calls.split.sheet")
@@ -123,20 +123,16 @@ private let firstWords = "Готовим план продукта.", secondWord
 
     @MainActor private static func openSplit(_ driver: Driver) throws {
         _ = try driver.element("calls.split", value: { $0 == "Разделить звонок…" })
-        try driver.pressSplitControl()
-        _ = try driver.element("calls.split.confirm")
+        let press = try driver.pressSplitControl()
+        do { _ = try driver.element("calls.split.confirm") } catch {
+            throw LiveFailure("The split sheet did not open; the press returned \(press.rawValue): \(error)")
+        }
     }
 
     /// Types a title the way a person does: focus the field, then replace its text. The binding sees the
     /// change while the field is editing; a value set on an unfocused field never reaches it.
     @MainActor private static func edit(_ id: String, _ value: String, _ driver: Driver) throws {
-        AXUIElementSetAttributeValue(try driver.element(id), kAXFocusedAttribute as CFString, kCFBooleanTrue)
-        _ = try driver.wait("focus on \(id)") { () -> Bool? in
-            guard let field = try? driver.element(id) else { return nil }
-            var focused: CFTypeRef?
-            AXUIElementCopyAttributeValue(field, kAXFocusedAttribute as CFString, &focused)
-            return (focused as? Bool) == true ? true : nil
-        }
+        try driver.focus(id)
         let result = AXUIElementSetAttributeValue(try driver.element(id), kAXValueAttribute as CFString, value as CFString)
         guard result == .success else { throw LiveFailure("Editing \(id) failed: \(result.rawValue)") }
         _ = try driver.element(id, value: { $0 == value })
