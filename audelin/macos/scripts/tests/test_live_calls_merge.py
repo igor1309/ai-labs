@@ -38,5 +38,6 @@ esac
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout.splitlines(), [
+                "--support", str(live / "calls-driver.swift"),
                 str(live / "calls-merge.swift"), str(bin_path / "CallsRehearsal"),
             ])
