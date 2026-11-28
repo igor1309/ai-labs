@@ -183,6 +183,16 @@ includes Britannica Kids. Britannica's tons are short tons of 907 kg.
 | `nothosaurus` | 260 kg | Length 4 m (Britannica, from the proposal). Zhao 2026's Seeleyosaurus, 3.66 m and 199 kg, cubed to 4 m: 199 × (4 / 3.66)³ = 260 kg |
 | `tupandactylus` | 11 kg | Wingspan 4 m (from the proposal). Witton 2008's Pteranodon, 5.96 m and 36.7 kg, cubed to 4 m: 36.7 × (4 / 5.96)³ = 11.1 kg |
 | `pterodaustro` | 2.7 kg | Wingspan 2.5 m (Britannica, from the proposal). Witton 2008's Pteranodon, 5.96 m and 36.7 kg, cubed to 2.5 m: 36.7 × (2.5 / 5.96)³ = 2.7 kg |
+| `stegoceras` | 40 kg | Length 2.4 m: NHM, which gives no mass; Britannica could not be read. The proposal's 2 m gave way to NHM. 40 kg is the proposal's working estimate; Pachycephalosaurus's 450 kg at 3 m cubed to 2.4 m gives 230 kg, Stegoceras being far lighter-built; both are under 500 kg |
+| `deinocheirus` | 6.4 t | Length 10 m: NHM, omnivorous; the proposal's 11 m gave way to NHM. NHM gives no mass and Britannica could not be read; 6.4 t is the peer-reviewed estimate of Lee and others 2014 (Nature 515: 257) |
+| `minmi` | 320 kg | Length 3 m: NHM, which gives no mass; Britannica could not be read. Ankylosaurus's 6 t at 8 m cubed to 3 m: 6,000 × (3 / 8)³ = 316 kg |
+| `albertosaurus` | 1.5 t | Length 9 m and mass 1,500 kg: NHM. The proposal's 2.5 t gave way to NHM |
+| `suchomimus` | 3.5 t | Length 11 m: NHM, which gives no mass; Britannica could not be read. Baryonyx's 1.7 t at 10 m cubed to 11 m gives 2.3 t, against the proposal's 3–4 t, so the estimates cross 3,000 kg |
+| `centrosaurus` | 1 t | Length 6 m and mass 1,000 kg: NHM. The proposal's 2.5 t gave way to NHM |
+| `lambeosaurus` | 3 t | Length 9 m: NHM, which gives no mass; Britannica could not be read. Parasaurolophus's 3.5 t at the same 9 m and Corythosaurus's 4 t at 10 m cubed to 9 m (2.9 t) give 2.9–3.5 t, crossing 3,000 kg |
+| `camarasaurus` | 20 t | Length 23 m and mass 20,000 kg: NHM. The proposal's 18 m and 18 t gave way to NHM |
+| `saltasaurus` | 7 t | Length 12 m: NHM, which gives no mass; Britannica could not be read. 7 t is the proposal's working estimate |
+| `nigersaurus` | 4 t | NHM gives 15 m, far above Sereno and others 2007 (PLoS ONE 2: e1230), about 9 m, the length of its described skeleton, so 9 m is kept and NHM's figure is noted. NHM gives no mass; 4 t is Sereno's estimate; Diplodocus's 15 t at 26 m cubed to 9 m gives 0.65 t, so the estimates cross 3,000 kg |
 
 ## Hip heights
 
@@ -280,3 +290,13 @@ tibia + metatarsal III, over the femur unless said):
 | `ouranosaurus` | 1.5 m | 3 | NHM 7 m × Iguanodon, 2.2 m over NHM 10 m; MA12's femora could not be read |
 | `euoplocephalus` | 0.96 m | 3 | NHM 7 m × Ankylosaurus, 1.1 m over NHM 8 m; MA12's femora could not be read |
 | `majungasaurus` | 1.9 m | 3 | NHM 6 m × Carnotaurus, 2.5 m over NHM 8 m; PC16 could not be read |
+| `stegoceras` | 0.55 m | 1 | MO26, UALVP 2: femur 222, the three bones 545 |
+| `deinocheirus` | 3.2 m | 3 | NHM 10 m × Gallimimus, KK25 MPC-D100/11 1905 over NHM 6 m; Lee and others 2014 could not be read |
+| `minmi` | 0.41 m | 3 | NHM 3 m × Ankylosaurus, 1.1 m over NHM 8 m |
+| `albertosaurus` | 2.3 m | 3 | NHM 9 m × Tyrannosaurus, 3115 over NHM 12 m; PC16 could not be read |
+| `suchomimus` | 2.4 m | 1 | IB14, MNN GAD500: 108 + 95 + 38 cm |
+| `centrosaurus` | 2.6 m | 3 | NHM 6 m × Chasmosaurus, 2188 over NHM 5 m; MA12's femora could not be read |
+| `lambeosaurus` | 2.2 m | 3 | NHM 9 m × Parasaurolophus, 2205 over NHM 9 m; MA12's femora could not be read |
+| `camarasaurus` | 3.6 m | 3 | NHM 23 m × Brachiosaurus, 3450 over NHM 22 m; TS15's SMA 0002 femur, 935 mm, is too small for its length |
+| `saltasaurus` | 1.5 m | 3 | NHM 12 m × Argentinosaurus, 4320 over NHM 35 m; MZ04 could not be read |
+| `nigersaurus` | 0.96 m | 3 | 9 m × Diplodocus, 2779 over NHM 26 m |
