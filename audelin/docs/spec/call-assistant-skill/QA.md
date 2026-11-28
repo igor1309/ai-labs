@@ -15,7 +15,7 @@ Drive: an empty fixture folder; ask to follow; add a live transcript; the thread
 Drive: start the source by hand, ask to follow; one source process, and the thread reads windows. Evidence: Pass. The source was started by hand on the fixture folder before following; the follow client connected to it and read windows, and no second source was started.
 
 ## S-4 Stopping leaves another thread following
-Drive: two threads follow; stop the first, the second reads its next window; again with the second stopped first. Evidence: Missing.
+Drive: two threads follow; stop the first, the second reads its next window; again with the second stopped first. Evidence: Pass. Two threads followed one source. With the first stopped, the second read its next window (00:02:00–00:05:00) and the source stayed up; reversed, with the second stopped, the first read its next window (00:04:00–00:07:00). Once the last client left, the source ended by itself with exit 0.
 
 ## S-5 A source that cannot start is said
 Drive: hold the source's port with a plain listener that is not a source, so the source exits at start; read the failure. Evidence: Pass. With the port held by a plain listener the source exited 1 with `listen tcp 127.0.0.1:<port>: bind: address already in use`; the follow client printed "Following could not start: no call event source is running." and exited 2.
