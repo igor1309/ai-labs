@@ -110,6 +110,9 @@ public struct SummariesEffectHandler<Template: SummariesTemplate>: Sendable {
         case let .release(jobs):
             for job in jobs { await generation.cancel(job); await storage.release(job) }
             return .released
+        case let .releaseReplacement(job):
+            await storage.release(job)
+            return .replacementReleased(job.call)
         case let .reload(calls):
             var results: [String: SummariesSaved?] = [:]
             for call in calls {

@@ -184,7 +184,7 @@ struct RecordingsMoveTests {
     @Test(arguments: handlerCases)
     fileprivate func handlersDeliverOnlyTheSpysResult(_ test: HandlerCase) async {
         let spy = MoveSpy()
-        let handler = RecordingsEffectHandler(calls: spy, transcriptAgain: UnusedTranscriptPort(),
+        let handler = RecordingsEffectHandler(calls: spy, split: UnusedSplit(), transcriptAgain: UnusedTranscriptPort(),
             reserve: { if case let .reserved(value) = try? await spy.request(.reserveMove) { return value }; return nil },
             release: { _ = try? await spy.request(.releaseMove(token: $0)) },
             storeFolder: { _ = try await spy.request(.storeFolder($0)) },

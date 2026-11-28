@@ -18,11 +18,11 @@ LANES = {
     "compose": ("Composition", "#60a5fa", 40, 110, 1800, 130, 6),
     "ui": ("UI", "#7dd3fc", 40, 280, 460, 380, 2),
     "machines": ("State machines", "#fbbf24", 560, 280, 1240, 380, 5),
-    "text": ("Live text and plain components", "#bef264", 40, 680, 820, 722, 3),
+    "text": ("Live text and plain components", "#bef264", 40, 680, 820, 810, 3),
     "capture": ("Capture and processes", "#fb923c", 900, 680, 440, 550, 2),
     "storage": ("Storage", "#a78bfa", 1380, 680, 460, 550, 2),
-    "tools": ("Rehearsal and integration helpers", "#60a5fa", 40, 1442, 1800, 140, 4),
-    "external": ("Platform and packages", "#94a3b8", 40, 1602, 1800, 206, 4),
+    "tools": ("Rehearsal and integration helpers", "#60a5fa", 40, 1530, 1800, 140, 4),
+    "external": ("Platform and packages", "#94a3b8", 40, 1690, 1800, 206, 4),
 }
 
 # Target: (lane, line under its name, slot in the lane). Planned boxes have no target yet.
@@ -46,6 +46,7 @@ TARGETS = {
     "TranscriptJoin": ("text", "joins merged calls'\ntranscripts", 21),
     "TranscriptSplit": ("text", "splits transcript rows, speakers\nand recording ranges", 22),
     "SplitPoints": ("text", "ranks boundaries between\nspoken transcript entries", 23),
+    "SplitPreparation": ("text", "prepares both split parts\nin one folder transaction", 24),
     "ZoomAccessibility": ("capture", "who Zoom shows talking,\nthrough Accessibility", 7),
     "BrowserBridge": ("capture", "call observations from\nthe browser extension", 8),
     "AudelinNativeHost": ("capture", "native host the browser\nstarts; relays to the app", 9),
@@ -165,12 +166,12 @@ def main():
         sys.exit(f"update TARGETS: not drawn {unknown}, no longer in the package {gone}")
 
     cells = [
-        cell("canvas", "", "rounded=0;whiteSpace=wrap;html=1;fillColor=#252525;strokeColor=none;container=1;pointerEvents=0;", "1", 0, 0, 1880, 1878),
+        cell("canvas", "", "rounded=0;whiteSpace=wrap;html=1;fillColor=#252525;strokeColor=none;container=1;pointerEvents=0;", "1", 0, 0, 1880, 1966),
         cell("title", "Audelin", "text;html=1;align=left;verticalAlign=middle;fontSize=28;fontColor=#f8fafc;fontStyle=1;", "canvas", 40, 24, 400, 40),
         cell("subtitle", "components as built — generated from both package manifests by scripts/component-diagram.py",
              "text;html=1;align=left;verticalAlign=middle;fontSize=15;fontColor=#94a3b8;", "canvas", 42, 66, 900, 26),
         cell("legend", "solid box: a target · dashed box: planned · arrow: depends on",
-             "text;html=1;align=left;verticalAlign=middle;fontSize=13;fontColor=#94a3b8;", "canvas", 40, 1838, 900, 26),
+             "text;html=1;align=left;verticalAlign=middle;fontSize=13;fontColor=#94a3b8;", "canvas", 40, 1926, 900, 26),
     ]
     for lane, (title, colour, x, y, w, h, _) in LANES.items():
         cells.append(cell(f"lane-{lane}", title,

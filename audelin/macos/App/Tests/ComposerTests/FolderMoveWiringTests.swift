@@ -76,7 +76,7 @@ struct FolderMoveWiringTests {
         try await withComposition { rig in
             let spy = CallsMoveSpy()
             let claim = MoveFolderClaim(storage: callsStorage(folder: rig.root, timeZone: .gmt, trash: { _ in }))
-            let inputs = makeRecordings(handler: .init(calls: spy, transcriptAgain: UnexpectedTranscriptAgain(), reserve: claim.take, release: claim.release,
+            let inputs = makeRecordings(handler: .init(calls: spy, split: UnexpectedSplit(), transcriptAgain: UnexpectedTranscriptAgain(), reserve: claim.take, release: claim.release,
                 storeFolder: { await spy.store($0) }, describe: russianSettings.callsFailure),
                 text: russianSettingsText, initial: .init(callsFolder: rig.root))
             let hold = subscribeMoveHold({ inputs.state().callsFolderAvailable }, to: { await rig.menu.callsFolderMoving($0) })
@@ -119,7 +119,7 @@ struct FolderMoveWiringTests {
         try await withComposition { rig in
             let spy = CallsMoveSpy()
             let claim = MoveFolderClaim(storage: callsStorage(folder: rig.root, timeZone: .gmt, trash: { _ in }))
-            let inputs = makeRecordings(handler: .init(calls: spy, transcriptAgain: UnexpectedTranscriptAgain(), reserve: claim.take, release: claim.release,
+            let inputs = makeRecordings(handler: .init(calls: spy, split: UnexpectedSplit(), transcriptAgain: UnexpectedTranscriptAgain(), reserve: claim.take, release: claim.release,
                 storeFolder: { await spy.store($0) }, describe: russianSettings.callsFailure),
                 text: russianSettingsText, initial: .init(callsFolder: rig.root))
             let hold = subscribeMoveHold({ inputs.state().callsFolderAvailable }, to: { await rig.menu.callsFolderMoving($0) })

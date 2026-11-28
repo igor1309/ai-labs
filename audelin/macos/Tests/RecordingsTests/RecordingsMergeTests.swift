@@ -160,6 +160,7 @@ struct RecordingsMergeTests {
             $0.phase = .idle
             $0.mergeSelection = []
             $0.mergedCallID = "A"
+            $0.replacement = .init(removed: ["A", "B"], published: ["A"])
             $0.isListing = true; $0.listRequest = 1
         }
         assert(listed { $0.phase = .merging }, .merged("A"), delivers: nil)

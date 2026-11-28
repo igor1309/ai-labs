@@ -242,6 +242,7 @@ public final class AudelinMenu {
         finalizationSubscriptions = [speakers, transactions]
     }
 
+    func installCallReplacements(_ subscription: Task<Void, Never>) { finalizationSubscriptions.append(subscription) }
     func installMergeAvailability(_ subscription: Task<Void, Never>) { finalizationSubscriptions.append(subscription) }
     func installMoveHold(_ subscription: Task<Void, Never>) { finalizationSubscriptions.append(subscription) }
     func installNotifications(_ subscription: Task<Void, Never>) { finalizationSubscriptions.append(subscription) }

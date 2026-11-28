@@ -79,6 +79,8 @@ public struct RecordingsState: Equatable, Sendable {
     public var mergeSelection: Set<String> = []
     /// The call the last merge made, to be selected in the list.
     public var mergedCallID: String?
+    /// The last committed replacement, for subscribers that follow calls across a replacement.
+    public var replacement: RecordingsReplacement?
     /// Audelin is idle enough to merge or make a transcript again, as compose last said; not until it says so.
     public var mergeAvailable = false
     /// The tags save under way, one at a time.
@@ -113,14 +115,23 @@ public struct RecordingsState: Equatable, Sendable {
                 mergeSelection: Set<String> = [], mergedCallID: String? = nil, mergeAvailable: Bool = false,
                 tagsSave: TagsSave? = nil, tagsOutcome: TagsOutcome? = nil,
                 transcriptOffers: [String: TranscriptOffers] = [:], transcriptRun: TranscriptRun? = nil,
-                transcriptRequest: Int = 0, selectedCallID: String? = nil, transcriptChanged: TranscriptChange? = nil) {
+                transcriptRequest: Int = 0, selectedCallID: String? = nil, transcriptChanged: TranscriptChange? = nil,
+                replacement: RecordingsReplacement? = nil) {
         self.calls = calls; self.isListing = isListing; self.listRequest = listRequest; self.phase = phase; self.recordingID = recordingID
         self.failure = failure; self.callsFolder = callsFolder; self.callsFolderAvailable = callsFolderAvailable; self.moveToken = moveToken; self.stopping = stopping; self.stopped = stopped; self.move = move
         self.mergeSelection = mergeSelection; self.mergedCallID = mergedCallID; self.mergeAvailable = mergeAvailable
         self.tagsSave = tagsSave; self.tagsOutcome = tagsOutcome
         self.transcriptOffers = transcriptOffers; self.transcriptRun = transcriptRun
         self.transcriptRequest = transcriptRequest; self.selectedCallID = selectedCallID; self.transcriptChanged = transcriptChanged
+        self.replacement = replacement
     }
+}
+
+public struct RecordingsReplacement: Equatable, Sendable {
+    public let removed: [String]
+    public let published: [String]
+
+    public init(removed: [String], published: [String]) { self.removed = removed; self.published = published }
 }
 
 public enum RecordingsEvent: Equatable, Sendable {
@@ -148,6 +159,8 @@ public enum RecordingsEvent: Equatable, Sendable {
     /// Sets a call's tags under the caller's request id, which the outcome echoes.
     case setTags(request: Int, id: String, tags: [String])
     case tagsSet(request: Int, id: String), tagsSetFailed(request: Int, id: String, reason: String)
+    case splitChoicesRead(id: String, request: Int, Result<SplitChoices, SplitPortFailure>)
+    case splitFinished(Result<SplitReplacement, SplitPortFailure>)
 }
 
 public enum RecordingsEffect: Equatable, Sendable {
@@ -159,6 +172,8 @@ public enum RecordingsEffect: Equatable, Sendable {
     /// The calls to merge, in list order.
     case merge([String])
     case setTags(request: Int, id: String, tags: [String])
+    case readSplitChoices(id: String, request: Int)
+    case split(SplitRequest)
 }
 
 public struct RecordingsReducer: Sendable {
@@ -300,6 +315,7 @@ public struct RecordingsReducer: Sendable {
         case let .merged(id):
             guard state.phase == .runningMerge else { return (state, nil) }
             state.phase = .idle
+            state.replacement = .init(removed: state.mergeSelection.sorted(), published: [id])
             state.mergeSelection = []
             state.mergedCallID = id
             let list = Self.requestList(&state)
@@ -341,6 +357,7 @@ public struct RecordingsReducer: Sendable {
         }
         state.phase = .runningMerge
         state.failure = nil
+        state.replacement = nil
         return (state, .merge(state.calls.map(\.id).filter(state.mergeSelection.contains)))
     }
 
@@ -379,17 +396,19 @@ public struct RecordingsReducer: Sendable {
 public struct RecordingsEffectHandler: Sendable {
     private let transcriptAgain: any RecordingsTranscriptAgain
     private let calls: any RecordingsCalls
+    private let split: any RecordingsSplit & RecordingsSplitChoices
     private let reserve: @Sendable () async -> UInt64?
     private let release: @Sendable (UInt64) async -> Void
     private let storeFolder: @Sendable (URL) async throws -> Void
     private let describe: @Sendable (any Error) -> String
     /// `reserve` takes the calls-folder claim for a move, answering its token or nil when refused;
     /// `release` lets that token go. `describe` writes the sentence a failure shows, in the language the UI chose.
-    public init(calls: any RecordingsCalls, transcriptAgain: any RecordingsTranscriptAgain, reserve: @escaping @Sendable () async -> UInt64?,
+    public init(calls: any RecordingsCalls, split: any RecordingsSplit & RecordingsSplitChoices,
+                transcriptAgain: any RecordingsTranscriptAgain, reserve: @escaping @Sendable () async -> UInt64?,
                 release: @escaping @Sendable (UInt64) async -> Void, storeFolder: @escaping @Sendable (URL) async throws -> Void,
                 describe: @escaping @Sendable (any Error) -> String) {
         self.transcriptAgain = transcriptAgain
-        self.calls = calls; self.reserve = reserve; self.release = release; self.storeFolder = storeFolder; self.describe = describe
+        self.calls = calls; self.split = split; self.reserve = reserve; self.release = release; self.storeFolder = storeFolder; self.describe = describe
     }
 
     public func handle(_ effect: RecordingsEffect) -> AsyncStream<RecordingsEvent> {
@@ -441,9 +460,20 @@ public struct RecordingsEffectHandler: Sendable {
         case let .merge(ids):
             do { return .merged(try await calls.merge(ids: ids)) }
             catch { return .mergeFailed(describe(error)) }
+        case let .readSplitChoices(id, request):
+            do { return .splitChoicesRead(id: id, request: request, .success(try await split.splitChoices(id: id))) }
+            catch { return .splitChoicesRead(id: id, request: request, .failure(splitFailure(error))) }
+        case let .split(request):
+            do { return .splitFinished(.success(try await split.split(request))) }
+            catch { return .splitFinished(.failure(splitFailure(error))) }
         case let .setTags(request, id, tags):
             do { try await calls.setTags(id: id, tags: tags); return .tagsSet(request: request, id: id) }
             catch { return .tagsSetFailed(request: request, id: id, reason: describe(error)) }
         }
+    }
+
+    private func splitFailure(_ error: any Error) -> SplitPortFailure {
+        if let refusal = error as? SplitRefusal { return .refused(refusal) }
+        return .failed(describe(error))
     }
 }

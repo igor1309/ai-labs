@@ -234,7 +234,7 @@ private actor RestoreCallsSpy: RecordingsCalls {
 private func makeHandler(_ calls: RestoreCallsSpy, describe: @escaping @Sendable (any Error) -> String = { _ in
     Issue.record("Unexpected error"); return "error"
 }) -> RecordingsEffectHandler {
-    .init(calls: calls, transcriptAgain: UnusedTranscriptPort(),
+    .init(calls: calls, split: UnusedSplit(), transcriptAgain: UnusedTranscriptPort(),
           reserve: { Issue.record("Unexpected reservation"); return nil }, release: { _ in Issue.record("Unexpected release") },
           storeFolder: { _ in Issue.record("Unexpected folder write") }, describe: describe)
 }

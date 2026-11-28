@@ -200,7 +200,7 @@ public struct Calls: Sendable {
         operation.lock(); defer { operation.unlock() }
         let folder = try location(id: id)
         let data = try disk.read(folder.appendingPathComponent("transcript.md"))
-        let identity = data.map(Self.identity)
+        let identity = data.map(Self.transcriptIdentity)
         return Text(transcript: transcript(data.map { String(decoding: $0, as: UTF8.self) } ?? ""), identity: identity)
     }
 
@@ -217,11 +217,11 @@ public struct Calls: Sendable {
         operation.lock(); defer { operation.unlock() }
         let folder = try location(id: id)
         let data = try disk.read(folder.appendingPathComponent("transcript.md"))
-        let identity = data.map(Self.identity)
+        let identity = data.map(Self.transcriptIdentity)
         return .init(identity: identity, hasPrevious: try exists(folder.appendingPathComponent(Self.previousTranscript)))
     }
 
-    private static func identity(_ data: Data) -> String {
+    public static func transcriptIdentity(_ data: Data) -> String {
         SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
     }
 
@@ -659,11 +659,15 @@ extension Calls {
     public struct SplitTranscript: Equatable, Sendable {
         public let bytes: Data
         public let identity: String
+        public let folderStart: Date
     }
 
     public func splitTranscript(id: String) throws -> SplitTranscript {
+        operation.lock(); defer { operation.unlock() }
+        let folder = try location(id: id)
+        let name = try splitName(folder.lastPathComponent)
         let bytes = try savedTranscript(id: id)
-        return .init(bytes: bytes, identity: Self.identity(bytes))
+        return .init(bytes: bytes, identity: Self.transcriptIdentity(bytes), folderStart: name.start)
     }
 
     public enum SplitSide: String, Codable, Sendable {
@@ -717,7 +721,7 @@ extension Calls {
         let original = try location(id: id)
         let name = try splitName(original.lastPathComponent)
         let transcriptURL = original.appendingPathComponent("transcript.md")
-        guard let transcript = try disk.read(transcriptURL), Self.identity(transcript) == expectedTranscript else {
+        guard let transcript = try disk.read(transcriptURL), Self.transcriptIdentity(transcript) == expectedTranscript else {
             throw SplitFailure.expiredTranscript(id: id)
         }
         let leaves = try originals(in: original, name: name).sorted { ($0.start, $0.callTrack.path) < ($1.start, $1.callTrack.path) }

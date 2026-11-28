@@ -22,7 +22,7 @@ import TranscriptFormat
 struct TranscriptAgainCompositionTests {
     @Test @MainActor func recordingsPublishesEachWaitAndTerminalStateInOrder() async {
         let initial = RecordingsState(transcriptRun: .init(id: "A", request: 1), transcriptRequest: 1, selectedCallID: "A")
-        let inputs = makeRecordings(handler: .init(calls: UnusedCalls(), transcriptAgain: chain(hear: { _, _ in
+        let inputs = makeRecordings(handler: .init(calls: UnusedCalls(), split: UnexpectedSplit(), transcriptAgain: chain(hear: { _, _ in
             Issue.record("Unexpected recognition"); return .init(words: [], model: "unused")
         }), reserve: { nil }, release: { _ in }, storeFolder: { _ in }, describe: { String(describing: $0) }),
                                     text: { SettingsText(language: .russian) }, initial: initial)
@@ -40,7 +40,7 @@ struct TranscriptAgainCompositionTests {
 
     @Test func reportsCarryTheRequestIntoRecordings() async {
         let chain = chain(hear: { _, report in await report(0.4); return .init(words: [], model: "model") })
-        let handler = RecordingsEffectHandler(calls: UnusedCalls(), transcriptAgain: chain, reserve: { nil }, release: { _ in },
+        let handler = RecordingsEffectHandler(calls: UnusedCalls(), split: UnexpectedSplit(), transcriptAgain: chain, reserve: { nil }, release: { _ in },
                                               storeFolder: { _ in }, describe: { String(describing: $0) })
         var events: [RecordingsEvent] = []
         for await event in handler.handle(.makeTranscriptAgain(id: "call", request: 42)) { events.append(event) }
@@ -73,7 +73,7 @@ struct TranscriptAgainCompositionTests {
         }, split: { _, _ in nil }, clean: { _, _, _ in nil }, readOld: { _ in [] }, names: ReRecognition.carryNames,
            publish: { _, _ in if point == .publishing { throw Failure(description: reason) } }),
            build: .init(version: "version", number: "build"), describe: { "described: \($0)" })
-        let handler = RecordingsEffectHandler(calls: UnusedCalls(), transcriptAgain: chain, reserve: { nil }, release: { _ in },
+        let handler = RecordingsEffectHandler(calls: UnusedCalls(), split: UnexpectedSplit(), transcriptAgain: chain, reserve: { nil }, release: { _ in },
                                               storeFolder: { _ in }, describe: { String(describing: $0) })
         var events: [RecordingsEvent] = []
         for await event in handler.handle(.makeTranscriptAgain(id: "call", request: 42)) { events.append(event) }
@@ -155,7 +155,7 @@ struct TranscriptAgainCompositionTests {
             recognition: .init(hear: { _, _ in .init(words: [], model: "model") }, split: { _, _ in nil }, clean: { _, _, _ in nil },
                                readOld: { _ in [] }, names: ReRecognition.carryNames, publish: { id, _ in published.append(id) }),
             build: .init(version: "version", number: "number"), describe: { String(describing: $0) })
-        let handler = RecordingsEffectHandler(calls: UnusedCalls(), transcriptAgain: chain, reserve: { nil }, release: { _ in },
+        let handler = RecordingsEffectHandler(calls: UnusedCalls(), split: UnexpectedSplit(), transcriptAgain: chain, reserve: { nil }, release: { _ in },
                                               storeFolder: { _ in }, describe: { String(describing: $0) })
         let run = handler.handle(.makeTranscriptAgain(id: "call", request: 1))
         for await _ in handler.handle(.stopTranscriptAgain(id: "call", request: 1)) {}
