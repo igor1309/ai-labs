@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-28
+
+- LAB-1845: Split a recorded call at a transcript boundary, name both parts, and keep each part’s audio, speakers and tags. Audelin makes fresh notes for both parts when notes are enabled.
+
 ## 2026-11-21
 
 - LAB-1754: Stop in a finished call's panel no longer stops the call recording now. A far-side line said while the previous call's watch was still closing now takes its speaker's name once the new watch sees them.

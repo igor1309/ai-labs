@@ -131,7 +131,7 @@ platform; anything else breaks rule 1. The lanes of
 | Shared helper | nothing | SplitRows, CallFolderName, AudioConversion, ModelLoading |
 | UI | GlassLedger, NotesMarkdown, other UI | PanelUI, SettingsUI, MenuBar, CallsListUI, CallsWindowUI, SummaryPreviewUI, NotesMarkdown, GlassLedger |
 | Composition | anything | Composer, LiveAudio, RecordedCapture, CallsWindowShell, Audelin |
-| Test and rehearsal | anything | the crash writers, BlockingTestWork, RenderedText, the rehearsals |
+| Test and rehearsal | anything | the crash writers, BlockingTestWork, RenderedText, CallsRehearsalSupport, the rehearsals |
 
 A shared helper is a pure function or value with one reason to change of
 its own (a format, a conversion); it holds no domain type, so rule 3

@@ -134,6 +134,31 @@ struct CallsToolbarTests {
         #expect(merges == 2)
     }
 
+    @Test func splitFollowsMergeAndReportsWhyItCannotAct() throws {
+        var splits = 0
+        let sut = CallsToolbar(identifier: "split", text: .init(language: .russian), act: { _ in }, merge: {},
+                               split: { splits += 1 })
+        #expect(Array(sut.toolbarDefaultItemIdentifiers(sut.toolbar).prefix(2)) == [CallsToolbar.mergeItem, CallsToolbar.splitItem])
+        #expect(item(makeSUT(), CallsToolbar.splitItem) == nil)
+        let splitItem = try #require(item(sut, CallsToolbar.splitItem))
+        let button = try #require(splitItem.view as? NSButton)
+        let reason = SplitCallPreviews.unavailable.unavailableReason
+        sut.show(.init(call: true, copy: true, split: .unavailable(reason)))
+        #expect(!sut.validateToolbarItem(splitItem) && !button.isEnabled)
+        #expect(button.accessibilityIdentifier() == "calls.split")
+        #expect(button.accessibilityLabel() == "Разделить звонок…")
+        #expect(button.accessibilityHelp() == reason)
+        #expect(splitItem.toolTip == reason)
+        _ = (splitItem.target as? NSObject)?.perform(splitItem.action, with: splitItem)
+        #expect(splits == 0)
+
+        sut.show(.init(call: true, copy: true, split: .available))
+        sut.retitle(text: .init(language: .english))
+        #expect(button.isEnabled && button.toolTip == "Split call…")
+        button.performClick(nil)
+        #expect(splits == 1)
+    }
+
     private func makeSUT(act: @escaping (SummaryPreviewEvent) -> Void = { _ in }) -> CallsToolbar {
         CallsToolbar(identifier: "test", text: .init(language: .russian), act: act)
     }

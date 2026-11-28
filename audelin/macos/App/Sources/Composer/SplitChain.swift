@@ -18,7 +18,8 @@ extension TranscriptFormat.Speaker: SplitSpeaker {}
 
 private struct SplitPoint: SplitPointEntry {
     let start: Int
-    let words: String?
+    let row: TranscriptFormat.Segment
+    var words: String? { row.settled }
 }
 
 private typealias FileSplit = SplitPreparation<Calls.SplitSource, Calls.SplitRecording, Data>
@@ -36,7 +37,9 @@ struct SplitPorts: RecordingsSplitChoices, RecordingsSplit {
             return suggestions(saved, folderStart: snapshot.folderStart).compactMap { choice in
                 guard let before = choice.before.words, let after = choice.after.words else { return nil }
                 return .init(before: before, after: after, cut: choice.cut, gap: choice.gap,
-                             suggestsTransition: choice.suggestsTransition, secondPartMinute: choice.secondPartMinute)
+                             suggestsTransition: choice.suggestsTransition, secondPartMinute: choice.secondPartMinute,
+                             beforeSpeaker: TranscriptFormat.namedLabel(choice.before.row, speakers: saved.speakers),
+                             afterSpeaker: TranscriptFormat.namedLabel(choice.after.row, speakers: saved.speakers))
             }
         }, replace: { request, prepare, cutTrack in
             let replacement = try await storage.split(id: request.id, expectedTranscript: request.identity) { turn, register in
@@ -60,7 +63,8 @@ struct SplitPorts: RecordingsSplitChoices, RecordingsSplit {
             let result = try await preparation.choices(id: id)
             return .init(transcriptIdentity: result.identity, choices: result.choices.map {
                 .init(before: $0.before, after: $0.after, cut: $0.cut, gap: $0.gap,
-                      suggestsTransition: $0.suggestsTransition, secondPartMinute: $0.secondPartMinute)
+                      suggestsTransition: $0.suggestsTransition, secondPartMinute: $0.secondPartMinute,
+                      beforeSpeaker: $0.beforeSpeaker, afterSpeaker: $0.afterSpeaker)
             })
         } catch { throw splitError(error) }
     }
@@ -89,7 +93,7 @@ private func splitError(_ error: any Error) -> any Error {
 private func suggestions(_ saved: TranscriptFormat.Saved, folderStart: Date) -> [SplitPoints.Choice<SplitPoint>] {
     let entries = saved.segments.compactMap { row -> SplitPoint? in
         guard row.side != .gap, let start = Int(exactly: row.start) else { return nil }
-        return SplitPoint(start: start, words: row.settled)
+        return SplitPoint(start: start, row: row)
     }
     return SplitPoints.choices(for: entries, timelineStart: saved.origin?.timelineStart ?? folderStart)
 }

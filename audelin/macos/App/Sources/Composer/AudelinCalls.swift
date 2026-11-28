@@ -6,6 +6,7 @@ import SettingsUI
 import Calls
 import CallsList
 import CallsListUI
+import CallsWindowUI
 import CallsSearch
 import CallTags
 import Foundation
@@ -150,15 +151,25 @@ public final class AudelinCalls {
         }
         notesConnections = [
             Task { @MainActor [weak self] in
-                var seen: TranscriptSelection?
+                var seenSelection: TranscriptSelection?
+                var seenReplacement: RecordingsReplacement?
                 for await state in inputs.states() {
+                    guard let self else { return }
                     let selection = TranscriptSelection(state)
-                    guard let self, let id = selection.id, selection != seen else { continue }
-                    seen = selection
-                    _ = await syncRows()
-                    await sendList(.select(id))
-                    selectDetail()
-                    detailModel.event(.transcriptChanged(id: id))
+                    let replacement = state.replacement
+                    defer {
+                        seenSelection = selection
+                        seenReplacement = replacement
+                    }
+                    if let replacement, replacement != seenReplacement,
+                       replacement.published.count == 2, let first = replacement.published.first {
+                        await selectFirstSplitPart(first)
+                    } else if let id = selection.id, selection != seenSelection {
+                        _ = await syncRows()
+                        await sendList(.select(id))
+                        selectDetail()
+                        detailModel.event(.transcriptChanged(id: id))
+                    }
                 }
             },
             Task { @MainActor [weak self] in
@@ -339,6 +350,43 @@ public final class AudelinCalls {
         let phase = inputs.state().phase
         return (phase == .idle || phase == .merging, phase == .merging || phase == .warnedFarApart || phase == .runningMerge)
     }
+    public var splitControl: SplitControl {
+        guard let selected = state.selectedID else { return .unavailable(nil) }
+        let split = inputs.state().split
+        let text = SettingsText(language: listText.language == .english ? .english : .russian)
+        if list.state.editing != nil || list.state.opening { return .unavailable(text(.splitBusy)) }
+        guard selected == split.selectedID else { return .unavailable(text(.splitChecking)) }
+        switch split.control {
+        case .available: return .available
+        case let .unavailable(_, reason): return .unavailable(reason)
+        case nil: return .unavailable(text(.splitChecking))
+        }
+    }
+
+    public var isShowingSplit: Bool { inputs.state().split.draft != nil }
+
+    public var splitSheet: SplitCallSheetState? {
+        splitSheetState(inputs.state(), format: .init(timeZone: timeZone, text: listText), now: now())
+    }
+
+    public func openSplit() {
+        guard splitControl == .available else { return }
+        sendRecordings(.openSplit)
+    }
+
+    public func sendSplit(_ event: SplitCallSheetEvent) {
+        switch event {
+        case let .choose(cut): inputs.send(.chooseSplit(cut))
+        case let .editFirst(title): inputs.send(.editSplitTitle(.first, title))
+        case let .editSecond(title): inputs.send(.editSplitTitle(.second, title))
+        case .cancel:
+            inputs.send(.cancelSplit)
+            inputs.send(.splitSelectionChanged(state.selectedID))
+        case .confirm: sendRecordings(.confirmSplit)
+        case .refresh: inputs.send(.refreshSplit)
+        }
+    }
+
     func sendRecordings(_ event: RecordingsEvent) {
         recordingChanged(recordingState())
         inputs.send(event)
@@ -471,7 +519,20 @@ public final class AudelinCalls {
         if state.selectedID != previous { selectDetail() }
     }
 
-    private func selectDetail() { detailModel.event(.selectionChanged(detailSelection())) }
+    private func selectDetail() {
+        let selection = detailSelection()
+        inputs.send(.splitSelectionChanged(selection?.id))
+        detailModel.event(.selectionChanged(selection))
+    }
+
+    private func selectFirstSplitPart(_ id: String) async {
+        // Renaming both parts can hide them under the search that selected the original.
+        if !state.rows.contains(where: { $0.id == id }) {
+            search("")
+        }
+        await sendList(.select(id))
+        selectDetail()
+    }
 
     /// Maps the list's display values into the detail's input contract.
     private func detailSelection() -> CallDetailState.Call? {

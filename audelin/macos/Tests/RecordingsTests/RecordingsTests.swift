@@ -214,14 +214,14 @@ struct RecordingsTests {
 
     @Test func constructionDoesNotComposeFailure() {
         let spy = FailureMessageSpy(result: "unused")
-        _ = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" }, transcriptMessage: { _ in "transcript unavailable" })
+        _ = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" }, splitMessage: { _ in "split unavailable" }, transcriptMessage: { _ in "transcript unavailable" })
         #expect(spy.calls == [])
     }
 
     @Test(arguments: [nil, "A"] as [String?])
     func refreshFailureUsesInjectedMessageAndKeepsFailureID(_ id: String?) {
         let spy = FailureMessageSpy(result: "composed message")
-        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" }, transcriptMessage: { _ in "transcript unavailable" })
+        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" }, splitMessage: { _ in "split unavailable" }, transcriptMessage: { _ in "transcript unavailable" })
         let state = makeState {
             $0.isListing = true
             $0.failure = .init(id: id, reason: " prior failure ")
@@ -238,7 +238,7 @@ struct RecordingsTests {
     @Test func listFailureWithoutPriorFailureDoesNotComposeMessage() {
         let spy = FailureMessageSpy(result: "unused")
         let state = makeState { $0.isListing = true }
-        assert(state, .listFailed(request: 0, "denied"), delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" }, transcriptMessage: { _ in "transcript unavailable" })) {
+        assert(state, .listFailed(request: 0, "denied"), delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" }, splitMessage: { _ in "split unavailable" }, transcriptMessage: { _ in "transcript unavailable" })) {
             $0.isListing = false
             $0.failure = .init(id: nil, reason: "denied")
         }
@@ -269,7 +269,7 @@ struct RecordingsTests {
         for (state, events) in cases {
             for event in events {
                 let spy = FailureMessageSpy(result: "unused")
-                assert(state, event, delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" }, transcriptMessage: { _ in "transcript unavailable" }))
+                assert(state, event, delivers: nil, using: RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" }, splitMessage: { _ in "split unavailable" }, transcriptMessage: { _ in "transcript unavailable" }))
                 #expect(spy.calls == [])
             }
         }
@@ -277,7 +277,7 @@ struct RecordingsTests {
 
     @Test func unrelatedTransitionsDoNotComposeFailure() {
         let spy = FailureMessageSpy(result: "unused")
-        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" }, transcriptMessage: { _ in "transcript unavailable" })
+        let reducer = RecordingsReducer(failureMessage: spy.compose, moveText: stubMoveText, busyMessage: { "busy" }, splitMessage: { _ in "split unavailable" }, transcriptMessage: { _ in "transcript unavailable" })
         let failed = makeState { $0.failure = .init(id: "A", reason: "prior") }
         let asking = makeState { $0.phase = .askingDelete("A"); $0.failure = failed.failure }
         let renaming = makeState { $0.phase = .renaming("A"); $0.failure = failed.failure }
@@ -424,7 +424,7 @@ private actor CallsSpy: RecordingsCalls {
 
 let defaultReducer = RecordingsReducer(failureMessage: { prior, refreshError in
     prior + " Не удалось обновить список: " + refreshError
-}, moveText: stubMoveText, busyMessage: { "busy" }, transcriptMessage: { _ in "transcript unavailable" })
+}, moveText: stubMoveText, busyMessage: { "busy" }, splitMessage: { _ in "split unavailable" }, transcriptMessage: { _ in "transcript unavailable" })
 
 private func unavailableTranscriptOffers(_ calls: [RecordedCall]) -> [String: TranscriptOffers] {
     Dictionary(uniqueKeysWithValues: calls.map { ($0.id, TranscriptOffers(

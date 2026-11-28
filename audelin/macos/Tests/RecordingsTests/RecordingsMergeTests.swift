@@ -211,7 +211,7 @@ private final class BusySpy: Sendable {
     var asked: Int { count.withLock { $0 } }
     var reducer: RecordingsReducer {
         RecordingsReducer(failureMessage: { $0 + $1 }, moveText: stubMoveText,
-                          busyMessage: { self.count.withLock { $0 += 1 }; return "Audelin is busy" }, transcriptMessage: { _ in "transcript unavailable" })
+                          busyMessage: { self.count.withLock { $0 += 1 }; return "Audelin is busy" }, splitMessage: { _ in "split unavailable" }, transcriptMessage: { _ in "transcript unavailable" })
     }
 }
 

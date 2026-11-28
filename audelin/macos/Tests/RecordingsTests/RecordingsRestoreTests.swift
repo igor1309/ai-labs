@@ -182,7 +182,7 @@ private final class RestoreMessageSpy: Sendable {
     var received: [TranscriptRefusal] { storage.withLock { $0 } }
     var reducer: RecordingsReducer {
         .init(failureMessage: { $0 + $1 }, moveText: stubMoveText, busyMessage: { Issue.record("Unexpected busy formatter"); return "busy" },
-              transcriptMessage: { reason in self.storage.withLock { $0.append(reason) }; return "restore busy" })
+              splitMessage: { _ in "split unavailable" }, transcriptMessage: { reason in self.storage.withLock { $0.append(reason) }; return "restore busy" })
     }
 }
 

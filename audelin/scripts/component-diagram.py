@@ -67,7 +67,7 @@ TARGETS = {
     "CallsListUI": ("ui", "lists, opens, renames and deletes calls", 4),
     "NotesMarkdown": ("ui", "renders call notes from Markdown", 5),
     "SummaryPreviewUI": ("ui", "shows one call's notes", 6),
-    "CallsWindowUI": ("ui", "the calls window's split and toolbar", 7),
+    "CallsWindowUI": ("ui", "calls panes, toolbar\nand split-call sheet", 7),
     "Recordings": ("machines", "confirms and serialises call actions", 5),
     "Calls": ("storage", "lists and manages recorded folders", 7),
     "CallsStorage": ("storage", "journals call moves; one\ntransaction for calls and notes", 12),

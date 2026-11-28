@@ -9,6 +9,16 @@ public enum SettingsLanguage: String, CaseIterable, Sendable {
 
 /// A fixed piece of Settings text; its raw value is the key in the strings tables.
 public enum SettingsPhrase: String, CaseIterable, Sendable {
+    case splitChecking = "split.checking"
+    case splitNoChoices = "split.noChoices"
+    case splitBusy = "split.busy"
+    case splitFinishing = "split.finishing"
+    case splitInactive = "split.inactive"
+    case splitFolderMove = "split.folderMove"
+    case splitExpired = "split.expired"
+    case splitInvalidChoice = "split.invalidChoice"
+    case splitRefreshFailed = "split.refreshFailed"
+    case splitRecovery = "split.recovery"
     case transcriptNotIdle = "transcript.notIdle"
     case transcriptActionUnderWay = "transcript.actionUnderWay"
     case transcriptNoPrevious = "transcript.noPrevious"

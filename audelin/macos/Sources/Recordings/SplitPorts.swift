@@ -4,12 +4,17 @@ public struct SplitChoices: Equatable, Sendable {
     public struct Choice: Equatable, Sendable {
         public let before: String
         public let after: String
+        public let beforeSpeaker: String
+        public let afterSpeaker: String
         public let cut: Int
         public let gap: Int
         public let suggestsTransition: Bool
         public let secondPartMinute: Date
 
-        public init(before: String, after: String, cut: Int, gap: Int, suggestsTransition: Bool, secondPartMinute: Date) {
+        public init(before: String, after: String, cut: Int, gap: Int, suggestsTransition: Bool, secondPartMinute: Date,
+                    beforeSpeaker: String = "", afterSpeaker: String = "") {
+            self.beforeSpeaker = beforeSpeaker
+            self.afterSpeaker = afterSpeaker
             self.before = before; self.after = after; self.cut = cut; self.gap = gap
             self.suggestsTransition = suggestsTransition; self.secondPartMinute = secondPartMinute
         }

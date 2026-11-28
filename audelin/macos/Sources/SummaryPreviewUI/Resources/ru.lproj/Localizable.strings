@@ -47,3 +47,20 @@
 "preview.noUsableTemplates" = "Нет доступных файлов шаблонов. Используется встроенный Default.";
 "preview.openTemplatesFolder" = "Открыть папку шаблонов";
 "preview.earlierTranscript" = "Итоги по прежнему транскрипту";
+
+"split.action" = "Разделить звонок…";
+"split.title" = "Разделить звонок";
+"split.choices" = "Где разделить — паузы от самой длинной";
+"split.seconds" = "%lld с";
+"split.transition" = "похоже на смену встречи";
+"split.first" = "Часть 1";
+"split.second" = "Часть 2";
+"split.cancel" = "Отменить";
+"split.confirm" = "Разделить";
+"split.working" = "Разделяю…";
+"split.progress" = "Режу звук и сохраняю обе части. Повторно отправить нельзя.";
+"split.publishing" = "Завершаю сохранение обеих частей. Повторно отправить нельзя.";
+"split.failed" = "Не удалось разделить звонок";
+"split.unchanged" = "Звонок остался прежним.";
+"split.refresh" = "Обновить список";
+"split.me" = "Я";

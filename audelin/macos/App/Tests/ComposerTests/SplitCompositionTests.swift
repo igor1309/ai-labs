@@ -41,7 +41,8 @@ struct SplitCompositionTests {
             #expect(id == firstID && request == 7)
             #expect(result.transcriptIdentity == (try await fixture.storage.transcriptFacts(id: firstID)).identity)
             #expect(result.choices.first == .init(before: "Goodbye", after: "Hello everyone", cut: 67, gap: 65,
-                                                 suggestsTransition: true, secondPartMinute: start.addingTimeInterval(60)))
+                                                 suggestsTransition: true, secondPartMinute: start.addingTimeInterval(60),
+                                                 beforeSpeaker: "Them 1 (Ann)", afterSpeaker: "Them 2 (Kay)"))
             var split = handler.handle(.split(.init(id: firstID, transcriptIdentity: result.transcriptIdentity, cut: 67,
                                                       firstTitle: "First", secondTitle: "Second"))).makeAsyncIterator()
             #expect(await split.next() == .splitFinished(.success(.init(first: firstID, second: secondID))))

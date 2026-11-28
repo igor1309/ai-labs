@@ -75,6 +75,7 @@ let package = Package(
         .target(
             name: "CallsRehearsalSupport",
             dependencies: [
+                .product(name: "TagsFile", package: "macos"),
                 .product(name: "Preferences", package: "macos"),
                 .product(name: "SummaryRuntime", package: "macos"),
                 .product(name: "TrackFile", package: "macos"),
@@ -92,6 +93,7 @@ let package = Package(
         .target(
             name: "Composer",
             dependencies: [
+                .product(name: "CallsWindowUI", package: "macos"),
                 .product(name: "TranscriptLayout", package: "macos"),
                 .product(name: "LatestText", package: "macos"),
                 .product(name: "RecordingConditions", package: "macos"),

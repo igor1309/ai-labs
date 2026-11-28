@@ -118,3 +118,14 @@
 "transcript.missingTracks" = "Missing audio: %@.";
 "transcript.callTrack" = "%@: call track";
 "transcript.microphoneTrack" = "%@: microphone track";
+
+"split.checking" = "Checking the selected transcript…";
+"split.noChoices" = "The transcript has no boundary between entries to split at.";
+"split.busy" = "Split a call when Audelin is idle and has finished transcripts and notes.";
+"split.finishing" = "Finishing the split. You can’t submit it again.";
+"split.inactive" = "Only calls in the active calls folder can be split.";
+"split.folderMove" = "Wait for the calls folder move to finish.";
+"split.expired" = "The transcript changed. Choose a boundary again.";
+"split.invalidChoice" = "That boundary is no longer available. Choose a boundary again.";
+"split.refreshFailed" = "Both parts were saved. The list couldn’t be refreshed. %@";
+"split.recovery" = "Reopen Audelin to finish split recovery. %@";

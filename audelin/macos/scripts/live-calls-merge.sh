@@ -5,4 +5,4 @@ set -eu
 scripts=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 swift build --package-path "$scripts/../App" --product CallsRehearsal
 rehearsal="$(swift build --package-path "$scripts/../App" --show-bin-path)/CallsRehearsal"
-"$scripts/live/run-driver.sh" "$scripts/live/calls-merge.swift" "$rehearsal"
+"$scripts/live/run-driver.sh" --support "$scripts/live/calls-driver.swift" "$scripts/live/calls-merge.swift" "$rehearsal"

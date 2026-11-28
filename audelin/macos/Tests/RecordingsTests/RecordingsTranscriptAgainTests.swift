@@ -341,7 +341,7 @@ private final class TranscriptMessageSpy: Sendable {
     private let storage = Mutex<[TranscriptRefusal]>([])
     var received: [TranscriptRefusal] { storage.withLock { $0 } }
     var reducer: RecordingsReducer {
-        RecordingsReducer(failureMessage: { $0 + $1 }, moveText: stubMoveText, busyMessage: { "busy" }, transcriptMessage: { reason in
+        RecordingsReducer(failureMessage: { $0 + $1 }, moveText: stubMoveText, busyMessage: { "busy" }, splitMessage: { _ in "split unavailable" }, transcriptMessage: { reason in
             self.storage.withLock { $0.append(reason) }; return "text"
         })
     }

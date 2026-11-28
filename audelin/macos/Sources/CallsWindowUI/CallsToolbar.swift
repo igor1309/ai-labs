@@ -10,9 +10,11 @@ public struct CallActions: Equatable, Sendable {
     public var copy: Bool
     public var merge: Bool
     public var merging: Bool
+    public var split: SplitControl
 
-    public init(call: Bool, copy: Bool, merge: Bool = false, merging: Bool = false, notesMenu: SummaryPreviewState.Menu? = nil) {
-        self.notesMenu = notesMenu; self.call = call; self.copy = copy; self.merge = merge; self.merging = merging
+    public init(call: Bool, copy: Bool, merge: Bool = false, merging: Bool = false, notesMenu: SummaryPreviewState.Menu? = nil,
+                split: SplitControl = .unavailable(nil)) {
+        self.notesMenu = notesMenu; self.call = call; self.copy = copy; self.merge = merge; self.merging = merging; self.split = split
     }
 }
 
@@ -33,6 +35,7 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
     public static let notesItem = NSToolbarItem.Identifier("calls.notesMenu")
     public static let copyItem = NSToolbarItem.Identifier("calls.copy")
     public static let mergeItem = NSToolbarItem.Identifier("calls.merge")
+    public static let splitItem = NSToolbarItem.Identifier("calls.split")
     public static let separatorItem = NSToolbarItem.Identifier("calls.divider")
     /// Copy's symbol, and the one it shows for a moment after it copies.
     public static let copySymbol = "doc.on.doc", copiedSymbol = "checkmark"
@@ -47,6 +50,8 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
     /// Enters and leaves merge mode; only the calls window, which passes `merge`, has it.
     private let mergeButton: NSToolbarItem?
     private let merge: (() -> Void)?
+    private let splitButton: NSToolbarItem?
+    private let splitCall: (() -> Void)?
     private var text: SummaryPreviewText
     private let separator: NSTrackingSeparatorToolbarItem?
     private let act: (SummaryPreviewEvent) -> Void
@@ -58,7 +63,7 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
     ]
 
     public init(identifier: String, splitView: NSSplitView? = nil, title: String? = nil, text: SummaryPreviewText,
-         act: @escaping (SummaryPreviewEvent) -> Void, merge: (() -> Void)? = nil,
+         act: @escaping (SummaryPreviewEvent) -> Void, merge: (() -> Void)? = nil, split: (() -> Void)? = nil,
          settle: @escaping @MainActor () async -> Void = { try? await Task.sleep(for: .seconds(1.5)) }) {
         notesControl = NotesMenuControl(text: text, presentMenu: { menu, view in
             menu.popUp(positioning: nil, at: NSPoint(x: view.bounds.minX, y: view.bounds.maxY), in: view)
@@ -66,6 +71,8 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
         self.act = act
         self.settle = settle
         self.merge = merge
+        self.splitCall = split
+        splitButton = split.map { _ in NSToolbarItem(itemIdentifier: Self.splitItem) }
         self.text = text
         mergeButton = merge.map { _ in NSToolbarItem(itemIdentifier: Self.mergeItem) }
         toolbar = NSToolbar(identifier: identifier)
@@ -111,6 +118,11 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
             mergeButton.target = self
             mergeButton.action = #selector(merged)
         }
+        if let splitButton {
+            splitButton.view = SplitCallButton(target: self, action: #selector(splitSelectedCall))
+            splitButton.target = self
+            splitButton.action = #selector(splitSelectedCall)
+        }
         retitle(text: text)
         show(.init(call: false, copy: false))
         toolbar.delegate = self
@@ -128,6 +140,7 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
         name(copy, text(.copy))
         name(notes, text(.notesMenu))
         notesControl.show(enabled.notesMenu, text: text)
+        showSplit()
     }
 
     /// Enables the buttons that act on the call shown; disabled ones stay in place.
@@ -146,6 +159,7 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
             button?.image = NSImage(systemSymbolName: enabled.merging ? "xmark" : "arrow.triangle.merge",
                                     accessibilityDescription: mergeButton.label)
         }
+        showSplit()
         toolbar.validateVisibleItems()
     }
 
@@ -154,8 +168,21 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
         switch item.itemIdentifier {
         case Self.copyItem: enabled.copy
         case Self.mergeItem: enabled.merge
+        case Self.splitItem: enabled.split == .available
         default: enabled.call
         }
+    }
+
+    private func showSplit() {
+        guard let splitButton, let button = splitButton.view as? SplitCallButton else { return }
+        button.show(enabled.split, title: text(.splitAction))
+        splitButton.label = text(.splitAction)
+        splitButton.toolTip = button.toolTip
+        splitButton.isEnabled = button.isEnabled
+    }
+
+    @objc private func splitSelectedCall() {
+        if enabled.split == .available { splitCall?() }
     }
 
     private func name(_ item: NSToolbarItem, _ title: String) {
@@ -187,7 +214,7 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
     }
 
     private var identifiers: [NSToolbarItem.Identifier] {
-        (title == nil ? [] : [Self.titleItem, .flexibleSpace]) + (mergeButton == nil ? [] : [Self.mergeItem]) + [Self.actionsItem, Self.deleteItem] + (separator == nil ? [] : [Self.separatorItem]) + [.flexibleSpace, Self.copyItem, Self.notesItem]
+        (title == nil ? [] : [Self.titleItem, .flexibleSpace]) + (mergeButton == nil ? [] : [Self.mergeItem]) + (splitButton == nil ? [] : [Self.splitItem]) + [Self.actionsItem, Self.deleteItem] + (separator == nil ? [] : [Self.separatorItem]) + [.flexibleSpace, Self.copyItem, Self.notesItem]
     }
 
     public func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { identifiers }
@@ -201,6 +228,7 @@ public final class CallsToolbar: NSObject, NSToolbarDelegate, NSToolbarItemValid
         case Self.notesItem: notes
         case Self.copyItem: copy
         case Self.mergeItem: mergeButton
+        case Self.splitItem: splitButton
         case Self.separatorItem: separator
         default: nil
         }

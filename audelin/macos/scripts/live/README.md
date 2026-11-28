@@ -9,6 +9,7 @@ no component test reaches.
 |---|---|
 | `sh scripts/live-calls-summary.sh` | A call's template menu refreshes and makes notes; regeneration rotates or replaces versions; switching, keeping, edited templates, failure reasons and cancellation preserve the shown pair; a call whose transcript tells no origin reads with its notes; notes are made from the said words without the origin. |
 | `sh scripts/live-calls-transcript-again.sh` | Transcript menu offers and disabled reasons for missing tracks and busy Audelin; a fixture run publishes both newly heard sides and restores the previous bytes without changing notes; held-wait cancellation, hearing/loading/swap failure and retry, Quit at every wait, and kill during publish/restore followed by startup recovery. |
+| `sh scripts/live-calls-split.sh` | Splitting a fixture call into two, reopening both parts, and merging them back. |
 | `sh scripts/live-calls-merge.sh` | Merging calls in the calls window, end to end (below). |
 | `sh scripts/live-calls-tags.sh` | Tags typed in the detail are written to the call's folder and shown in its row and the strip; a chip filters the list; merged calls keep both parts' tags. |
 | `sh scripts/live-calls-rename.sh` | Renaming a call in the list: Return saves without opening the folder; clicking, right-clicking or arrowing to another row saves; Escape cancels (below). |
@@ -72,6 +73,17 @@ transcript failed (a track, no transcript); and D, with a transcript that tells 
 origin and no notes. `--seed interrupted-merge` writes the same calls as a crash
 leaves a merge of A and B: B inside the merge's prepared folder. `--seed legacy-merge`
 writes them as a merge of A and B made before transcripts told their origin.
+
+## Splitting a call
+
+`live-calls-split.sh` seeds one two-meeting call with both tracks, two named
+speakers, a tag and old notes. It uses the scissors toolbar item and sheet
+through Accessibility to check the ranked boundaries and original title
+defaults, cancel once, then choose a cut and name both parts. It opens each
+part in the list and checks its title, transcript times, speaker, tag, audio
+frames and newly generated notes. It merges the two parts and checks the
+restored timeline and gap marker. Screenshots and the resulting transcripts
+are kept under the printed artifacts folder.
 
 ## Merging calls
 
