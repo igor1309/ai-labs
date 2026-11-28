@@ -129,3 +129,119 @@ each on a muted `afplay` child it starts itself:
   with 48 callbacks over the tone, and all 49,152 samples are exact zeros,
   peak 0.0. So the tone tells a granted tap from a denied one without any
   private API; the call's own quiet cannot fool it, as the tone is ours.
+
+
+## Yogurt comparison (2026-11-15)
+
+Source review only; neither recorder was run for this comparison. Yogurt is
+pinned to [a7596ec](https://github.com/FrigadeHQ/yogurt/blob/a7596ec6471763ea059effed8be1ad7d8efd5959/app/native/yogurt-audio/main.swift)
+(`app/native/yogurt-audio/main.swift`); Audelin to `db1f2ade`.
+Yogurt's comments report field failures; they are not measurements on this Mac.
+The earlier probes above remain the local evidence. Yogurt writes separate
+`me.m4a` and `them.m4a` tracks, so the earlier comparison's mixed-track
+distinction no longer holds at this revision.
+
+### Scope and excluding our own sound
+
+Yogurt's `yogurtProcesses()` (lines 284–294) enumerates Core Audio process
+objects and excludes the recorder helper, its parent Electron app, and the
+parent's direct children. This is a snapshot taken when `SystemAudio.start()`
+creates a stereo global tap (lines 366–370), not a recursive descendant walk
+or a continuously updated exclusion list. New helpers are picked up on a
+rebuild. All other apps, including music and notifications, remain audible.
+
+Audelin's `CallAppProcesses` chooses only the matching call-app processes
+when available; otherwise it retains its last selection or falls back to all
+processes except those marked `isAudelin`. The composer also has an explicit
+`everyAppButAudelin` path that excludes only `getpid()`
+(`SessionPieces+Captures.swift`). `SystemAudioCapture` itself accepts either
+selection, translates PIDs to Core Audio process objects, and requests a
+private, unmuted **mono** mixdown. Yogurt also leaves playback unmuted but
+mixes its stereo buffers to mono in software.
+
+**Keep** the call-app scope: a global tap would include unrelated sound.
+**Adopt** the exclusion principle for every global fallback: account for any
+Audelin-owned process that can play audio, not just the main PID. Yogurt's
+parent/sibling rule suits Electron; copying it into a native app launched by
+a terminal could exclude unrelated siblings. Verify process ownership instead,
+and refresh exclusions if audio-playing helpers appear during recording.
+There is no reason to add an Electron-style process tree to a single-process
+capture merely for parity.
+
+### Aggregate clock and drift compensation
+
+Audelin's `CoreAudioBinding.createDevice` builds a private aggregate containing
+only the tap, with auto-start off, then explicitly starts its IO proc. It
+sets neither a physical main sub-device nor `kAudioSubTapDriftCompensationKey`.
+This means compensation is not explicitly requested; source alone does not
+establish the effective Core Audio default.
+
+Yogurt includes the current output device as both main sub-device and member,
+sets `IsStacked` false and auto-start false, and sets
+`kAudioSubTapDriftCompensationKey: true` on the tap entry (lines 379–386).
+It selects the last input buffer matching the tap's channel count because
+physical-device inputs can precede the tap. Audelin requires exactly one
+mono buffer. Copying Yogurt's aggregate dictionary alone would therefore be
+an incomplete change to Audelin's IO binding.
+
+**Keep** the working tap-only aggregate pending hardware evidence. Yogurt's
+comment that a tap-only device never runs conflicts with Audelin's existing
+probe results; it is not a universal Core Audio rule. **Adopt** explicit tap
+drift compensation if an output-clocked aggregate proves necessary, together
+with correct stream selection. Do not claim that this synchronizes Audelin's
+independent microphone engine with its call track: the setting belongs to the
+tap inside one aggregate, not both capture pipelines.
+
+### Microphone voice processing
+
+Both use `AVAudioEngine` without voice processing. Yogurt leaves it at the
+default off (lines 451–460), citing Zoom's mic becoming nearly silent while
+Yogurt recorded. Audelin explicitly calls `setVoiceProcessingEnabled(false)`
+for each new engine in `NativeMicrophoneBinding` and reads back the setting.
+**Keep** Audelin's explicit disable; no setting needs adopting here. Neither
+choice removes speaker leakage from the mic by itself. Yogurt's comment
+points to later echo detection; it is not evidence that enabling engine voice
+processing is now safe alongside a process tap.
+
+### Format and route changes
+
+Yogurt reads the tap ASBD, then overrides its sample rate with the aggregate's
+nominal rate when they disagree. Its comment reports a headset delivering
+16 kHz while the tap still advertised 48 kHz, causing playback at three times
+the intended speed (lines 390–392). It watches both aggregate nominal rate
+and tap format, plus the default output device. Changes trigger a debounced
+300 ms teardown/recreation of the system capture and a track resync, preserving
+meeting time across a gap. The tap listener compares sample rates, so it is
+not a general handler for every ASBD layout change. Track converters are
+recreated when the incoming rate changes.
+
+Audelin validates mono native-endian float32 PCM, listens to
+`kAudioTapPropertyFormat`, and updates the rate carried by each `AudioPiece`
+without rebuilding the tap. An unsupported format ends the stream; device
+death or abnormal IO stop also ends it. The binding does not read aggregate
+nominal rate or subscribe to default-output changes. Downstream resampling
+cannot correct buffers already labelled with the wrong rate. `LiveAudio`
+advances by frames/rate, so rebuilding with an unaccounted gap would shorten
+that track's timeline.
+
+On the mic, Yogurt installs a tap with `format: nil`, takes each buffer's own
+rate, restarts the engine after configuration changes, and rebuilds/retries
+when necessary. Audelin already follows default input changes, reinstalls its
+tap after configuration changes, retries an initial format refusal on a
+configuration notification, and fills timestamp gaps with silence. It supplies
+an explicit float32 format derived from the hardware input; Yogurt's nil-format
+approach is an alternative to test, not proof that Audelin's path is broken.
+
+**Adopt next:** test and guard against disagreement between the tap's reported
+rate and the actual delivery clock; observe output/aggregate rate changes and
+recover capture while preserving elapsed time. Validate any rate override
+against the tap-only topology before applying Yogurt's output-clocked fix.
+Keep Audelin's format validation and microphone recovery rather than replacing
+them wholesale.
+
+Before changing capture, compare tap-only and output-clocked aggregates on
+built-in audio, Bluetooth entering/leaving hands-free mode, output switching,
+and silence. Check tone pitch, frame count against host elapsed time, both
+tracks' duration/alignment, duplicate audio and cleanup. Test late-starting own
+helpers separately. These are proposed checks, not completed experiments;
+no capture implementation changes are made by this research.
