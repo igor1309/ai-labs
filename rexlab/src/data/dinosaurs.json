@@ -1532,5 +1532,265 @@
       "en": "NOT A DINOSAUR! ITS BRISTLE TEETH SIEVED FOOD LIKE A FLAMINGO, AND IT MAY HAVE BEEN PINK.",
       "ru": "НЕ ДИНОЗАВР! ЗУБЫ-ЩЕТИНКИ ЦЕДИЛИ ЕДУ, КАК У ФЛАМИНГО, И ОН, МОЖЕТ БЫТЬ, БЫЛ РОЗОВЫМ."
     }
+  },
+  {
+    "id": "stegoceras",
+    "name": {
+      "en": "Stegoceras",
+      "ru": "Стегоцерас"
+    },
+    "group": "dinosaur",
+    "hidden": true,
+    "attributes": {
+      "heightMeters": 0.55,
+      "lengthMeters": 2,
+      "massKg": 40
+    },
+    "diet": "plants",
+    "traits": {
+      "legs": 2,
+      "horns": null,
+      "feathers": false,
+      "size": "small"
+    },
+    "lookAlike": "dome-head",
+    "description": {
+      "en": "A SMALL COUSIN OF PACHYCEPHALOSAURUS, AS BIG AS A GOAT, WITH A THICK BONY DOME ON ITS HEAD.",
+      "ru": "МАЛЕНЬКИЙ РОДСТВЕННИК ПАХИЦЕФАЛОЗАВРА, РАЗМЕРОМ С КОЗУ, С ТОЛСТЫМ КОСТЯНЫМ КУПОЛОМ НА ГОЛОВЕ."
+    }
+  },
+  {
+    "id": "deinocheirus",
+    "name": {
+      "en": "Deinocheirus",
+      "ru": "Дейнохейрус"
+    },
+    "group": "dinosaur",
+    "hidden": true,
+    "attributes": {
+      "heightMeters": 3,
+      "lengthMeters": 11,
+      "massKg": 6400
+    },
+    "diet": "both",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": "unknown",
+      "size": "big"
+    },
+    "lookAlike": "long-claws",
+    "description": {
+      "en": "ITS ARMS WERE LONGER THAN A GROWN-UP. IT HAD A HUMP ON ITS BACK AND A BEAK LIKE A DUCK.",
+      "ru": "ЕГО РУКИ БЫЛИ ДЛИННЕЕ ВЗРОСЛОГО ЧЕЛОВЕКА. НА СПИНЕ У НЕГО БЫЛ ГОРБ, А КЛЮВ — КАК У УТКИ."
+    }
+  },
+  {
+    "id": "minmi",
+    "name": {
+      "en": "Minmi",
+      "ru": "Минми"
+    },
+    "group": "dinosaur",
+    "hidden": true,
+    "attributes": {
+      "heightMeters": 0.6,
+      "lengthMeters": 3,
+      "massKg": 300
+    },
+    "diet": "plants",
+    "traits": {
+      "legs": 4,
+      "horns": false,
+      "feathers": false,
+      "size": "small"
+    },
+    "lookAlike": "armoured",
+    "description": {
+      "en": "A SMALL ARMOURED DINOSAUR, COVERED IN BONY PLATES EVEN ON ITS BELLY.",
+      "ru": "МАЛЕНЬКИЙ ДИНОЗАВР В БРОНЕ: КОСТЯНЫЕ ПЛАСТИНЫ БЫЛИ У НЕГО ДАЖЕ НА ЖИВОТЕ."
+    }
+  },
+  {
+    "id": "albertosaurus",
+    "name": {
+      "en": "Albertosaurus",
+      "ru": "Альбертозавр"
+    },
+    "group": "dinosaur",
+    "hidden": true,
+    "attributes": {
+      "heightMeters": 2.5,
+      "lengthMeters": 9,
+      "massKg": 2500
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": "unknown",
+      "size": null
+    },
+    "lookAlike": "big-hunter",
+    "description": {
+      "en": "A LIGHTER, FASTER RELATIVE OF T-REX. MANY WERE FOUND TOGETHER, SO THEY MAY HAVE HUNTED IN GROUPS.",
+      "ru": "БОЛЕЕ ЛЁГКИЙ И БЫСТРЫЙ РОДСТВЕННИК ТИРАННОЗАВРА. ИХ НАШЛИ МНОГО ВМЕСТЕ — НАВЕРНОЕ, ОНИ ОХОТИЛИСЬ СТАЕЙ."
+    }
+  },
+  {
+    "id": "suchomimus",
+    "name": {
+      "en": "Suchomimus",
+      "ru": "Сухомим"
+    },
+    "group": "dinosaur",
+    "hidden": true,
+    "attributes": {
+      "heightMeters": 2.4,
+      "lengthMeters": 11,
+      "massKg": 3500
+    },
+    "diet": "meat",
+    "traits": {
+      "legs": 2,
+      "horns": false,
+      "feathers": "unknown",
+      "size": null
+    },
+    "lookAlike": "big-hunter",
+    "description": {
+      "en": "ITS LONG SNOUT LOOKED LIKE A CROCODILE'S, AND IT CAUGHT FISH WITH IT.",
+      "ru": "ЕГО ДЛИННАЯ МОРДА БЫЛА ПОХОЖА НА КРОКОДИЛЬЮ, И ИМ ОН ЛОВИЛ РЫБУ."
+    }
+  },
+  {
+    "id": "centrosaurus",
+    "name": {
+      "en": "Centrosaurus",
+      "ru": "Центрозавр"
+    },
+    "group": "dinosaur",
+    "hidden": true,
+    "attributes": {
+      "heightMeters": 1.6,
+      "lengthMeters": 6,
+      "massKg": 2500
+    },
+    "diet": "plants",
+    "traits": {
+      "legs": 4,
+      "horns": true,
+      "feathers": false,
+      "size": null
+    },
+    "lookAlike": "horned-face",
+    "description": {
+      "en": "ONE BIG HORN ON ITS NOSE AND HOOKED HORNS ON ITS FRILL. WHOLE HERDS WERE FOUND TOGETHER.",
+      "ru": "ОДИН БОЛЬШОЙ РОГ НА НОСУ И КРЮЧКИ-РОГА НА ВОРОТНИКЕ. ИХ НАХОДИЛИ ЦЕЛЫМИ СТАДАМИ."
+    }
+  },
+  {
+    "id": "lambeosaurus",
+    "name": {
+      "en": "Lambeosaurus",
+      "ru": "Ламбеозавр"
+    },
+    "group": "dinosaur",
+    "hidden": true,
+    "attributes": {
+      "heightMeters": 2.3,
+      "lengthMeters": 9,
+      "massKg": 3000
+    },
+    "diet": "plants",
+    "traits": {
+      "legs": "either",
+      "horns": null,
+      "feathers": false,
+      "size": null
+    },
+    "lookAlike": "duck-bill",
+    "description": {
+      "en": "A DUCK-BILLED DINOSAUR WITH A CREST ON ITS HEAD SHAPED LIKE AN AXE.",
+      "ru": "УТКОНОСЫЙ ДИНОЗАВР С ГРЕБНЕМ НА ГОЛОВЕ В ФОРМЕ ТОПОРИКА."
+    }
+  },
+  {
+    "id": "camarasaurus",
+    "name": {
+      "en": "Camarasaurus",
+      "ru": "Камаразавр"
+    },
+    "group": "dinosaur",
+    "hidden": true,
+    "attributes": {
+      "heightMeters": 3.5,
+      "lengthMeters": 18,
+      "massKg": 18000
+    },
+    "diet": "plants",
+    "traits": {
+      "legs": 4,
+      "horns": false,
+      "feathers": false,
+      "size": "big"
+    },
+    "lookAlike": "long-neck",
+    "description": {
+      "en": "A LONG-NECK WITH A SHORT, BOX-SHAPED HEAD. IT IS THE ONE FOUND MOST OFTEN IN AMERICA.",
+      "ru": "ДЛИННОШЕЙ С КОРОТКОЙ ГОЛОВОЙ, ПОХОЖЕЙ НА КОРОБКУ. В АМЕРИКЕ ЕГО НАХОДЯТ ЧАЩЕ ВСЕХ."
+    }
+  },
+  {
+    "id": "saltasaurus",
+    "name": {
+      "en": "Saltasaurus",
+      "ru": "Сальтазавр"
+    },
+    "group": "dinosaur",
+    "hidden": true,
+    "attributes": {
+      "heightMeters": 2.5,
+      "lengthMeters": 12,
+      "massKg": 7000
+    },
+    "diet": "plants",
+    "traits": {
+      "legs": 4,
+      "horns": false,
+      "feathers": false,
+      "size": "big"
+    },
+    "lookAlike": "long-neck",
+    "description": {
+      "en": "A LONG-NECK WITH BONY ARMOUR IN ITS SKIN, LIKE A KNIGHT.",
+      "ru": "ДЛИННОШЕЙ С КОСТЯНОЙ БРОНЁЙ В КОЖЕ, КАК У РЫЦАРЯ."
+    }
+  },
+  {
+    "id": "nigersaurus",
+    "name": {
+      "en": "Nigersaurus",
+      "ru": "Нигерзавр"
+    },
+    "group": "dinosaur",
+    "hidden": true,
+    "attributes": {
+      "heightMeters": 2,
+      "lengthMeters": 9,
+      "massKg": 4000
+    },
+    "diet": "plants",
+    "traits": {
+      "legs": 4,
+      "horns": false,
+      "feathers": false,
+      "size": "big"
+    },
+    "lookAlike": "long-neck",
+    "description": {
+      "en": "ITS WIDE, FLAT MOUTH HAD HUNDREDS OF TEETH AND MOWED PLANTS LIKE A LAWN MOWER.",
+      "ru": "ЕГО ШИРОКИЙ ПЛОСКИЙ РОТ С СОТНЯМИ ЗУБОВ СТРИГ РАСТЕНИЯ, КАК ГАЗОНОКОСИЛКА."
+    }
   }
 ]

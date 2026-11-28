@@ -1,5 +1,9 @@
 # rexlab — Change Log
 
+## 2026-11-28
+
+- LAB-1860: Batch 4's ten dinosaurs are in the data with their English and Russian names, look-alikes, traits and descriptions, each marked hidden so no screen or game shows them yet: Stegoceras, Deinocheirus and Minmi join the thin dome-head, long-claws and armoured groups; Albertosaurus, Suchomimus, Centrosaurus and Lambeosaurus; and the long-necks Camarasaurus, Saltasaurus and Nigersaurus. Their sizes and masses are the proposal's working figures until the facts stage checks them (LAB-1861).
+
 ## 2026-11-23
 
 - LAB-1786: Every coloring picture now fills its paper with no frame. The traced Explorer scenes of T-Rex, Mosasaurus, Brachiosaurus, Pteranodon, Parasaurolophus and Spinosaurus are retraced whole, with no frame line and nothing of the creature cut off; their sky, land and water show the paper colour until filled. The other pictures are enlarged until they touch the paper edges. Works saved on the earlier pictures reopen on them.
