@@ -145,7 +145,7 @@ public struct SplitCallSheet: View {
             HStack(alignment: .top, spacing: tokens.space12) {
                 Image(systemName: selected ? "largecircle.fill.circle" : "circle")
                     .foregroundStyle(selected ? tokens.me : tokens.gutter)
-                    .font(.system(size: tokens.space16))
+                    .font(tokens.ui(tokens.typeBody))
                 VStack(alignment: .leading, spacing: tokens.space4) {
                     Text(row.gap).font(tokens.data(tokens.typeBody, .semibold))
                     Text(row.cut).font(tokens.data(tokens.typeCaption)).foregroundStyle(tokens.gutter)
